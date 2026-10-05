@@ -24,7 +24,6 @@ lerna-debug.log*
 .project
 .classpath
 *.launch
-/docs
 /.settings
 
 # Env
