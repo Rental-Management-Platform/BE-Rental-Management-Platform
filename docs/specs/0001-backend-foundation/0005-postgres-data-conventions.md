@@ -50,7 +50,7 @@ Quy ước chung:
 - **Dấu thời gian:** mọi bảng có `created_at`, `updated_at` (`@CreateDateColumn`, `@UpdateDateColumn`).
 - **Xóa mềm** (BR-15) chỉ cho `users`, `properties`, `listings`: cột `deleted_at` (`@DeleteDateColumn`). TypeORM tự loại dòng đã xóa mềm khỏi mọi truy vấn `find` và QueryBuilder; chỉ phương thức có tên tường minh `...IncludingDeleted` của Repository mới dùng `withDeleted`.
 - **Khóa ngoại:** mọi khóa ngoại khai báo `ON DELETE` rõ ràng. Mặc định `RESTRICT`; chỉ dùng `CASCADE` cho dữ liệu con thuộc hẳn về cha (`auth_sessions`, `password_resets`, `landlord_profiles`, `property_fees`, `property_amenities`, `listing_images`, `user_roles` phía người dùng). Postgres không tự đánh chỉ mục cho cột khóa ngoại, nên mọi cột khóa ngoại phải có chỉ mục, trừ khi nó đã là cột đầu của khóa chính hoặc chỉ mục duy nhất.
-- **Danh sách có giới hạn là bảng con**, không phải mảng hay JSON. Giới hạn số dòng (tối đa 6 phí, 10 ảnh) kiểm ở Service. Cột mảng `text[]` chỉ dành cho `roles.permissions`. Cấm `jsonb`, `simple-json`, `simple-array` trừ khi spec tính năng nêu lý do và có kiểu rõ ràng.
+- **Danh sách có giới hạn là bảng con**, không phải mảng hay JSON. Giới hạn số dòng (tối đa 6 phí, 10 ảnh) kiểm ở Service. Cột mảng `text[]` chỉ dành cho `roles.permissions` (và cột `users.roles` tạm thời cho đến khi làm spec 0003). Cột mảng không đặt `default` ở DB: TypeORM 1.1.1 đọc sai giá trị mặc định kiểu mảng nên luôn báo lệch schema (đã gặp và kiểm chứng), giá trị đặt ở Service. Cấm `jsonb`, `simple-json`, `simple-array` trừ khi spec tính năng nêu lý do và có kiểu rõ ràng.
 - **Không sao chép dữ liệu giữa các bảng.** Điều kiện hiển thị 6.1 (tin được duyệt, chủ trọ đang hoạt động, còn hạn...) là phép nối `listings`, `properties`, `users`, được viết đúng một lần trong một phương thức Repository (`visibleListingsQuery`). Ngoại lệ duy nhất là `listings.search_key` (xem dưới). Dữ liệu dẫn xuất khác chỉ được thêm khi đo thấy chậm, và phải ghi đường cập nhật duy nhất của nó trong spec tính năng.
 
 Tìm từ khóa tiếng Việt:
@@ -80,6 +80,7 @@ Kết nối: `DATABASE_POOL_MAX` mặc định 10 (tiến trình luôn bật nê
 
 Môi trường dev và test:
 - Máy dev chạy `docker compose up -d db` (tệp `compose.override.yaml` mở cổng `127.0.0.1:5432`) rồi `npm run start:dev`.
+- Máy dev đã có PostgreSQL 18 cài sẵn thì không cần container `db`: điền `.env`, chạy `npm run db:create` (tạo role ứng dụng không phải superuser và database UTF8 mới, đọc mật khẩu quản trị từ `.env`, chạy lại vẫn an toàn), `npm run db:check`, rồi `npm run migration:run`. Database luôn tạo bằng `TEMPLATE template0 ENCODING 'UTF8'` vì cụm Postgres cài trên Windows thường mặc định WIN1252, không lưu được tiếng Việt có dấu (đã gặp và kiểm chứng ngày 2026-10-05).
 - Test e2e dùng `@testcontainers/postgresql` với image `postgres:18`: một container cho cả lượt chạy (global setup), áp migration, dọn dữ liệu giữa các test. Test đơn vị dùng repository giả.
 
 Sao lưu: dữ liệu nằm trong volume `pgdata`. Sao lưu bằng `docker compose exec db pg_dump -U $POSTGRES_USER -d $POSTGRES_DB > backup.sql` và phục hồi bằng `psql`; lệnh nằm trong README. `docker compose down -v` xóa cả volume (mất dữ liệu), README nói rõ.

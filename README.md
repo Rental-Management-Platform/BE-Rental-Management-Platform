@@ -31,6 +31,27 @@
 $ npm install
 ```
 
+## Cấu hình database (PostgreSQL cài sẵn trên máy)
+
+Mọi thông tin kết nối và bí mật nằm trong file `.env` (đã bị git bỏ qua). Không đưa giá trị thật
+vào mã nguồn hay vào `.env.example`.
+
+1. Copy `.env.example` thành `.env`, rồi điền:
+   - `DATABASE_PASSWORD`: mật khẩu cho role ứng dụng, từ 16 ký tự, tự đặt (không được để `CHANGE_ME`).
+   - `JWT_SECRET`: chuỗi ngẫu nhiên từ 32 ký tự (không được để `CHANGE_ME`).
+   - `DATABASE_ADMIN_PASSWORD`: mật khẩu tài khoản quản trị `postgres` bạn đã đặt lúc cài PostgreSQL.
+     Chỉ `npm run db:create` đọc biến này.
+   - Có thể sinh chuỗi ngẫu nhiên bằng: `node -e "console.log(require('crypto').randomBytes(24).toString('base64url'))"`
+2. Tạo role ứng dụng (không phải superuser) và database mới (UTF8): `npm run db:create`.
+   Chạy lại nhiều lần vẫn an toàn, không xóa gì.
+3. Kiểm tra kết nối bằng chính tài khoản ứng dụng: `npm run db:check`.
+4. Tạo bảng: `npm run migration:run`. Tạo migration mới sau khi sửa entity:
+   `npm run migration:generate -- src/database/migrations/TenMigration`.
+5. Chạy ứng dụng: `npm run start:dev`.
+
+Thiếu biến hoặc còn giá trị `CHANGE_ME` thì ứng dụng không khởi động và in danh sách biến sai
+(chỉ nêu tên biến, không in giá trị).
+
 ## Compile and run the project
 
 ```bash

@@ -1,30 +1,33 @@
 import { Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
 import * as bcrypt from 'bcrypt';
-import { User, UserDocument } from './schemas/user.schema';
+import { User } from './entities/user.entity';
+import { UsersRepository } from './users.repository';
 import { CreateUserDto } from './dto/create-user.dto';
 import { Role } from '../common/enums/role.enum';
 
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
 @Injectable()
 export class UsersService {
-  constructor(@InjectModel(User.name) private userModel: Model<UserDocument>) {}
+  constructor(private readonly usersRepository: UsersRepository) {}
 
-  async create(dto: CreateUserDto): Promise<UserDocument> {
-    const hashedPassword = await bcrypt.hash(dto.password, 10);
-    const user = new this.userModel({
-      ...dto,
-      password: hashedPassword,
+  async create(dto: CreateUserDto): Promise<User> {
+    const passwordHash = await bcrypt.hash(dto.password, 10);
+    return this.usersRepository.create({
+      email: normalizeEmail(dto.email),
+      passwordHash,
+      name: dto.name?.trim() || null,
       roles: dto.roles?.length ? dto.roles : [Role.TENANT],
     });
-    return user.save();
   }
 
-  findByEmail(email: string): Promise<UserDocument | null> {
-    return this.userModel.findOne({ email }).select('+password').exec();
+  findByEmail(email: string): Promise<User | null> {
+    return this.usersRepository.findByEmailWithPassword(normalizeEmail(email));
   }
 
-  findById(id: string): Promise<UserDocument | null> {
-    return this.userModel.findById(id).exec();
+  findById(id: string): Promise<User | null> {
+    return this.usersRepository.findById(id);
   }
 }

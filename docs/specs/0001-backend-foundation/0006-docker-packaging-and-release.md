@@ -107,6 +107,7 @@ Biến môi trường (nguồn duy nhất, đọc qua `AppConfigService`; thiế
 | `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_USER`, `DATABASE_NAME` | kết nối DB | Compose đặt `db`, `5432`; máy dev đặt `localhost` | có | không |
 | `DATABASE_PASSWORD` | mật khẩu DB cho API | Compose lấy từ `POSTGRES_PASSWORD` | có | **có** |
 | `DATABASE_POOL_MAX` | kích thước pool | `10` | không | không |
+| `DATABASE_ADMIN_USER`, `DATABASE_ADMIN_PASSWORD` | chỉ cho `npm run db:create` trên máy dev có Postgres cài sẵn (tạo role ứng dụng và database); ứng dụng và Docker không đọc | `postgres`; `CHANGE_ME` | không | mật khẩu: **có** |
 | `JWT_ACCESS_SECRET` | ký access token | `CHANGE_ME`, từ 32 ký tự | có | **có** |
 | `JWT_ISSUER`, `JWT_AUDIENCE` | claim token | `rental-api`, `rental-web` | không | không |
 | `ACCESS_TTL_SECONDS` | hạn access token | `900` | không | không |
@@ -172,6 +173,14 @@ CI/CD (GitHub Actions):
 | 11 | Gmail SMTP cổng 465 gửi được từ container trên Docker Desktop | gửi thử một email | dùng cổng 587 hoặc nhà cung cấp khác |
 | 12 | `docker stop` đóng pool kết nối gọn trong 10 giây | dừng khi đang có request | tăng `stop_grace_period` |
 | 13 | `docker-entrypoint.sh` chạy được khi repo clone trên Windows | clone trên Windows, dựng image | thêm `.gitattributes` ép LF, hoặc bỏ file script, gọi lệnh trực tiếp trong `CMD` |
+
+**Tiến độ slice 0 (2026-10-05, trên máy dev dùng PostgreSQL 18.1 cài sẵn, thử trên một cụm tạm đã xóa):**
+- Đã làm (một phần của mục 1 và 2): kiểm tra biến môi trường bằng lớp `Env` (từ chối giá trị thiếu hoặc còn `CHANGE_ME`, không in giá trị bí mật), `AppConfigService`, `DatabaseModule` và `data-source.ts` của TypeORM, `SnakeNamingStrategy`, migration đầu tiên (bảng `users`), script `db:create` và `db:check`, chuyển `users` và `auth` từ Mongoose sang TypeORM ở mức tối thiểu (cột `roles` tạm), bỏ `@nestjs/mongoose` và `mongoose`. `.env.example` đã cập nhật.
+- Chưa làm: `createApp`, pino, health check, `TransactionRunner`, toàn bộ Docker (`Dockerfile`, `compose.yaml`, mục 3), CI (mục 5), phát hành (mục 6).
+- Giả định 2 đã kiểm chứng: `uuidv7()` làm mặc định khóa chính chạy, TypeORM đọc lại id sau khi chèn, id là UUID v7.
+- Giả định 5 kiểm chứng một phần: TypeORM 1.1.1 và `@nestjs/typeorm` 12.0.2 chạy với NestJS 11.2.7 (build, khởi động, đăng ký, đăng nhập, trùng email trả 409). Chưa thử với `strictTypeChecked` vì ESLint chưa chuyển sang bộ luật chặt.
+- Giả định 6 kiểm chứng một phần: `migration:generate --check` hoạt động và phát hiện lệch (đã bắt được lỗi mặc định kiểu mảng). Phần chỉ mục `synchronize: false` chưa thử vì chưa có chỉ mục tùy biến.
+- Phát hiện mới (đã ghi ở 0005): TypeORM đọc sai mặc định kiểu mảng; cụm Postgres cài trên Windows mặc định WIN1252 nên database phải tạo riêng bằng UTF8.
 
 **Replaces**:
 - Toàn bộ hướng triển khai cũ: `api/index.ts`, `vercel.json`, hàm serverless, hợp đồng chuyển tiếp `/api/*` ở FE, MongoDB Atlas, Cloudinary, bộ đếm tần suất lưu trong DB, các giả định về Vercel (bảng cũ 12 điểm).
