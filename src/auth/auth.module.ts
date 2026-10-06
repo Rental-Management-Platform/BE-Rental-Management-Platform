@@ -12,30 +12,30 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { TokenService } from './token.service';
 
 @Module({
-  imports: [
-    UsersModule,
-    PassportModule,
-    JwtModule.registerAsync({
-      inject: [AppConfigService],
-      useFactory: (config: AppConfigService) => ({
-        secret: config.auth.accessSecret,
-        signOptions: {
-          algorithm: 'HS256',
-          expiresIn: config.auth.accessTtlSeconds,
-          issuer: config.auth.issuer,
-          audience: config.auth.audience,
-        },
-      }),
-    }),
-  ],
-  controllers: [AuthController],
-  providers: [
-    AuthService,
-    AuthSessionsRepository,
-    TokenService,
-    PasswordHasher,
-    JwtStrategy,
-    OriginGuard,
-  ],
+	imports: [
+		UsersModule,
+		PassportModule,
+		JwtModule.registerAsync({
+			inject: [AppConfigService],
+			useFactory: (config: AppConfigService) => ({
+				secret: config.auth.accessSecret,
+				signOptions: {
+					algorithm: 'HS256',
+					expiresIn: config.auth.accessTtlSeconds,
+					issuer: config.auth.issuer,
+					audience: config.auth.audience,
+				},
+			}),
+		}),
+	],
+	controllers: [AuthController],
+	providers: [
+		AuthService,
+		AuthSessionsRepository,
+		TokenService,
+		PasswordHasher,
+		JwtStrategy,
+		OriginGuard,
+	],
 })
 export class AuthModule {}

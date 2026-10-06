@@ -13,26 +13,26 @@ import { isAccessTokenClaims } from '../auth.types';
  */
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor(config: AppConfigService) {
-    super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-      ignoreExpiration: false,
-      secretOrKey: config.auth.accessSecret,
-      algorithms: ['HS256'],
-      issuer: config.auth.issuer,
-      audience: config.auth.audience,
-    });
-  }
+	constructor(config: AppConfigService) {
+		super({
+			jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+			ignoreExpiration: false,
+			secretOrKey: config.auth.accessSecret,
+			algorithms: ['HS256'],
+			issuer: config.auth.issuer,
+			audience: config.auth.audience,
+		});
+	}
 
-  /** Chạy SAU khi chữ ký, hạn, iss, aud đã đúng. Giá trị trả về trở thành request.user. */
-  validate(payload: unknown): RequestUser {
-    if (!isAccessTokenClaims(payload)) {
-      throw new AppException(ErrorCode.TOKEN_INVALID);
-    }
-    return {
-      userId: payload.sub,
-      sessionId: payload.sid,
-      roles: [...payload.roles],
-    };
-  }
+	/** Chạy SAU khi chữ ký, hạn, iss, aud đã đúng. Giá trị trả về trở thành request.user. */
+	validate(payload: unknown): RequestUser {
+		if (!isAccessTokenClaims(payload)) {
+			throw new AppException(ErrorCode.TOKEN_INVALID);
+		}
+		return {
+			userId: payload.sub,
+			sessionId: payload.sid,
+			roles: [...payload.roles],
+		};
+	}
 }

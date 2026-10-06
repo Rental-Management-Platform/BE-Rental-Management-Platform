@@ -4,13 +4,15 @@
  * (ví dụ trong container, nơi biến môi trường được truyền vào trực tiếp).
  */
 export function loadEnvFile(path = '.env'): void {
-  try {
-    process.loadEnvFile(path);
-  } catch (error: unknown) {
-    const isMissingFile =
-      error instanceof Error && 'code' in error && error.code === 'ENOENT';
-    if (!isMissingFile) {
-      throw error;
-    }
-  }
+	try {
+		process.loadEnvFile(path);
+	} catch (error: unknown) {
+		const isMissingFile =
+			error instanceof Error &&
+			'code' in error &&
+			error.code === 'ENOENT';
+		if (!isMissingFile) {
+			throw error;
+		}
+	}
 }

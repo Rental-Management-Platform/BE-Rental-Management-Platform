@@ -1,13 +1,13 @@
 import {
-  Body,
-  Controller,
-  Get,
-  HttpCode,
-  HttpStatus,
-  Post,
-  Req,
-  Res,
-  UseGuards,
+	Body,
+	Controller,
+	Get,
+	HttpCode,
+	HttpStatus,
+	Post,
+	Req,
+	Res,
+	UseGuards,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -22,13 +22,13 @@ import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { OriginGuard } from './guards/origin.guard';
 import {
-  clearRefreshCookie,
-  readRefreshCookie,
-  setRefreshCookie,
+	clearRefreshCookie,
+	readRefreshCookie,
+	setRefreshCookie,
 } from './refresh-cookie';
 
 function clientInfo(req: Request): ClientInfo {
-  return { userAgent: req.header('user-agent') ?? null, ip: req.ip ?? null };
+	return { userAgent: req.header('user-agent') ?? null, ip: req.ip ?? null };
 }
 
 /**
@@ -38,78 +38,80 @@ function clientInfo(req: Request): ClientInfo {
  */
 @Controller('auth')
 export class AuthController {
-  constructor(
-    private readonly authService: AuthService,
-    private readonly config: AppConfigService,
-  ) {}
+	constructor(
+		private readonly authService: AuthService,
+		private readonly config: AppConfigService,
+	) {}
 
-  @Post('register')
-  async register(
-    @Body() dto: RegisterDto,
-    @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
-  ): Promise<RegisterResponse> {
-    const { refreshToken, accessToken, expiresIn, user } =
-      await this.authService.register(dto, clientInfo(req));
-    this.writeRefreshCookie(res, refreshToken);
-    return { accessToken, expiresIn, user };
-  }
+	@Post('register')
+	async register(
+		@Body() dto: RegisterDto,
+		@Req() req: Request,
+		@Res({ passthrough: true }) res: Response,
+	): Promise<RegisterResponse> {
+		const { refreshToken, accessToken, expiresIn, user } =
+			await this.authService.register(dto, clientInfo(req));
+		this.writeRefreshCookie(res, refreshToken);
+		return { accessToken, expiresIn, user };
+	}
 
-  @HttpCode(HttpStatus.OK)
-  @Post('login')
-  async login(
-    @Body() dto: LoginDto,
-    @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
-  ): Promise<TokenResponse> {
-    const { refreshToken, accessToken, expiresIn } =
-      await this.authService.login(dto, clientInfo(req));
-    this.writeRefreshCookie(res, refreshToken);
-    return { accessToken, expiresIn };
-  }
+	@HttpCode(HttpStatus.OK)
+	@Post('login')
+	async login(
+		@Body() dto: LoginDto,
+		@Req() req: Request,
+		@Res({ passthrough: true }) res: Response,
+	): Promise<TokenResponse> {
+		const { refreshToken, accessToken, expiresIn } =
+			await this.authService.login(dto, clientInfo(req));
+		this.writeRefreshCookie(res, refreshToken);
+		return { accessToken, expiresIn };
+	}
 
-  @UseGuards(OriginGuard)
-  @HttpCode(HttpStatus.OK)
-  @Post('refresh')
-  async refresh(
-    @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
-  ): Promise<TokenResponse> {
-    const { refreshToken, accessToken, expiresIn } =
-      await this.authService.refresh(readRefreshCookie(req, this.config.auth));
-    this.writeRefreshCookie(res, refreshToken); // undefined (ân hạn) thì không đụng tới cookie
-    return { accessToken, expiresIn };
-  }
+	@UseGuards(OriginGuard)
+	@HttpCode(HttpStatus.OK)
+	@Post('refresh')
+	async refresh(
+		@Req() req: Request,
+		@Res({ passthrough: true }) res: Response,
+	): Promise<TokenResponse> {
+		const { refreshToken, accessToken, expiresIn } =
+			await this.authService.refresh(
+				readRefreshCookie(req, this.config.auth),
+			);
+		this.writeRefreshCookie(res, refreshToken); // undefined (ân hạn) thì không đụng tới cookie
+		return { accessToken, expiresIn };
+	}
 
-  @UseGuards(OriginGuard)
-  @HttpCode(HttpStatus.NO_CONTENT)
-  @Post('logout')
-  async logout(
-    @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
-  ): Promise<void> {
-    await this.authService.logout(readRefreshCookie(req, this.config.auth));
-    clearRefreshCookie(res, this.config.auth);
-  }
+	@UseGuards(OriginGuard)
+	@HttpCode(HttpStatus.NO_CONTENT)
+	@Post('logout')
+	async logout(
+		@Req() req: Request,
+		@Res({ passthrough: true }) res: Response,
+	): Promise<void> {
+		await this.authService.logout(readRefreshCookie(req, this.config.auth));
+		clearRefreshCookie(res, this.config.auth);
+	}
 
-  @UseGuards(JwtAuthGuard)
-  @HttpCode(HttpStatus.NO_CONTENT)
-  @Post('logout-all')
-  async logoutAll(
-    @CurrentUser() user: RequestUser,
-    @Res({ passthrough: true }) res: Response,
-  ): Promise<void> {
-    await this.authService.logoutAll(user.userId);
-    clearRefreshCookie(res, this.config.auth);
-  }
+	@UseGuards(JwtAuthGuard)
+	@HttpCode(HttpStatus.NO_CONTENT)
+	@Post('logout-all')
+	async logoutAll(
+		@CurrentUser() user: RequestUser,
+		@Res({ passthrough: true }) res: Response,
+	): Promise<void> {
+		await this.authService.logoutAll(user.userId);
+		clearRefreshCookie(res, this.config.auth);
+	}
 
-  @UseGuards(JwtAuthGuard)
-  @Get('me')
-  getMe(@CurrentUser() user: RequestUser): Promise<UserResponse> {
-    return this.authService.getMe(user.userId);
-  }
+	@UseGuards(JwtAuthGuard)
+	@Get('me')
+	getMe(@CurrentUser() user: RequestUser): Promise<UserResponse> {
+		return this.authService.getMe(user.userId);
+	}
 
-  private writeRefreshCookie(res: Response, token: string | undefined): void {
-    if (token !== undefined) setRefreshCookie(res, token, this.config.auth);
-  }
+	private writeRefreshCookie(res: Response, token: string | undefined): void {
+		if (token !== undefined) setRefreshCookie(res, token, this.config.auth);
+	}
 }

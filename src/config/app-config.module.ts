@@ -5,14 +5,14 @@ import { validateEnv } from './env.validation';
 
 @Global()
 @Module({
-  imports: [
-    ConfigModule.forRoot({
-      isGlobal: true,
-      cache: true,
-      validate: validateEnv,
-    }),
-  ],
-  providers: [AppConfigService],
-  exports: [AppConfigService],
+	imports: [
+		ConfigModule.forRoot({
+			isGlobal: true,
+			cache: true,
+			validate: validateEnv,
+		}),
+	],
+	providers: [AppConfigService],
+	exports: [AppConfigService],
 })
 export class AppConfigModule {}

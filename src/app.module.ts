@@ -9,11 +9,11 @@ import { AuthModule } from './auth/auth.module';
 import { AllExceptionsFilter } from './common/errors/all-exceptions.filter';
 
 @Module({
-  imports: [AppConfigModule, PrismaModule, UsersModule, AuthModule],
-  controllers: [AppController],
-  providers: [
-    AppService,
-    { provide: APP_FILTER, useClass: AllExceptionsFilter },
-  ],
+	imports: [AppConfigModule, PrismaModule, UsersModule, AuthModule],
+	controllers: [AppController],
+	providers: [
+		AppService,
+		{ provide: APP_FILTER, useClass: AllExceptionsFilter },
+	],
 })
 export class AppModule {}

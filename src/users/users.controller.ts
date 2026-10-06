@@ -9,14 +9,14 @@ import { Role } from '../common/enums/role.enum';
 @Controller('users')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class UsersController {
-  @Get('me')
-  getProfile(@CurrentUser() user: RequestUser) {
-    return user;
-  }
+	@Get('me')
+	getProfile(@CurrentUser() user: RequestUser) {
+		return user;
+	}
 
-  @Get()
-  @Roles(Role.ADMIN)
-  findAll() {
-    return { message: 'Only admins can see this' };
-  }
+	@Get()
+	@Roles(Role.ADMIN)
+	findAll() {
+		return { message: 'Only admins can see this' };
+	}
 }

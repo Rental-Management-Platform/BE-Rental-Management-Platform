@@ -13,15 +13,15 @@ import { AppConfigService } from '../../config/app-config.service';
  */
 @Injectable()
 export class OriginGuard implements CanActivate {
-  constructor(private readonly config: AppConfigService) {}
+	constructor(private readonly config: AppConfigService) {}
 
-  canActivate(context: ExecutionContext): boolean {
-    const origin = context
-      .switchToHttp()
-      .getRequest<Request>()
-      .header('origin');
-    if (origin === undefined) return true;
-    if (this.config.allowedOrigins.includes(origin)) return true;
-    throw new AppException(ErrorCode.ORIGIN_NOT_ALLOWED);
-  }
+	canActivate(context: ExecutionContext): boolean {
+		const origin = context
+			.switchToHttp()
+			.getRequest<Request>()
+			.header('origin');
+		if (origin === undefined) return true;
+		if (this.config.allowedOrigins.includes(origin)) return true;
+		throw new AppException(ErrorCode.ORIGIN_NOT_ALLOWED);
+	}
 }

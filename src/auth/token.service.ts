@@ -5,16 +5,16 @@ import { AppConfigService } from '../config/app-config.service';
 import type { AccessTokenClaims } from './auth.types';
 
 export interface SignedAccessToken {
-  readonly accessToken: string;
-  /** Số giây còn hiệu lực, để FE biết khi nào cần refresh. */
-  readonly expiresIn: number;
+	readonly accessToken: string;
+	/** Số giây còn hiệu lực, để FE biết khi nào cần refresh. */
+	readonly expiresIn: number;
 }
 
 export interface GeneratedRefreshToken {
-  /** Giá trị thô: chỉ gửi cho client (cookie), KHÔNG lưu, KHÔNG log. */
-  readonly token: string;
-  /** SHA-256 hex: thứ duy nhất được lưu ở DB. */
-  readonly hash: string;
+	/** Giá trị thô: chỉ gửi cho client (cookie), KHÔNG lưu, KHÔNG log. */
+	readonly token: string;
+	/** SHA-256 hex: thứ duy nhất được lưu ở DB. */
+	readonly hash: string;
 }
 
 /**
@@ -24,23 +24,23 @@ export interface GeneratedRefreshToken {
  */
 @Injectable()
 export class TokenService {
-  constructor(
-    private readonly jwtService: JwtService,
-    private readonly config: AppConfigService,
-  ) {}
+	constructor(
+		private readonly jwtService: JwtService,
+		private readonly config: AppConfigService,
+	) {}
 
-  signAccessToken(claims: AccessTokenClaims): SignedAccessToken {
-    // iss, aud, exp, alg do cấu hình JwtModule thêm (auth.module.ts).
-    const accessToken = this.jwtService.sign({ ...claims });
-    return { accessToken, expiresIn: this.config.auth.accessTtlSeconds };
-  }
+	signAccessToken(claims: AccessTokenClaims): SignedAccessToken {
+		// iss, aud, exp, alg do cấu hình JwtModule thêm (auth.module.ts).
+		const accessToken = this.jwtService.sign({ ...claims });
+		return { accessToken, expiresIn: this.config.auth.accessTtlSeconds };
+	}
 
-  generateRefreshToken(): GeneratedRefreshToken {
-    const token = randomBytes(32).toString('base64url');
-    return { token, hash: this.hashRefreshToken(token) };
-  }
+	generateRefreshToken(): GeneratedRefreshToken {
+		const token = randomBytes(32).toString('base64url');
+		return { token, hash: this.hashRefreshToken(token) };
+	}
 
-  hashRefreshToken(token: string): string {
-    return createHash('sha256').update(token).digest('hex');
-  }
+	hashRefreshToken(token: string): string {
+		return createHash('sha256').update(token).digest('hex');
+	}
 }
