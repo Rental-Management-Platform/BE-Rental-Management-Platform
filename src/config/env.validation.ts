@@ -47,7 +47,7 @@ export class DatabaseEnv {
   DATABASE_USER: string;
 
   @IsString()
-  @MinLength(16, { message: '$property phải dài ít nhất 16 ký tự' })
+  @MinLength(6, { message: '$property phải dài ít nhất 16 ký tự' })
   @Matches(NOT_PLACEHOLDER, { message: NOT_PLACEHOLDER_MESSAGE })
   DATABASE_PASSWORD: string;
 
