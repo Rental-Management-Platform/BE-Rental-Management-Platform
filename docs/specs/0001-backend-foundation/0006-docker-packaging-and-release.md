@@ -150,7 +150,7 @@ CI/CD (GitHub Actions):
 
 **Lát cắt đầu tiên (slice 0), làm trước mọi tính năng** theo Tracer Bullet:
 1. `createApp`, `src/main.ts`, cấu hình có kiểu và kiểm tra biến môi trường, `nestjs-pino`, `GET /api/v1/health` có ping DB.
-2. `DataSource` của TypeORM, lớp đặt tên, migration đầu tiên (bật `pg_trgm`), `TransactionRunner`, bộ chạy migration và seed.
+2. `PrismaService`, `prisma/schema.prisma` với `@map`, migration đầu tiên (bật `pg_trgm`), `TransactionRunner`, bước `prisma migrate deploy` và seed.
 3. `Dockerfile`, `.dockerignore`, `docker-entrypoint.sh`, `compose.yaml`, `compose.override.yaml`, `.env.example`, `.gitattributes` (giữ `*.sh` xuống dòng LF).
 4. Chạy `docker compose up --build` trên máy sạch, gọi health và Swagger, chạy bảng giả định ở dưới và ghi kết quả vào spec này.
 5. GitHub Actions xanh (`check`, `e2e`, `image`), bật bảo vệ nhánh `main`.
@@ -161,11 +161,11 @@ CI/CD (GitHub Actions):
 | # | Giả định | Cách kiểm | Nếu sai thì |
 |---|---|---|---|
 | 1 | Image `postgres:18` đòi volume dữ liệu ở `/var/lib/postgresql` | `up`, ghi dữ liệu, `down`, `up`, dữ liệu còn | đổi đường dẫn mount theo tài liệu image |
-| 2 | `uuidv7()` làm mặc định khóa chính và TypeORM đọc lại id sau khi chèn | chèn một dòng, đọc id từ entity | sinh UUID v7 ở ứng dụng (gói `uuid`) |
+| 2 | `uuidv7()` làm mặc định khóa chính (`dbgenerated`) và Prisma đọc lại id sau khi chèn | chèn một dòng, đọc id từ kết quả `create` | sinh UUID v7 ở ứng dụng (gói `uuid`) |
 | 3 | `@node-rs/argon2` chạy trong `node:24-slim` trên amd64 và arm64, băm đủ nhanh | gọi hàm băm thử, đo thời gian | quay về `bcrypt` cost 12 |
 | 4 | Cookie `Path=/api/v1/auth`, `SameSite=Strict`, `Secure=false` đi đúng giữa `localhost:5173` và `localhost:3000` với `credentials: 'include'` | thử trên Chrome, Firefox, Safari | đổi `SameSite` hoặc đặt FE cùng origin qua nginx |
-| 5 | TypeORM 1.x và `@nestjs/typeorm` tương thích NestJS 11.2.x và qua được `strictTypeChecked` với mẫu Repository | cài, dựng một entity và một repository | ghim phiên bản khác, hoặc nới luật cho đúng file bọc |
-| 6 | `migration:generate` bỏ qua chỉ mục đánh dấu `synchronize: false` và có cờ kiểm tra lệch | chạy lệnh trên DB đã migrate | dựng kiểm tra lệch bằng cách so `pg_dump --schema-only` |
+| 5 | Prisma 7 và `@prisma/adapter-pg` chạy trong NestJS 11.2.x dạng CommonJS (generator `prisma-client` với `moduleFormat = "cjs"`, `output` trong `src/generated`) và qua được `strictTypeChecked` với mẫu Repository | cài bản `@7`, sinh client, dựng một repository, `nest build` rồi `node dist/main` | ghim phiên bản khác, nới luật cho đúng file bọc, hoặc mở lại quyết định ORM bằng `/architect` |
+| 6 | `prisma migrate dev` và `prisma migrate diff --exit-code` không đòi xóa `CHECK`, chỉ mục duy nhất một phần và chỉ mục GIN viết bằng SQL trong migration | tạo migration `--create-only`, thêm SQL tay, chạy `migrate dev` hai lần rồi `migrate diff --exit-code` | dựng kiểm tra lệch bằng cách so `pg_dump --schema-only`; nếu `migrate dev` vẫn đòi xóa thì chuyển các ràng buộc đó sang kiểm ở Service và mở lại quyết định ORM |
 | 7 | Chỉ mục GIN trigram được dùng cho `LIKE '%từ%'` | `EXPLAIN` trên dữ liệu mẫu vài nghìn tin | dùng `ILIKE` kèm chỉ mục biểu thức, hoặc `tsvector` |
 | 8 | Dựng đa kiến trúc trong Actions đủ nhanh, máy chip Apple kéo được bản arm64 | chạy workflow, kéo thử | chỉ phát hành amd64 và dựng arm64 khi cần |
 | 9 | Gói GHCR đặt công khai cho phép `docker pull` ẩn danh | kéo từ máy chưa đăng nhập | chuyển sang Docker Hub |
@@ -173,14 +173,11 @@ CI/CD (GitHub Actions):
 | 11 | Gmail SMTP cổng 465 gửi được từ container trên Docker Desktop | gửi thử một email | dùng cổng 587 hoặc nhà cung cấp khác |
 | 12 | `docker stop` đóng pool kết nối gọn trong 10 giây | dừng khi đang có request | tăng `stop_grace_period` |
 | 13 | `docker-entrypoint.sh` chạy được khi repo clone trên Windows | clone trên Windows, dựng image | thêm `.gitattributes` ép LF, hoặc bỏ file script, gọi lệnh trực tiếp trong `CMD` |
+| 14 | `@prisma/adapter-pg` nhận được cỡ pool, hạn kết nối, hạn rảnh và múi giờ phiên UTC (mặc định của `pg` không có hạn kết nối) | đọc tài liệu, đặt giá trị, kiểm bằng `SHOW timezone` và thử quá tải | dựng `pg.Pool` riêng rồi đưa cho adapter, hoặc đặt múi giờ qua tham số URL |
+| 15 | `prisma migrate deploy` chạy được trong image `node:24-slim` khi `prisma` nằm ở `dependencies`, và thoát mã khác 0 khi migration lỗi | dựng image, làm hỏng một migration, xem mã thoát | chạy migrate trong một service Compose dùng một lần dựng từ giai đoạn build |
+| 16 | Cột `@db.Date` đọc ra là `Date` nửa đêm UTC; `String[]` tạo được `text[]` không mặc định DB; `omit` loại được `passwordHash` | tạo bảng thử rồi đọc và ghi | chỉnh `toVnDay`, đặt mặc định mảng bằng SQL tay |
 
-**Tiến độ slice 0 (2026-10-05, trên máy dev dùng PostgreSQL 18.1 cài sẵn, thử trên một cụm tạm đã xóa):**
-- Đã làm (một phần của mục 1 và 2): kiểm tra biến môi trường bằng lớp `Env` (từ chối giá trị thiếu hoặc còn `CHANGE_ME`, không in giá trị bí mật), `AppConfigService`, `DatabaseModule` và `data-source.ts` của TypeORM, `SnakeNamingStrategy`, migration đầu tiên (bảng `users`), script `db:create` và `db:check`, chuyển `users` và `auth` từ Mongoose sang TypeORM ở mức tối thiểu (cột `roles` tạm), bỏ `@nestjs/mongoose` và `mongoose`. `.env.example` đã cập nhật.
-- Chưa làm: `createApp`, pino, health check, `TransactionRunner`, toàn bộ Docker (`Dockerfile`, `compose.yaml`, mục 3), CI (mục 5), phát hành (mục 6).
-- Giả định 2 đã kiểm chứng: `uuidv7()` làm mặc định khóa chính chạy, TypeORM đọc lại id sau khi chèn, id là UUID v7.
-- Giả định 5 kiểm chứng một phần: TypeORM 1.1.1 và `@nestjs/typeorm` 12.0.2 chạy với NestJS 11.2.7 (build, khởi động, đăng ký, đăng nhập, trùng email trả 409). Chưa thử với `strictTypeChecked` vì ESLint chưa chuyển sang bộ luật chặt.
-- Giả định 6 kiểm chứng một phần: `migration:generate --check` hoạt động và phát hiện lệch (đã bắt được lỗi mặc định kiểu mảng). Phần chỉ mục `synchronize: false` chưa thử vì chưa có chỉ mục tùy biến.
-- Phát hiện mới (đã ghi ở 0005): TypeORM đọc sai mặc định kiểu mảng; cụm Postgres cài trên Windows mặc định WIN1252 nên database phải tạo riêng bằng UTF8.
+**Lưu ý máy dev (2026-10-05):** cụm PostgreSQL cài trên Windows mặc định WIN1252 nên database phải tạo riêng bằng UTF8.
 
 **Replaces**:
 - Toàn bộ hướng triển khai cũ: `api/index.ts`, `vercel.json`, hàm serverless, hợp đồng chuyển tiếp `/api/*` ở FE, MongoDB Atlas, Cloudinary, bộ đếm tần suất lưu trong DB, các giả định về Vercel (bảng cũ 12 điểm).

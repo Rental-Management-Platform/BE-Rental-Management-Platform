@@ -1,0 +1,59 @@
+// Schema duy nhất của ứng dụng (spec 0001, mục "Đổi ORM", và spec 0005).
+// Quy ước: tên bảng và cột snake_case ghi rõ bằng @@map và @map; ràng buộc và chỉ mục đặt
+// tên rõ qua tham số map. CHECK và chỉ mục một phần viết bằng SQL trong file migration
+// (Prisma bỏ qua chúng, đã kiểm chứng); chỉ mục GIN khai báo ở đây.
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  // uuidv7() có sẵn từ PostgreSQL 18; id sắp theo thời gian nên chỉ mục không bị phân mảnh.
+  id           String    @id(map: "users_pkey") @default(dbgenerated("uuidv7()")) @db.Uuid
+  email        String    @unique(map: "users_email_unique")
+  passwordHash String    @map("password_hash")
+  name         String?
+  // Tạm thời cho đến khi làm spec 0003 (RBAC). Không đặt mặc định ở DB: UsersService luôn truyền vai trò.
+  roles        String[]
+  status       String    @default("active")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt    DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  sessions AuthSession[]
+
+  @@map("users")
+}
+
+/// Mỗi lần đăng nhập là một dòng. Refresh token chỉ lưu bản băm SHA-256 (spec 0002).
+model AuthSession {
+  /// Chính là `sid` trong access token.
+  id                String    @id(map: "auth_sessions_pkey") @default(dbgenerated("uuidv7()")) @db.Uuid
+  userId            String    @map("user_id") @db.Uuid
+  /// SHA-256 (hex) của refresh token hiện hành. Duy nhất toàn bảng.
+  tokenHash         String    @unique(map: "auth_sessions_token_hash_unique") @map("token_hash")
+  /// Bản băm của token liền trước, để cho khoảng ân hạn và nhận ra "dùng lại token đã xoay".
+  previousTokenHash String?   @map("previous_token_hash")
+  rotatedAt         DateTime? @map("rotated_at") @db.Timestamptz(6)
+  /// Hết hạn tuyệt đối: REFRESH_TTL_DAYS ngày kể từ lúc đăng nhập.
+  expiresAt         DateTime  @map("expires_at") @db.Timestamptz(6)
+  revokedAt         DateTime? @map("revoked_at") @db.Timestamptz(6)
+  /// CHECK ở migration: logout, logout_all, reuse_detected, password_changed, locked, admin_revoked, session_limit.
+  revokedReason     String?   @map("revoked_reason")
+  userAgent         String?   @map("user_agent")
+  ip                String?
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  lastUsedAt        DateTime  @default(now()) @map("last_used_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, map: "auth_sessions_user_id_fk")
+
+  @@index([userId, revokedAt], map: "auth_sessions_user_id_revoked_at_idx")
+  @@index([previousTokenHash], map: "auth_sessions_previous_token_hash_idx")
+  @@map("auth_sessions")
+}

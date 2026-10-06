@@ -1,5 +1,7 @@
 # compiled output
 /dist
+# Prisma client do `prisma generate` sinh ra
+/src/generated
 /node_modules
 /build
 *.md

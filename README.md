@@ -38,16 +38,25 @@ vào mã nguồn hay vào `.env.example`.
 
 1. Copy `.env.example` thành `.env`, rồi điền:
    - `DATABASE_PASSWORD`: mật khẩu cho role ứng dụng, từ 16 ký tự, tự đặt (không được để `CHANGE_ME`).
-   - `JWT_SECRET`: chuỗi ngẫu nhiên từ 32 ký tự (không được để `CHANGE_ME`).
+   - `JWT_ACCESS_SECRET`: chuỗi ngẫu nhiên từ 32 ký tự (không được để `CHANGE_ME`).
+   - `ALLOWED_ORIGINS`: địa chỉ FE được gọi API và gửi cookie, ví dụ `http://localhost:5173` (không có dấu `/` cuối).
    - `DATABASE_ADMIN_PASSWORD`: mật khẩu tài khoản quản trị `postgres` bạn đã đặt lúc cài PostgreSQL.
      Chỉ `npm run db:create` đọc biến này.
    - Có thể sinh chuỗi ngẫu nhiên bằng: `node -e "console.log(require('crypto').randomBytes(24).toString('base64url'))"`
 2. Tạo role ứng dụng (không phải superuser) và database mới (UTF8): `npm run db:create`.
    Chạy lại nhiều lần vẫn an toàn, không xóa gì.
 3. Kiểm tra kết nối bằng chính tài khoản ứng dụng: `npm run db:check`.
-4. Tạo bảng: `npm run migration:run`. Tạo migration mới sau khi sửa entity:
-   `npm run migration:generate -- src/database/migrations/TenMigration`.
+4. Tạo bảng: `npm run migration:deploy` (áp mọi migration trong `prisma/migrations`). Muốn thêm
+   hoặc sửa bảng: sửa `prisma/schema.prisma`, rồi `npm run migration:dev -- --name TenMigration`
+   (thêm `--create-only` nếu cần sửa SQL tay, ví dụ `CHECK` hoặc chỉ mục một phần). Lệnh này cần một
+   database phụ tên `<DATABASE_NAME>_shadow`: tạo bằng `DATABASE_NAME=<tên>_shadow npm run db:create`.
+   Xem dữ liệu bằng tay: `npm run db:studio`.
 5. Chạy ứng dụng: `npm run start:dev`.
+
+Prisma client được sinh ra ở `src/generated/prisma` (git bỏ qua) bởi `npm install` và `npm run build`;
+sinh lại bằng `npm run db:generate`. Dự án dùng Prisma 7, đừng nâng lên bản 8 khi chưa có quyết định riêng.
+Database phải thuộc về role ứng dụng (`db:create` làm đúng điều này); nếu bạn tạo database bằng tay,
+chạy `ALTER DATABASE <tên> OWNER TO rental_app;` bằng tài khoản `postgres`.
 
 Thiếu biến hoặc còn giá trị `CHANGE_ME` thì ứng dụng không khởi động và in danh sách biến sai
 (chỉ nêu tên biến, không in giá trị).

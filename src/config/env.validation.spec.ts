@@ -7,7 +7,8 @@ const validConfig = {
   DATABASE_NAME: 'rental_management',
   DATABASE_USER: 'rental_app',
   DATABASE_PASSWORD: 'fixture-database-password',
-  JWT_SECRET: 'fixture-jwt-secret-that-is-long-enough-123',
+  JWT_ACCESS_SECRET: 'fixture-jwt-secret-that-is-long-enough-123',
+  ALLOWED_ORIGINS: 'http://localhost:5173',
 };
 
 function without(config: Record<string, string>, key: string) {
@@ -30,7 +31,8 @@ describe('validateEnv', () => {
     const env = validateEnv(validConfig);
     expect(env.DATABASE_PORT).toBe(5432);
     expect(env.DATABASE_POOL_MAX).toBe(10);
-    expect(env.JWT_EXPIRES_IN).toBe('1d');
+    expect(env.ACCESS_TTL_SECONDS).toBe(900);
+    expect(env.COOKIE_SECURE).toBe(false);
   });
 
   it('báo tên biến bị thiếu', () => {
@@ -46,11 +48,33 @@ describe('validateEnv', () => {
     expect(message).toContain('CHANGE_ME');
   });
 
-  it('từ chối JWT_SECRET ngắn hơn 32 ký tự', () => {
+  it('từ chối JWT_ACCESS_SECRET ngắn hơn 32 ký tự', () => {
     expect(
-      messageOf(() => validateEnv({ ...validConfig, JWT_SECRET: 'too-short' })),
-    ).toContain('JWT_SECRET');
+      messageOf(() =>
+        validateEnv({ ...validConfig, JWT_ACCESS_SECRET: 'too-short' }),
+      ),
+    ).toContain('JWT_ACCESS_SECRET');
   });
+
+  it('đổi COOKIE_SECURE từ chuỗi: "false" là false, không phải true', () => {
+    expect(
+      validateEnv({ ...validConfig, COOKIE_SECURE: 'false' }).COOKIE_SECURE,
+    ).toBe(false);
+    expect(
+      validateEnv({ ...validConfig, COOKIE_SECURE: 'true' }).COOKIE_SECURE,
+    ).toBe(true);
+  });
+
+  it.each(['http://localhost:5173/', 'localhost:5173', 'ftp://x.com'])(
+    'từ chối ALLOWED_ORIGINS sai dạng: %j',
+    (origins) => {
+      expect(
+        messageOf(() =>
+          validateEnv({ ...validConfig, ALLOWED_ORIGINS: origins }),
+        ),
+      ).toContain('ALLOWED_ORIGINS');
+    },
+  );
 
   it.each(['Rental', 'rental-app', 'rental"; DROP DATABASE x; --', '1abc', ''])(
     'từ chối tên database không an toàn: %j',
@@ -66,7 +90,7 @@ describe('validateEnv', () => {
       validateEnv({
         ...validConfig,
         DATABASE_PASSWORD: 'leaky-marker-password',
-        JWT_SECRET: 'leaky-marker-jwt',
+        JWT_ACCESS_SECRET: 'leaky-marker-jwt',
         DATABASE_PORT: 'leaky-marker-port',
       }),
     );
@@ -76,7 +100,10 @@ describe('validateEnv', () => {
 
 describe('validateDatabaseEnv', () => {
   it('không đòi các biến không liên quan tới database', () => {
-    const rest = without(validConfig, 'JWT_SECRET');
+    const rest = without(
+      without(validConfig, 'JWT_ACCESS_SECRET'),
+      'ALLOWED_ORIGINS',
+    );
     expect(() => validateDatabaseEnv(rest)).not.toThrow();
   });
 });

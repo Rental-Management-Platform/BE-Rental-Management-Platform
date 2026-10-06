@@ -12,10 +12,40 @@ export interface DatabaseSettings {
   readonly poolMax: number;
 }
 
+/** Cấu hình đăng nhập và token (spec 0002). Không bao giờ log đối tượng này: có `accessSecret`. */
+export interface AuthSettings {
+  readonly accessSecret: string;
+  readonly issuer: string;
+  readonly audience: string;
+  readonly accessTtlSeconds: number;
+  readonly refreshTtlDays: number;
+  readonly refreshGraceSeconds: number;
+  readonly maxSessionsPerUser: number;
+  readonly refreshCookieName: string;
+  readonly cookieSecure: boolean;
+}
+
 /** Nơi duy nhất đọc biến môi trường; code khác không gọi `ConfigService.get` trực tiếp. */
 @Injectable()
 export class AppConfigService {
-  constructor(private readonly config: ConfigService<Env, true>) {}
+  /** Tách một lần ở đây vì OriginGuard đọc nó mỗi lần refresh hoặc logout. */
+  readonly allowedOrigins: readonly string[];
+
+  constructor(private readonly config: ConfigService<Env, true>) {
+    this.allowedOrigins = this.config
+      .get('ALLOWED_ORIGINS', { infer: true })
+      .split(',')
+      .map((origin) => origin.trim())
+      .filter((origin) => origin !== '');
+  }
+
+  get port(): number {
+    return this.config.get('PORT', { infer: true });
+  }
+
+  get trustProxyHops(): number {
+    return this.config.get('TRUST_PROXY_HOPS', { infer: true });
+  }
 
   get database(): DatabaseSettings {
     return {
@@ -25,6 +55,26 @@ export class AppConfigService {
       username: this.config.get('DATABASE_USER', { infer: true }),
       password: this.config.get('DATABASE_PASSWORD', { infer: true }),
       poolMax: this.config.get('DATABASE_POOL_MAX', { infer: true }),
+    };
+  }
+
+  get auth(): AuthSettings {
+    return {
+      accessSecret: this.config.get('JWT_ACCESS_SECRET', { infer: true }),
+      issuer: this.config.get('JWT_ISSUER', { infer: true }),
+      audience: this.config.get('JWT_AUDIENCE', { infer: true }),
+      accessTtlSeconds: this.config.get('ACCESS_TTL_SECONDS', { infer: true }),
+      refreshTtlDays: this.config.get('REFRESH_TTL_DAYS', { infer: true }),
+      refreshGraceSeconds: this.config.get('REFRESH_GRACE_SECONDS', {
+        infer: true,
+      }),
+      maxSessionsPerUser: this.config.get('MAX_SESSIONS_PER_USER', {
+        infer: true,
+      }),
+      refreshCookieName: this.config.get('REFRESH_COOKIE_NAME', {
+        infer: true,
+      }),
+      cookieSecure: this.config.get('COOKIE_SECURE', { infer: true }),
     };
   }
 }
