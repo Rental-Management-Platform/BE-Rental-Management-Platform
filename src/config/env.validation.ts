@@ -1,6 +1,7 @@
 import 'reflect-metadata';
-import { plainToInstance, Type } from 'class-transformer';
+import { plainToInstance, Transform, Type } from 'class-transformer';
 import {
+  IsBoolean,
   IsIn,
   IsInt,
   IsNotEmpty,
@@ -64,21 +65,73 @@ export class Env extends DatabaseEnv {
   @IsIn(['development', 'production', 'test'])
   NODE_ENV?: string;
 
-  @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
   @Max(65535)
-  PORT?: number;
+  PORT: number = 3000;
 
+  // ---------- Token (spec 0002) ----------
   @IsString()
   @MinLength(32, { message: '$property phải dài ít nhất 32 ký tự' })
   @Matches(NOT_PLACEHOLDER, { message: NOT_PLACEHOLDER_MESSAGE })
-  JWT_SECRET: string;
+  JWT_ACCESS_SECRET: string;
 
   @IsString()
   @IsNotEmpty()
-  JWT_EXPIRES_IN: string = '1d';
+  JWT_ISSUER: string = 'rental-api';
+
+  @IsString()
+  @IsNotEmpty()
+  JWT_AUDIENCE: string = 'rental-web';
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(60)
+  @Max(3600)
+  ACCESS_TTL_SECONDS: number = 900;
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(90)
+  REFRESH_TTL_DAYS: number = 30;
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(60)
+  REFRESH_GRACE_SECONDS: number = 10;
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(50)
+  MAX_SESSIONS_PER_USER: number = 10;
+
+  @Matches(/^[A-Za-z0-9_]{1,32}$/, {
+    message: '$property chỉ gồm chữ, số, gạch dưới (tối đa 32 ký tự)',
+  })
+  REFRESH_COOKIE_NAME: string = 'rt';
+
+  /** Biến môi trường luôn là chuỗi: so với 'true' thay vì ép kiểu Boolean (chuỗi 'false' sẽ thành true). */
+  @Transform(
+    ({ value }: { value: unknown }) => value === true || value === 'true',
+  )
+  @IsBoolean()
+  COOKIE_SECURE: boolean = false;
+
+  @Matches(/^https?:\/\/[^\s,/]+(,\s*https?:\/\/[^\s,/]+)*$/, {
+    message:
+      '$property là danh sách origin dạng http://host:cổng, cách nhau bởi dấu phẩy, không có dấu / cuối',
+  })
+  ALLOWED_ORIGINS: string;
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(10)
+  TRUST_PROXY_HOPS: number = 0;
 }
 
 type EnvClass<T extends object> = new () => T;

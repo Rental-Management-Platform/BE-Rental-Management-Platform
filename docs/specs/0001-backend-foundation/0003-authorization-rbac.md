@@ -155,7 +155,7 @@ Danh sách và tìm kiếm tài khoản (F18) do spec tính năng đó quyết �
 Yêu cầu có trước: cấu hình có kiểu, kết nối DB và `TransactionRunner` (slice 0 của spec 0006), mã lỗi (spec 0004). Nhiệm vụ 1 và 2 phải xong trước nhiệm vụ 2 của spec 0002 (token mang `perms`).
 
 1. Danh mục quyền có kiểu, hàm `hasPermission`, hàm gộp `module:manage`, hàm mở rộng và test đơn vị, satisfies **AC-1**, **AC-3**
-2. Entity và migration cho `roles` và `user_roles`, repository, bộ seed vai trò hệ thống và admin đầu tiên (chạy khi container khởi động và bằng `npm run seed`), satisfies **AC-2**, **AC-10**, **AC-11**
+2. Model Prisma và migration cho `roles` và `user_roles`, repository, bộ seed vai trò hệ thống và admin đầu tiên (chạy khi container khởi động và bằng `npm run seed`), satisfies **AC-2**, **AC-10**, **AC-11**
 3. Guard toàn cục (xác thực không đọc DB, kiểm quyền), decorator `@Public`, `@RequirePermissions`, `@AuthenticatedOnly`, `@FreshAuth`, `@CurrentUser`, test e2e duyệt route, satisfies **AC-4**, **AC-9**
 4. Service tính quyền hiệu lực của một người dùng (dùng cho token và cho `@FreshAuth()`), satisfies **AC-3**, **AC-12**
 5. API vai trò và danh mục quyền với các chốt chặn nâng quyền, satisfies **AC-6**

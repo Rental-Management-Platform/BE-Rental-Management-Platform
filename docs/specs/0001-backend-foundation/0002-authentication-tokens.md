@@ -41,7 +41,7 @@ Tự xử lý token trên các thành phần chuẩn: `@nestjs/jwt` cho access t
 `users` (phần liên quan đăng nhập; các cột hồ sơ do spec F02 quyết định sau):
 - `id`: uuid (UUID v7), khóa chính
 - `email`: text, bắt buộc, chữ thường, cắt khoảng trắng, **duy nhất** (`users_email_unique`)
-- `password_hash`: text, bắt buộc, TypeORM `select: false`
+- `password_hash`: text, bắt buộc, Repository loại mặc định bằng `omit` của Prisma (chỉ phương thức đăng nhập mới đọc)
 - `status`: text với `CHECK` `'active' | 'locked'`, mặc định `active`; `locked_reason`: text cho phép rỗng
 - vai trò nằm ở bảng `user_roles` (xem 0003), mỗi người ít nhất một dòng
 - `password_changed_at`: timestamptz cho phép rỗng
@@ -152,7 +152,7 @@ Xoay token là một câu `UPDATE auth_sessions SET token_hash = $mới, previou
 Thứ tự theo Tracer Bullet: dựng một đường mỏng chạy trọn từ đăng ký đến refresh, rồi mới thêm quên mật khẩu và giới hạn tần suất. Yêu cầu đã có từ trước: cấu hình có kiểu, `createApp`, `TransactionRunner` và kết nối DB (slice 0 của spec 0006), mã lỗi (0004), vai trò và danh mục quyền (0003, nhiệm vụ 1).
 
 1. Cấu hình có kiểu: lớp `Env` và `AppConfigService` cho các biến JWT, refresh, cookie, mail; bỏ `JWT_SECRET` cũ, satisfies **AC-3**, **AC-11**
-2. Dữ liệu: entity và migration cho `users` (`password_hash`, `status`), `auth_sessions`, `password_resets` cùng khóa ngoại, chỉ mục và ràng buộc duy nhất; repository tương ứng, satisfies **AC-2**, **AC-4**, **AC-5**, **AC-8**
+2. Dữ liệu: model Prisma và migration cho `users` (`password_hash`, `status`), `auth_sessions`, `password_resets` cùng khóa ngoại, chỉ mục và ràng buộc duy nhất; repository tương ứng, satisfies **AC-2**, **AC-4**, **AC-5**, **AC-8**
 3. `PasswordHasher` (argon2id, băm giả cân bằng thời gian) và kiểm tra mật khẩu 8 đến 128 ký tự, satisfies **AC-2**, **AC-12**
 4. `TokenService`: ký và xác minh access token với payload có kiểu `AccessTokenPayload`, sinh và băm refresh token, satisfies **AC-3**, **AC-4**, **AC-12**
 5. Register và login, cookie helper, `OriginGuard`, sửa lỗi gán vai trò (DTO không còn `roles`), satisfies **AC-1**, **AC-2**, **AC-11**

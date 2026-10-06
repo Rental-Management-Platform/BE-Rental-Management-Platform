@@ -1,31 +1,54 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { User } from './entities/user.entity';
+import { PrismaService } from '../database/prisma.service';
+import type { Prisma, User } from '../generated/prisma/client';
 
 export type NewUser = Pick<User, 'email' | 'passwordHash' | 'name' | 'roles'>;
+export type UserWithoutPassword = Omit<User, 'passwordHash'>;
 
-/** Nơi duy nhất của module users chạm vào TypeORM (spec 0001 con). */
+/** Xóa mềm (spec 0005): mọi phương thức đọc `users` đều thêm điều kiện này. */
+const notDeleted = { deletedAt: null } satisfies Prisma.UserWhereInput;
+
+/** `passwordHash` mặc định không được trả; chỉ đăng nhập mới cần đọc nó. */
+const withoutPassword = { passwordHash: true } satisfies Prisma.UserOmit;
+
+/** Nơi duy nhất của module users chạm vào Prisma (spec 0001 con). */
 @Injectable()
 export class UsersRepository {
-  constructor(
-    @InjectRepository(User) private readonly repository: Repository<User>,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
-  create(input: NewUser): Promise<User> {
-    return this.repository.save(this.repository.create(input));
+  /** Có `tx` thì chạy trong giao dịch đó, không thì dùng kết nối thường. */
+  private client(
+    tx?: Prisma.TransactionClient,
+  ): Prisma.TransactionClient | PrismaService {
+    return tx ?? this.prisma;
   }
 
-  /** `passwordHash` mặc định không được chọn; chỉ đăng nhập mới cần đọc nó. */
-  findByEmailWithPassword(email: string): Promise<User | null> {
-    return this.repository
-      .createQueryBuilder('user')
-      .addSelect('user.passwordHash')
-      .where('user.email = :email', { email })
-      .getOne();
+  create(
+    input: NewUser,
+    tx?: Prisma.TransactionClient,
+  ): Promise<UserWithoutPassword> {
+    return this.client(tx).user.create({
+      data: input,
+      omit: withoutPassword,
+    });
   }
 
-  findById(id: string): Promise<User | null> {
-    return this.repository.findOneBy({ id });
+  findByEmailWithPassword(
+    email: string,
+    tx?: Prisma.TransactionClient,
+  ): Promise<User | null> {
+    return this.client(tx).user.findFirst({
+      where: { email, ...notDeleted },
+    });
+  }
+
+  findById(
+    id: string,
+    tx?: Prisma.TransactionClient,
+  ): Promise<UserWithoutPassword | null> {
+    return this.client(tx).user.findFirst({
+      where: { id, ...notDeleted },
+      omit: withoutPassword,
+    });
   }
 }

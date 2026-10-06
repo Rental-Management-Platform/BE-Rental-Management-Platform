@@ -115,7 +115,9 @@ async function main(): Promise<void> {
         `Cảnh báo: database này không thuộc role "${app.DATABASE_USER}", ứng dụng có thể thiếu quyền tạo bảng.`,
       );
     }
-    console.log('Bước tiếp theo: npm run db:check, rồi npm run migration:run');
+    console.log(
+      'Bước tiếp theo: npm run db:check, rồi npm run migration:deploy',
+    );
   } finally {
     await client.end();
   }

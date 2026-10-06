@@ -2,9 +2,10 @@ import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 import { Request } from 'express';
 import { Role } from '../enums/role.enum';
 
+/** Người gọi, rút ra từ access token (JwtStrategy.validate). */
 export interface RequestUser {
   userId: string;
-  email: string;
+  sessionId: string;
   roles: Role[];
 }
 
