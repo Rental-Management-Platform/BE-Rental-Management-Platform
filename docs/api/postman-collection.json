@@ -1,0 +1,1500 @@
+{
+  "info": {
+    "name": "Rental Management Platform API",
+    "description": "Bộ request để thử API backend. Cập nhật cùng mỗi thay đổi API (xem docs/api/api-for-frontend.md, mục Nhật ký thay đổi).\n\nCách dùng:\n1. Import file này vào Postman.\n2. Mở tab Variables của collection, điền `adminEmail` và `adminPassword` theo ADMIN_SEED_* trong .env (không commit mật khẩu thật).\n3. Chạy API (`npm run start:dev`), rồi chạy lần lượt folder 00, 01, 02, 03, 04, 05.\n4. Các request tự lưu token vào biến `userToken` và `adminToken`.\n\nCookie refresh (`rt`) có Path `/api/v1/auth`, Postman tự giữ và tự gửi cho các request dưới đường dẫn đó.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api/v1",
+      "description": "Địa chỉ API, đã gồm tiền tố /api/v1."
+    },
+    {
+      "key": "adminEmail",
+      "value": "admin@example.com",
+      "description": "Theo ADMIN_SEED_EMAIL trong .env."
+    },
+    {
+      "key": "adminPassword",
+      "value": "",
+      "description": "Theo ADMIN_SEED_PASSWORD trong .env. Tự điền, không commit."
+    },
+    {
+      "key": "userEmail",
+      "value": "",
+      "description": "Tự sinh khi chạy Đăng ký."
+    },
+    {
+      "key": "userPassword",
+      "value": "MatKhau12345",
+      "description": "Mật khẩu của tài khoản thử. Đổi theo khi đổi hoặc đặt lại mật khẩu."
+    },
+    {
+      "key": "userName",
+      "value": "Người Dùng Thử",
+      "description": "Tên hiển thị khi đăng ký."
+    },
+    {
+      "key": "userPhone",
+      "value": "",
+      "description": "Tự sinh khi đăng ký landlord."
+    },
+    {
+      "key": "newPassword",
+      "value": "MatKhauMoi67890",
+      "description": "Mật khẩu mới dùng cho đặt lại và đổi mật khẩu."
+    },
+    {
+      "key": "resetToken",
+      "value": "",
+      "description": "Dán giá trị sau token= trong liên kết email quên mật khẩu."
+    },
+    {
+      "key": "userToken",
+      "value": "",
+      "description": "Access token của tài khoản thử. Tự lưu."
+    },
+    {
+      "key": "adminToken",
+      "value": "",
+      "description": "Access token của admin. Tự lưu."
+    },
+    {
+      "key": "targetUserId",
+      "value": "",
+      "description": "Id tài khoản bị khóa hoặc mở khóa. Tự lưu khi đăng ký."
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{userToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "00 Kiểm tra máy chủ",
+      "description": "Chạy một lần để biết API đang sống. Route công khai, trả chữ thuần `Hello World!`.",
+      "auth": {
+        "type": "noauth"
+      },
+      "item": [
+        {
+          "name": "Kiểm tra sống",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": []
+            },
+            "description": "Công khai. Trả 200 và chữ thuần `Hello World!` (không phải JSON).",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "01 Đăng ký và đăng nhập",
+      "description": "Thứ tự gợi ý: đăng ký một tài khoản (hoặc đăng nhập tài khoản có sẵn), rồi gọi `Tôi là ai`. Các request ở đây tự lưu `userToken` vào biến của collection để các folder sau dùng. Cookie refresh (`rt`) do Postman tự giữ; nó dùng chung một chỗ cho mọi tài khoản nên đăng nhập sau (kể cả đăng nhập admin ở folder 03) sẽ ghi đè phiên trước. Vì vậy hãy chạy folder 01 và 02 trước, rồi mới sang folder 03.",
+      "item": [
+        {
+          "name": "Đăng ký người tìm trọ (tenant)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('userEmail', 'tenant' + Date.now() + '@example.com');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('userToken', body.accessToken);",
+                  "pm.collectionVariables.set('targetUserId', body.user.id);",
+                  "pm.test('user có đúng 6 trường', () => pm.expect(Object.keys(body.user).sort()).to.eql(['accountType', 'email', 'id', 'name', 'phone', 'status']));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Công khai. Tạo tài khoản `tenant` và đăng nhập luôn. Email được sinh mới mỗi lần chạy và lưu vào `userEmail`. `phone` không bắt buộc với tenant; nếu gửi thì cũng được chuẩn hóa và kiểm định dạng. Lỗi có thể gặp: 400 VALIDATION_FAILED, 409 EMAIL_TAKEN.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{userEmail}}\",\n  \"password\": \"{{userPassword}}\",\n  \"name\": \"{{userName}}\",\n  \"accountType\": \"tenant\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Đăng ký người đăng bài (landlord)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('userEmail', 'landlord' + Date.now() + '@example.com');",
+                  "const tail = String(Math.floor(Math.random() * 1e8)).padStart(8, '0');",
+                  "pm.collectionVariables.set('userPhone', '09' + tail);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('userToken', body.accessToken);",
+                  "pm.collectionVariables.set('targetUserId', body.user.id);",
+                  "pm.test('phone đã được chuẩn hóa', () => pm.expect(body.user.phone).to.match(/^0\\d{9}$/));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Công khai. Tạo tài khoản `landlord`. Bắt buộc có `phone`; số được chuẩn hóa (bỏ dấu cách, chấm, gạch; `+84` hoặc `84` đầu thành `0`) rồi phải khớp `^0(3|5|7|8|9)\\d{8}$`. Số đã thuộc một landlord khác (kể cả tài khoản đã xóa) bị 409 PHONE_TAKEN. Mỗi lần chạy sinh một email và một số mới.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{userEmail}}\",\n  \"password\": \"{{userPassword}}\",\n  \"name\": \"{{userName}}\",\n  \"accountType\": \"landlord\",\n  \"phone\": \"{{userPhone}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Đăng nhập (tài khoản thử)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.collectionVariables.set('userToken', pm.response.json().accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Công khai. Đăng nhập bằng `userEmail` và `userPassword`. Trả `{ accessToken, expiresIn }` và đặt cookie refresh. Sai email hoặc sai mật khẩu đều là 401 INVALID_CREDENTIALS cùng nội dung. Tài khoản bị khóa nhập đúng mật khẩu thì 403 ACCOUNT_LOCKED.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{userEmail}}\",\n  \"password\": \"{{userPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Tôi là ai (/auth/me)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const body = pm.response.json();",
+                  "pm.test('có user và permissions', () => {",
+                  "    pm.expect(body.user).to.have.property('accountType');",
+                  "    pm.expect(body.permissions).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            },
+            "description": "Cần đăng nhập. Đọc người dùng và quyền từ DB (không từ token), nên luôn mới nhất. `permissions` đã mở rộng thành từng hành động. 403 ACCOUNT_LOCKED nếu tài khoản bị khóa; 401 TOKEN_INVALID nếu tài khoản đã bị xóa."
+          }
+        },
+        {
+          "name": "Làm mới access token (/auth/refresh)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const accessToken = pm.response.json().accessToken;",
+                  "const payload = accessToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');",
+                  "const type = JSON.parse(atob(payload)).type;",
+                  "pm.collectionVariables.set(type === 'admin' ? 'adminToken' : 'userToken', accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "refresh"
+              ]
+            },
+            "description": "Công khai nhưng cần cookie `rt` (Postman tự gửi sau khi đăng ký hoặc đăng nhập). Cookie chỉ có một chỗ, thuộc về tài khoản đăng nhập gần nhất. Trả access token mới và đổi cookie; script lưu token vào `adminToken` nếu phiên là của admin, ngược lại vào `userToken`. Dùng lại cookie cũ sau 10 giây ân hạn thì 401 SESSION_REVOKED và cả phiên bị hủy. Thiếu cookie: 401 REFRESH_TOKEN_MISSING.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Đăng xuất",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "logout"
+              ]
+            },
+            "description": "Công khai, dùng cookie `rt`. Hủy phiên hiện tại và xóa cookie. Luôn trả 204, kể cả khi cookie thiếu hoặc lạ.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Đăng xuất mọi thiết bị",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "logout-all"
+              ]
+            },
+            "description": "Cần đăng nhập. Hủy mọi phiên của người dùng và xóa cookie. Trả 204."
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 Quên và đổi mật khẩu",
+      "description": "Quên mật khẩu: gọi `Quên mật khẩu`, mở email, lấy giá trị sau `token=` trong liên kết, dán vào biến `resetToken` của collection, rồi gọi `Đặt lại mật khẩu`. Cần cấu hình `MAIL_*` thật trong `.env` để email gửi đi được. Liên kết chỉ dùng một lần, hết hạn sau 30 phút, và chỉ liên kết mới nhất dùng được.",
+      "item": [
+        {
+          "name": "Quên mật khẩu",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 202', () => pm.response.to.have.status(202));",
+                  "",
+                  "pm.test('có câu thông báo', () => pm.expect(pm.response.json().message).to.be.a('string'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/forgot-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "forgot-password"
+              ]
+            },
+            "description": "Công khai. Luôn trả 202 cùng một nội dung dù email có tồn tại hay không, nên không dùng để dò email. Nếu có tài khoản, email chứa liên kết `<APP_BASE_URL>/reset-password?token=...` được gửi đi. Gọi lại thì liên kết cũ hết hiệu lực. Email sai dạng: 400 VALIDATION_FAILED.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{userEmail}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Đặt lại mật khẩu",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 204', () => pm.response.to.have.status(204));",
+                  "",
+                  "pm.collectionVariables.set('userPassword', pm.collectionVariables.get('newPassword'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/reset-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "reset-password"
+              ]
+            },
+            "description": "Công khai. Dùng `resetToken` (từ email) và `newPassword` (8 đến 128 ký tự). Thành công: 204, mọi phiên đăng nhập của tài khoản bị hủy, phải đăng nhập lại. Liên kết sai, hết hạn, đã dùng hoặc đã bị thay bằng liên kết mới: 400 RESET_TOKEN_INVALID. Sau khi thành công, biến `userPassword` được đặt thành mật khẩu mới.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{resetToken}}\",\n  \"newPassword\": \"{{newPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Đổi mật khẩu",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 204', () => pm.response.to.have.status(204));",
+                  "",
+                  "pm.collectionVariables.set('userPassword', pm.collectionVariables.get('newPassword'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/change-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "change-password"
+              ]
+            },
+            "description": "Cần đăng nhập. Đòi `currentPassword` (sai thì 400 CURRENT_PASSWORD_WRONG) và `newPassword` (8 đến 128 ký tự; được phép trùng mật khẩu cũ). Thành công: 204, mọi phiên KHÁC bị hủy, phiên đang dùng (access token và cookie hiện tại) vẫn dùng tiếp. Sau khi thành công, biến `userPassword` được đặt thành mật khẩu mới.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"{{userPassword}}\",\n  \"newPassword\": \"{{newPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: đặt lại với token sai",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 400 RESET_TOKEN_INVALID', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    pm.expect(pm.response.json().code).to.eql('RESET_TOKEN_INVALID');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/reset-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "reset-password"
+              ]
+            },
+            "description": "Mong đợi 400 RESET_TOKEN_INVALID với `message` tiếng Việt.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"token-khong-ton-tai\",\n  \"newPassword\": \"{{newPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: đổi mật khẩu với mật khẩu hiện tại sai",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 400 CURRENT_PASSWORD_WRONG', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    pm.expect(pm.response.json().code).to.eql('CURRENT_PASSWORD_WRONG');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/change-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "change-password"
+              ]
+            },
+            "description": "Mong đợi 400 CURRENT_PASSWORD_WRONG. Mật khẩu không bị đổi, các phiên không bị hủy.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"mat-khau-sai-hoan-toan\",\n  \"newPassword\": \"{{newPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 Loại tài khoản và quyền (admin)",
+      "description": "Request đầu tiên là `Đăng nhập admin` (lưu `adminToken`); chạy nó trước các request còn lại. Lưu ý đăng nhập admin ghi đè cookie refresh của tài khoản thử. Có ba loại cố định: `admin`, `landlord`, `tenant`. Quyền của admin luôn là tất cả và tính trong code; admin chỉ chỉnh được quyền của landlord và tenant.",
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{adminToken}}",
+            "type": "string"
+          }
+        ]
+      },
+      "item": [
+        {
+          "name": "Đăng nhập admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.collectionVariables.set('adminToken', pm.response.json().accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Công khai. Đăng nhập tài khoản admin do `npm run seed` tạo. Điền `adminEmail` và `adminPassword` trong biến của collection theo `ADMIN_SEED_EMAIL` và `ADMIN_SEED_PASSWORD` trong `.env`. Token lưu vào `adminToken`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Danh mục quyền (GET /permissions)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/permissions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "permissions"
+              ]
+            },
+            "description": "Cần quyền `account_type:read`. Danh mục mọi module, hành động, module nào chỉ áp cho dữ liệu của chính người gọi (`ownerScoped`) và hành động nào chỉ admin được giữ (`adminActions`). Dùng để vẽ màn hình chọn quyền."
+          }
+        },
+        {
+          "name": "Danh sách loại tài khoản (GET /account-types)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('có đủ ba loại', () => pm.expect(pm.response.json().map((t) => t.key).sort()).to.eql(['admin', 'landlord', 'tenant']));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/account-types",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-types"
+              ]
+            },
+            "description": "Cần quyền `account_type:read`. Trả ba loại kèm quyền hiệu lực đã mở rộng thành từng hành động."
+          }
+        },
+        {
+          "name": "Bỏ quyền thêm yêu thích của tenant",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/account-types/tenant",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-types",
+                "tenant"
+              ]
+            },
+            "description": "Cần quyền `account_type:update`, kiểm lại DB mỗi lần gọi. THAY TOÀN BỘ danh sách quyền của loại (không phải thêm bớt). Danh sách trùng được bỏ trùng. Request này gửi danh sách mặc định của tenant trừ `favorite:create`. Token cũ của tenant giữ quyền cũ đến khi refresh (tối đa 15 phút).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"permissions\": [\n    \"contact:reveal\",\n    \"favorite:delete\",\n    \"favorite:read\",\n    \"follow:create\",\n    \"follow:delete\",\n    \"profile:read\",\n    \"profile:update\",\n    \"report:create\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Khôi phục quyền mặc định của tenant",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/account-types/tenant",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-types",
+                "tenant"
+              ]
+            },
+            "description": "Gửi lại đúng danh sách quyền mặc định của tenant (9 quyền).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"permissions\": [\n    \"contact:reveal\",\n    \"favorite:create\",\n    \"favorite:delete\",\n    \"favorite:read\",\n    \"follow:create\",\n    \"follow:delete\",\n    \"profile:read\",\n    \"profile:update\",\n    \"report:create\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: cấp quyền chỉ admin cho tenant",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 400 PERMISSION_ADMIN_ONLY', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    pm.expect(pm.response.json().code).to.eql('PERMISSION_ADMIN_ONLY');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/account-types/tenant",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-types",
+                "tenant"
+              ]
+            },
+            "description": "Mong đợi 400 PERMISSION_ADMIN_ONLY. Mọi khóa `*:manage` và các hành động trong `adminActions` đều bị từ chối.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"permissions\": [\n    \"listing:moderate\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: khóa quyền không tồn tại",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 400 PERMISSION_UNKNOWN', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    pm.expect(pm.response.json().code).to.eql('PERMISSION_UNKNOWN');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/account-types/tenant",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-types",
+                "tenant"
+              ]
+            },
+            "description": "Mong đợi 400 PERMISSION_UNKNOWN.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"permissions\": [\n    \"khong:ton_tai\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: sửa quyền admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 409 SYSTEM_TYPE_PROTECTED', () => {",
+                  "    pm.response.to.have.status(409);",
+                  "    pm.expect(pm.response.json().code).to.eql('SYSTEM_TYPE_PROTECTED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/account-types/admin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-types",
+                "admin"
+              ]
+            },
+            "description": "Mong đợi 409 SYSTEM_TYPE_PROTECTED. Quyền của admin không sửa được.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"permissions\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 Khóa và mở khóa tài khoản (admin)",
+      "description": "Dùng token admin (chạy `Đăng nhập admin` ở folder 03 trước). Mục tiêu là biến `targetUserId` (tự lưu khi chạy `Đăng ký` ở folder 01). Khóa kèm hủy mọi phiên của người đó và ghi lịch sử. Mọi thao tác ở đây kiểm lại DB mỗi lần gọi.",
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{adminToken}}",
+            "type": "string"
+          }
+        ]
+      },
+      "item": [
+        {
+          "name": "Khóa tài khoản",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('status là locked', () => pm.expect(pm.response.json().status).to.eql('locked'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{targetUserId}}/lock",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{targetUserId}}",
+                "lock"
+              ]
+            },
+            "description": "Cần quyền `user:lock`. Body bắt buộc có `reason`. Trả 200 và user với `status: \"locked\"`. Khóa lần hai: 409 ACCOUNT_ALREADY_LOCKED. Tự khóa mình: 409 CANNOT_LOCK_SELF. Không có người đó: 404 USER_NOT_FOUND. Id sai dạng: 400 INVALID_ID.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Vi phạm quy định đăng tin\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Mở khóa tài khoản",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('status là active', () => pm.expect(pm.response.json().status).to.eql('active'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{targetUserId}}/unlock",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{targetUserId}}",
+                "unlock"
+              ]
+            },
+            "description": "Cần quyền `user:lock`. Body bắt buộc có `reason`. Trả 200 và user với `status: \"active\"`. Mở lần hai: 409 ACCOUNT_NOT_LOCKED.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Đã xác minh lại\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thu hồi mọi phiên (buộc đăng nhập lại)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{targetUserId}}/revoke-sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{targetUserId}}",
+                "revoke-sessions"
+              ]
+            },
+            "description": "Cần quyền `user:revoke`. Hủy mọi phiên của người đó, không đổi trạng thái tài khoản. Trả 204."
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 Thử các lỗi thường gặp",
+      "description": "Những request cố ý sai để xem dạng lỗi `{ status, code, message, errors?, requestId }`. Mỗi request tự kiểm đúng mã lỗi mong đợi.",
+      "auth": {
+        "type": "noauth"
+      },
+      "item": [
+        {
+          "name": "Đăng ký thiếu loại tài khoản",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 400 VALIDATION_FAILED', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Mong đợi 400 VALIDATION_FAILED, `errors` có trường `accountType`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"thieu-loai@example.com\",\n  \"password\": \"mat-khau-hop-le-1\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Tự đăng ký làm admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 400 VALIDATION_FAILED', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Mong đợi 400 VALIDATION_FAILED. Chỉ nhận `tenant` hoặc `landlord`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"tu-lam-admin@example.com\",\n  \"password\": \"mat-khau-hop-le-1\",\n  \"accountType\": \"admin\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Đăng ký người đăng bài không có số điện thoại",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 400 VALIDATION_FAILED', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Mong đợi 400 VALIDATION_FAILED, lỗi ở trường `phone`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"khong-phone@example.com\",\n  \"password\": \"mat-khau-hop-le-1\",\n  \"accountType\": \"landlord\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Gọi route cần đăng nhập khi không có token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 401 TOKEN_MISSING', () => {",
+                  "    pm.response.to.have.status(401);",
+                  "    pm.expect(pm.response.json().code).to.eql('TOKEN_MISSING');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            },
+            "description": "Mong đợi 401 TOKEN_MISSING.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Gọi route cần đăng nhập với token rác",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 401 TOKEN_INVALID', () => {",
+                  "    pm.response.to.have.status(401);",
+                  "    pm.expect(pm.response.json().code).to.eql('TOKEN_INVALID');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer token.rac.khong.hop.le"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            },
+            "description": "Gửi header Authorization với chuỗi rác. Mong đợi 401 TOKEN_INVALID.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Tenant gọi route của admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 403 PERMISSION_DENIED', () => {",
+                  "    pm.response.to.have.status(403);",
+                  "    pm.expect(pm.response.json().code).to.eql('PERMISSION_DENIED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/account-types",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-types"
+              ]
+            },
+            "description": "Dùng `userToken` của tài khoản thử (tenant hoặc landlord, đều không có quyền này). Mong đợi 403 PERMISSION_DENIED.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Refresh với Origin lạ",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 403 ORIGIN_NOT_ALLOWED', () => {",
+                  "    pm.response.to.have.status(403);",
+                  "    pm.expect(pm.response.json().code).to.eql('ORIGIN_NOT_ALLOWED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "http://trang-la.example"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "refresh"
+              ]
+            },
+            "description": "Gửi header `Origin` không nằm trong `ALLOWED_ORIGINS`. Mong đợi 403 ORIGIN_NOT_ALLOWED. Trình duyệt tự gửi `Origin`; Postman thì không, nên request này thêm tay.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Route không tồn tại",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 404 NOT_FOUND', () => {",
+                  "    pm.response.to.have.status(404);",
+                  "    pm.expect(pm.response.json().code).to.eql('NOT_FOUND');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/khong-co-route-nay",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "khong-co-route-nay"
+              ]
+            },
+            "description": "Mong đợi 404 NOT_FOUND cùng dạng lỗi chung.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

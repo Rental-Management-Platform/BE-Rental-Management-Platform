@@ -5,6 +5,8 @@
 /node_modules
 /build
 *.md
+# Tài liệu trong docs/ (spec, scope, API cho FE) phải vào git dù đuôi .md
+!docs/**/*.md
 # Logs
 logs
 *.log

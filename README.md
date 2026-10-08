@@ -40,6 +40,11 @@ vào mã nguồn hay vào `.env.example`.
    - `DATABASE_PASSWORD`: mật khẩu cho role ứng dụng, từ 16 ký tự, tự đặt (không được để `CHANGE_ME`).
    - `JWT_ACCESS_SECRET`: chuỗi ngẫu nhiên từ 32 ký tự (không được để `CHANGE_ME`).
    - `ALLOWED_ORIGINS`: địa chỉ FE được gọi API và gửi cookie, ví dụ `http://localhost:5173` (không có dấu `/` cuối).
+   - `APP_BASE_URL`: địa chỉ FE, ví dụ `http://localhost:5173` (không có dấu `/` cuối). Liên kết trong email quên mật khẩu trỏ tới `<APP_BASE_URL>/reset-password?token=...`.
+   - `MAIL_USER`, `MAIL_PASSWORD`, `MAIL_FROM`: tài khoản gửi email quên mật khẩu qua Gmail SMTP (`MAIL_HOST` và `MAIL_PORT` đã điền sẵn
+     `smtp.gmail.com` và `465`). `MAIL_USER` là địa chỉ Gmail, `MAIL_PASSWORD` là **App Password** của Gmail (bật xác minh 2 bước, rồi tạo
+     "Mật khẩu ứng dụng" trong tài khoản Google; không dùng mật khẩu đăng nhập Gmail), `MAIL_FROM` là địa chỉ hiện ở ô người gửi.
+     Thiếu các biến này thì API không khởi động; app không đăng nhập SMTP lúc khởi động nên sai mật khẩu chỉ lộ ra ở lần gửi đầu tiên (xem log).
    - `DATABASE_ADMIN_PASSWORD`: mật khẩu tài khoản quản trị `postgres` bạn đã đặt lúc cài PostgreSQL.
      Chỉ `npm run db:create` đọc biến này.
    - Có thể sinh chuỗi ngẫu nhiên bằng: `node -e "console.log(require('crypto').randomBytes(24).toString('base64url'))"`
@@ -56,6 +61,8 @@ vào mã nguồn hay vào `.env.example`.
    chạy lại nhiều lần vẫn đúng (đã có admin thì không tạo thêm). Seed dừng với thông báo rõ nếu email đó
    đã thuộc một tài khoản không phải admin; khi đó đổi `ADMIN_SEED_EMAIL`.
 6. Chạy ứng dụng: `npm run start:dev`.
+7. Thử API: import `docs/api/postman-collection.json` vào Postman (điền `adminEmail`, `adminPassword` trong biến của collection).
+   Tài liệu cho FE nằm ở `docs/api/api-for-frontend.md`. **Hai file này phải được cập nhật cùng mỗi thay đổi API.**
 
 **Nâng cấp từ bản cũ (có cột `users.roles`):** migration `account_types_phone` không chuyển dữ liệu cũ và
 dừng nếu bảng `users` còn dòng. Làm lại database dev từ đầu bằng `npx prisma migrate reset`, rồi `npm run seed`.

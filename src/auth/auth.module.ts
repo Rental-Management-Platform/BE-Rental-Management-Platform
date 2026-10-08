@@ -4,6 +4,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { AccountTypesModule } from '../account-types/account-types.module';
 import { AppConfigService } from '../config/app-config.service';
+import { MailModule } from '../mail/mail.module';
 import { UsersModule } from '../users/users.module';
 import { AuthSessionsRepository } from './auth-sessions.repository';
 import { AuthController } from './auth.controller';
@@ -12,6 +13,8 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { OriginGuard } from './guards/origin.guard';
 import { PermissionsGuard } from './guards/permissions.guard';
 import { PasswordHasher } from './password-hasher';
+import { PasswordResetsRepository } from './password-resets.repository';
+import { PasswordService } from './password.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { TokenService } from './token.service';
 
@@ -19,6 +22,7 @@ import { TokenService } from './token.service';
 	imports: [
 		UsersModule,
 		AccountTypesModule,
+		MailModule,
 		PassportModule,
 		JwtModule.registerAsync({
 			inject: [AppConfigService],
@@ -36,7 +40,9 @@ import { TokenService } from './token.service';
 	controllers: [AuthController],
 	providers: [
 		AuthService,
+		PasswordService,
 		AuthSessionsRepository,
+		PasswordResetsRepository,
 		TokenService,
 		PasswordHasher,
 		JwtStrategy,

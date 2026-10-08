@@ -25,6 +25,15 @@ export interface AuthSettings {
 	readonly cookieSecure: boolean;
 }
 
+/** Cấu hình gửi email qua SMTP (spec 0002 AC-8). Không bao giờ log đối tượng này: có `password`. */
+export interface MailSettings {
+	readonly host: string;
+	readonly port: number;
+	readonly user: string;
+	readonly password: string;
+	readonly from: string;
+}
+
 /** Nơi duy nhất đọc biến môi trường; code khác không gọi `ConfigService.get` trực tiếp. */
 @Injectable()
 export class AppConfigService {
@@ -45,6 +54,25 @@ export class AppConfigService {
 
 	get trustProxyHops(): number {
 		return this.config.get('TRUST_PROXY_HOPS', { infer: true });
+	}
+
+	/** Địa chỉ FE, không có dấu `/` cuối; ghép với đường dẫn trang đặt lại mật khẩu. */
+	get appBaseUrl(): string {
+		return this.config.get('APP_BASE_URL', { infer: true });
+	}
+
+	get passwordResetTtlMinutes(): number {
+		return this.config.get('PASSWORD_RESET_TTL_MINUTES', { infer: true });
+	}
+
+	get mail(): MailSettings {
+		return {
+			host: this.config.get('MAIL_HOST', { infer: true }),
+			port: this.config.get('MAIL_PORT', { infer: true }),
+			user: this.config.get('MAIL_USER', { infer: true }),
+			password: this.config.get('MAIL_PASSWORD', { infer: true }),
+			from: this.config.get('MAIL_FROM', { infer: true }),
+		};
 	}
 
 	get database(): DatabaseSettings {

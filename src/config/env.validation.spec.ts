@@ -9,6 +9,12 @@ const validConfig = {
 	DATABASE_PASSWORD: 'fixture-database-password',
 	JWT_ACCESS_SECRET: 'fixture-jwt-secret-that-is-long-enough-123',
 	ALLOWED_ORIGINS: 'http://localhost:5173',
+	APP_BASE_URL: 'http://localhost:5173',
+	MAIL_HOST: 'smtp.example.test',
+	MAIL_PORT: '465',
+	MAIL_USER: 'sender@example.test',
+	MAIL_PASSWORD: 'fixture-mail-password',
+	MAIL_FROM: 'sender@example.test',
 };
 
 function without(config: Record<string, string>, key: string) {
@@ -92,6 +98,68 @@ describe('validateEnv', () => {
 				validateEnv({ ...validConfig, DATABASE_NAME: name }),
 			),
 		).toContain('DATABASE_NAME');
+	});
+
+	it('điền mặc định 30 phút cho hạn liên kết đặt lại mật khẩu', () => {
+		expect(validateEnv(validConfig).PASSWORD_RESET_TTL_MINUTES).toBe(30);
+		expect(
+			validateEnv({ ...validConfig, PASSWORD_RESET_TTL_MINUTES: '15' })
+				.PASSWORD_RESET_TTL_MINUTES,
+		).toBe(15);
+	});
+
+	it.each([
+		'APP_BASE_URL',
+		'MAIL_HOST',
+		'MAIL_PORT',
+		'MAIL_USER',
+		'MAIL_PASSWORD',
+		'MAIL_FROM',
+	])('thiếu %s thì không khởi động được (spec 0002, 0006)', (name) => {
+		expect(
+			messageOf(() => validateEnv(without(validConfig, name))),
+		).toContain(name);
+	});
+
+	it.each(['MAIL_USER', 'MAIL_PASSWORD'])(
+		'từ chối %s còn là giá trị mẫu CHANGE_ME',
+		(name) => {
+			expect(
+				messageOf(() =>
+					validateEnv({ ...validConfig, [name]: 'CHANGE_ME' }),
+				),
+			).toContain(name);
+		},
+	);
+
+	it.each(['http://localhost:5173/', 'localhost:5173', 'http://a.com/x'])(
+		'từ chối APP_BASE_URL sai dạng: %j',
+		(url) => {
+			expect(
+				messageOf(() =>
+					validateEnv({ ...validConfig, APP_BASE_URL: url }),
+				),
+			).toContain('APP_BASE_URL');
+		},
+	);
+
+	it.each(['sender@example.test', 'Nhà trọ Việt <sender@example.test>'])(
+		'chấp nhận MAIL_FROM hợp lệ: %j',
+		(from) => {
+			expect(
+				validateEnv({ ...validConfig, MAIL_FROM: from }).MAIL_FROM,
+			).toBe(from);
+		},
+	);
+
+	it.each([
+		'CHANGE_ME',
+		'sender@example.test\r\nBcc: x@y.z',
+		'Tên <sender@example.test> thừa',
+	])('từ chối MAIL_FROM sai dạng hoặc có xuống dòng: %j', (from) => {
+		expect(
+			messageOf(() => validateEnv({ ...validConfig, MAIL_FROM: from })),
+		).toContain('MAIL_FROM');
 	});
 
 	it('không bao giờ đưa giá trị biến vào thông báo lỗi', () => {

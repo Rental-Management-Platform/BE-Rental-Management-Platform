@@ -134,6 +134,47 @@ export class Env extends DatabaseEnv {
 	@Min(0)
 	@Max(10)
 	TRUST_PROXY_HOPS: number = 0;
+
+	// ---------- Quên mật khẩu và email (spec 0002 AC-8, spec 0006) ----------
+	@Matches(/^https?:\/\/[^\s,/]+$/, {
+		message:
+			'$property là địa chỉ FE dạng http://host:cổng, không có dấu / cuối',
+	})
+	APP_BASE_URL: string;
+
+	@Type(() => Number)
+	@IsInt()
+	@Min(1)
+	@Max(1440)
+	PASSWORD_RESET_TTL_MINUTES: number = 30;
+
+	@IsString()
+	@IsNotEmpty()
+	MAIL_HOST: string;
+
+	@Type(() => Number)
+	@IsInt()
+	@Min(1)
+	@Max(65535)
+	MAIL_PORT: number;
+
+	@IsString()
+	@IsNotEmpty()
+	@Matches(NOT_PLACEHOLDER, { message: NOT_PLACEHOLDER_MESSAGE })
+	MAIL_USER: string;
+
+	/** Với Gmail là App Password (không phải mật khẩu đăng nhập Gmail). */
+	@IsString()
+	@IsNotEmpty()
+	@Matches(NOT_PLACEHOLDER, { message: NOT_PLACEHOLDER_MESSAGE })
+	MAIL_PASSWORD: string;
+
+	/** Địa chỉ người gửi: `a@b.com` hoặc `Tên hiển thị <a@b.com>`. Cấm xuống dòng để không chèn được header. */
+	@Matches(/^(?:[^<>\r\n@]+<[^<>\s@]+@[^<>\s@]+>|[^<>\s@]+@[^<>\s@]+)$/, {
+		message:
+			'$property là địa chỉ email, hoặc dạng Tên hiển thị <địa chỉ email>',
+	})
+	MAIL_FROM: string;
 }
 
 /** Chỉ dùng cho `npm run seed` (ứng dụng không đọc), tách riêng khỏi `Env` (spec 0003 AC-9). */

@@ -48,6 +48,24 @@ export class UsersService {
 		);
 	}
 
+	findByEmail(email: string): Promise<UserWithoutPassword | null> {
+		return this.usersRepository.findByEmail(normalizeEmail(email));
+	}
+
+	/** Như `findByEmailWithPassword`: tên nói rõ nó trả `passwordHash`; chỉ đổi mật khẩu cần. */
+	findByIdWithPassword(id: string): Promise<User | null> {
+		return this.usersRepository.findByIdWithPassword(id);
+	}
+
+	/** `passwordHash` đã băm bởi PasswordHasher. Trả `false` nếu không còn người dùng. */
+	updatePassword(
+		id: string,
+		passwordHash: string,
+		tx?: Prisma.TransactionClient,
+	): Promise<boolean> {
+		return this.usersRepository.updatePassword(id, passwordHash, tx);
+	}
+
 	emailExists(email: string): Promise<boolean> {
 		return this.usersRepository.emailExistsIncludingDeleted(
 			normalizeEmail(email),

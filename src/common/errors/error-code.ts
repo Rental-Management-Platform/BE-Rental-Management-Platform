@@ -26,6 +26,8 @@ export enum ErrorCode {
 	ORIGIN_NOT_ALLOWED = 'ORIGIN_NOT_ALLOWED',
 	EMAIL_TAKEN = 'EMAIL_TAKEN',
 	PHONE_TAKEN = 'PHONE_TAKEN',
+	RESET_TOKEN_INVALID = 'RESET_TOKEN_INVALID',
+	CURRENT_PASSWORD_WRONG = 'CURRENT_PASSWORD_WRONG',
 
 	// Loại tài khoản và phân quyền (spec 0003)
 	PERMISSION_DENIED = 'PERMISSION_DENIED',
@@ -131,6 +133,15 @@ export const ERRORS: Record<ErrorCode, ErrorDefinition> = {
 		status: HttpStatus.CONFLICT,
 		message:
 			'Số điện thoại này đã được dùng cho một tài khoản đăng bài khác.',
+	},
+	[ErrorCode.RESET_TOKEN_INVALID]: {
+		status: HttpStatus.BAD_REQUEST,
+		message:
+			'Liên kết đặt lại mật khẩu không hợp lệ, đã hết hạn hoặc đã được dùng.',
+	},
+	[ErrorCode.CURRENT_PASSWORD_WRONG]: {
+		status: HttpStatus.BAD_REQUEST,
+		message: 'Mật khẩu hiện tại không đúng.',
 	},
 	[ErrorCode.PERMISSION_DENIED]: {
 		status: HttpStatus.FORBIDDEN,

@@ -35,6 +35,12 @@ jest.mock('@nestjs/config', () => {
 Object.assign(process.env, {
 	JWT_ACCESS_SECRET: 'fixture-jwt-secret-that-is-long-enough-123',
 	ALLOWED_ORIGINS: 'http://localhost:5173',
+	APP_BASE_URL: 'http://localhost:5173',
+	MAIL_HOST: 'smtp.example.test',
+	MAIL_PORT: '465',
+	MAIL_USER: 'sender@example.test',
+	MAIL_PASSWORD: 'fixture-mail-password',
+	MAIL_FROM: 'sender@example.test',
 });
 
 describe('mọi route đều khai báo quyền (spec 0003 AC-4)', () => {

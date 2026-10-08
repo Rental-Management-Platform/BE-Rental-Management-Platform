@@ -45,6 +45,39 @@ export class UsersRepository {
 		});
 	}
 
+	/** Tìm theo email, không lấy `passwordHash`: dùng khi chỉ cần biết người đó là ai (quên mật khẩu). */
+	findByEmail(
+		email: string,
+		tx?: Prisma.TransactionClient,
+	): Promise<UserWithoutPassword | null> {
+		return this.client(tx).user.findFirst({
+			where: { email, ...notDeleted },
+			omit: withoutPassword,
+		});
+	}
+
+	findByIdWithPassword(
+		id: string,
+		tx?: Prisma.TransactionClient,
+	): Promise<User | null> {
+		return this.client(tx).user.findFirst({
+			where: { id, ...notDeleted },
+		});
+	}
+
+	/** Đặt mật khẩu mới và ghi lại thời điểm đổi. Trả `false` nếu không còn người dùng (đã xóa mềm). */
+	async updatePassword(
+		id: string,
+		passwordHash: string,
+		tx?: Prisma.TransactionClient,
+	): Promise<boolean> {
+		const result = await this.client(tx).user.updateMany({
+			where: { id, ...notDeleted },
+			data: { passwordHash, passwordChangedAt: new Date() },
+		});
+		return result.count === 1;
+	}
+
 	/** Kiểm email trùng lúc đăng ký: tính cả tài khoản đã xóa mềm vì chỉ mục duy nhất tính cả chúng. */
 	async emailExistsIncludingDeleted(
 		email: string,

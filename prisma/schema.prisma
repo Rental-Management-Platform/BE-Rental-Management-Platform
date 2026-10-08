@@ -15,25 +15,28 @@ datasource db {
 
 model User {
   // uuidv7() có sẵn từ PostgreSQL 18; id sắp theo thời gian nên chỉ mục không bị phân mảnh.
-  id           String    @id(map: "users_pkey") @default(dbgenerated("uuidv7()")) @db.Uuid
-  email        String    @unique(map: "users_email_unique")
-  passwordHash String    @map("password_hash")
-  name         String?
+  id                String    @id(map: "users_pkey") @default(dbgenerated("uuidv7()")) @db.Uuid
+  email             String    @unique(map: "users_email_unique")
+  passwordHash      String    @map("password_hash")
+  name              String?
   /// Số điện thoại đã chuẩn hóa (spec 0002 AC-13). Bắt buộc với landlord (CHECK ở migration);
   /// chỉ mục duy nhất một phần cho landlord cũng nằm ở migration (Prisma bỏ qua nó).
-  phone        String?
+  phone             String?
   /// Loại tài khoản, đặt lúc đăng ký và không đổi sau đó (spec 0003).
-  accountType  String    @map("account_type")
-  status       String    @default("active")
+  accountType       String    @map("account_type")
+  status            String    @default("active")
   /// Chỉ có giá trị khi đang bị khóa; lý do khóa và mở khóa lưu ở moderation_logs.
-  lockedReason String?   @map("locked_reason")
-  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  deletedAt    DateTime? @map("deleted_at") @db.Timestamptz(6)
+  lockedReason      String?   @map("locked_reason")
+  /// Lần gần nhất đổi hoặc đặt lại mật khẩu (spec 0002); rỗng nếu chưa từng đổi.
+  passwordChangedAt DateTime? @map("password_changed_at") @db.Timestamptz(6)
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt         DateTime? @map("deleted_at") @db.Timestamptz(6)
 
   accountTypeRef AccountType     @relation(fields: [accountType], references: [key], onDelete: Restrict, map: "users_account_type_fk")
   sessions       AuthSession[]
   moderationLogs ModerationLog[]
+  passwordResets PasswordReset[]
 
   @@index([accountType], map: "users_account_type_idx")
   @@map("users")
@@ -97,4 +100,21 @@ model AuthSession {
   @@index([userId, revokedAt], map: "auth_sessions_user_id_revoked_at_idx")
   @@index([previousTokenHash], map: "auth_sessions_previous_token_hash_idx")
   @@map("auth_sessions")
+}
+
+/// Liên kết đặt lại mật khẩu, dùng một lần. Chỉ lưu bản băm SHA-256 của token (spec 0002 AC-8, AC-12).
+model PasswordReset {
+  id        String    @id(map: "password_resets_pkey") @default(dbgenerated("uuidv7()")) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  /// SHA-256 (hex) của token gửi trong email. Duy nhất toàn bảng.
+  tokenHash String    @unique(map: "password_resets_token_hash_unique") @map("token_hash")
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(6)
+  /// Có giá trị khi đã dùng. Liên kết cũ bị thay bằng liên kết mới thì bị xóa chứ không đánh dấu.
+  usedAt    DateTime? @map("used_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, map: "password_resets_user_id_fk")
+
+  @@index([userId], map: "password_resets_user_id_idx")
+  @@map("password_resets")
 }

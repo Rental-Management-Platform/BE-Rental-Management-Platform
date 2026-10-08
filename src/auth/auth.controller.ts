@@ -19,17 +19,26 @@ import { AuthService } from './auth.service';
 import type { ClientInfo } from './auth.service';
 import type {
 	MeResponse,
+	MessageResponse,
 	RegisterResponse,
 	TokenResponse,
 } from './dto/auth.response';
+import { ChangePasswordDto } from './dto/change-password.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { OriginGuard } from './guards/origin.guard';
+import { PasswordService } from './password.service';
 import {
 	clearRefreshCookie,
 	readRefreshCookie,
 	setRefreshCookie,
 } from './refresh-cookie';
+
+/** Cùng một câu cho mọi email, kể cả email không có tài khoản (spec 0002 AC-8). */
+const FORGOT_PASSWORD_MESSAGE =
+	'Nếu email này có tài khoản, chúng tôi đã gửi hướng dẫn đặt lại mật khẩu. Vui lòng kiểm tra hộp thư.';
 
 function clientInfo(req: Request): ClientInfo {
 	return { userAgent: req.header('user-agent') ?? null, ip: req.ip ?? null };
@@ -44,6 +53,7 @@ function clientInfo(req: Request): ClientInfo {
 export class AuthController {
 	constructor(
 		private readonly authService: AuthService,
+		private readonly passwordService: PasswordService,
 		private readonly config: AppConfigService,
 	) {}
 
@@ -111,6 +121,39 @@ export class AuthController {
 	): Promise<void> {
 		await this.authService.logoutAll(user.userId);
 		clearRefreshCookie(res, this.config.auth);
+	}
+
+	@Public()
+	@HttpCode(HttpStatus.ACCEPTED)
+	@Post('forgot-password')
+	async forgotPassword(
+		@Body() dto: ForgotPasswordDto,
+	): Promise<MessageResponse> {
+		await this.passwordService.forgotPassword(dto.email);
+		return { message: FORGOT_PASSWORD_MESSAGE };
+	}
+
+	@Public()
+	@HttpCode(HttpStatus.NO_CONTENT)
+	@Post('reset-password')
+	async resetPassword(@Body() dto: ResetPasswordDto): Promise<void> {
+		await this.passwordService.resetPassword(dto.token, dto.newPassword);
+	}
+
+	/** Giữ phiên và cookie hiện tại; chỉ các phiên khác bị hủy. */
+	@AuthenticatedOnly()
+	@HttpCode(HttpStatus.NO_CONTENT)
+	@Post('change-password')
+	async changePassword(
+		@Body() dto: ChangePasswordDto,
+		@CurrentUser() user: RequestUser,
+	): Promise<void> {
+		await this.passwordService.changePassword({
+			userId: user.userId,
+			sessionId: user.sessionId,
+			currentPassword: dto.currentPassword,
+			newPassword: dto.newPassword,
+		});
 	}
 
 	@AuthenticatedOnly()

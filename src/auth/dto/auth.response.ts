@@ -7,6 +7,11 @@ export interface TokenResponse {
 	readonly expiresIn: number;
 }
 
+/** Trả cho `POST /auth/forgot-password`: luôn cùng một nội dung dù email có tồn tại hay không. */
+export interface MessageResponse {
+	readonly message: string;
+}
+
 export interface RegisterResponse extends TokenResponse {
 	readonly user: UserResponse;
 }

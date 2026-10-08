@@ -36,11 +36,28 @@ export class TokenService {
 	}
 
 	generateRefreshToken(): GeneratedRefreshToken {
-		const token = randomBytes(32).toString('base64url');
-		return { token, hash: this.hashRefreshToken(token) };
+		return this.generateOpaqueToken();
 	}
 
 	hashRefreshToken(token: string): string {
-		return createHash('sha256').update(token).digest('hex');
+		return this.sha256(token);
+	}
+
+	/** Token trong liên kết đặt lại mật khẩu: cùng cách làm với refresh token, chỉ lưu bản băm (spec 0002 AC-12). */
+	generateResetToken(): GeneratedRefreshToken {
+		return this.generateOpaqueToken();
+	}
+
+	hashResetToken(token: string): string {
+		return this.sha256(token);
+	}
+
+	private generateOpaqueToken(): GeneratedRefreshToken {
+		const token = randomBytes(32).toString('base64url');
+		return { token, hash: this.sha256(token) };
+	}
+
+	private sha256(value: string): string {
+		return createHash('sha256').update(value).digest('hex');
 	}
 }
