@@ -5,18 +5,18 @@
 ## Context
 
 > ⚠️ Premise note: Bốn điểm trong hướng đi này có đánh đổi thật, mình nêu rõ để bạn giữ chúng một cách có chủ ý.
-> 1. **ORM: Prisma 7.** Bạn hỏi ORM nhiều người dùng nhất với NestJS. Không có số liệu riêng cho NestJS: theo lượt tải npm chung thì Drizzle và Prisma đứng đầu. Bạn chọn Prisma 7 vì kiểu dữ liệu sinh tự động hợp chữ "tuyệt đối không any" nhất. Cái giá của Prisma: không có module Nest chính thức (viết một `PrismaService` nhỏ), không có đặt tên tự động nên phải `@map` từng cột, không có xóa mềm sẵn, `CHECK` và chỉ mục một phần phải viết SQL trong migration (chưa kiểm chứng Prisma không đòi xóa chúng), và Prisma 7 còn mới nên phải kiểm chứng nó chạy trên NestJS dạng CommonJS ở lát cắt đầu.
+> 1. **ORM: Prisma 7.** Bạn hỏi ORM nhiều người dùng nhất với NestJS. Không có số liệu riêng cho NestJS: theo lượt tải npm chung thì Drizzle và Prisma đứng đầu. Bạn chọn Prisma 7 vì kiểu dữ liệu sinh tự động hợp chữ "tuyệt đối không any" nhất. Cái giá của Prisma: không có module Nest chính thức (viết một `PrismaService` nhỏ), không có đặt tên tự động nên phải `@map` từng cột, không có xóa mềm sẵn, `CHECK` và chỉ mục một phần phải viết SQL tay trong migration (Prisma bỏ qua chúng nên không báo lệch; riêng chỉ mục GIN phải khai báo trong schema), và Prisma 7 còn mới (đã kiểm chạy được trên NestJS dạng CommonJS).
 > 2. **"Chỉ cần tải Docker" chưa đúng hẳn.** Bạn chọn bắt điền `.env` và để API không khởi động khi thiếu `MAIL_*` (kể cả App Password Gmail). Người nhận bản demo vì vậy phải được bạn gửi sẵn một file `.env` đã điền, hoặc tự tạo thông tin Gmail của họ.
 > 3. **Chạy localhost không còn là link công khai.** Mục tiêu cũ "gửi link để người khác bấm vào" được thay bằng "người khác chạy trên máy của họ". Nếu giảng viên cần một đường dẫn để mở, phải chạy cùng `compose.yaml` trên một máy chủ có địa chỉ công khai (spec không cản việc này, xem 0006 phần Rollout).
 > 4. **Gói Docker chỉ gồm API và Postgres.** FE là repo riêng, còn trống, nên chưa được đóng gói; người dùng chỉ thấy API và Swagger cho đến khi FE có image của nó. Hợp đồng với FE ở 0006 giữ cho việc gắn FE vào sau này không phải đổi code API.
 >
 > Ngoài ra, chủ đề này gồm 6 quyết định độc lập. Spec được chia thành một spec tổng và 6 spec con thay vì một file dài.
 
-Sản phẩm là website kết nối thuê trọ cho sinh viên, bản MVP có 27 chức năng, ba nhóm người dùng cùng Admin, xoay quanh vòng lặp: chủ trọ đăng tin, admin duyệt, người thuê tìm và liên hệ, chủ trọ trả phí để tiếp cận nhiều hơn. Giai đoạn này là demo cho giảng viên với khoảng 5 người dùng, không thu tiền thật. FE là một repo tách riêng và hiện còn trống.
+Sản phẩm là website kết nối thuê trọ cho sinh viên, bản MVP có 27 chức năng, ba nhóm người dùng cùng Admin, xoay quanh vòng lặp: mọi người đăng ký miễn phí và chọn một loại tài khoản (người đăng bài hay người tìm trọ); người đăng bài dùng thử miễn phí có thời hạn và hạn mức tin, muốn tiếp tục thì mua gói theo tháng; chủ trọ đăng tin, admin duyệt, người tìm trọ tìm, xem và theo dõi chủ trọ. Số người theo dõi và lượt xem tích lũy trên tài khoản chủ trọ để họ ở lại thay vì tạo tài khoản mới lấy miễn phí. Giai đoạn này là demo cho giảng viên với khoảng 5 người dùng, thanh toán chạy bằng VNPay sandbox nên không thu tiền thật. FE là một repo tách riêng và hiện còn trống.
 
 Hướng triển khai đã đổi: bạn không còn muốn deploy lên dịch vụ đám mây, mà muốn đóng gói toàn bộ hệ thống bằng Docker để người dùng chỉ cần cài Docker rồi chạy trên localhost. Bạn cũng đổi cơ sở dữ liệu từ MongoDB sang PostgreSQL và muốn dùng ORM phổ biến nhất của NestJS cho việc truy vấn. Bộ khung hiện có chỉ có đăng ký, đăng nhập và RBAC cố định, viết trên Mongoose, với nhiều khoảng trống (xem Evidence). Yêu cầu giữ nguyên: xử lý token refresh và access, xử lý lỗi tập trung, kiểm tra dữ liệu đầu vào, tuyệt đối không dùng `any`, cấu trúc NestJS gọn gàng theo best practice.
 
-Miền dữ liệu có những đặc điểm quyết định cách làm: sổ giao dịch cần toàn vẹn và chống ghi trùng; nhiều ràng buộc duy nhất; báo cáo doanh thu, chi phí và KPI; tìm kiếm văn bản tiếng Việt có dấu; vị trí nhà trọ và nhu cầu tìm quanh một điểm (trường, nơi làm việc hay nơi bất kỳ); nhiều trạng thái suy ra từ thời điểm thay vì lưu; và quyền hạn sẽ thay đổi theo thời gian khi có vai trò mới. Người chạy hệ thống có thể dùng Windows, macOS chip Intel hoặc chip Apple, và không có công cụ nào ngoài Docker.
+Miền dữ liệu có những đặc điểm quyết định cách làm: sổ giao dịch cần toàn vẹn và chống ghi trùng; nhiều ràng buộc duy nhất; báo cáo doanh thu, chi phí và KPI; tìm kiếm văn bản tiếng Việt có dấu; vị trí nhà trọ và nhu cầu tìm quanh một điểm (trường, nơi làm việc hay nơi bất kỳ); nhiều trạng thái suy ra từ thời điểm thay vì lưu; và việc mỗi loại tài khoản được làm sẽ thay đổi theo thời gian. Người chạy hệ thống có thể dùng Windows, macOS chip Intel hoặc chip Apple, và không có công cụ nào ngoài Docker.
 
 Nếu không chốt nền móng trước, mỗi tính năng sẽ tự đặt cách báo lỗi, cách giữ phiên, cách kiểm quyền và kiểu dữ liệu riêng; `any` sẽ lan dần; và các vướng mắc khi đóng gói (đường dẫn dữ liệu, kiến trúc chip, xuống dòng của script) chỉ lộ ra ở cuối, lúc sửa tốn nhất.
 
@@ -33,9 +33,9 @@ Hai container (`api`, `db`), image API đưa lên GitHub Container Registry, ng�
 
 **Cons**:
 - Không có module Nest chính thức (viết `PrismaService`); không có đặt tên tự động (phải `@map` từng cột) và không có xóa mềm sẵn.
-- `CHECK`, chỉ mục duy nhất một phần và chỉ mục GIN phải viết SQL trong migration; chưa kiểm chứng `prisma migrate` không đòi xóa chúng.
+- `CHECK` và chỉ mục duy nhất một phần phải viết SQL tay trong migration (Prisma bỏ qua chúng); chỉ mục GIN phải khai báo trong `schema.prisma`.
 - Phải điền `.env` ở lần chạy đầu; không có link công khai.
-- Prisma 7 còn mới; phải kiểm chứng chạy trên NestJS dạng CommonJS.
+- Prisma 7 còn mới (đã kiểm chạy được trên NestJS dạng CommonJS).
 
 ### Option 2: Giữ MongoDB, chỉ đóng gói bằng Docker
 
@@ -66,9 +66,9 @@ API chạy dạng hàm serverless trên Vercel, dữ liệu ở MongoDB Atlas, �
 
 Option 1 khớp các lực quyết định: bạn muốn người dùng chỉ cần Docker, miền dữ liệu đầy quan hệ và sổ giao dịch, và nhóm nhỏ không muốn gánh phần việc giữ khớp dữ liệu sao chép. PostgreSQL bỏ hẳn lớp việc đó, và container hóa thay thế được hết các thành phần đám mây trước đây (Atlas, Vercel, Cloudinary) bằng hai container và một volume. Option 2 giữ được code cũ nhưng giữ nguyên mọi điểm yếu của Mongo với miền này mà mình đã nêu ở bản trước. Option 3 đã bị bạn bỏ.
 
-Có ba chỗ lựa chọn của bạn khác với đề xuất của mình, và mình giữ đúng lựa chọn của bạn: email giữ Gmail SMTP (mình đề xuất Mailpit), bắt điền `.env` (mình đề xuất giá trị demo có sẵn trong Compose), và API từ chối khởi động khi thiếu `MAIL_*` (mình đề xuất vẫn chạy và ghi cảnh báo). Cái giá của từng chỗ nằm ở Premise note và ở Consequences của spec tổng và 0006. Các lựa chọn bạn đã chọn đúng theo đề xuất: image `postgres:18` thuần, gói Docker chỉ gồm API và Postgres, đẩy image lên registry công khai, ảnh lưu ổ đĩa trong volume. Thiết kế tìm theo khu vực dựa trên bảng `landmarks` với tâm tìm kiếm là `landmark_id` hoặc `lat` và `lng`, theo ý bạn rằng đó có thể là trường học, nơi làm việc hay nơi mong muốn, và làm hay không tùy tiến độ.
+Có bốn chỗ lựa chọn của bạn khác với đề xuất của mình, và mình giữ đúng lựa chọn của bạn: email giữ Gmail SMTP (mình đề xuất Mailpit), bắt điền `.env` (mình đề xuất giá trị demo có sẵn trong Compose), API từ chối khởi động khi thiếu `MAIL_*` (mình đề xuất vẫn chạy và ghi cảnh báo), và quyền của từng loại tài khoản lưu trong DB để admin chỉnh (mình đề xuất cố định hẳn trong code cho gọn hơn). Cái giá của từng chỗ nằm ở Premise note và ở Consequences của spec tổng và 0006. Các lựa chọn bạn đã chọn đúng theo đề xuất: image `postgres:18` thuần, gói Docker chỉ gồm API và Postgres, đẩy image lên registry công khai, ảnh lưu ổ đĩa trong volume. Thiết kế tìm theo khu vực dựa trên bảng `landmarks` với tâm tìm kiếm là `landmark_id` hoặc `lat` và `lng`, theo ý bạn rằng đó có thể là trường học, nơi làm việc hay nơi mong muốn, và làm hay không tùy tiến độ.
 
-Các quyết định còn lại là mình tự đưa ra thay bạn, bạn xem lại ở bước duyệt spec và đổi nếu muốn: chỉ mở cổng API ở `127.0.0.1` và không mở cổng DB; image `node:24-slim` thay vì Alpine; GitHub Container Registry làm nơi phát hành (theo địa chỉ repo); tự áp migration và seed khi container khởi động; giới hạn tần suất bằng bộ nhớ trong; bỏ sao chép dữ liệu và dùng phép nối; UUID v7 làm khóa chính; `text` kèm `CHECK` thay cho kiểu `enum`; tiền là `integer` đồng Việt Nam; bảng con thay cho mảng nhúng; `search_key` cùng chỉ mục trigram cho tìm tiếng Việt; Testcontainers cho test e2e; dọn token hết hạn lúc ghi thay vì dùng lịch chạy nền; `compose.override.yaml` cho máy dev.
+Các quyết định còn lại là mình tự đưa ra thay bạn, bạn xem lại ở bước duyệt spec và đổi nếu muốn: chỉ mở cổng API ở `127.0.0.1` và không mở cổng DB; image `node:24-slim` thay vì Alpine; GitHub Container Registry làm nơi phát hành (theo địa chỉ repo); tự áp migration và seed khi container khởi động; giới hạn tần suất bằng bộ nhớ trong; bỏ sao chép dữ liệu và dùng phép nối; UUID v7 làm khóa chính; `text` kèm `CHECK` thay cho kiểu `enum`; tiền là `integer` đồng Việt Nam; bảng con thay cho mảng nhúng; `search_key` cùng chỉ mục trigram cho tìm tiếng Việt; Testcontainers cho test e2e; dọn token hết hạn lúc ghi thay vì dùng lịch chạy nền; số điện thoại chỉ kiểm trùng giữa các tài khoản đăng bài (kể cả xóa mềm) và người đăng bài không tự đổi số; cấu hình VNPay không bắt buộc để API khởi động; kết quả thanh toán xác nhận qua địa chỉ VNPay đưa trình duyệt quay về; `compose.override.yaml` cho máy dev.
 
 ## Lịch sử quyết định
 
@@ -108,16 +108,17 @@ Báo cáo có kèm lưu ý rằng số liệu có thể đã cũ và không tr�
 | Mục | Kết quả | Mức tin |
 |---|---|---|
 | Phiên bản và yêu cầu | Báo cáo ghi bản 7 mới nhất là 7.10.0 (tháng 8 năm 2026); cần Node `^20.19.0`, `^22.12.0` hoặc `^24.0.0` và TypeScript 5.4 trở lên; bản 8.0 chưa ổn định. Skill `prisma-orm-setup` lại mặc định bản 8 cho app mới | Số phiên bản và tình trạng bản 8 chưa kiểm lại, kiểm khi cài |
-| CommonJS | Dùng generator `prisma-client` (không dùng `prisma-client-js`), `output` bắt buộc, tùy chọn `moduleFormat` hỗ trợ cả ESM và CommonJS | Tài liệu và skill `prisma-cli`; chưa thử trong repo |
-| Adapter và cấu hình | `@prisma/adapter-pg`; `new PrismaClient({ adapter: new PrismaPg({ connectionString }) })`; `prisma.config.ts` đặt `datasource.url`; mọi ví dụ chính thức đều `import 'dotenv/config'` (Prisma không tự nạp `.env`) | Skill `prisma-orm-setup`; cỡ pool, hạn kết nối, múi giờ phiên chưa kiểm chứng |
-| Schema | `@default(dbgenerated("uuidv7()")) @db.Uuid`, `@db.Timestamptz`, `String[]` thành `text[]` dùng được | Báo cáo; chưa chạy thử |
+| CommonJS | Dùng generator `prisma-client` (không dùng `prisma-client-js`), `output` bắt buộc, tùy chọn `moduleFormat` hỗ trợ cả ESM và CommonJS | Tài liệu và skill `prisma-cli`; đã chạy trong repo |
+| Adapter và cấu hình | `@prisma/adapter-pg`; `new PrismaClient({ adapter: new PrismaPg({ connectionString }) })`; `prisma.config.ts` đặt `datasource.url`; mọi ví dụ chính thức đều `import 'dotenv/config'` (Prisma không tự nạp `.env`) | Skill `prisma-orm-setup`; cỡ pool, hạn kết nối, múi giờ phiên đã kiểm chứng trong repo |
+| Schema | `@default(dbgenerated("uuidv7()")) @db.Uuid`, `@db.Timestamptz`, `String[]` thành `text[]` dùng được | Báo cáo; đã chạy thử, đúng (cột mảng sinh ra cho phép rỗng, thêm `NOT NULL` bằng tay) |
 | Giao dịch và mã lỗi | `$transaction(async (tx) => ...)` với `isolationLevel` (`ReadUncommitted`, `ReadCommitted`, `RepeatableRead`, `Serializable`); `P2034` xung đột ghi hoặc deadlock, `P2025` không thấy, `P2002` trùng giá trị | Trang giao dịch; skill `prisma-client-api` |
 | Truy vấn | `omit` loại cột; `$queryRaw<T>` tagged template có kiểu; `$executeRaw` trả số dòng; có cả `$queryRawUnsafe` (nên cấm); `updateMany` trả `count` | Skill `prisma-client-api` |
 | Migration | `migrate deploy` chạy được trong `CMD` của image (`npx prisma migrate deploy && node ...`) nên CLI phải có trong image; kiểm lệch bằng `migrate diff --from-config-datasource --to-schema ... --exit-code` | Skill `prisma-cli` |
 | Xóa mềm | Không có sẵn; chỉ qua client extension | Báo cáo |
-| Chưa kiểm chứng | Chỉ mục duy nhất một phần, ràng buộc `CHECK`, đặt tên snake_case tự động (nhiều khả năng không có), cách `migrate dev` và `migrate diff` đối xử với đối tượng DB không có trong schema, chạy `migrate deploy` trong `node:24-slim` | Bảng giả định của 0006, dòng 6, 14, 15, 16 |
+| Đã kiểm chứng trong repo (2026-10-06) | `CHECK` và chỉ mục duy nhất một phần viết tay không bị `migrate diff` báo lệch; chỉ mục GIN không khai báo trong schema bị đòi xóa, khai báo thì sạch; adapter nhận `max`, hạn kết nối, hạn rảnh và `options` đặt múi giờ UTC; không có đặt tên snake_case tự động | Chạy thật trên PostgreSQL 18.1 |
+| Chưa kiểm chứng | Chạy `migrate deploy` trong `node:24-slim`, cột `@db.Date`, chỉ mục trigram có được dùng khi tìm, bộ luật ESLint `strictTypeChecked` | Bảng giả định của 0006, dòng 5, 7, 15, 16 |
 
-Số liệu lấy từ báo cáo của subagent chạy model nhỏ; các dòng ghi chưa kiểm chứng là chỗ báo cáo trả `UNVERIFIED` hoặc skill không nói tới. Việc cần kiểm chứng đều đã nằm trong bảng giả định của 0006 để làm ở lát cắt đầu.
+Số liệu lấy từ báo cáo của subagent chạy model nhỏ; các dòng ghi chưa kiểm chứng là chỗ báo cáo trả `UNVERIFIED` hoặc skill không nói tới. Các dòng "Đã kiểm chứng trong repo" do chạy thật, không lấy từ báo cáo. Việc còn phải kiểm chứng đều nằm trong bảng giả định của 0006 để làm ở lát cắt đầu.
 
 ### Công cụ gợi ý đã tìm (Agent Skills và MCP)
 

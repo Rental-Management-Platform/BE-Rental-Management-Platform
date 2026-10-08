@@ -10,14 +10,18 @@ import {
 	UseGuards,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
-import { CurrentUser } from '../common/decorators/current-user.decorator';
-import type { RequestUser } from '../common/decorators/current-user.decorator';
-import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { AuthenticatedOnly } from '../common/auth/authenticated-only.decorator';
+import { CurrentUser } from '../common/auth/current-user.decorator';
+import { Public } from '../common/auth/public.decorator';
+import type { RequestUser } from '../common/http/authenticated-request';
 import { AppConfigService } from '../config/app-config.service';
 import { AuthService } from './auth.service';
 import type { ClientInfo } from './auth.service';
-import type { RegisterResponse, TokenResponse } from './dto/auth.response';
-import type { UserResponse } from '../users/users.mapper';
+import type {
+	MeResponse,
+	RegisterResponse,
+	TokenResponse,
+} from './dto/auth.response';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { OriginGuard } from './guards/origin.guard';
@@ -33,8 +37,8 @@ function clientInfo(req: Request): ClientInfo {
 
 /**
  * Phần HTTP của đăng nhập: nhận request, gọi đúng một phương thức service, đặt hoặc xóa
- * cookie, trả JSON. `refresh` và `logout` không đòi access token vì xác thực bằng cookie
- * (lúc refresh thì access token đã hết hạn), thay vào đó có OriginGuard chống CSRF.
+ * cookie, trả JSON. `refresh` và `logout` là `@Public()` vì xác thực bằng cookie (lúc refresh thì
+ * access token đã hết hạn), thay vào đó có OriginGuard chống CSRF.
  */
 @Controller('auth')
 export class AuthController {
@@ -43,6 +47,7 @@ export class AuthController {
 		private readonly config: AppConfigService,
 	) {}
 
+	@Public()
 	@Post('register')
 	async register(
 		@Body() dto: RegisterDto,
@@ -55,6 +60,7 @@ export class AuthController {
 		return { accessToken, expiresIn, user };
 	}
 
+	@Public()
 	@HttpCode(HttpStatus.OK)
 	@Post('login')
 	async login(
@@ -68,6 +74,7 @@ export class AuthController {
 		return { accessToken, expiresIn };
 	}
 
+	@Public()
 	@UseGuards(OriginGuard)
 	@HttpCode(HttpStatus.OK)
 	@Post('refresh')
@@ -83,6 +90,7 @@ export class AuthController {
 		return { accessToken, expiresIn };
 	}
 
+	@Public()
 	@UseGuards(OriginGuard)
 	@HttpCode(HttpStatus.NO_CONTENT)
 	@Post('logout')
@@ -94,7 +102,7 @@ export class AuthController {
 		clearRefreshCookie(res, this.config.auth);
 	}
 
-	@UseGuards(JwtAuthGuard)
+	@AuthenticatedOnly()
 	@HttpCode(HttpStatus.NO_CONTENT)
 	@Post('logout-all')
 	async logoutAll(
@@ -105,9 +113,9 @@ export class AuthController {
 		clearRefreshCookie(res, this.config.auth);
 	}
 
-	@UseGuards(JwtAuthGuard)
+	@AuthenticatedOnly()
 	@Get('me')
-	getMe(@CurrentUser() user: RequestUser): Promise<UserResponse> {
+	getMe(@CurrentUser() user: RequestUser): Promise<MeResponse> {
 		return this.authService.getMe(user.userId);
 	}
 

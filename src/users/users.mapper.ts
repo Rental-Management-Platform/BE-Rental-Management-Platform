@@ -1,13 +1,13 @@
 import type { UserWithoutPassword } from './users.repository';
 
-/** Hình dạng người dùng trên đường truyền: danh sách trắng, không bao giờ có `passwordHash`. */
+/** Hình dạng người dùng trên đường truyền: danh sách trắng, không bao giờ có `passwordHash` (spec 0002). */
 export interface UserResponse {
 	readonly id: string;
 	readonly email: string;
 	readonly name: string | null;
-	readonly roles: readonly string[];
+	readonly accountType: string;
+	readonly phone: string | null;
 	readonly status: string;
-	readonly createdAt: string;
 }
 
 export function toUserResponse(user: UserWithoutPassword): UserResponse {
@@ -15,8 +15,8 @@ export function toUserResponse(user: UserWithoutPassword): UserResponse {
 		id: user.id,
 		email: user.email,
 		name: user.name,
-		roles: user.roles,
+		accountType: user.accountType,
+		phone: user.phone,
 		status: user.status,
-		createdAt: user.createdAt.toISOString(),
 	};
 }

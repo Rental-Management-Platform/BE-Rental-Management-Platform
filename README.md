@@ -51,7 +51,16 @@ vào mã nguồn hay vào `.env.example`.
    (thêm `--create-only` nếu cần sửa SQL tay, ví dụ `CHECK` hoặc chỉ mục một phần). Lệnh này cần một
    database phụ tên `<DATABASE_NAME>_shadow`: tạo bằng `DATABASE_NAME=<tên>_shadow npm run db:create`.
    Xem dữ liệu bằng tay: `npm run db:studio`.
-5. Chạy ứng dụng: `npm run start:dev`.
+5. Tạo tài khoản admin đầu tiên: điền `ADMIN_SEED_EMAIL`, `ADMIN_SEED_PASSWORD` (từ 8 ký tự, không để `CHANGE_ME`)
+   và `ADMIN_SEED_NAME` trong `.env`, rồi chạy `npm run seed`. Lệnh này build rồi chạy bản đã biên dịch,
+   chạy lại nhiều lần vẫn đúng (đã có admin thì không tạo thêm). Seed dừng với thông báo rõ nếu email đó
+   đã thuộc một tài khoản không phải admin; khi đó đổi `ADMIN_SEED_EMAIL`.
+6. Chạy ứng dụng: `npm run start:dev`.
+
+**Nâng cấp từ bản cũ (có cột `users.roles`):** migration `account_types_phone` không chuyển dữ liệu cũ và
+dừng nếu bảng `users` còn dòng. Làm lại database dev từ đầu bằng `npx prisma migrate reset`, rồi `npm run seed`.
+Nếu đã lỡ chạy `migration:deploy` trên database còn dữ liệu, Prisma đánh dấu migration lỗi (P3009): chạy
+`npx prisma migrate resolve --rolled-back 20261008090000_account_types_phone`, xử lý dữ liệu, rồi chạy lại.
 
 Prisma client được sinh ra ở `src/generated/prisma` (git bỏ qua) bởi `npm install` và `npm run build`;
 sinh lại bằng `npm run db:generate`. Dự án dùng Prisma 7, đừng nâng lên bản 8 khi chưa có quyết định riêng.

@@ -82,11 +82,11 @@ Ghi chú cho file trên:
 - `compose.override.yaml` (chỉ có trong repo, không nằm trong gói phát hành) dành cho máy dev: mở `127.0.0.1:5432` của `db` và cho `api` dựng từ mã nguồn (`build: .`).
 
 Image API (`Dockerfile`, nhiều giai đoạn, ghim phiên bản):
-- `deps`: `node:24-slim`, `npm ci`. `build`: `npm run build`. `runtime`: `node:24-slim`, `npm ci --omit=dev`, chép `dist` và `docker-entrypoint.sh`, đặt `NODE_ENV=production`, chạy bằng người dùng `node` (không root), thư mục `/data/uploads` thuộc người dùng đó.
+- `deps`: `node:24-slim`, `npm ci`. `build`: `npm run build`. `runtime`: `node:24-slim`, `npm ci --omit=dev`, chép `dist`, `prisma/` (schema và migration), `prisma.config.ts` và `docker-entrypoint.sh` (để `prisma migrate deploy` chạy được), đặt `NODE_ENV=production`, chạy bằng người dùng `node` (không root), thư mục `/data/uploads` thuộc người dùng đó.
 - Chọn `node:24-slim` (nền glibc) thay vì Alpine để thư viện gốc như `@node-rs/argon2` và `bcrypt` có sẵn bản dựng sẵn, ít bất ngờ nhất.
 - `HEALTHCHECK` dùng chính Node để gọi `http://127.0.0.1:3000/api/v1/health` (image `slim` không có `curl`). Route này gắn `@Public()` (nếu không, guard toàn cục của spec 0003 sẽ chặn nó) và chỉ trả trạng thái, không lộ thông tin cấu hình.
 - `.dockerignore` loại `node_modules`, `dist`, `.git`, `.env`, `docs`.
-- `docker-entrypoint.sh` (file này bắt buộc xuống dòng kiểu LF): chạy lần lượt `node dist/database/run-migrations.js`, `node dist/database/seed.js`, rồi `exec node dist/main.js` để tín hiệu `SIGTERM` của `docker stop` tới thẳng Node và `enableShutdownHooks` đóng pool kết nối. Bước nào lỗi thì thoát với mã khác 0, container không nhận request.
+- `docker-entrypoint.sh` (file này bắt buộc xuống dòng kiểu LF): chạy lần lượt `npx prisma migrate deploy`, `node dist/database/seed.js`, rồi `exec node dist/main.js` để tín hiệu `SIGTERM` của `docker stop` tới thẳng Node và `enableShutdownHooks` đóng pool kết nối. Bước nào lỗi thì thoát với mã khác 0, container không nhận request.
 
 Cách người dùng chạy (đi vào README):
 1. Cài Docker.
@@ -119,6 +119,8 @@ Biến môi trường (nguồn duy nhất, đọc qua `AppConfigService`; thiế
 | `TRUST_PROXY_HOPS` | số lớp proxy tin cậy để đọc IP khách | `0` (không có proxy) | không | không |
 | `MAIL_HOST`, `MAIL_PORT`, `MAIL_USER`, `MAIL_FROM` | SMTP | `smtp.gmail.com`, `465`; hai biến sau là địa chỉ Gmail | có | không |
 | `MAIL_PASSWORD` | App Password của Gmail | `CHANGE_ME` | có | **có** |
+| `VNPAY_TMN_CODE`, `VNPAY_PAY_URL`, `VNPAY_RETURN_URL` | thanh toán demo bằng VNPay sandbox: mã đơn vị thu, địa chỉ cổng thanh toán, địa chỉ VNPay đưa trình duyệt quay về | điền theo tài khoản sandbox bạn đăng ký; `VNPAY_RETURN_URL` trỏ về `localhost` | không (thiếu thì chỉ endpoint tạo thanh toán trả 503 `PAYMENT_NOT_CONFIGURED`, API vẫn khởi động) | không |
+| `VNPAY_HASH_SECRET` | khóa ký và kiểm chữ ký giao dịch | `CHANGE_ME` | cùng điều kiện với ba biến trên | **có** |
 | `UPLOAD_DIR`, `MAX_UPLOAD_BYTES` | thư mục ảnh, dung lượng tối đa mỗi ảnh | `/data/uploads`, `5242880` | không | không |
 | `ADMIN_SEED_EMAIL`, `ADMIN_SEED_NAME` | admin đầu tiên | | có | không |
 | `ADMIN_SEED_PASSWORD` | mật khẩu admin đầu tiên (chỉ dùng khi seed) | `CHANGE_ME` | có | **có** |
@@ -136,7 +138,9 @@ Bảo mật vận hành (đã nằm trong `createApp`): `helmet`, CORS theo `ALL
 
 Giới hạn tần suất: `@nestjs/throttler` dùng bộ nhớ trong (mặc định), đủ vì chỉ có một container API. Bộ đếm về 0 khi container khởi động lại, chấp nhận được. Giới hạn đặt bằng hằng số trong code theo nhóm endpoint (đăng nhập, đăng ký, quên mật khẩu, refresh, liên hệ, báo cáo). Nếu sau này chạy nhiều bản sao thì đổi storage sang Redis mà không đổi nơi gọi.
 
-Email: giao diện `MailService.send(message)` với một hiện thực Nodemailer đọc `MAIL_*`. Lúc khởi động chỉ kiểm tra các biến có mặt và đúng định dạng, không thử đăng nhập SMTP (để chạy được khi mất mạng). Gửi đồng bộ trước khi trả lời (hạn chờ vài giây); lỗi gửi (sai App Password, mất mạng) không làm hỏng yêu cầu mà ghi log mức error. Đổi sang nhà cung cấp khác chỉ cần viết một hiện thực khác.
+Email: giao diện `MailService.send(message)` với một hiện thực Nodemailer đọc `MAIL_*`; nội dung email viết bằng tiếng Việt. Lúc khởi động chỉ kiểm tra các biến có mặt và đúng định dạng, không thử đăng nhập SMTP (để chạy được khi mất mạng).
+
+Thanh toán: giao diện `PaymentGateway` (tạo địa chỉ thanh toán đã ký, kiểm chữ ký và số tiền khi VNPay đưa trình duyệt quay về) với một hiện thực VNPay sandbox đọc `VNPAY_*`. Chỉ là sandbox, không có tiền thật; luồng đơn hàng, số tiền và trạng thái do spec thanh toán quyết định. Đổi nhà cung cấp chỉ sửa một file.
 
 Lưu ảnh (`StorageService`, hợp đồng; endpoint tải lên do spec tính năng upload quyết định):
 - Giao diện `put`, `get`, `delete` theo khóa. Khóa do server sinh dạng `public/<uuid>.<đuôi>` hoặc `private/<uuid>.<đuôi>`, kiểm bằng biểu thức chính quy trước khi chạm ổ đĩa, nên không thể đi ra ngoài `UPLOAD_DIR`.
@@ -165,7 +169,7 @@ CI/CD (GitHub Actions):
 | 3 | `@node-rs/argon2` chạy trong `node:24-slim` trên amd64 và arm64, băm đủ nhanh | gọi hàm băm thử, đo thời gian | quay về `bcrypt` cost 12 |
 | 4 | Cookie `Path=/api/v1/auth`, `SameSite=Strict`, `Secure=false` đi đúng giữa `localhost:5173` và `localhost:3000` với `credentials: 'include'` | thử trên Chrome, Firefox, Safari | đổi `SameSite` hoặc đặt FE cùng origin qua nginx |
 | 5 | Prisma 7 và `@prisma/adapter-pg` chạy trong NestJS 11.2.x dạng CommonJS (generator `prisma-client` với `moduleFormat = "cjs"`, `output` trong `src/generated`) và qua được `strictTypeChecked` với mẫu Repository | cài bản `@7`, sinh client, dựng một repository, `nest build` rồi `node dist/main` | ghim phiên bản khác, nới luật cho đúng file bọc, hoặc mở lại quyết định ORM bằng `/architect` |
-| 6 | `prisma migrate dev` và `prisma migrate diff --exit-code` không đòi xóa `CHECK`, chỉ mục duy nhất một phần và chỉ mục GIN viết bằng SQL trong migration | tạo migration `--create-only`, thêm SQL tay, chạy `migrate dev` hai lần rồi `migrate diff --exit-code` | dựng kiểm tra lệch bằng cách so `pg_dump --schema-only`; nếu `migrate dev` vẫn đòi xóa thì chuyển các ràng buộc đó sang kiểm ở Service và mở lại quyết định ORM |
+| 6 | `prisma migrate dev` và `prisma migrate diff --exit-code` không đòi xóa `CHECK` và chỉ mục duy nhất một phần viết bằng SQL trong migration, và không coi chỉ mục GIN khai báo trong `schema.prisma` là lệch | tạo migration `--create-only`, thêm SQL tay, chạy `migrate dev` hai lần rồi `migrate diff --exit-code` | dựng kiểm tra lệch bằng cách so `pg_dump --schema-only`; nếu `migrate dev` vẫn đòi xóa thì chuyển các ràng buộc đó sang kiểm ở Service và mở lại quyết định ORM |
 | 7 | Chỉ mục GIN trigram được dùng cho `LIKE '%từ%'` | `EXPLAIN` trên dữ liệu mẫu vài nghìn tin | dùng `ILIKE` kèm chỉ mục biểu thức, hoặc `tsvector` |
 | 8 | Dựng đa kiến trúc trong Actions đủ nhanh, máy chip Apple kéo được bản arm64 | chạy workflow, kéo thử | chỉ phát hành amd64 và dựng arm64 khi cần |
 | 9 | Gói GHCR đặt công khai cho phép `docker pull` ẩn danh | kéo từ máy chưa đăng nhập | chuyển sang Docker Hub |
@@ -176,6 +180,9 @@ CI/CD (GitHub Actions):
 | 14 | `@prisma/adapter-pg` nhận được cỡ pool, hạn kết nối, hạn rảnh và múi giờ phiên UTC (mặc định của `pg` không có hạn kết nối) | đọc tài liệu, đặt giá trị, kiểm bằng `SHOW timezone` và thử quá tải | dựng `pg.Pool` riêng rồi đưa cho adapter, hoặc đặt múi giờ qua tham số URL |
 | 15 | `prisma migrate deploy` chạy được trong image `node:24-slim` khi `prisma` nằm ở `dependencies`, và thoát mã khác 0 khi migration lỗi | dựng image, làm hỏng một migration, xem mã thoát | chạy migrate trong một service Compose dùng một lần dựng từ giai đoạn build |
 | 16 | Cột `@db.Date` đọc ra là `Date` nửa đêm UTC; `String[]` tạo được `text[]` không mặc định DB; `omit` loại được `passwordHash` | tạo bảng thử rồi đọc và ghi | chỉnh `toVnDay`, đặt mặc định mảng bằng SQL tay |
+| 17 | Sandbox VNPay xác nhận được kết quả qua địa chỉ trả về (trình duyệt quay về `localhost`) với chữ ký hợp lệ; máy chủ VNPay không gọi được về `localhost` nên không dựa vào thông báo từ máy chủ (IPN) | tạo một đơn thử số tiền nhỏ bằng thẻ thử của sandbox, xem tham số trả về và kiểm chữ ký | dùng một đường hầm công khai cho IPN, hoặc gọi API truy vấn giao dịch của VNPay sau khi quay về |
+
+Đã kiểm chứng ngày 2026-10-06 bằng cách chạy thật trên PostgreSQL 18.1 của máy dev: giả định 2 (`uuidv7()` làm mặc định, id đọc lại được sau khi chèn); giả định 5 phần chạy trong NestJS 11.2.x dạng CommonJS (build và khởi động được); giả định 6 (`CHECK` và chỉ mục duy nhất một phần viết tay bị `migrate diff` bỏ qua, còn chỉ mục GIN không khai báo trong schema thì bị đòi xóa, khai báo xong thì sạch); giả định 14 (adapter nhận cỡ pool, hạn kết nối, hạn rảnh, và `options` đặt múi giờ phiên là UTC); giả định 16 phần `String[]` (sinh `text[]` cho phép rỗng, migration thêm `NOT NULL` bằng tay) và `omit`. Còn lại: giả định 3, 4, 7 đến 13, 15, 17, phần `strictTypeChecked` của giả định 5 (ESLint chưa chuyển sang bộ luật chặt), và phần `@db.Date` của giả định 16.
 
 **Lưu ý máy dev (2026-10-05):** cụm PostgreSQL cài trên Windows mặc định WIN1252 nên database phải tạo riêng bằng UTF8.
 
@@ -205,6 +212,7 @@ Bạn muốn người dùng chỉ cần Docker và chạy trên localhost, nên 
 - Chạy lần đầu vẫn cần điền `.env`, kể cả App Password của Gmail, nên "chỉ cần tải Docker" chưa đúng hẳn: người nhận bản demo phải được bạn gửi sẵn một file `.env` đã điền, hoặc tự tạo App Password của họ.
 - Thiếu `MAIL_*` thì API không khởi động, nên không thể xem thử API khi chưa có thông tin Gmail. Đây là lựa chọn của bạn.
 - Không còn link công khai để gửi cho người khác bấm vào; mỗi người phải tự chạy trên máy mình.
+- Thanh toán chỉ chạy bằng VNPay sandbox nên không có tiền thật; muốn thu thật phải đăng ký đơn vị thu với VNPay, đổi cấu hình và kiểm lại cả luồng thanh toán.
 - Dữ liệu và ảnh nằm trong volume Docker: không tự sao lưu, `down -v` xóa sạch.
 - Ảnh lưu ổ đĩa chưa được nén hay đổi kích thước; API tự lo kiểm tra loại ảnh, dung lượng và quyền đọc ảnh giấy tờ.
 - Giới hạn tần suất dùng bộ nhớ trong, không chia sẻ giữa nhiều bản sao.
@@ -217,7 +225,7 @@ Bạn muốn người dùng chỉ cần Docker và chạy trên localhost, nên 
 
 ## Follow-up
 
-- [ ] Làm slice 0 và điền kết quả cho 13 giả định ở trên; nếu giả định 4 sai thì quay lại `/architect`.
+- [ ] Làm slice 0 và điền kết quả cho các giả định còn lại (xem đoạn "Đã kiểm chứng" dưới bảng); nếu giả định 4 sai thì quay lại `/architect`.
 - [ ] Chốt tên image và tên tổ chức GitHub chính xác (`ghcr.io/rental-management-platform/rental-api` là giả định theo địa chỉ repo hiện tại).
 - [ ] Viết README cho người dùng (năm bước chạy, sao lưu, phục hồi, cảnh báo `down -v`).
 - [ ] Spec tính năng upload ảnh quyết định endpoint tải lên, giới hạn và cách đọc ảnh riêng tư; nén ảnh (ví dụ thư viện `sharp`) làm sau nếu cần.

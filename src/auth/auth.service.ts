@@ -1,16 +1,18 @@
 import { Injectable } from '@nestjs/common';
+import { AccountTypesService } from '../account-types/account-types.service';
+import { parseAccountType } from '../common/auth/account-type';
 import { AppException } from '../common/errors/app.exception';
 import { ErrorCode } from '../common/errors/error-code';
 import { AppConfigService } from '../config/app-config.service';
-import type { AuthSession, User } from '../generated/prisma/client';
+import type { AuthSession } from '../generated/prisma/client';
 import { toUserResponse } from '../users/users.mapper';
 import type { UserResponse } from '../users/users.mapper';
 import { UsersService } from '../users/users.service';
 import type { UserWithoutPassword } from '../users/users.repository';
 import { AuthSessionsRepository } from './auth-sessions.repository';
+import type { MeResponse } from './dto/auth.response';
 import type { LoginDto } from './dto/login.dto';
 import type { RegisterDto } from './dto/register.dto';
-import { toRoles } from './auth.types';
 import { PasswordHasher } from './password-hasher';
 import { TokenService } from './token.service';
 
@@ -41,6 +43,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export class AuthService {
 	constructor(
 		private readonly usersService: UsersService,
+		private readonly accountTypes: AccountTypesService,
 		private readonly sessions: AuthSessionsRepository,
 		private readonly tokens: TokenService,
 		private readonly hasher: PasswordHasher,
@@ -51,20 +54,29 @@ export class AuthService {
 		dto: RegisterDto,
 		client: ClientInfo,
 	): Promise<RegisteredSession> {
+		// Thứ tự kiểm: email trước, số điện thoại sau; cả hai tính cả tài khoản đã xóa mềm và đều
+		// chạy trước khi băm. Lỗi DB không được dịch (spec 0004), nên đây là đường báo lỗi duy nhất.
+		if (await this.usersService.emailExists(dto.email)) {
+			throw new AppException(ErrorCode.EMAIL_TAKEN);
+		}
+		const phone = dto.phone ?? null;
 		if (
-			(await this.usersService.findByEmailWithPassword(dto.email)) !==
-			null
+			dto.accountType === 'landlord' &&
+			phone !== null &&
+			(await this.usersService.landlordPhoneExists(phone))
 		) {
-			throw new AppException(ErrorCode.EMAIL_TAKEN); // kiểm trước khi băm: lỗi DB không được dịch (spec 0004)
+			throw new AppException(ErrorCode.PHONE_TAKEN);
 		}
 		const passwordHash = await this.hasher.hash(dto.password);
 		const user = await this.usersService.create({
 			email: dto.email,
 			passwordHash,
 			name: dto.name ?? null,
+			phone,
+			accountType: dto.accountType,
 		});
-		// Hai người đăng ký cùng email cùng lúc: người chậm hơn chạm ràng buộc users_email_unique và nhận 500
-		// (bộ lọc không dịch lỗi DB, spec 0004). Chấp nhận được với demo.
+		// Hai người đăng ký trùng email hoặc trùng số gần như cùng lúc: người chậm hơn chạm chỉ mục duy
+		// nhất và nhận 500 (bộ lọc không dịch lỗi DB, spec 0004). Chấp nhận được với demo.
 		const session = await this.startSession(user, client);
 		return { ...session, user: toUserResponse(user) };
 	}
@@ -130,17 +142,26 @@ export class AuthService {
 		return this.sessions.revokeAllByUser(userId, 'logout_all');
 	}
 
-	/** Đọc từ DB, không từ token: FE hỏi "tôi là ai" nên cần kết quả mới nhất. */
-	async getMe(userId: string): Promise<UserResponse> {
+	/**
+	 * "Tôi là ai": đọc người dùng và quyền từ DB, không từ token, nên luôn mới nhất (spec 0002).
+	 * Bị khóa thì 403; đã xóa mềm hoặc không còn thì 401 TOKEN_INVALID.
+	 */
+	async getMe(userId: string): Promise<MeResponse> {
 		const user = await this.usersService.findById(userId);
 		if (user === null) throw new AppException(ErrorCode.TOKEN_INVALID);
-		return toUserResponse(user);
+		if (user.status === 'locked') {
+			throw new AppException(ErrorCode.ACCOUNT_LOCKED);
+		}
+		const permissions = await this.accountTypes.getEffectivePermissions(
+			parseAccountType(user.accountType),
+		);
+		return { user: toUserResponse(user), permissions };
 	}
 
 	// ---------- nội bộ ----------
 
 	private async startSession(
-		user: Pick<User, 'id' | 'roles'>,
+		user: Pick<UserWithoutPassword, 'id' | 'accountType'>,
 		client: ClientInfo,
 	): Promise<IssuedSession> {
 		const auth = this.config.auth;
@@ -188,16 +209,22 @@ export class AuthService {
 		return user;
 	}
 
-	/** Vai trò lấy từ người dùng vừa đọc ở DB: đổi vai trò có hiệu lực ở lần refresh kế tiếp. */
-	private issueAccessToken(
-		user: Pick<User, 'id' | 'roles'>,
+	/**
+	 * Quyền lấy từ loại của người dùng vừa đọc ở DB: admin đổi quyền của một loại thì token cấp từ
+	 * lần refresh kế tiếp có quyền mới (spec 0003 AC-10).
+	 */
+	private async issueAccessToken(
+		user: Pick<UserWithoutPassword, 'id' | 'accountType'>,
 		sessionId: string,
 		refreshToken: string | undefined,
-	): IssuedSession {
+	): Promise<IssuedSession> {
+		const type = parseAccountType(user.accountType);
+		const perms = await this.accountTypes.getTokenPermissions(type);
 		const { accessToken, expiresIn } = this.tokens.signAccessToken({
 			sub: user.id,
 			sid: sessionId,
-			roles: toRoles(user.roles),
+			type,
+			perms,
 		});
 		return { accessToken, expiresIn, refreshToken };
 	}

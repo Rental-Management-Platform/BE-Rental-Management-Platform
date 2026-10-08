@@ -1,12 +1,16 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
+import { AccountTypesModule } from '../account-types/account-types.module';
 import { AppConfigService } from '../config/app-config.service';
 import { UsersModule } from '../users/users.module';
 import { AuthSessionsRepository } from './auth-sessions.repository';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { OriginGuard } from './guards/origin.guard';
+import { PermissionsGuard } from './guards/permissions.guard';
 import { PasswordHasher } from './password-hasher';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { TokenService } from './token.service';
@@ -14,6 +18,7 @@ import { TokenService } from './token.service';
 @Module({
 	imports: [
 		UsersModule,
+		AccountTypesModule,
 		PassportModule,
 		JwtModule.registerAsync({
 			inject: [AppConfigService],
@@ -36,6 +41,10 @@ import { TokenService } from './token.service';
 		PasswordHasher,
 		JwtStrategy,
 		OriginGuard,
+		// Hai cổng toàn cục, đúng thứ tự: xác thực rồi mới kiểm quyền (spec 0003 AC-4).
+		{ provide: APP_GUARD, useClass: JwtAuthGuard },
+		{ provide: APP_GUARD, useClass: PermissionsGuard },
 	],
+	exports: [AuthSessionsRepository],
 })
 export class AuthModule {}

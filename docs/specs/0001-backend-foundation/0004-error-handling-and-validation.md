@@ -22,7 +22,7 @@ Body lỗi trả về (`Content-Type: application/json`):
 {
   "status": 409,
   "code": "EMAIL_TAKEN",
-  "message": "This email address is already in use.",
+  "message": "Địa chỉ email này đã được sử dụng.",
   "requestId": "0b6f1c1e-7f7a-4a52-9f7e-3d3c5b2e8a10"
 }
 ```
@@ -33,13 +33,13 @@ Body lỗi trả về (`Content-Type: application/json`):
 {
   "status": 400,
   "code": "VALIDATION_FAILED",
-  "message": "The provided data is invalid.",
-  "errors": [{ "field": "email", "code": "isEmail", "message": "email must be an email" }],
+  "message": "Dữ liệu gửi lên không hợp lệ.",
+  "errors": [{ "field": "email", "code": "isEmail", "message": "Phải là địa chỉ email hợp lệ." }],
   "requestId": "0b6f1c1e-7f7a-4a52-9f7e-3d3c5b2e8a10"
 }
 ```
 
-Body không bao giờ chứa stack hay chữ lấy từ lỗi gốc: `message` luôn lấy từ registry. Thông điệp viết bằng tiếng Anh; FE dựa vào `code` để hiện chữ riêng khi cần.
+Body không bao giờ chứa stack hay chữ lấy từ lỗi gốc: `message` luôn lấy từ registry. Thông điệp viết bằng tiếng Việt cho đồng nhất với mọi chữ người dùng thấy (kể cả email), còn `code` giữ tiếng Anh vì là hằng số cho FE; FE dựa vào `code` để hiện chữ riêng khi cần.
 
 Registry là nguồn duy nhất (cố ý dùng `Record<ErrorCode, ...>` để trình biên dịch bắt thiếu mã):
 
@@ -56,8 +56,8 @@ export interface ErrorDefinition {
 }
 
 export const ERRORS: Record<ErrorCode, ErrorDefinition> = {
-  [ErrorCode.VALIDATION_FAILED]: { status: HttpStatus.BAD_REQUEST, message: 'The provided data is invalid.' },
-  [ErrorCode.EMAIL_TAKEN]: { status: HttpStatus.CONFLICT, message: 'This email address is already in use.' },
+  [ErrorCode.VALIDATION_FAILED]: { status: HttpStatus.BAD_REQUEST, message: 'Dữ liệu gửi lên không hợp lệ.' },
+  [ErrorCode.EMAIL_TAKEN]: { status: HttpStatus.CONFLICT, message: 'Địa chỉ email này đã được sử dụng.' },
   // ...
 };
 
@@ -115,7 +115,7 @@ Giao dịch gặp lỗi Prisma `P2034` (xung đột ghi hoặc deadlock) đượ
 
 Lỗi token do guard đăng nhập đổi lý do từ chối của Passport: `TokenExpiredError` thành `TOKEN_EXPIRED`, câu `No auth token` thành `TOKEN_MISSING`, còn lại `TOKEN_INVALID`. Sai email hay sai mật khẩu cùng trả `INVALID_CREDENTIALS`.
 
-Quy ước mã lỗi và status: 400 dữ liệu sai (`VALIDATION_FAILED`, `INVALID_ID`, lỗi theo luật nghiệp vụ như `ROLE_NOT_ASSIGNABLE`), 401 chưa xác thực (`TOKEN_MISSING`, `TOKEN_INVALID`, `TOKEN_EXPIRED`, `INVALID_CREDENTIALS`, `REFRESH_TOKEN_MISSING`, `SESSION_REVOKED`, `SESSION_EXPIRED`), 403 không được phép (`PERMISSION_DENIED`, `NOT_RESOURCE_OWNER`, `ACCOUNT_LOCKED`, `ORIGIN_NOT_ALLOWED`, `CANNOT_GRANT_UNHELD_PERMISSION`), 404 `NOT_FOUND` và các `*_NOT_FOUND`, 409 xung đột (`EMAIL_TAKEN`, `ROLE_KEY_TAKEN`, `ROLE_IN_USE`, `SYSTEM_ROLE_PROTECTED`, `LAST_ADMIN`), 413, 500, 503. Không dùng 422. Một mã chỉ được thêm vào registry khi có tính năng dùng nó; `RATE_LIMITED` (429) sẽ được thêm khi làm giới hạn tần suất của spec 0002.
+Quy ước mã lỗi và status: 400 dữ liệu sai (`VALIDATION_FAILED`, `INVALID_ID`, lỗi theo luật nghiệp vụ như `PERMISSION_UNKNOWN`, `PERMISSION_ADMIN_ONLY`), 401 chưa xác thực (`TOKEN_MISSING`, `TOKEN_INVALID`, `TOKEN_EXPIRED`, `INVALID_CREDENTIALS`, `REFRESH_TOKEN_MISSING`, `SESSION_REVOKED`, `SESSION_EXPIRED`), 403 không được phép (`PERMISSION_DENIED`, `NOT_RESOURCE_OWNER`, `ACCOUNT_LOCKED`, `ORIGIN_NOT_ALLOWED`), 404 `NOT_FOUND` và các `*_NOT_FOUND`, 409 xung đột (`EMAIL_TAKEN`, `PHONE_TAKEN`, `SYSTEM_TYPE_PROTECTED`, `CANNOT_LOCK_SELF`, `ACCOUNT_ALREADY_LOCKED`, `ACCOUNT_NOT_LOCKED`), 413, 500, 503. Không dùng 422. Một mã chỉ được thêm vào registry khi có tính năng dùng nó; `RATE_LIMITED` (429) sẽ được thêm khi làm giới hạn tần suất của spec 0002.
 
 Request id: lấy từ header `x-request-id` nếu hợp lệ (tối đa 64 ký tự, chỉ chữ số, chữ cái, gạch dưới và gạch ngang), nếu không thì `crypto.randomUUID()`. Trả lại ở header `X-Request-Id`, có trong mọi dòng log lỗi và mọi body lỗi. Middleware phải chạy trước bộ đọc JSON để lỗi JSON hỏng cũng có `requestId`.
 
@@ -138,7 +138,7 @@ export function uuidParam(): ParseUUIDPipe {
 }
 ```
 
-`flattenValidationErrors` duyệt đệ quy `children` và tạo `{ field, code, message }` từ `constraints` của class-validator (`code` là tên ràng buộc như `isEmail`, `message` là câu gốc của thư viện). Hai tùy chọn `enableImplicitConversion: false` và `stopAtFirstError: false` không cần ghi vì chúng là giá trị mặc định.
+`flattenValidationErrors` duyệt đệ quy `children` và tạo `{ field, code, message }` từ `constraints` của class-validator (`code` là tên ràng buộc như `isEmail`, `message` lấy từ bảng `VALIDATION_MESSAGES` ở cùng file, đổi tên ràng buộc thành một câu tiếng Việt không kèm số liệu, bảng phủ mọi ràng buộc các DTO đang dùng: `isEmail` "Phải là địa chỉ email hợp lệ.", `isNotEmpty` "Không được để trống.", `isString` "Phải là chuỗi ký tự.", `isIn` "Giá trị không nằm trong danh sách cho phép.", `matches` "Định dạng không hợp lệ.", `minLength` "Giá trị quá ngắn.", `maxLength` "Giá trị quá dài.", `isArray` "Phải là một danh sách.", `arrayMaxSize` "Danh sách có quá nhiều phần tử.", `isDefined` "Không được thiếu trường này.", `whitelistValidation` "Trường này không được phép gửi lên."; ràng buộc chưa có trong bảng dùng câu "Giá trị không hợp lệ.". Riêng `phone` đặt `message` "Số điện thoại không hợp lệ." ngay trên decorator. DTO nào cần nêu số liệu (ví dụ mật khẩu 8 đến 128 ký tự) đặt `message` riêng ngay trên decorator). Hai tùy chọn `enableImplicitConversion: false` và `stopAtFirstError: false` không cần ghi vì chúng là giá trị mặc định.
 
 Luật viết DTO:
 - Mọi trường có decorator (trường không có decorator bị coi là lạ và bị từ chối), mọi chuỗi có `@MaxLength`, mọi mảng có `@ArrayMaxSize`, mọi số có `@IsInt` hoặc `@IsNumber` cùng `@Min` và `@Max`.
@@ -161,7 +161,7 @@ Dạng phản hồi thành công:
 - **Không dạng RFC 9457 đầy đủ:** không `title`, `detail`, `timestamp`, `path`, không content type `application/problem+json`.
 - **Không luật ESLint** `no-restricted-imports` cho các lớp `*Exception` của Nest.
 - **Không file `to-problem.ts` riêng và không test đơn vị riêng** cho bộ đổi lỗi; dự án đặt workflow Prototype, kiểm bằng tay.
-- **Không mã riêng cho JSON hỏng** (`MALFORMED_JSON`), không thông điệp tiếng Việt, không decorator Swagger cho lỗi (`@ApiProblemResponses`), không giới hạn tần suất.
+- **Không mã riêng cho JSON hỏng** (`MALFORMED_JSON`), không decorator Swagger cho lỗi (`@ApiProblemResponses`), không giới hạn tần suất.
 
 **Replaces**:
 - Lỗi mặc định của NestJS (`{ statusCode, message, error }`) và `ValidationPipe({ whitelist: true, transform: true })` hiện có ở `main.ts`.
@@ -172,13 +172,15 @@ Dạng phản hồi thành công:
 - Không có luật lint. Ai ném lỗi gốc của Nest thì bộ lọc vẫn đổi sang cùng dạng, chỉ mất mã lỗi cụ thể (ra mã chung theo status).
 - Kiểm bằng tay: mỗi loại lỗi (ném `AppException`, lỗi nhập liệu, route không có, JSON hỏng, body quá lớn, lỗi lạ, ba mã token, đăng nhập sai, email trùng) trả đúng `status`, `code`, có `requestId` trùng header, và không có stack.
 
-**Rollout**: Code mới theo ngay. Bộ khung hiện có (`main.ts`, `AuthService`, `JwtAuthGuard` cũ) chuyển trong lát cắt đầu của lộ trình (scope hàng 1 đến 3).
+**Rollout**: Code mới theo ngay. Bộ khung hiện có (`main.ts`, `AuthService`, `JwtAuthGuard` cũ) chuyển trong lát cắt đầu của lộ trình (scope hàng 1 đến 3). Các thông điệp tiếng Anh đã viết trong registry và trong `AppException` được viết lại sang tiếng Việt khi build hàng 5 và 6; `code` không đổi.
 
 **Exceptions**: Health check của `@nestjs/terminus` (`GET /api/v1/health`, gắn `@Public()`) giữ dạng phản hồi riêng của nó.
 
 ## Rationale (ngắn)
 
 Hệ thống này là demo nhỏ do một người tự viết tay, và FE chỉ cần hai thứ: một cách duy nhất để đọc lỗi, và `code` ổn định (không phải câu chữ) để quyết định hành động, ví dụ gặp `TOKEN_EXPIRED` thì gọi refresh. Bản rút gọn giữ đúng những phần mang lại điều đó: registry một chỗ (`code`, `status`, thông điệp không thể lệch nhau, trình biên dịch bắt thiếu), bộ lọc toàn cục để API chỉ cần `throw` hoặc `next(error)`, `requestId` (rẻ mà giúp tra log), và `forbidNonWhitelisted` (chính là thứ chặn `roles` trong body đăng ký, spec 0002 AC-1). Phần bị cắt đều là phần phải duy trì mà demo chưa dùng tới: bảng dịch SQLSTATE gắn chặt với tên ràng buộc, luật lint, các trường RFC 9457 mà FE chưa đọc, và test cho một bộ đổi lỗi mà bạn kiểm bằng tay. Việc cắt có giá: lỗi PostgreSQL ra 500 nên người viết phải kiểm trước ở service và dùng `uuidParam()`.
+
+Thông điệp viết bằng tiếng Việt theo quyết định của bạn, để mọi chữ người dùng thấy (thông báo lỗi, thông báo kiểm tra dữ liệu, email) cùng một ngôn ngữ; `code` vẫn tiếng Anh để FE không phụ thuộc câu chữ và code đọc được ở log.
 
 Phương án đã cân nhắc: bản đầy đủ của spec này lúc đầu (RFC 9457, dịch lỗi PostgreSQL, ESLint, test bảng; khoảng 10 file hướng dẫn và nhiều thứ phải giữ khớp nhau, quá nặng cho phạm vi demo), phong bì tự đặt `{ success, error }` (quen mắt nhưng là chuẩn tự đặt), và giữ dạng mặc định của Nest (không có `code` nên FE không phân biệt được `TOKEN_EXPIRED` với `TOKEN_INVALID`).
 
@@ -192,7 +194,7 @@ Phương án đã cân nhắc: bản đầy đủ của spec này lúc đầu (R
 
 **Negative / tradeoffs**:
 - Lỗi PostgreSQL ra 500: id sai dạng (nếu quên `uuidParam()`) và trùng giá trị đồng thời không có thông báo rõ.
-- Thông điệp tiếng Anh cố định ở BE; FE muốn tiếng Việt thì tự dịch theo `code`.
+- Thông điệp tiếng Việt cố định ở BE; `code` giữ tiếng Anh. FE cần ngôn ngữ khác thì tự dịch theo `code`.
 - Không có luật lint, nên ai ném lỗi gốc của Nest mất mã lỗi cụ thể mà trình biên dịch không báo.
 - Không có test tự động cho bộ lọc, dễ lệch khi sửa mà không ai nhận ra.
 - Mỗi lỗi nghiệp vụ mới phải thêm vào registry trước khi dùng (có chủ ý).

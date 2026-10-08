@@ -3,7 +3,7 @@ import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { AppException } from '../../common/errors/app.exception';
 import { ErrorCode } from '../../common/errors/error-code';
-import type { RequestUser } from '../../common/decorators/current-user.decorator';
+import type { RequestUser } from '../../common/http/authenticated-request';
 import { AppConfigService } from '../../config/app-config.service';
 import { isAccessTokenClaims } from '../auth.types';
 
@@ -32,7 +32,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 		return {
 			userId: payload.sub,
 			sessionId: payload.sid,
-			roles: [...payload.roles],
+			accountType: payload.type,
+			permissions: payload.perms,
 		};
 	}
 }

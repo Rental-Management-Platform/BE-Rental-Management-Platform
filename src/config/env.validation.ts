@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import { plainToInstance, Transform, Type } from 'class-transformer';
 import {
 	IsBoolean,
+	IsEmail,
 	IsIn,
 	IsInt,
 	IsNotEmpty,
@@ -9,6 +10,7 @@ import {
 	IsString,
 	Matches,
 	Max,
+	MaxLength,
 	Min,
 	MinLength,
 	validateSync,
@@ -134,6 +136,47 @@ export class Env extends DatabaseEnv {
 	TRUST_PROXY_HOPS: number = 0;
 }
 
+/** Chỉ dùng cho `npm run seed` (ứng dụng không đọc), tách riêng khỏi `Env` (spec 0003 AC-9). */
+export class SeedEnv {
+	@Transform(({ value }: { value: unknown }) =>
+		typeof value === 'string' ? value.trim() : value,
+	)
+	@IsEmail({}, { message: '$property phải là địa chỉ email hợp lệ' })
+	ADMIN_SEED_EMAIL: string;
+
+	@IsString()
+	@MinLength(8, { message: '$property phải dài ít nhất 8 ký tự' })
+	@MaxLength(128)
+	@Matches(NOT_PLACEHOLDER, { message: NOT_PLACEHOLDER_MESSAGE })
+	ADMIN_SEED_PASSWORD: string;
+
+	@IsString()
+	@IsNotEmpty()
+	@MaxLength(100)
+	ADMIN_SEED_NAME: string;
+}
+
+/** Câu tiếng Việt cho từng ràng buộc; chỉ nêu tên biến, tuyệt đối không nêu giá trị (nhiều biến là bí mật). */
+const ENV_MESSAGES: Readonly<Record<string, (property: string) => string>> = {
+	isNotEmpty: (property) => `${property} không được để trống`,
+	isString: (property) => `${property} phải là chuỗi ký tự`,
+	isInt: (property) => `${property} phải là số nguyên`,
+	min: (property) => `${property} nhỏ hơn mức cho phép`,
+	max: (property) => `${property} lớn hơn mức cho phép`,
+	isIn: (property) => `${property} không nằm trong danh sách cho phép`,
+	isBoolean: (property) => `${property} phải là true hoặc false`,
+	isEmail: (property) => `${property} phải là địa chỉ email hợp lệ`,
+	matches: (property) => `${property} sai định dạng`,
+	minLength: (property) => `${property} quá ngắn`,
+	maxLength: (property) => `${property} quá dài`,
+};
+
+/** Câu đã viết tiếng Việt ngay trên decorator thì giữ nguyên; câu mặc định (tiếng Anh) của thư viện thì thay. */
+function toVietnamese(property: string, name: string, reason: string): string {
+	if (/\P{ASCII}/u.test(reason)) return reason;
+	return ENV_MESSAGES[name]?.(property) ?? `${property} không hợp lệ`;
+}
+
 type EnvClass<T extends object> = new () => T;
 
 /**
@@ -155,8 +198,9 @@ export function validateEnvAs<T extends object>(
 	});
 	if (errors.length > 0) {
 		const lines = errors.flatMap((error) =>
-			Object.values(error.constraints ?? {}).map(
-				(reason) => `  - ${reason}`,
+			Object.entries(error.constraints ?? {}).map(
+				([name, reason]) =>
+					`  - ${toVietnamese(error.property, name, reason)}`,
 			),
 		);
 		throw new Error(
@@ -174,4 +218,8 @@ export function validateDatabaseEnv(
 	config: Record<string, unknown>,
 ): DatabaseEnv {
 	return validateEnvAs(DatabaseEnv, config);
+}
+
+export function validateSeedEnv(config: Record<string, unknown>): SeedEnv {
+	return validateEnvAs(SeedEnv, config);
 }

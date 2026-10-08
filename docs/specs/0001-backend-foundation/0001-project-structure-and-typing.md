@@ -34,6 +34,7 @@ src/common/
   persistence/                // TransactionRunner, hàm bọc truy vấn thô có kiểu (queryRows<T>), toSafeInteger
 src/storage/                  // StorageService (giao diện) và bản hiện thực ổ đĩa (spec 0006)
 src/mail/                     // MailService (giao diện) và bản hiện thực Nodemailer (spec 0006)
+src/payment/                  // PaymentGateway (giao diện) và bản hiện thực VNPay sandbox (spec 0006)
 src/<feature>/
   <feature>.module.ts
   <feature>.controller.ts

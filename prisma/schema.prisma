@@ -1,4 +1,4 @@
-// Schema duy nhất của ứng dụng (spec 0001, mục "Đổi ORM", và spec 0005).
+// Schema duy nhất của ứng dụng (spec 0001, mục "Lớp truy cập dữ liệu", và spec 0005).
 // Quy ước: tên bảng và cột snake_case ghi rõ bằng @@map và @map; ràng buộc và chỉ mục đặt
 // tên rõ qua tham số map. CHECK và chỉ mục một phần viết bằng SQL trong file migration
 // (Prisma bỏ qua chúng, đã kiểm chứng); chỉ mục GIN khai báo ở đây.
@@ -19,16 +19,57 @@ model User {
   email        String    @unique(map: "users_email_unique")
   passwordHash String    @map("password_hash")
   name         String?
-  // Tạm thời cho đến khi làm spec 0003 (RBAC). Không đặt mặc định ở DB: UsersService luôn truyền vai trò.
-  roles        String[]
+  /// Số điện thoại đã chuẩn hóa (spec 0002 AC-13). Bắt buộc với landlord (CHECK ở migration);
+  /// chỉ mục duy nhất một phần cho landlord cũng nằm ở migration (Prisma bỏ qua nó).
+  phone        String?
+  /// Loại tài khoản, đặt lúc đăng ký và không đổi sau đó (spec 0003).
+  accountType  String    @map("account_type")
   status       String    @default("active")
+  /// Chỉ có giá trị khi đang bị khóa; lý do khóa và mở khóa lưu ở moderation_logs.
+  lockedReason String?   @map("locked_reason")
   createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt    DateTime? @map("deleted_at") @db.Timestamptz(6)
 
-  sessions AuthSession[]
+  accountTypeRef AccountType     @relation(fields: [accountType], references: [key], onDelete: Restrict, map: "users_account_type_fk")
+  sessions       AuthSession[]
+  moderationLogs ModerationLog[]
 
+  @@index([accountType], map: "users_account_type_idx")
   @@map("users")
+}
+
+/// Đúng ba dòng admin, landlord, tenant, do migration chèn sẵn; không có đường thêm hay xóa dòng (spec 0003).
+model AccountType {
+  /// CHECK ở migration: chỉ nhận admin, landlord, tenant.
+  key         String   @id(map: "account_types_pkey")
+  name        String
+  description String?
+  /// Khóa quyền dạng module:action. Với admin để mảng rỗng và bị bỏ qua: quyền admin tính trong code.
+  /// DB không kiểm được danh mục (nằm trong code) nên Service kiểm khi ghi và lọc khi đọc.
+  permissions String[]
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  users User[]
+
+  @@map("account_types")
+}
+
+/// Lịch sử kiểm duyệt, chỉ thêm không sửa (BR-13, spec 0003 AC-7): khóa, mở khóa và các hành động duyệt về sau.
+model ModerationLog {
+  id         String   @id(map: "moderation_logs_pkey") @default(dbgenerated("uuidv7()")) @db.Uuid
+  actorId    String   @map("actor_id") @db.Uuid
+  targetType String   @map("target_type")
+  targetId   String   @map("target_id") @db.Uuid
+  action     String
+  reason     String
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  actor User @relation(fields: [actorId], references: [id], onDelete: Restrict, map: "moderation_logs_actor_id_fk")
+
+  @@index([targetType, targetId, createdAt], map: "moderation_logs_target_idx")
+  @@map("moderation_logs")
 }
 
 /// Mỗi lần đăng nhập là một dòng. Refresh token chỉ lưu bản băm SHA-256 (spec 0002).

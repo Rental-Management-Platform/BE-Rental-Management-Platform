@@ -8,7 +8,7 @@ Spec con này chuyển phần "đối tượng dữ liệu" của spec chức n�
 
 ## Decision
 
-Mỗi tính năng có một hoặc vài bảng quan hệ có khóa ngoại và ràng buộc thật. Danh sách có giới hạn (phí, ảnh, tiện ích, vai trò) là bảng con, không phải mảng nhúng. Không sao chép dữ liệu giữa các bảng: điều kiện hiển thị tin dùng phép nối. Mọi thao tác ghi nhiều bảng chạy trong giao dịch qua `TransactionRunner`. Schema chỉ thay đổi bằng migration của Prisma (`prisma migrate`); ứng dụng không bao giờ tự đổi schema.
+Mỗi tính năng có một hoặc vài bảng quan hệ có khóa ngoại và ràng buộc thật. Danh sách có giới hạn (phí, ảnh, tiện ích) là bảng con, không phải mảng nhúng. Không sao chép dữ liệu giữa các bảng: điều kiện hiển thị tin dùng phép nối. Mọi thao tác ghi nhiều bảng chạy trong giao dịch qua `TransactionRunner`. Schema chỉ thay đổi bằng migration của Prisma (`prisma migrate`); ứng dụng không bao giờ tự đổi schema.
 
 **Implementation skills**: `nestjs-best-practices` (`kadajett/agent-nestjs-skills`, `.agents/skills/nestjs-best-practices/`): rule `db-use-transactions`, `db-avoid-n-plus-one`, `arch-use-repository-pattern` · `supabase-postgres-best-practices` (`supabase/agent-skills`, `.agents/skills/supabase-postgres-best-practices/`): rule `schema-primary-keys`, `schema-data-types`, `schema-foreign-key-indexes`, `query-partial-indexes`, `conn-pooling`.
 
@@ -20,10 +20,9 @@ Bản đồ bảng (mức bảng; đã được bạn xác nhận ở bước th
 
 | Nhóm | Bảng | Khóa chính và quan hệ | Ràng buộc và chỉ mục chính |
 |---|---|---|---|
-| Xác thực và quyền | `users` | `id` | `email` duy nhất; `status` là `active` hoặc `locked`; `preferred_landmark_id` (cho phép rỗng) trỏ `landmarks`; xóa mềm |
+| Xác thực và quyền | `users` | `id`; `account_type` trỏ `account_types` | `email` duy nhất; `status` là `active` hoặc `locked`; `account_type` bắt buộc và không đổi sau khi tạo; `phone` đã chuẩn hóa (xem 0002), chỉ mục duy nhất một phần `users_landlord_phone_unique` trên `phone` khi `account_type = 'landlord'` và tính cả dòng xóa mềm; `CHECK` `users_landlord_phone_check` (`account_type <> 'landlord' OR phone IS NOT NULL`); `preferred_landmark_id` (cho phép rỗng) trỏ `landmarks`; xóa mềm |
 | | `landlord_profiles` | `user_id` (1:1 với `users`) | Zalo, tên hiển thị, trạng thái xác minh |
-| | `roles` | `id` | `key` duy nhất; `permissions` là cột mảng `text[]`; `is_system`, `self_assignable` |
-| | `user_roles` | (`user_id`, `role_id`), N:M | xóa người dùng thì xóa dòng; xóa vai trò đang dùng bị chặn (`RESTRICT`) |
+| | `account_types` | `key` (khóa tự nhiên: `admin`, `landlord`, `tenant`) | `CHECK` chỉ nhận ba giá trị đó; `permissions` là cột mảng `text[]`; chỉ có ba dòng, do migration chèn kèm quyền mặc định |
 | | `auth_sessions`, `password_resets` | `id`; `user_id` trỏ `users` (N:1) | `token_hash` duy nhất; chỉ lưu bản băm; hết hạn kiểm bằng `expires_at` (xem 0002) |
 | Danh mục | `wards`, `amenities`, `settings` | `code`, `key`, `key` | tỉnh nằm ngay trong `wards` (`province_code`, `province_name`); `settings` giữ tham số BR-16 theo cặp khóa và giá trị |
 | | `landmarks` | `id` | địa điểm mốc để tìm quanh: `name`, `group_name` (tùy chọn, gom nhiều cơ sở của cùng một nơi), `kind` là `school`, `workplace` hoặc `other`, `address_text`, `latitude`, `longitude`, `is_active`; admin quản lý |
@@ -38,7 +37,8 @@ Bản đồ bảng (mức bảng; đã được bạn xác nhận ở bước th
 | | `landlord_verifications` | `id`; `landlord_id` trỏ `users` | ảnh giấy tờ lưu riêng tư trên ổ đĩa (xem 0006) |
 | | `listing_daily_stats` | (`listing_id`, `day`) | lượt xem, lưu, liên hệ; cập nhật bằng `ON CONFLICT` |
 | | `listing_price_history`, `moderation_logs` | `id` | chỉ thêm, không sửa; chỉ mục theo đối tượng và thời điểm |
-| Thu phí | `service_products`, `product_price_history`, `orders`, `payments`, `subscriptions`, `listing_boosts`, `onsite_inspections`, `ad_campaigns`, `ad_daily_stats`, `expenses` | `id`; `orders` trỏ `users` và `service_products`; `payments` trỏ `orders` | `orders.code` duy nhất (nội dung VietQR); `payments.bank_txn_id` duy nhất; `payments` chỉ thêm (BR-24); giá chốt vào đơn |
+| | `moderation_logs` (các cột) | `id`; `actor_id` trỏ `users` | `target_type`, `target_id` (đối tượng bị tác động), `action` (`lock`, `unlock`, và hành động duyệt của các tính năng sau), `reason` bắt buộc, `created_at`; chỉ thêm, chỉ mục (`target_type`, `target_id`, `created_at`) |
+| Thu phí | `service_products`, `product_price_history`, `orders`, `payments`, `subscriptions`, `listing_boosts`, `onsite_inspections`, `ad_campaigns`, `ad_daily_stats`, `expenses` | `id`; `orders` trỏ `users` và `service_products`; `payments` trỏ `orders` | `orders.code` duy nhất (mã tham chiếu giao dịch gửi cổng thanh toán); `payments.gateway_txn_id` duy nhất (mã giao dịch do cổng trả về); `payments` chỉ thêm (BR-24); giá chốt vào đơn |
 
 Quy ước chung:
 - **Tên:** bảng `snake_case` số nhiều, cột `snake_case` trong DB và `camelCase` trong TypeScript, nối bằng `@@map("tên_bảng")` và `@map("tên_cột")` ghi rõ cho từng model và từng trường trong `schema.prisma` (Prisma không có chiến lược đặt tên tự động; không thêm công cụ). Ràng buộc và chỉ mục luôn đặt tên rõ qua tham số `map:`: `<bảng>_<cột>_unique`, `<bảng>_<cột>_idx`, `<bảng>_<cột>_fk`, khóa chính `<bảng>_pkey`. Giữ tên rõ để đọc log lỗi DB; khi spec 0004 mở lại phần dịch lỗi PostgreSQL thì sẽ tra theo các tên này.
@@ -49,15 +49,15 @@ Quy ước chung:
 - **Giờ:** `timestamptz`; phiên làm việc của DB đặt múi giờ UTC. Khóa theo ngày (thống kê, đếm giới hạn mỗi ngày) là cột `date` (`@db.Date`; Prisma trả đối tượng `Date` ở nửa đêm UTC chứ không phải chuỗi, kiểm chứng ở lát cắt đầu), tính theo múi giờ `Asia/Ho_Chi_Minh` bằng hàm dùng chung `toVnDay(date)`.
 - **Dấu thời gian:** mọi bảng có `created_at`, `updated_at` (`@default(now())` và `@updatedAt`).
 - **Xóa mềm** (BR-15) chỉ cho `users`, `properties`, `listings`: cột `deleted_at`. Prisma không có xóa mềm sẵn: mọi phương thức đọc của Repository cho ba bảng này gắn điều kiện `deletedAt: null` qua một hàm dùng chung `notDeleted`, và xóa là `update` đặt `deletedAt`. Chỉ phương thức có tên tường minh `...IncludingDeleted` mới bỏ điều kiện. Không dùng client extension (ít phép thuật ngầm hơn, đổi lại phải nhớ khi viết phương thức đọc mới).
-- **Khóa ngoại:** mọi khóa ngoại khai báo `ON DELETE` rõ ràng. Mặc định `RESTRICT`; chỉ dùng `CASCADE` cho dữ liệu con thuộc hẳn về cha (`auth_sessions`, `password_resets`, `landlord_profiles`, `property_fees`, `property_amenities`, `listing_images`, `user_roles` phía người dùng). Postgres không tự đánh chỉ mục cho cột khóa ngoại, nên mọi cột khóa ngoại phải có chỉ mục, trừ khi nó đã là cột đầu của khóa chính hoặc chỉ mục duy nhất.
-- **Danh sách có giới hạn là bảng con**, không phải mảng hay JSON. Giới hạn số dòng (tối đa 6 phí, 10 ảnh) kiểm ở Service. Cột mảng `text[]` chỉ dành cho `roles.permissions` (và cột `users.roles` tạm thời cho đến khi làm spec 0003). Cột mảng là `String[]` trong schema (thành `text[]`) và không dựa vào mặc định của DB: giá trị đặt ở Service; cách Prisma tạo cột này (có `NOT NULL` hay không) kiểm chứng ở lát cắt đầu. Cấm kiểu `Json` (jsonb) trừ khi spec tính năng nêu lý do và có kiểu rõ ràng.
+- **Khóa ngoại:** mọi khóa ngoại khai báo `ON DELETE` rõ ràng. Mặc định `RESTRICT`; chỉ dùng `CASCADE` cho dữ liệu con thuộc hẳn về cha (`auth_sessions`, `password_resets`, `landlord_profiles`, `property_fees`, `property_amenities`, `listing_images`). Postgres không tự đánh chỉ mục cho cột khóa ngoại, nên mọi cột khóa ngoại phải có chỉ mục, trừ khi nó đã là cột đầu của khóa chính hoặc chỉ mục duy nhất.
+- **Danh sách có giới hạn là bảng con**, không phải mảng hay JSON. Giới hạn số dòng (tối đa 6 phí, 10 ảnh) kiểm ở Service. Cột mảng `text[]` chỉ dành cho `account_types.permissions` (và cột `users.roles` tạm thời cho đến khi làm spec 0003, sẽ được thay bằng `users.account_type`). Cột mảng là `String[]` trong schema (thành `text[]`) và không dựa vào mặc định của DB: giá trị đặt ở Service. Prisma sinh cột mảng cho phép rỗng, nên migration thêm `NOT NULL` bằng tay (Prisma không coi đó là lệch). Cấm kiểu `Json` (jsonb) trừ khi spec tính năng nêu lý do và có kiểu rõ ràng.
 - **Không sao chép dữ liệu giữa các bảng.** Điều kiện hiển thị 6.1 (tin được duyệt, chủ trọ đang hoạt động, còn hạn...) là phép nối `listings`, `properties`, `users`, được viết đúng một lần trong một phương thức Repository (`visibleListingsQuery`). Ngoại lệ duy nhất là `listings.search_key` (xem dưới). Dữ liệu dẫn xuất khác chỉ được thêm khi đo thấy chậm, và phải ghi đường cập nhật duy nhất của nó trong spec tính năng.
 
 Tìm từ khóa tiếng Việt:
 - `search_key` là chuỗi gộp tiêu đề, địa chỉ và tên phường/xã, chuẩn hóa bằng hàm `toSearchKey(...parts)`: Unicode NFD, bỏ dấu kết hợp, đổi `đ` và `Đ` thành `d`, chữ thường, gộp khoảng trắng. Chữ `đ` không tách dấu được nên không dựa vào phần mở rộng `unaccent`.
 - Cập nhật `search_key` khi tiêu đề đổi (Service tin đăng) và khi địa chỉ nhà trọ đổi (Service nhà trọ chạy một câu `UPDATE listings SET search_key = ... WHERE property_id = ...` trong cùng giao dịch).
 - Từ khóa người dùng cũng qua `toSearchKey`, tách tối đa 6 từ (mỗi từ tối đa 50 ký tự), thoát ký tự `%`, `_`, `\` của `LIKE`, rồi AND các điều kiện `search_key LIKE '%từ%' ESCAPE '\'`. Tham số luôn được gắn (bind), không nối chuỗi.
-- Chỉ mục `GIN` với `gin_trgm_ops` trên `search_key`, nhờ phần mở rộng `pg_trgm` có sẵn trong image chính thức. Cả phần mở rộng và chỉ mục tạo bằng SQL trong file migration (hoặc khai báo trong schema nếu Prisma diễn đạt được `gin_trgm_ops`; kiểm chứng ở lát cắt đầu). Từ ngắn hơn 3 ký tự không dùng được chỉ mục nhưng vẫn đúng, và nhanh ở quy mô vài nghìn tin.
+- Chỉ mục `GIN` với `gin_trgm_ops` trên `search_key`, nhờ phần mở rộng `pg_trgm` có sẵn trong image chính thức. Phần mở rộng tạo bằng SQL trong file migration; chỉ mục khai báo trong `schema.prisma` (`@@index([searchKey(ops: raw("gin_trgm_ops"))], type: Gin, map: "listings_search_key_gin")`), vì nếu chỉ tạo bằng SQL thì `prisma migrate diff` coi nó là lệch và đòi xóa. Từ ngắn hơn 3 ký tự không dùng được chỉ mục nhưng vẫn đúng, và nhanh ở quy mô vài nghìn tin.
 
 Tìm theo khu vực (F08, tùy tiến độ):
 - Tâm tìm kiếm đến từ một trong hai nguồn: `landmark_id` (API lấy tọa độ từ `landmarks`) hoặc cặp `lat` và `lng` gửi trực tiếp (cho nơi mong muốn bất kỳ mà FE chọn trên bản đồ). Backend chỉ cần tọa độ và bán kính (1, 2, 3 hoặc 5 km), không phụ thuộc khái niệm trường học.
@@ -66,15 +66,16 @@ Tìm theo khu vực (F08, tùy tiến độ):
 Giao dịch:
 - `TransactionRunner.run<T>(fn: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T>` bọc `prisma.$transaction(fn, { isolationLevel: 'ReadCommitted' })`. Gặp lỗi `P2034` (xung đột ghi hoặc deadlock) thì thử lại tối đa 3 lần với độ trễ ngắn tăng dần; hết lần thử thì ném `AppException(DB_UNAVAILABLE)`.
 - Repository nhận `tx?: Prisma.TransactionClient` và dùng một hàm nội bộ `client(tx)` (có `tx` thì dùng nó, không thì dùng `PrismaService`). Không dùng cách ngầm truyền giao dịch qua ngữ cảnh bất đồng bộ; luồng đi rõ ràng.
-- Bắt buộc dùng giao dịch cho: xác nhận thanh toán (đơn, thanh toán, gói, lượt đẩy), đổi vai trò kèm hủy phiên, khóa tài khoản kèm hủy phiên, sửa địa chỉ nhà trọ kèm đưa tin về Chờ duyệt và cập nhật `search_key`, và mọi thao tác ghi từ hai bảng trở lên cần nguyên tử.
-- Khóa dòng khi cần chống xử lý trùng: xác nhận thanh toán khóa dòng đơn bằng `FOR UPDATE` (Prisma không có API khóa dòng, nên viết `$queryRaw` có kiểu ngay trong giao dịch); kiểm tra `LAST_ADMIN` khóa các dòng người dùng giữ `role:manage` (spec 0003). Giữ giao dịch ngắn (vài dòng, dưới một giây).
+- Bắt buộc dùng giao dịch cho: ghi nhận kết quả thanh toán (đơn, thanh toán, gói, lượt đẩy), khóa tài khoản kèm hủy phiên, sửa địa chỉ nhà trọ kèm đưa tin về Chờ duyệt và cập nhật `search_key`, và mọi thao tác ghi từ hai bảng trở lên cần nguyên tử.
+- Khóa dòng khi cần chống xử lý trùng: xác nhận thanh toán khóa dòng đơn bằng `FOR UPDATE` (Prisma không có API khóa dòng, nên viết `$queryRaw` có kiểu ngay trong giao dịch). Giữ giao dịch ngắn (vài dòng, dưới một giây).
 - Đếm hạn mức và lượt dùng dùng một câu `UPDATE ... SET n = n + 1 WHERE ... AND n < giới_hạn RETURNING ...`, không đọc rồi ghi. Thống kê ngày dùng `INSERT ... ON CONFLICT (listing_id, day) DO UPDATE SET views = listing_daily_stats.views + 1` qua `$executeRaw` có kiểu (`upsert` của Prisma không đảm bảo một câu SQL nguyên tử cho phép cộng dồn). Khi chỉ cần biết có dòng nào được đổi (như xoay refresh token), dùng `updateMany` rồi đọc `count`.
 
 Migration và seed:
 - Migration là file SQL ở `prisma/migrations`, sinh bằng `prisma migrate dev` (thêm `--create-only` khi cần sửa tay) rồi đọc lại trước khi giữ. Ứng dụng không bao giờ tự đổi schema, ở mọi môi trường. Thay đổi không tương thích ngược làm theo hai bước (thêm cột cho phép rỗng, chuyển dữ liệu, rồi mới thêm ràng buộc).
-- Ràng buộc `CHECK`, chỉ mục duy nhất một phần và mọi chỉ mục mà `schema.prisma` không diễn đạt được (GIN trigram) viết bằng SQL trong file migration. Phải kiểm chứng ở lát cắt đầu rằng `prisma migrate dev` và `prisma migrate diff --exit-code` không đòi xóa chúng (xem 0006 giả định 6); nếu Prisma đòi xóa thì kiểm lệch bằng so `pg_dump --schema-only` thay cho `migrate diff` (như 0006 giả định 6), và nếu `migrate dev` vẫn đòi xóa thì chuyển các ràng buộc đó sang kiểm ở Service rồi mở lại quyết định này bằng `/architect`.
+- Khi dữ liệu cũ có thể vi phạm một ràng buộc mới, migration dừng với thông báo rõ (khối `DO` kèm `RAISE EXCEPTION`) thay vì tự sửa hay bịa dữ liệu. Với bản demo, cách đơn giản nhất là không chuyển dữ liệu cũ mà làm lại DB dev từ đầu (như 0003 nhiệm vụ 2).
+- Ràng buộc `CHECK` và chỉ mục duy nhất một phần viết bằng SQL trong file migration: `schema.prisma` không diễn đạt được chúng, và `prisma migrate diff --exit-code` bỏ qua chúng (không báo lệch, không đòi xóa). Chỉ mục GIN trigram thì khác: phải khai báo trong `schema.prisma`, nếu không Prisma đòi xóa nó. Nếu về sau một công cụ Prisma đòi xóa một đối tượng viết tay, kiểm lệch bằng so `pg_dump --schema-only` thay cho `migrate diff` (như 0006 giả định 6), và nếu `migrate dev` vẫn đòi xóa thì chuyển ràng buộc đó sang kiểm ở Service rồi mở lại quyết định này bằng `/architect`.
 - Migration (`prisma migrate deploy`) chạy khi container khởi động (spec 0006), trước khi API nhận request; migration lỗi thì container thoát với mã khác 0.
-- `seed` chạy lại nhiều lần vẫn đúng (thêm hoặc cập nhật theo khóa tự nhiên): `wards` (168 đơn vị của TP.HCM, từ file JSON trong repo), `amenities`, `settings`, vai trò hệ thống, admin đầu tiên (spec 0003). `landmarks` không seed mặc định.
+- `seed` chạy lại nhiều lần vẫn đúng (thêm hoặc cập nhật theo khóa tự nhiên): `wards` (168 đơn vị của TP.HCM, từ file JSON trong repo), `amenities`, `settings`, admin đầu tiên (spec 0003); ba loại tài khoản kèm quyền mặc định do migration tạo, không do seed. `landmarks` không seed mặc định.
 
 Kết nối: Prisma dùng `@prisma/adapter-pg` (pool của `pg`). `DATABASE_POOL_MAX` mặc định 10 (tiến trình luôn bật nên giữ pool bền), hạn kết nối 5000 ms và hạn rảnh 30000 ms; mặc định của `pg` không có hạn kết nối nên phải đặt, và tên tùy chọn của adapter kiểm chứng ở lát cắt đầu (xem 0006 giả định 14). Biến vẫn là năm biến `DATABASE_*`; hàm dùng chung `buildDatabaseUrl(settings)` dựng URL cho cả `PrismaService` và `prisma.config.ts` (mật khẩu qua `encodeURIComponent`), và `prisma.config.ts` gọi `loadEnvFile()` trước khi đọc biến. `PrismaService` thử kết nối lại khi khởi động (10 lần, cách nhau 3 giây) phòng trường hợp DB chưa sẵn sàng, dù Compose đã đợi DB khỏe.
 
@@ -97,7 +98,7 @@ Sao lưu: dữ liệu nằm trong volume `pgdata`. Sao lưu bằng `docker compo
 - Test đơn vị cho `toSearchKey`, `toVnDay`, `toSafeInteger`; test e2e trên Postgres thật cho các giao dịch bắt buộc, cho thử lại khi deadlock, và cho chỉ mục duy nhất một phần của `reports`.
 - Review chặn `jsonb`, `simple-json`, `simple-array`, cột thiếu `type`, danh sách không giới hạn nằm trong một cột.
 
-**Rollout**: Áp dụng ngay cho bảng mới. Bảng `users` hiện có được viết lại trong spec con 0002 (chưa có dữ liệu thật nên không cần di chuyển).
+**Rollout**: Áp dụng ngay cho bảng mới. Bảng `users` hiện có được viết lại trong spec con 0002 và 0003 (chưa có dữ liệu thật; DB dev được làm lại từ đầu, không chuyển dữ liệu thử cũ).
 
 **Exceptions**: Báo cáo tài chính được dùng SQL thô có kiểu cho truy vấn tổng hợp nhiều bảng (chỉ đọc, qua hàm bọc có kiểu). `listings.search_key` là cột dẫn xuất duy nhất được phép trong MVP.
 
@@ -118,7 +119,7 @@ Domain này có sổ giao dịch, ràng buộc duy nhất và báo cáo thu chi,
 - Truy vấn thô của Prisma (`$queryRaw`) kiểm kiểu lỏng; phải dựa vào luật ESLint và hàm bọc có kiểu để giữ "không any" ở phần đó.
 - Prisma phải ghi `@@map` và `@map` cho từng bảng và cột nên schema dài hơn; không có xóa mềm tự động nên mỗi phương thức đọc phải nhớ `notDeleted`.
 - `search_key` vẫn là một bản sao dẫn xuất cần giữ khớp bằng đúng hai đường cập nhật.
-- Chỉ mục GIN và chỉ mục duy nhất một phần phải viết SQL trong migration, và `prisma migrate` có thể đòi xóa chúng (chưa kiểm chứng, xem 0006 giả định 6).
+- `CHECK` và chỉ mục duy nhất một phần phải viết SQL tay trong migration (Prisma bỏ qua chúng nên không báo lệch); chỉ mục GIN phải khai báo trong `schema.prisma`, quên thì `prisma migrate diff` đòi xóa nó.
 - Dữ liệu nằm trong volume Docker: quên sao lưu hoặc chạy `down -v` là mất.
 
 **Neutral**:
@@ -129,5 +130,5 @@ Domain này có sổ giao dịch, ràng buộc duy nhất và báo cáo thu chi,
 
 - [ ] Chốt nguồn dữ liệu 168 phường/xã (file JSON trong repo) trước khi làm F03.
 - [ ] Mỗi spec tính năng chốt cột chi tiết, chỉ mục cụ thể (kèm `EXPLAIN` cho điều kiện hiển thị 6.1) và mã ngắn của tin.
-- [ ] Kiểm chứng ở lát cắt đầu: `uuidv7()` làm mặc định khóa chính và Prisma đọc lại id sau khi chèn; `prisma migrate dev` và `migrate diff --exit-code` không đòi xóa `CHECK`, chỉ mục một phần và chỉ mục GIN viết bằng SQL; cột `@db.Date` và `String[]` hoạt động như mô tả; chỉ mục trigram được dùng (xem `EXPLAIN`). Danh sách đầy đủ ở bảng giả định của 0006 (các dòng 2, 5, 6, 14 đến 16).
+- [ ] Kiểm chứng ở lát cắt đầu phần còn lại: cột `@db.Date` đọc ra đúng ngày; chỉ mục trigram được dùng khi tìm (xem `EXPLAIN`). Danh sách đầy đủ ở bảng giả định của 0006.
 - [ ] Quyết định F08 làm hay chưa theo tiến độ; khi làm thì viết spec riêng cho tìm theo tâm (`landmark_id` hoặc `lat` và `lng`).
