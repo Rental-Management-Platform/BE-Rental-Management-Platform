@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Rental Management Platform API",
-    "description": "Bộ request để thử API backend. Cập nhật cùng mỗi thay đổi API (xem docs/api/api-for-frontend.md, mục Nhật ký thay đổi).\n\nCách dùng:\n1. Import file này vào Postman.\n2. Mở tab Variables của collection, điền `adminEmail` và `adminPassword` theo ADMIN_SEED_* trong .env (không commit mật khẩu thật).\n3. Chạy API (`npm run start:dev`), rồi chạy lần lượt folder 00, 01, 02, 03, 04, 05.\n4. Các request tự lưu token vào biến `userToken` và `adminToken`.\n\nCookie refresh (`rt`) có Path `/api/v1/auth`, Postman tự giữ và tự gửi cho các request dưới đường dẫn đó.",
+    "description": "Bộ request để thử API backend. Cập nhật cùng mỗi thay đổi API (xem docs/api/api-for-frontend.md, mục Nhật ký thay đổi).\n\nCách dùng:\n1. Import file này vào Postman.\n2. Mở tab Variables của collection, điền `adminEmail` và `adminPassword` theo ADMIN_SEED_* trong .env (không commit mật khẩu thật).\n3. Chạy API (`npm run start:dev`), rồi chạy lần lượt folder 00, 01, 02, 03, 04, 05. Folder 06 (giới hạn tần suất, lỗi 429) chạy riêng, đừng chạy cả bộ nhiều lần liên tiếp: bộ đếm nằm trong bộ nhớ backend, muốn chạy lại ngay thì khởi động lại backend.\n4. Các request tự lưu token vào biến `userToken` và `adminToken`.\n\nCookie refresh (`rt`) có Path `/api/v1/auth`, Postman tự giữ và tự gửi cho các request dưới đường dẫn đó.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -1501,6 +1501,86 @@
               ]
             },
             "description": "Mong đợi 404 NOT_FOUND cùng dạng lỗi chung.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 Giới hạn tần suất (chạy riêng)",
+      "description": "CHẠY RIÊNG, không chạy chung cả bộ nhiều lần liên tiếp. Request này gọi quên mật khẩu dồn để thấy lỗi 429 và header `Retry-After`, nên mỗi lượt chạy tốn 4 lần trong giới hạn 10 lần mỗi giờ theo IP của `forgot-password`. Chạy ba lượt trong một giờ thì các request quên mật khẩu khác của bộ này cũng bị 429. Bộ đếm nằm trong bộ nhớ của backend: muốn chạy lại ngay thì khởi động lại backend. Bảng giới hạn đầy đủ: docs/api/api-for-frontend.md, mục 3.",
+      "item": [
+        {
+          "name": "Thử lỗi: quên mật khẩu quá 3 lần mỗi giờ theo email",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Gọi quên mật khẩu 3 lần bằng một email giả (đúng bằng giới hạn theo email), để request chính là lần thứ 4.",
+                  "const email = 'gioi-han-' + Date.now() + '@example.com';",
+                  "pm.variables.set('rateLimitEmail', email);",
+                  "const options = {",
+                  "    url: pm.variables.replaceIn('{{baseUrl}}/auth/forgot-password'),",
+                  "    method: 'POST',",
+                  "    header: { 'Content-Type': 'application/json' },",
+                  "    body: { mode: 'raw', raw: JSON.stringify({ email: email }) }",
+                  "};",
+                  "pm.sendRequest(options, () => pm.sendRequest(options, () => pm.sendRequest(options, () => {})));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 429 RATE_LIMITED, cùng dạng lỗi chung', () => {",
+                  "    pm.response.to.have.status(429);",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.code).to.eql('RATE_LIMITED');",
+                  "    pm.expect(body.requestId).to.be.a('string');",
+                  "});",
+                  "",
+                  "pm.test('có header Retry-After là số giây từ 1 đến 3600', () => {",
+                  "    const retryAfter = Number(pm.response.headers.get('Retry-After'));",
+                  "    pm.expect(Number.isInteger(retryAfter) && retryAfter >= 1 && retryAfter <= 3600).to.eql(true);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/forgot-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "forgot-password"
+              ]
+            },
+            "description": "Script chạy trước gọi quên mật khẩu 3 lần với một email giả (đều 202), nên lần này là lần thứ 4 của email đó và bị chặn: 429 RATE_LIMITED kèm header `Retry-After` là số giây còn phải đợi (tối đa 3600). Không gửi email thật vì email giả không có tài khoản.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{rateLimitEmail}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
             "auth": {
               "type": "noauth"
             }

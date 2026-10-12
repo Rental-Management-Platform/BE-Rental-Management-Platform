@@ -14,6 +14,7 @@ import { AuthenticatedOnly } from '../common/auth/authenticated-only.decorator';
 import { CurrentUser } from '../common/auth/current-user.decorator';
 import { Public } from '../common/auth/public.decorator';
 import type { RequestUser } from '../common/http/authenticated-request';
+import { RateLimited } from '../common/rate-limit/rate-limited.decorator';
 import { AppConfigService } from '../config/app-config.service';
 import { AuthService } from './auth.service';
 import type { ClientInfo } from './auth.service';
@@ -58,6 +59,7 @@ export class AuthController {
 	) {}
 
 	@Public()
+	@RateLimited('register')
 	@Post('register')
 	async register(
 		@Body() dto: RegisterDto,
@@ -71,6 +73,7 @@ export class AuthController {
 	}
 
 	@Public()
+	@RateLimited('login')
 	@HttpCode(HttpStatus.OK)
 	@Post('login')
 	async login(
@@ -85,6 +88,7 @@ export class AuthController {
 	}
 
 	@Public()
+	@RateLimited('refresh')
 	@UseGuards(OriginGuard)
 	@HttpCode(HttpStatus.OK)
 	@Post('refresh')
@@ -124,6 +128,7 @@ export class AuthController {
 	}
 
 	@Public()
+	@RateLimited('forgotPassword')
 	@HttpCode(HttpStatus.ACCEPTED)
 	@Post('forgot-password')
 	async forgotPassword(
@@ -134,6 +139,7 @@ export class AuthController {
 	}
 
 	@Public()
+	@RateLimited('resetPassword')
 	@HttpCode(HttpStatus.NO_CONTENT)
 	@Post('reset-password')
 	async resetPassword(@Body() dto: ResetPasswordDto): Promise<void> {
@@ -142,6 +148,7 @@ export class AuthController {
 
 	/** Giữ phiên và cookie hiện tại; chỉ các phiên khác bị hủy. */
 	@AuthenticatedOnly()
+	@RateLimited('changePassword')
 	@HttpCode(HttpStatus.NO_CONTENT)
 	@Post('change-password')
 	async changePassword(

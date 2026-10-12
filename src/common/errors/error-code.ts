@@ -13,6 +13,7 @@ export enum ErrorCode {
 	HTTP_ERROR = 'HTTP_ERROR',
 	DB_UNAVAILABLE = 'DB_UNAVAILABLE',
 	INTERNAL_ERROR = 'INTERNAL_ERROR',
+	RATE_LIMITED = 'RATE_LIMITED',
 
 	// Đăng nhập và token (spec 0002)
 	TOKEN_MISSING = 'TOKEN_MISSING',
@@ -88,6 +89,11 @@ export const ERRORS: Record<ErrorCode, ErrorDefinition> = {
 	[ErrorCode.INTERNAL_ERROR]: {
 		status: HttpStatus.INTERNAL_SERVER_ERROR,
 		message: 'Đã xảy ra lỗi hệ thống.',
+	},
+	// Kèm header `Retry-After` (giây) do AppThrottlerGuard đặt (spec 0002 AC-10).
+	[ErrorCode.RATE_LIMITED]: {
+		status: HttpStatus.TOO_MANY_REQUESTS,
+		message: 'Bạn thao tác quá nhanh. Vui lòng thử lại sau ít phút.',
 	},
 	[ErrorCode.TOKEN_MISSING]: {
 		status: HttpStatus.UNAUTHORIZED,

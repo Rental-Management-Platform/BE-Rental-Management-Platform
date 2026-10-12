@@ -110,3 +110,35 @@ _Danh mục quyền chỉ còn 12 module của MVP; migration `20261011090000_mv
 ### Value sourcing
 - [ ] quyền mặc định của landlord và tenant lấy từ hai migration (danh sách chèn ban đầu trừ danh sách gỡ), phải khớp bảng ở spec 0003: test `migration-defaults.spec.ts` canh, so thêm bằng truy vấn `account_types` sau khi áp → AC-9
 - [ ] danh sách module trả về của `GET /permissions` lấy từ `PERMISSION_CATALOG` trong code, không từ DB: đổi quyền một loại bằng API rồi gọi lại, danh mục không đổi → AC-1
+
+---
+
+## Hàng 7: giới hạn tần suất (spec 0002 AC-10) · cập nhật 2026-10-12
+_Sáu API bị giới hạn bằng `@RateLimited`; bảng con số nằm ở `src/common/rate-limit/rate-limits.ts` và ở `api-for-frontend.md` mục 3 (phần "Lỗi 429"). Bộ đếm nằm trong bộ nhớ: muốn thử lại ngay thì khởi động lại backend. Hai giới hạn ngoài danh sách AC-10 (`reset-password`, `change-password`) là lựa chọn của bạn ngày 2026-10-12, chờ `/architect` ghi vào spec._
+
+### UI / manual
+- [ ] `POST /auth/login` sai mật khẩu 11 lần với cùng một email → 10 lần đầu 401 `INVALID_CREDENTIALS`, lần 11 429 `RATE_LIMITED`, body có `requestId` trùng header `X-Request-Id`, header `Retry-After` là số giây từ 1 đến 900 → AC-10
+- [ ] cùng email viết hoa hoặc thừa khoảng trắng vẫn bị chặn; email khác cùng IP vẫn 401 → AC-10
+- [ ] `POST /auth/forgot-password` cùng một email: 3 lần 202, lần 4 429 với `Retry-After` tối đa 3600; email không có tài khoản cũng bị đếm như vậy (không lộ email nào tồn tại) → AC-10
+- [ ] `POST /auth/register` lần 11 trong một giờ cùng IP → 429 `RATE_LIMITED` → AC-10
+- [ ] `POST /auth/refresh` không cookie, lần 61 trong một phút → 429, `Retry-After` tối đa 60 (60 lần đầu là 401 `REFRESH_TOKEN_MISSING`) → AC-10
+- [ ] `POST /auth/reset-password` token sai, lần 21 trong một giờ → 429 (20 lần đầu là 400 `RESET_TOKEN_INVALID`) → ngoài AC-10
+- [ ] `POST /auth/change-password` đang đăng nhập, sai mật khẩu hiện tại 11 lần → lần 11 429; một người dùng khác cùng IP vẫn nhận 400 `CURRENT_PASSWORD_WRONG`; không token vẫn 401 `TOKEN_MISSING` (xác thực chạy trước giới hạn) → ngoài AC-10
+- [ ] khi `login` đang bị chặn: `GET /`, `GET /auth/me`, `POST /auth/logout` vẫn trả mã bình thường; route không gắn giới hạn gọi 120 lần không bao giờ 429 → AC-10
+- [ ] khởi động lại backend → bộ đếm về 0, đăng nhập lại được ngay → AC-10
+- [ ] không có header `X-RateLimit-*` hay `Retry-After-<tên>` trong response 429 → AC-10
+
+### Commands
+- [ ] `npm test` → toàn bộ qua, gồm `rate-limits.spec.ts` (khóa theo email và người dùng, bảng con số) và `app-throttler.guard.spec.ts` (guard chạy trên app thật có bộ lọc lỗi) → AC-10
+- [ ] `npx tsc --noEmit` và `npx eslint "src/**/*.ts"` → sạch
+- [ ] `prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code` → "No difference detected" (hàng này không đổi schema)
+- [ ] `newman run docs/api/postman-collection.json` các folder 00, 01, 03, 04, 05, 06 → không lỗi (folder 06 tốn 4 lần trong 10 lần mỗi giờ của `forgot-password` theo IP; chạy ba lượt trong một giờ thì restart backend)
+
+### Acceptance-criteria coverage
+- spec 0002: AC-10 giới hạn theo IP và email, 429 `RATE_LIMITED` kèm `Retry-After`. Ngoài AC-10: `reset-password` và `change-password`.
+
+### Value sourcing
+- [ ] IP lấy từ `req.ip` của Express (tính cả `TRUST_PROXY_HOPS`): đặt `TRUST_PROXY_HOPS=1` rồi đổi header `X-Forwarded-For` → bộ đếm theo IP đổi theo; để `0` thì header đó bị bỏ qua → AC-10 (chưa kiểm thật)
+- [ ] email lấy từ `body.email`, chuẩn hóa chữ thường và cắt khoảng trắng; thiếu hoặc sai kiểu thì rơi về khóa IP → AC-10
+- [ ] người dùng lấy từ `req.user.userId` do `JwtAuthGuard` gắn (tức `sub` của token): hai tài khoản đăng nhập từ cùng IP đếm riêng ở `change-password`
+- [ ] con số giới hạn và độ dài cửa sổ lấy từ bảng `RATE_LIMITS`; `Retry-After` lấy từ thời gian chặn còn lại của thư viện (bằng độ dài cửa sổ kể từ lần vượt) → AC-10

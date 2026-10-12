@@ -2,7 +2,10 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { AccountTypesModule } from '../account-types/account-types.module';
+import { AppThrottlerGuard } from '../common/rate-limit/app-throttler.guard';
+import { RATE_LIMIT_OPTIONS } from '../common/rate-limit/rate-limit.options';
 import { AppConfigService } from '../config/app-config.service';
 import { MailModule } from '../mail/mail.module';
 import { UsersModule } from '../users/users.module';
@@ -24,6 +27,7 @@ import { TokenService } from './token.service';
 		AccountTypesModule,
 		MailModule,
 		PassportModule,
+		ThrottlerModule.forRoot(RATE_LIMIT_OPTIONS),
 		JwtModule.registerAsync({
 			inject: [AppConfigService],
 			useFactory: (config: AppConfigService) => ({
@@ -47,9 +51,11 @@ import { TokenService } from './token.service';
 		PasswordHasher,
 		JwtStrategy,
 		OriginGuard,
-		// Hai cổng toàn cục, đúng thứ tự: xác thực rồi mới kiểm quyền (spec 0003 AC-4).
+		// Ba cổng toàn cục, đúng thứ tự: xác thực, kiểm quyền (spec 0003 AC-4), rồi giới hạn tần suất
+		// (spec 0002 AC-10). Giới hạn đứng cuối để route cần đăng nhập đã có `req.user` cho khóa theo người dùng.
 		{ provide: APP_GUARD, useClass: JwtAuthGuard },
 		{ provide: APP_GUARD, useClass: PermissionsGuard },
+		{ provide: APP_GUARD, useClass: AppThrottlerGuard },
 	],
 	exports: [AuthSessionsRepository],
 })

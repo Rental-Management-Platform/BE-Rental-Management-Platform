@@ -1,0 +1,98 @@
+import { normalizeIp } from '@nestjs/throttler';
+
+/**
+ * Giới hạn tần suất (spec 0002 AC-10, spec 0006): hằng số trong code theo nhóm endpoint, bộ đếm trong
+ * bộ nhớ (về 0 khi khởi động lại). Con số do bạn chốt ngày 2026-10-12.
+ *
+ * Mỗi nhóm chọn bộ đếm nào dùng. Mỗi bộ đếm là một khóa riêng nên đếm riêng:
+ * - `ip`: theo IP khách (`req.ip`, tính cả `TRUST_PROXY_HOPS`).
+ * - `email`: theo email trong body (đã chuẩn hóa chữ thường, cắt khoảng trắng).
+ * - `user`: theo id người dùng đã đăng nhập (route cần đăng nhập).
+ *
+ * Vượt `limit` lần trong `ttlMs` thì bị chặn đúng `ttlMs` kể từ lần vượt (thư viện throttler đặt thời
+ * gian chặn bằng độ dài cửa sổ); header `Retry-After` cho biết còn bao nhiêu giây.
+ */
+export type RateLimitName = 'ip' | 'email' | 'user';
+
+export type RateLimitGroup =
+	| 'register'
+	| 'login'
+	| 'refresh'
+	| 'forgotPassword'
+	| 'resetPassword'
+	| 'changePassword';
+
+export interface RateLimit {
+	/** Số lần được phép trong một cửa sổ. */
+	readonly limit: number;
+	/** Độ dài cửa sổ, tính bằng mili giây. */
+	readonly ttlMs: number;
+}
+
+const MINUTE = 60 * 1000;
+const HOUR = 60 * MINUTE;
+
+export const RATE_LIMIT_NAMES: readonly RateLimitName[] = [
+	'ip',
+	'email',
+	'user',
+];
+
+export const RATE_LIMITS: Readonly<
+	Record<RateLimitGroup, Readonly<Partial<Record<RateLimitName, RateLimit>>>>
+> = {
+	register: { ip: { limit: 10, ttlMs: HOUR } },
+	login: {
+		ip: { limit: 30, ttlMs: 15 * MINUTE },
+		email: { limit: 10, ttlMs: 15 * MINUTE },
+	},
+	refresh: { ip: { limit: 60, ttlMs: MINUTE } },
+	forgotPassword: {
+		ip: { limit: 10, ttlMs: HOUR },
+		email: { limit: 3, ttlMs: HOUR },
+	},
+	resetPassword: { ip: { limit: 20, ttlMs: HOUR } },
+	// Ngoài AC-10: chặn dò mật khẩu hiện tại bằng access token bị đánh cắp.
+	changePassword: { user: { limit: 10, ttlMs: 15 * MINUTE } },
+};
+
+/** Mặc định của ba bộ đếm; chỉ là lưới an toàn, vì mỗi route gắn `@RateLimited` đặt số riêng. */
+export const RATE_LIMIT_DEFAULT: RateLimit = { limit: 100, ttlMs: MINUTE };
+
+const MAX_EMAIL_LENGTH = 254;
+
+function readString(value: unknown, key: string): string | undefined {
+	if (typeof value !== 'object' || value === null) return undefined;
+	const field: unknown = Reflect.get(value, key);
+	return typeof field === 'string' ? field : undefined;
+}
+
+function ipOf(req: Record<string, unknown>): string {
+	const ip = req['ip'];
+	return typeof ip === 'string' && ip.length > 0
+		? normalizeIp(ip)
+		: 'unknown';
+}
+
+/**
+ * Khóa của bộ đếm `email`: email trong body, chuẩn hóa. Không có email hợp lệ (thiếu, sai kiểu, quá
+ * dài) thì rơi về IP để không ai né giới hạn bằng body lạ. Chạy trước ValidationPipe nên body chưa được
+ * kiểm tra: không bao giờ ném lỗi.
+ */
+export function emailTrackerKey(req: Record<string, unknown>): string {
+	const email = readString(req['body'], 'email')?.trim().toLowerCase();
+	if (
+		email !== undefined &&
+		email.length > 0 &&
+		email.length <= MAX_EMAIL_LENGTH
+	) {
+		return `email:${email}`;
+	}
+	return `ip:${ipOf(req)}`;
+}
+
+/** Khóa của bộ đếm `user`: id người dùng do JwtAuthGuard gắn vào request; không có thì rơi về IP. */
+export function userTrackerKey(req: Record<string, unknown>): string {
+	const userId = readString(req['user'], 'userId');
+	return userId === undefined ? `ip:${ipOf(req)}` : `user:${userId}`;
+}

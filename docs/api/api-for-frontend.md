@@ -49,7 +49,7 @@ Mỗi tài khoản chỉ thuộc **một** loại, chọn lúc đăng ký và **
 | Loại tài khoản và phân quyền, admin chỉnh quyền | Có |
 | Khóa, mở khóa tài khoản, thu hồi phiên (admin) | Có |
 | Quên mật khẩu, đặt lại và đổi mật khẩu | Có (mới, 2026-10-08) |
-| Giới hạn tần suất (lỗi 429) | Chưa có |
+| Giới hạn tần suất (lỗi 429) | Có (mới, 2026-10-12) |
 | Nhà trọ, đăng tin, xem tin | Chưa có |
 | Dùng thử, hạn mức, mua gói | Chưa có |
 | Theo dõi chủ trọ, lượt xem | Chưa có |
@@ -144,7 +144,29 @@ Lưu ý: **một trường có thể xuất hiện nhiều lần** trong `errors
 | `DB_UNAVAILABLE` | 503 | Cơ sở dữ liệu tạm không dùng được | Hiện `message`, cho thử lại sau |
 | `INTERNAL_ERROR` | 500 | Lỗi hệ thống | Hiện `message`, gửi `requestId` cho backend |
 | `HTTP_ERROR` | khác | Lỗi HTTP khác chưa có mã riêng | Hiện `message` |
-| `RATE_LIMITED` | 429 | **Chưa có.** Sẽ báo gọi quá nhiều, kèm header `Retry-After` | Xem mục 10 |
+| `RATE_LIMITED` | 429 | Gọi một API đăng nhập quá nhiều lần trong thời gian ngắn. Kèm header `Retry-After` (số giây phải đợi) | Hiện `message` kèm "thử lại sau N giây", chặn nút gửi đến hết thời gian, **không** tự thử lại. Xem phần "Lỗi 429" ngay dưới |
+
+### Lỗi 429 `RATE_LIMITED`: gọi quá nhanh
+
+Chỉ **sáu API** có giới hạn. Body lỗi cùng dạng như mọi lỗi khác (có `requestId`), kèm header **`Retry-After`**: số giây còn phải đợi (số nguyên, ít nhất 1). Mỗi API đếm riêng, nên bị chặn đăng nhập không làm hỏng việc đọc `GET /auth/me` hay đăng xuất.
+
+| API | Giới hạn theo IP | Giới hạn theo email (hoặc người dùng) | Bị chặn trong |
+|---|---|---|---|
+| `POST /auth/register` | 10 lần mỗi giờ | không | 1 giờ |
+| `POST /auth/login` | 30 lần mỗi 15 phút | 10 lần mỗi 15 phút (theo email trong body) | 15 phút |
+| `POST /auth/refresh` | 60 lần mỗi phút | không | 1 phút |
+| `POST /auth/forgot-password` | 10 lần mỗi giờ | 3 lần mỗi giờ (theo email trong body) | 1 giờ |
+| `POST /auth/reset-password` | 20 lần mỗi giờ | không | 1 giờ |
+| `POST /auth/change-password` | không | 10 lần mỗi 15 phút (theo người dùng đang đăng nhập) | 15 phút |
+
+Cách đếm: vượt số lần trong cột thì **lần vượt đó bị từ chối và bị chặn đúng khoảng thời gian ở cột "Bị chặn trong"** kể từ lần vượt; `Retry-After` cho biết còn bao lâu. Email được so không phân biệt hoa thường và bỏ khoảng trắng đầu cuối (`An@Example.com` và ` an@example.com ` là một). Gửi email sai dạng hoặc không có email thì tính vào bộ đếm email theo IP, nên không né được giới hạn bằng cách bỏ trống.
+
+FE nên:
+- Đọc `Retry-After`, hiện "Thử lại sau N giây" (đổi sang phút nếu lớn) và khóa nút gửi đến hết thời gian.
+- **Không tự động thử lại** khi gặp 429: thử lại chỉ kéo dài thời gian bị chặn.
+- Với `refresh`: chỉ gọi khi gặp 401 `TOKEN_EXPIRED`, và nếu nhiều request cùng hết hạn thì gom về **một** lần refresh rồi thử lại tất cả. Đừng refresh theo bộ đếm giờ hay mỗi lần chuyển trang.
+- Bộ đếm nằm **trong bộ nhớ** của backend: khởi động lại backend là về 0. Khi thử tay mà bị chặn, nhờ restart backend thay vì đợi.
+- Khi chạy thử trên máy cá nhân (không qua proxy), mọi client cùng một IP nên giới hạn theo IP dùng chung cho cả máy.
 
 ---
 
@@ -267,7 +289,7 @@ Thứ tự kiểm trùng: email trước, số điện thoại sau.
 }
 ```
 
-**Lỗi**: 400 `VALIDATION_FAILED` · 409 `EMAIL_TAKEN` · 409 `PHONE_TAKEN` (số đã thuộc một người đăng bài khác, kể cả tài khoản đã xóa).
+**Lỗi**: 400 `VALIDATION_FAILED` · 409 `EMAIL_TAKEN` · 409 `PHONE_TAKEN` (số đã thuộc một người đăng bài khác, kể cả tài khoản đã xóa) · 429 `RATE_LIMITED` (quá 10 lần mỗi giờ theo IP).
 
 ### 6.2 Đăng nhập
 
@@ -280,7 +302,7 @@ Thứ tự kiểm trùng: email trước, số điện thoại sau.
 
 **200 OK**: đặt cookie `rt`, trả `{ "accessToken": "...", "expiresIn": 900 }`. Không trả thông tin người dùng: gọi `GET /auth/me` sau đó.
 
-**Lỗi**: 401 `INVALID_CREDENTIALS` (sai email và sai mật khẩu cho cùng một câu trả lời) · 403 `ACCOUNT_LOCKED` (chỉ lộ khi mật khẩu đúng) · 400 `VALIDATION_FAILED`.
+**Lỗi**: 401 `INVALID_CREDENTIALS` (sai email và sai mật khẩu cho cùng một câu trả lời) · 403 `ACCOUNT_LOCKED` (chỉ lộ khi mật khẩu đúng) · 400 `VALIDATION_FAILED` · 429 `RATE_LIMITED` (quá 10 lần mỗi 15 phút cho một email, hoặc quá 30 lần mỗi 15 phút theo IP; **mỗi lần đăng nhập sai cũng được đếm**).
 
 ### 6.3 Làm mới access token
 
@@ -288,7 +310,7 @@ Thứ tự kiểm trùng: email trước, số điện thoại sau.
 
 **200 OK**: `{ "accessToken": "...", "expiresIn": 900 }` và (thường) cookie `rt` mới. Quyền trong token mới đã được đọc lại từ cơ sở dữ liệu.
 
-**Lỗi**: 401 `REFRESH_TOKEN_MISSING` · 401 `SESSION_REVOKED` · 401 `SESSION_EXPIRED` · 403 `ACCOUNT_LOCKED` (khi bị khóa, mọi phiên của tài khoản bị hủy) · 403 `ORIGIN_NOT_ALLOWED`.
+**Lỗi**: 401 `REFRESH_TOKEN_MISSING` · 401 `SESSION_REVOKED` · 401 `SESSION_EXPIRED` · 403 `ACCOUNT_LOCKED` (khi bị khóa, mọi phiên của tài khoản bị hủy) · 403 `ORIGIN_NOT_ALLOWED` · 429 `RATE_LIMITED` (quá 60 lần mỗi phút theo IP).
 
 Trình duyệt tự gửi header `Origin`; backend từ chối nếu origin của FE không nằm trong danh sách cho phép.
 
@@ -348,7 +370,7 @@ FE hiển thị câu này và **không** nói "email không tồn tại" hay "đ
 
 Về liên kết: dùng **một lần**; hết hạn sau **30 phút**; mỗi lần bấm "quên mật khẩu" lại thì liên kết cũ chết, **chỉ liên kết mới nhất** dùng được. Tài khoản bị khóa vẫn nhận email (đặt lại mật khẩu không mở khóa được tài khoản); tài khoản đã xóa thì không.
 
-Email được gửi ở nền, nên response trả về ngay và không báo lỗi nếu gửi thất bại. **Lỗi**: 400 `VALIDATION_FAILED` (email sai dạng).
+Email được gửi ở nền, nên response trả về ngay và không báo lỗi nếu gửi thất bại. **Lỗi**: 400 `VALIDATION_FAILED` (email sai dạng) · 429 `RATE_LIMITED` (quá 3 lần mỗi giờ cho một email, hoặc quá 10 lần mỗi giờ theo IP). Khi gặp 429, **vẫn không** nói email có tồn tại hay không; chỉ báo "bạn thao tác quá nhanh, thử lại sau N giây".
 
 ### 6.8 Đặt lại mật khẩu
 
@@ -361,7 +383,7 @@ Email được gửi ở nền, nên response trả về ngay và không báo l�
 
 **204 No Content.** Mật khẩu mới có hiệu lực ngay và **mọi phiên đăng nhập của tài khoản bị hủy** (mọi thiết bị). FE chuyển người dùng về trang đăng nhập; không có phiên nào để giữ.
 
-**Lỗi**: 400 `RESET_TOKEN_INVALID` (liên kết sai, hết hạn, đã dùng, hoặc đã có liên kết mới hơn) · 400 `VALIDATION_FAILED`. Khi gặp `VALIDATION_FAILED` (ví dụ mật khẩu quá ngắn) liên kết **chưa bị dùng**, người dùng nhập lại được.
+**Lỗi**: 400 `RESET_TOKEN_INVALID` (liên kết sai, hết hạn, đã dùng, hoặc đã có liên kết mới hơn) · 400 `VALIDATION_FAILED`. Khi gặp `VALIDATION_FAILED` (ví dụ mật khẩu quá ngắn) liên kết **chưa bị dùng**, người dùng nhập lại được. Thêm: 429 `RATE_LIMITED` (quá 20 lần mỗi giờ theo IP).
 
 ### 6.9 Đổi mật khẩu
 
@@ -374,7 +396,7 @@ Email được gửi ở nền, nên response trả về ngay và không báo l�
 
 **204 No Content.** Các phiên **khác** (thiết bị khác) bị hủy; phiên đang dùng **giữ nguyên**: access token và cookie hiện tại dùng tiếp bình thường, người dùng không bị đá ra.
 
-**Lỗi**: 400 `CURRENT_PASSWORD_WRONG` · 400 `VALIDATION_FAILED` · 401 `TOKEN_*` · 403 `ACCOUNT_LOCKED`.
+**Lỗi**: 400 `CURRENT_PASSWORD_WRONG` · 400 `VALIDATION_FAILED` · 401 `TOKEN_*` · 403 `ACCOUNT_LOCKED` · 429 `RATE_LIMITED` (quá 10 lần mỗi 15 phút cho một người dùng, **kể cả các lần gõ sai mật khẩu hiện tại**; chặn người đánh cắp token dò mật khẩu).
 
 ### 6.10 Khóa tài khoản (admin)
 
@@ -493,7 +515,8 @@ Hai ô: mật khẩu hiện tại, mật khẩu mới. Gọi `POST /auth/change-
 - **Quyền trong access token có thể cũ tối đa 15 phút.** Khi admin đổi quyền một loại hoặc khóa một tài khoản, với API thường người đó dùng được quyền cũ đến khi token hết hạn. Các thao tác nhạy cảm (sửa quyền loại, khóa, mở khóa, thu hồi phiên) luôn kiểm lại cơ sở dữ liệu nên có hiệu lực ngay. `GET /auth/me` cũng luôn mới.
 - **Cookie phụ thuộc host.** FE và API phải cùng dùng `localhost` (khác cổng thì được). Dùng `127.0.0.1` cho một bên thì refresh lỗi âm thầm.
 - **Email quên mật khẩu** gửi qua Gmail SMTP của backend; backend chạy thiếu cấu hình mail sẽ không khởi động. Gửi email lỗi không báo cho người gọi API.
-- **Chưa có giới hạn tần suất** nên ai cũng gọi dồn được các API đăng nhập, quên mật khẩu. Sẽ có (mục 10).
+- **Giới hạn tần suất nằm trong bộ nhớ** của backend: khởi động lại là về 0, và nếu sau này chạy nhiều bản backend thì mỗi bản đếm riêng. Chạy localhost không qua proxy thì mọi client cùng một IP.
+- Người xấu có thể cố ý gọi đăng nhập dồn bằng email của người khác để **khóa đăng nhập email đó trong 15 phút** (đánh đổi của việc giới hạn theo email). Tương tự, người ta có thể gọi dồn quên mật khẩu bằng email đó để chặn việc xin liên kết mới trong 1 giờ. Liên kết đặt lại đã gửi trước đó vẫn dùng được.
 - **Chưa có API danh sách người dùng** nên màn hình admin chưa tìm được người để khóa ngoài việc biết sẵn id.
 
 ---
@@ -504,7 +527,6 @@ Backend sẽ làm theo thứ tự dưới đây. Mỗi mục khi xong sẽ vào 
 
 | Thứ tự | Tính năng | Ảnh hưởng tới FE |
 |---|---|---|
-| 7 | **Giới hạn tần suất** cho đăng nhập, đăng ký, quên mật khẩu, refresh | Sẽ có lỗi 429 `RATE_LIMITED` kèm header `Retry-After` (giây). FE nên chuẩn bị hiện "thử lại sau N giây" |
 | 8 | **Nhà trọ, đăng tin, xem tin**: chủ trọ tạo nhà trọ và tin phòng, **tin hiện ngay khi đăng, không có bước duyệt**. Chủ trọ tự ẩn và hiện lại tin của mình; admin ẩn hoặc gỡ ẩn tin của người khác kèm lý do. Người tìm trọ xem danh sách tin có lọc đơn giản (từ khóa, phường, khoảng giá, sắp xếp) và chi tiết tin (mỗi lần mở tính một lượt xem). Ảnh tải lên, tối đa 5 ảnh mỗi tin | Trang quản lý nhà trọ và tin của chủ trọ (có nút ẩn, hiện), trang danh sách có bộ lọc, trang chi tiết tin, nút ẩn tin cho admin. **Không cần hàng chờ duyệt** |
 | 9 | **Dùng thử miễn phí và hạn mức tin** cho chủ trọ: dùng thử 30 ngày, tối đa 2 tin đang hiện (admin đổi được hai con số này). Hết kỳ dùng thử mà chưa mua gói thì tin của chủ trọ tự biến khỏi danh sách công khai | Lỗi chặn đăng hoặc hiện thêm tin kèm gợi ý mua gói; hiện ngày hết hạn dùng thử và số tin còn lại |
 | 10 | **Mua gói và gia hạn theo tháng**, **thanh toán thử** (bấm xác nhận là có gói, không có tiền thật, không chuyển sang cổng thanh toán nào, nên **không có trang VNPay**) | Trang chọn gói, nút thanh toán thử, lịch sử đơn |
@@ -521,6 +543,13 @@ Backend sẽ làm theo thứ tự dưới đây. Mỗi mục khi xong sẽ vào 
 ## 11. Nhật ký thay đổi
 
 Mới nhất ở trên cùng. Mục nào **phá vỡ** cách FE đang gọi sẽ ghi rõ "ĐỔI KHÁC VỚI TRƯỚC".
+
+### 2026-10-12 · Giới hạn tần suất, lỗi 429 (ĐỔI KHÁC VỚI TRƯỚC)
+
+- **Không thêm endpoint**, nhưng **sáu API có thể trả lỗi mới 429 `RATE_LIMITED`** kèm header `Retry-After` (giây): `POST /auth/register`, `/auth/login`, `/auth/refresh`, `/auth/forgot-password`, `/auth/reset-password`, `/auth/change-password`. Bảng giới hạn và cách xử lý nằm ở mục 3, phần "Lỗi 429".
+- Thêm mã lỗi `RATE_LIMITED` (429). Mỗi lần đăng nhập sai cũng được đếm; email so không phân biệt hoa thường.
+- **ĐỔI KHÁC VỚI TRƯỚC**: `POST /auth/change-password` giờ bị giới hạn 10 lần mỗi 15 phút cho một người dùng (kể cả lần sai mật khẩu hiện tại). Giới hạn này nằm ngoài thiết kế ban đầu, thêm để chặn dò mật khẩu bằng token bị đánh cắp.
+- **FE cần làm**: xử lý 429 ở các biểu mẫu đăng ký, đăng nhập, quên mật khẩu, đặt lại và đổi mật khẩu (hiện "thử lại sau N giây", khóa nút); không tự thử lại; chỉ gọi `refresh` khi gặp `TOKEN_EXPIRED` và gom nhiều request thành một lần refresh.
 
 ### 2026-10-12 · Dọn danh mục quyền theo MVP (ĐỔI KHÁC VỚI TRƯỚC)
 

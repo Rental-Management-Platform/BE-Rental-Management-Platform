@@ -23,7 +23,7 @@ _Đây là các khuyến nghị để việc làm gọn gàng, không phải yê
 | 4 | Nền token đăng nhập | Release 4 | done |
 | 5 | Phân quyền theo loại tài khoản | Release 5 | done |
 | 6 | Quên mật khẩu và đổi mật khẩu | Release 6 | done |
-| 7 | Giới hạn tần suất | Release 7 | planned |
+| 7 | Giới hạn tần suất | Release 7 | done |
 | 8 | Nhà trọ, đăng tin và xem tin | Release 8 | planned |
 | 9 | Dùng thử miễn phí và hạn mức tin | Release 9 | planned |
 | 10 | Mua gói (thanh toán thử) và gia hạn theo tháng | Release 10 | planned |
@@ -109,12 +109,13 @@ Spec [0002](../specs/0001-backend-foundation/0002-authentication-tokens.md) (AC-
 
 ## Release 7: giới hạn tần suất
 
-### 7. Giới hạn tần suất · planned
+### 7. Giới hạn tần suất · done
 Đăng nhập, đăng ký, quên mật khẩu và refresh bị giới hạn theo IP và theo email; vượt thì báo lỗi 429 cùng dạng với các lỗi khác.
 **Done when:** vượt giới hạn trả 429 `RATE_LIMITED` kèm header `Retry-After`; dưới giới hạn mọi endpoint chạy như cũ.
 - [x] Design it (spec): `/architect authentication tokens`
-- [ ] Build it: `/develop rate limiting`
-Spec [0002](../specs/0001-backend-foundation/0002-authentication-tokens.md) (AC-10)
+- [x] Build it: `/develop rate limiting`
+Đã chạy thật trên DB thử: 24 kiểm tra giới hạn qua, Newman 31 request không lỗi, 173 test qua. Con số giới hạn do bạn chốt ngày 2026-10-12. Hai điểm ngoài danh sách AC-10 cần `/architect` ghi vào spec 0002 cho đủ: giới hạn cho `reset-password` (20 lần mỗi giờ theo IP) và cho `change-password` (10 lần mỗi 15 phút theo người dùng).
+Spec [0002](../specs/0001-backend-foundation/0002-authentication-tokens.md) (AC-10) · code in `src/common/rate-limit/`, `src/auth/auth.module.ts`, `src/auth/auth.controller.ts` · tài liệu in `docs/api/`
 
 ## Release 8: nhà trọ và đăng tin
 
