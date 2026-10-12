@@ -13,20 +13,21 @@ Spec con này chốt cách phân quyền theo loại tài khoản. Mỗi tài kh
 - Là admin, tôi muốn chỉnh những việc mỗi loại tài khoản được làm (chọn module và hành động), để đổi chính sách mà không sửa code.
 - Là chủ trọ, tôi muốn chỉ sửa được dữ liệu của chính mình, để không ai sửa nhầm hay phá dữ liệu của tôi.
 - Là admin, tôi muốn khóa tài khoản vi phạm và buộc họ đăng nhập lại, để chặn thiệt hại nhanh.
-- Là admin (người kinh doanh nền tảng), tôi muốn chỉ mình tôi xem doanh thu, chi phí và báo cáo tài chính.
+- Là admin, tôi muốn ẩn tin vi phạm của người khác sau khi đã đăng (không có bước duyệt trước), để gỡ nội dung xấu nhanh mà chủ trọ vẫn đăng được ngay.
+- Là admin (người kinh doanh nền tảng), tôi muốn chỉ mình tôi quản lý bảng giá gói, tham số dùng thử và danh mục phường, tiện ích.
 
 **Acceptance criteria**:
 - **AC-1**: Danh mục quyền được khai báo trong code, có kiểu, dạng `module:action`. `module:manage` bao hàm mọi hành động của module đó. Mỗi module ghi rõ những hành động chỉ `admin` được giữ (`adminActions`). Lưu một loại chứa khóa không có trong danh mục bị 400 `PERMISSION_UNKNOWN`.
 - **AC-2**: Có đúng ba loại tài khoản `admin`, `landlord`, `tenant` ở bảng `account_types`, do migration tạo sẵn kèm quyền mặc định; không thêm, xóa hay đổi `key` được. Quyền của `admin` luôn là `manage` mọi module, tính trong code và không sửa được; sửa quyền của `admin` bị 409 `SYSTEM_TYPE_PROTECTED`.
 - **AC-3**: Mỗi tài khoản thuộc đúng một loại (`users.account_type`), chọn lúc đăng ký công khai và chỉ trong `tenant` hoặc `landlord` (spec 0002), không có endpoint đổi loại. Quyền hiệu lực của tài khoản chính là quyền của loại đó.
 - **AC-4**: Có guard toàn cục: route không gắn `@Public()` đòi access token hợp lệ; route gắn `@RequirePermissions(...)` đòi đủ mọi quyền liệt kê (hoặc `module:manage` tương ứng), thiếu thì 403 `PERMISSION_DENIED`. Mọi route phải khai báo đúng một trong `@Public()`, `@RequirePermissions(...)`, `@AuthenticatedOnly()`; một test e2e duyệt toàn bộ route và thất bại nếu có route chưa khai báo.
-- **AC-5**: Với module có chủ sở hữu (`ownerScoped`), các quyền `read`, `update`, `delete` chỉ áp dụng cho tài nguyên có chủ sở hữu bằng `sub` trong token; tài nguyên của người khác bị 403 `NOT_RESOURCE_OWNER`. Hành động tác động lên dữ liệu người khác (duyệt, ẩn, khóa, hoàn tiền, tặng gói) là quyền riêng, không phải `update` hay `delete`. Quy tắc này áp cho mọi loại tài khoản, kể cả `admin`: admin tác động lên dữ liệu của người khác chỉ qua các quyền riêng đó.
-- **AC-6**: Admin xem và chỉnh quyền của `landlord` và `tenant` bằng API loại tài khoản (`account_type:read`, `account_type:update`). Danh sách quyền gửi lên thay toàn bộ danh sách hiện có của loại và được bỏ trùng. Mọi khóa `module:manage` bị từ chối với loại khác `admin` (400 `PERMISSION_ADMIN_ONLY`), vì `manage` bao hàm cả hành động chỉ admin giữ; admin phải chọn từng hành động cụ thể. Cấp cho loại khác `admin` một hành động chỉ admin được giữ, hoặc một module chỉ admin dùng (ví dụ `finance`, `account_type`), cũng bị 400 `PERMISSION_ADMIN_ONLY`. Loại không tồn tại bị 404 `ACCOUNT_TYPE_NOT_FOUND`.
+- **AC-5**: Với module có chủ sở hữu (`ownerScoped`), các quyền `read`, `update`, `delete` chỉ áp dụng cho tài nguyên có chủ sở hữu bằng `sub` trong token; tài nguyên của người khác bị 403 `NOT_RESOURCE_OWNER`. Hành động tác động lên dữ liệu người khác (ẩn hoặc gỡ ẩn tin, khóa tài khoản) là quyền riêng, không phải `update` hay `delete`. Quy tắc này áp cho mọi loại tài khoản, kể cả `admin`: admin tác động lên dữ liệu của người khác chỉ qua các quyền riêng đó.
+- **AC-6**: Admin xem và chỉnh quyền của `landlord` và `tenant` bằng API loại tài khoản (`account_type:read`, `account_type:update`). Danh sách quyền gửi lên thay toàn bộ danh sách hiện có của loại và được bỏ trùng. Mọi khóa `module:manage` bị từ chối với loại khác `admin` (400 `PERMISSION_ADMIN_ONLY`), vì `manage` bao hàm cả hành động chỉ admin giữ; admin phải chọn từng hành động cụ thể. Cấp cho loại khác `admin` một hành động chỉ admin được giữ, hoặc một module chỉ admin dùng (ví dụ `plan`, `account_type`), cũng bị 400 `PERMISSION_ADMIN_ONLY`. Loại không tồn tại bị 404 `ACCOUNT_TYPE_NOT_FOUND`.
 - **AC-7**: Khóa và mở khóa tài khoản bắt buộc có lý do, ghi `locked_reason`, hủy mọi phiên khi khóa, và ghi một dòng lịch sử kiểm duyệt (BR-13). Khóa tài khoản đang khóa bị 409 `ACCOUNT_ALREADY_LOCKED`; mở tài khoản không bị khóa bị 409 `ACCOUNT_NOT_LOCKED`; hai trường hợp này không đổi gì và không ghi lịch sử. Mở khóa đặt `locked_reason` về rỗng; lý do khóa và lý do mở chỉ còn lưu ở `moderation_logs`. Admin không khóa được chính mình (409 `CANNOT_LOCK_SELF`). Có `POST /users/:id/revoke-sessions` để buộc đăng nhập lại.
-- **AC-8**: Endpoint gắn `@FreshAuth()` đọc lại trạng thái và quyền của người gọi từ DB trước khi kiểm tra; tài khoản vừa bị khóa hay vừa mất quyền bị từ chối ngay dù access token còn hạn; tài khoản đã xóa mềm hoặc không còn bị từ chối 401 `TOKEN_INVALID`. Danh sách bắt buộc gắn `@FreshAuth()`: mọi thao tác ghi của `/account-types` và `/users/:id/*`, và (khi có) hoàn tiền, tặng gói.
+- **AC-8**: Endpoint gắn `@FreshAuth()` đọc lại trạng thái và quyền của người gọi từ DB trước khi kiểm tra; tài khoản vừa bị khóa hay vừa mất quyền bị từ chối ngay dù access token còn hạn; tài khoản đã xóa mềm hoặc không còn bị từ chối 401 `TOKEN_INVALID`. Danh sách bắt buộc gắn `@FreshAuth()`: mọi thao tác ghi của `/account-types` và `/users/:id/*`, và (khi có) ẩn hoặc gỡ ẩn tin của người khác.
 - **AC-9**: Migration tạo ba loại kèm quyền mặc định (danh sách khóa ghi thẳng theo bảng danh mục bên dưới); migration của mỗi tính năng sau thêm khóa quyền mặc định của nó vào `landlord` và `tenant` một lần. Seed (chạy mỗi lần container khởi động, và bằng `npm run seed` ở máy dev) chỉ làm hai việc: kiểm ba loại đã có (thiếu thì dừng với thông báo rõ) và tạo tài khoản admin đầu tiên từ biến môi trường khi chưa có tài khoản nào thuộc loại `admin` (tính cả tài khoản `admin` bị khóa và đã xóa mềm). `ADMIN_SEED_EMAIL` được chuẩn hóa như lúc đăng ký (chữ thường, cắt khoảng trắng) và tra bằng truy vấn tính cả tài khoản đã xóa mềm. Nếu email đó đã thuộc một tài khoản không phải `admin`, seed dừng với thông báo rõ (loại không đổi được nên không nâng cấp tài khoản đó). Chạy seed lại nhiều lần vẫn đúng và không bao giờ ghi đè quyền admin đã chỉnh.
 - **AC-10**: Thay đổi quyền của một loại hiện ra ở access token của mọi tài khoản thuộc loại đó tại lần refresh kế tiếp (tối đa `ACCESS_TTL_SECONDS` sau), không cần họ đăng nhập lại.
-- **AC-11**: Các module `finance`, `expense` và `dashboard` (doanh thu, chi phí, báo cáo tài chính) chỉ `admin` đọc được; gọi bằng tài khoản loại khác bị 403 `PERMISSION_DENIED`, và không cấp được qua API (AC-6).
+- **AC-11**: Các module chỉ dành cho `admin` (`user`, `account_type`, `catalog`, `setting`, `plan`) không dùng được bằng tài khoản loại khác: gọi bị 403 `PERMISSION_DENIED`, và không cấp được qua API (AC-6). Báo cáo doanh thu và chi phí (module `finance`, `expense`, `dashboard`) đã hoãn khỏi MVP, khi làm lại thì cũng là module chỉ admin.
 
 ## Decision
 
@@ -48,7 +49,7 @@ Phân quyền theo loại tài khoản: danh mục quyền viết tay trong code
 
 Migration (nhiệm vụ 2) không chuyển dữ liệu cũ: DB dev được làm lại từ đầu bằng `prisma migrate reset` (bạn chạy, không phải agent). Trong một migration, theo thứ tự: một khối `DO` dừng với thông báo rõ nếu bảng `users` còn dòng (thay vì đoán dữ liệu); tạo bảng `account_types` và chèn ba dòng kèm quyền mặc định; bỏ cột `users.roles`; thêm `users.account_type` bắt buộc với khóa ngoại và chỉ mục; thêm `users.phone` cùng `CHECK` `users_landlord_phone_check` và chỉ mục duy nhất một phần `users_landlord_phone_unique` (spec 0002 AC-13, spec 0005).
 
-Danh mục quyền khởi đầu (mỗi spec tính năng sau thêm khóa của mình; `admin` luôn có `module:manage` mọi module; hai cột cuối là quyền mặc định lúc migration tạo loại, chỉnh được bằng API):
+Danh mục quyền của MVP (mỗi spec tính năng sau thêm khóa của mình nếu cần; `admin` luôn có `module:manage` mọi module; hai cột cuối là quyền mặc định, chỉnh được bằng API):
 
 | Module | Hành động | `ownerScoped` | Chỉ admin giữ | `tenant` | `landlord` |
 |---|---|---|---|---|---|
@@ -61,19 +62,14 @@ Danh mục quyền khởi đầu (mỗi spec tính năng sau thêm khóa của m
 | `listing` | read, create, update, delete, moderate | có (trừ `moderate`) | `moderate` | không | read, create, update, delete |
 | `favorite` | read, create, delete | có | không | cả ba | không |
 | `follow` | create, delete | có | không | cả hai | không |
-| `contact` | reveal | không | không | có | không |
-| `report` | create, read, resolve | có (`create`) | `resolve` | create | không |
-| `verification` | create, review | có (`create`) | `review` | không | create |
-| `boost` | create | có | không | không | create |
-| `product` | read, create, update, delete | không | cả module | không | không |
-| `order` | create, read, cancel, refund, gift | có (trừ `refund`, `gift`) | `refund`, `gift` | không | create, read, cancel |
+| `plan` | read, create, update, delete (bảng giá gói; xem bảng giá công khai không cần quyền) | không | cả module | không | không |
+| `order` | create, read, cancel | có | không | không | cả ba |
 | `subscription` | read | có | không | không | read |
-| `inspection` | create, perform | có (`create`) | `perform` | không | create |
-| `ad`, `expense` | read, create, update, delete | không | cả module | không | không |
-| `finance`, `dashboard` | read | không | cả module | không | không |
-| `stats` | read | có | không | không | read |
 
-Xác nhận thanh toán không còn là một quyền của admin: kết quả thanh toán do hệ thống ghi nhận từ cổng thanh toán (xem spec thanh toán).
+Ghi chú về phạm vi MVP (cập nhật 2026-10-11, xem mục "Phạm vi MVP" của `index.md`):
+- `listing:moderate` nghĩa là ẩn và gỡ ẩn tin của người khác sau khi đã đăng, kèm lý do. Không có duyệt trước, không có hàng chờ.
+- Thanh toán thử: chủ trọ tự xác nhận đơn của chính mình bằng quyền `order:create`. Không có quyền xác nhận thanh toán, hoàn tiền hay tặng gói của admin.
+- Các module `contact`, `report`, `verification`, `boost`, `product`, `inspection`, `ad`, `expense`, `finance`, `dashboard`, `stats` và các hành động `order:refund`, `order:gift` đã hoãn khỏi MVP nên không còn trong danh mục. Code và migration hiện tại vẫn chứa chúng cho đến khi dọn (xem Follow-up).
 
 Kiểu danh mục (minh họa):
 
@@ -140,7 +136,7 @@ Khi cấp token, danh sách quyền của loại được gộp: nếu loại c�
 - Ai đọc, ghi gì: bảng danh mục ở trên là mặc định lúc migration tạo loại; admin chỉnh được quyền của `landlord` và `tenant` bằng API loại tài khoản, trừ các quyền chỉ admin giữ.
 - Mặc định an toàn: một route quên khai báo bị test e2e bắt (AC-4). Route chỉ khai báo `@AuthenticatedOnly()` dành cho thao tác của chính người dùng (ví dụ `/auth/me`).
 - Khóa tài khoản có hiệu lực ngay với endpoint nhạy cảm (`@FreshAuth()`) và tối đa 15 phút với endpoint thường; các phiên bị hủy nên không refresh được. Tin của chủ trọ bị khóa biến mất khỏi kết quả ngay vì điều kiện hiển thị nối với `users.status` mỗi lần truy vấn, không dựa vào cờ sao chép (xem 0005).
-- Doanh thu, chi phí, báo cáo tài chính nằm ở các module chỉ admin (AC-11).
+- Bảng giá gói, tham số dùng thử, danh mục phường và tiện ích nằm ở các module chỉ admin (AC-11).
 - Không thuộc chuẩn tuân thủ đặc biệt.
 
 **Configuration required**:
@@ -149,14 +145,14 @@ Khi cấp token, danh sách quyền của loại được gộp: nếu loại c�
 **Critical test scenarios**:
 - Happy path: admin bỏ `favorite:create` khỏi loại `tenant`, một tài khoản `tenant` refresh rồi lưu phòng yêu thích thì bị 403, verifies **AC-6**, **AC-10**
 - Failure case: gửi khóa quyền không tồn tại khi sửa loại bị 400 `PERMISSION_UNKNOWN`, verifies **AC-1**, **AC-6**
-- Failure case: sửa quyền của `admin` bị 409 `SYSTEM_TYPE_PROTECTED`; cấp `listing:moderate` hoặc `finance:read` cho `landlord` bị 400 `PERMISSION_ADMIN_ONLY`, verifies **AC-2**, **AC-6**, **AC-11**
+- Failure case: sửa quyền của `admin` bị 409 `SYSTEM_TYPE_PROTECTED`; cấp `listing:moderate` hoặc `plan:create` cho `landlord` bị 400 `PERMISSION_ADMIN_ONLY`, verifies **AC-2**, **AC-6**, **AC-11**
 - Failure case: admin tự khóa mình bị 409 `CANNOT_LOCK_SELF`, verifies **AC-7**
 - Failure case: khóa tài khoản đang khóa bị 409 `ACCOUNT_ALREADY_LOCKED`; mở tài khoản đang mở bị 409 `ACCOUNT_NOT_LOCKED`, không ghi thêm lịch sử, verifies **AC-7**
-- Failure case: gửi `listing:manage` hoặc `order:manage` cho `landlord` khi sửa quyền loại bị 400 `PERMISSION_ADMIN_ONLY`, verifies **AC-6**
-- Auth/permission: admin sửa tin của chủ trọ bằng quyền `listing:update` bị 403 `NOT_RESOURCE_OWNER`; chỉ ẩn được bằng `listing:moderate`, verifies **AC-5**
+- Failure case: gửi `listing:manage` hoặc `property:manage` cho `landlord` khi sửa quyền loại bị 400 `PERMISSION_ADMIN_ONLY`, verifies **AC-6**
+- Auth/permission: admin sửa tin của chủ trọ bằng quyền `listing:update` bị 403 `NOT_RESOURCE_OWNER`; chỉ ẩn hoặc gỡ ẩn được bằng `listing:moderate`, verifies **AC-5**
 - Failure case: chạy `seed` khi `ADMIN_SEED_EMAIL` đã là tài khoản `tenant` (kể cả đã xóa mềm, kể cả viết hoa hay thừa khoảng trắng) dừng với thông báo rõ và không đổi loại tài khoản đó, verifies **AC-9**
 - Auth/permission: chủ trọ A sửa tin của chủ trọ B bị 403 `NOT_RESOURCE_OWNER` dù có `listing:update`, verifies **AC-5**
-- Auth/permission: `landlord` và `tenant` gọi báo cáo tài chính bị 403 `PERMISSION_DENIED`, verifies **AC-11**
+- Auth/permission: `landlord` và `tenant` gọi API quản lý gói (ví dụ tạo gói) hoặc sửa tham số dùng thử bị 403 `PERMISSION_DENIED`, verifies **AC-11**
 - Auth/permission: tài khoản vừa bị khóa với access token còn hạn bị từ chối ở endpoint `@FreshAuth()` ngay lập tức, verifies **AC-8**
 - Auth/permission: đăng ký công khai với loại `admin` hoặc kèm `roles` bị từ chối, verifies **AC-3**
 - Happy path: chạy `seed` hai lần không tạo thêm admin và không ghi đè quyền đã chỉnh của `landlord` hay `tenant`; chạy trên DB mới chỉ có migration thì ba loại đã có và đăng ký không lỗi khóa ngoại, verifies **AC-9**
@@ -185,7 +181,7 @@ Mô hình kinh doanh gắn dùng thử, hạn mức và gói vào người đăn
 - Admin chỉnh quyền của từng loại bằng API, không sửa code kiểm quyền.
 - Mỗi tài khoản một loại nên các quy tắc dùng thử, hạn mức và gói gắn thẳng vào người đăng bài, ít trường hợp biên.
 - Chặn cấp nhầm quyền admin cho loại khác bằng một quy tắc ngắn; chặn tự khóa mình và route quên khai báo.
-- Token mang sẵn quyền nên kiểm quyền không tốn truy vấn DB; doanh thu và báo cáo tài chính chỉ admin thấy.
+- Token mang sẵn quyền nên kiểm quyền không tốn truy vấn DB; bảng giá gói và tham số dùng thử chỉ admin sửa được.
 
 **Negative / tradeoffs**:
 - Đổi quyền hoặc khóa chỉ có hiệu lực tối đa 15 phút với endpoint thường.
@@ -199,6 +195,7 @@ Mô hình kinh doanh gắn dùng thử, hạn mức và gói vào người đăn
 
 ## Follow-up
 
+- [ ] Dọn danh mục trong code cho khớp bảng trên: bỏ các module đã hoãn khỏi `PERMISSION_CATALOG`, đổi `product` thành `plan`, bỏ `order:refund` và `order:gift`, thêm migration gỡ các khóa thừa khỏi `account_types.permissions` của `landlord` và `tenant` (khóa lạ chỉ bị bỏ qua và ghi log, nên không gấp), sửa test danh mục và `verify.md`. Việc của `/develop`, làm trước khi làm tính năng nhà trọ để `GET /permissions` không hiện quyền ma.
 - [ ] Mỗi spec tính năng sau liệt kê khóa quyền của mình, các hành động chỉ admin, và bảng gán mặc định cho `landlord` và `tenant` (migration của tính năng thêm khóa mặc định một lần, không dùng seed chạy mỗi lần khởi động để khỏi ghi đè chỉnh sửa của admin).
 - [ ] Chưa có cách một người dùng đổi loại (ví dụ người tìm trọ muốn thành người đăng bài); hiện phải tạo tài khoản khác. Quyết định lại nếu cần, và khi đó phải cân nhắc lại quy tắc một lần dùng thử cho mỗi SĐT.
 - [ ] Cân nhắc loại môi giới, hoặc phạm vi `own` hay `any` chọn được, nếu về sau cần.

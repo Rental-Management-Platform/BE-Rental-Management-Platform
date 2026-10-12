@@ -1,8 +1,8 @@
 # Scope: Rental Management Platform (backend)
 
-API backend NestJS và PostgreSQL cho nền tảng quản lý cho thuê. Đã làm xong xử lý lỗi tập trung, báo lỗi nhập liệu và nền token đăng nhập. Phân quyền, quên và đổi mật khẩu, giới hạn tần suất, cùng mô hình miễn phí có thời hạn cho người đăng bài (hàng 8 đến 11) là các hàng `planned` bên dưới. Các phần khác sẽ được thêm khi bạn chạy lại `/scope`.
+API backend NestJS và PostgreSQL cho nền tảng quản lý cho thuê. Đã làm xong xử lý lỗi tập trung, báo lỗi nhập liệu, token đăng nhập, phân quyền theo loại tài khoản, quên và đổi mật khẩu (hàng 1 đến 6). Còn lại là giới hạn tần suất (hàng 7) và phần nghiệp vụ của MVP: nhà trọ và tin đăng, dùng thử và hạn mức, mua gói thanh toán thử, theo dõi chủ trọ, lưu phòng (hàng 8 đến 12), cùng một việc dọn danh mục quyền (hàng 13). Phạm vi MVP được chốt lại ngày 2026-10-11: bỏ duyệt tin, bỏ VNPay, hoãn các chức năng phụ (xem mục Deferred). Các phần khác sẽ được thêm khi bạn chạy lại `/scope`.
 
-**Mô hình kinh doanh:** mọi tài khoản đăng ký miễn phí và chọn một loại lúc đăng ký: người đăng bài (chủ trọ) hoặc người tìm trọ (người thuê). Người tìm trọ dùng miễn phí mãi. Người đăng bài được dùng thử khoảng một tháng với hạn mức khoảng 1 đến 2 tin; muốn tiếp tục phải mua gói có sẵn và gia hạn theo tháng. Số người theo dõi và lượt xem tích lũy trên tài khoản chủ trọ để họ được biết đến và ở lại mua gói, thay vì bỏ tài khoản lập cái mới lấy miễn phí.
+**Mô hình kinh doanh:** mọi tài khoản đăng ký miễn phí và chọn một loại lúc đăng ký: chủ trọ (người đăng bài) hoặc người tìm trọ (gồm sinh viên). Người tìm trọ dùng miễn phí mãi. Chủ trọ đăng tin và tin hiện ngay, không có bước duyệt; admin ẩn tin vi phạm sau khi đăng, khóa và mở khóa tài khoản. Chủ trọ dùng thử khoảng một tháng với hạn mức vài tin đang hiện (mặc định 2); muốn đăng thêm, hoặc hết kỳ mà vẫn muốn tin hiện, thì mua gói theo tháng, nên hạn mức tin chính là chỗ thu tiền. Thanh toán chỉ là thanh toán thử, không có tiền thật. Số người theo dõi và lượt xem tích lũy trên tài khoản chủ trọ để họ ở lại mua gói, thay vì bỏ tài khoản lập cái mới lấy miễn phí. Bản này là MVP để demo, ưu tiên gọn; phạm vi chi tiết và lý do nằm ở `docs/specs/0001-backend-foundation/index.md`, mục Phạm vi MVP.
 
 **Build approach:** Skateboard (làm bản mỏng nhất dùng được trước, rồi mới mở rộng).
 **Workflow:** Prototype (chỉ `/develop`; sau đó bạn tự kiểm bằng tay và xem dữ liệu). Đây là mức mặc định của dự án. Một tính năng có thể gắn thẻ riêng, ví dụ `· GA`, khi cần kiểm kỹ hơn.
@@ -21,13 +21,15 @@ _Đây là các khuyến nghị để việc làm gọn gàng, không phải yê
 | 2 | Lỗi nhập liệu cùng một dạng | Release 2 | done |
 | 3 | Lỗi token và đăng nhập cùng một dạng | Release 3 | done |
 | 4 | Nền token đăng nhập | Release 4 | done |
-| 5 | Phân quyền theo vai trò và quyền | Release 5 | done |
+| 5 | Phân quyền theo loại tài khoản | Release 5 | done |
 | 6 | Quên mật khẩu và đổi mật khẩu | Release 6 | done |
 | 7 | Giới hạn tần suất | Release 7 | planned |
 | 8 | Nhà trọ, đăng tin và xem tin | Release 8 | planned |
 | 9 | Dùng thử miễn phí và hạn mức tin | Release 9 | planned |
-| 10 | Mua gói và gia hạn theo tháng | Release 10 | planned |
+| 10 | Mua gói (thanh toán thử) và gia hạn theo tháng | Release 10 | planned |
 | 11 | Theo dõi chủ trọ và số người biết đến | Release 11 | planned |
+| 12 | Lưu phòng yêu thích | Release 12 | planned |
+| 13 | Dọn danh mục quyền theo MVP | Release 13 | done |
 
 ## Foundations (đã có)
 
@@ -79,9 +81,9 @@ Spec [0002](../specs/0001-backend-foundation/0002-authentication-tokens.md) · c
 
 ## Release 5: phân quyền
 
-### 5. Phân quyền theo vai trò và quyền · done
-Vai trò là dữ liệu trong DB, mỗi vai trò chọn quyền theo module và hành động. Khi xong, access token mang `perms` thay cho `roles`, đăng ký miễn phí và chọn một trong hai loại tài khoản (người đăng bài hoặc người tìm trọ, chọn một lần lúc đăng ký, không đổi sau), cột `users.roles` và `RolesGuard` cũ được thay. Các file `.guide.md` còn lại trong `src/` là hướng dẫn cho phần này, cần viết lại theo cách làm hiện tại trước khi theo.
-**Done when:** mọi route khai báo rõ là công khai, chỉ cần đăng nhập hay cần quyền nào, route quên khai báo bị chặn; mỗi tài khoản tự đăng ký có đúng một loại trong hai loại tự chọn được, còn admin không bao giờ tự đăng ký được; admin tạo vai trò và gán cho tài khoản mà không nâng quyền vượt mức của mình; token mang `perms` và đổi quyền có hiệu lực ở lần refresh kế tiếp; hệ thống không bao giờ mất admin cuối cùng.
+### 5. Phân quyền theo loại tài khoản · done
+Mỗi tài khoản có đúng một loại (`admin`, `landlord`, `tenant`), chọn một lần lúc đăng ký (trừ `admin` do seed tạo) và không đổi sau. Loại và quyền của loại lưu trong DB; admin chỉnh quyền của `landlord` và `tenant` bằng API, không cấp được quyền chỉ admin. Access token mang `type` và `perms`. Chủ trọ khai số điện thoại lúc đăng ký. Admin khóa, mở khóa tài khoản và thu hồi phiên.
+**Done when:** mọi route khai báo rõ là công khai, chỉ cần đăng nhập hay cần quyền nào, route quên khai báo bị chặn; mỗi tài khoản tự đăng ký có đúng một loại trong hai loại tự chọn được, còn admin không bao giờ tự đăng ký được; admin chỉnh quyền của `landlord` và `tenant` mà không cấp được quyền chỉ admin; token mang `perms` và đổi quyền có hiệu lực ở lần refresh kế tiếp.
 - [x] Design it (spec): `/architect authorization`
 - [x] Build it: `/develop authorization`
    - [x] Danh mục quyền có kiểu, kèm các hành động chỉ admin giữ (AC-1, AC-11)
@@ -117,30 +119,47 @@ Spec [0002](../specs/0001-backend-foundation/0002-authentication-tokens.md) (AC-
 ## Release 8: nhà trọ và đăng tin
 
 ### 8. Nhà trọ, đăng tin và xem tin · planned · needs a decision
-Người đăng bài tạo nhà trọ và đăng tin phòng, admin duyệt trước khi hiển thị, người tìm trọ xem được chi tiết tin đã duyệt. Đây là lát cắt mỏng nhất để hạn mức, gói và lượt theo dõi có chỗ bám vào. Tìm kiếm, bộ lọc, lưu phòng và liên hệ chủ trọ là các hàng riêng, thêm sau bằng `/scope`.
-**Done when:** người đăng bài lưu nháp rồi gửi duyệt một tin; admin duyệt hoặc từ chối kèm lý do; chỉ tin đã duyệt của tài khoản đang hoạt động mới hiển thị công khai; người tìm trọ mở được trang chi tiết tin và mỗi lần mở được đếm một lượt xem.
+Chủ trọ tạo nhà trọ (địa chỉ, phường, phí, tiện ích) rồi đăng tin phòng thuộc nhà trọ đó; tin hiện ngay khi đăng, không có nháp và không có duyệt. Chủ trọ tự ẩn và hiện lại tin của mình; admin ẩn hoặc gỡ ẩn tin của người khác kèm lý do (quyền `listing:moderate`). Người tìm trọ xem danh sách tin công khai có lọc đơn giản (từ khóa, phường, khoảng giá, sắp xếp) và xem chi tiết tin. Ảnh tải lên ổ đĩa, tối đa 5 ảnh mỗi tin. Đây là lát cắt để hạn mức, gói và lượt theo dõi có chỗ bám vào. Đã chốt ngày 2026-10-11 (spec 0001, mục Phạm vi MVP); còn lại cho `/architect`: cột và API chi tiết, mã ngắn của tin, nguồn dữ liệu 168 phường, quy tắc đếm lượt xem.
+**Done when:** chủ trọ tạo nhà trọ và đăng tin, tin hiện ngay trong danh sách công khai; chủ trọ ẩn và hiện lại tin của mình; admin ẩn tin của chủ trọ thì tin biến khỏi danh sách công khai và chủ trọ không tự hiện lại được; chỉ tin đang hiện của tài khoản đang hoạt động mới hiển thị công khai; người tìm trọ lọc được danh sách và mở được chi tiết, mỗi lần mở (trừ chính chủ tin) cộng một lượt xem; tải lên được tối đa 5 ảnh mỗi tin.
 - [ ] Design it (spec): `/architect property listings`
 
 ## Release 9: dùng thử và hạn mức
 
 ### 9. Dùng thử miễn phí và hạn mức tin · planned · needs a decision
-Người đăng bài dùng thử miễn phí khoảng một tháng, với khoảng 1 đến 2 tin hiển thị cùng lúc. Hết thời gian hoặc vượt hạn mức thì cần gói đang hiệu lực mới được đăng và hiển thị thêm. Một số điện thoại chỉ nhận dùng thử một lần, để không tạo tài khoản mới liên tục lấy miễn phí. Người tìm trọ không bị giới hạn. Tin đang hiển thị ra sao khi hết kỳ, và số điện thoại có cần xác thực bằng mã gửi về hay không, do spec chốt.
-**Done when:** tài khoản đăng bài mới có một kỳ dùng thử và một hạn mức tin; đăng thêm khi vượt hạn mức hoặc hết kỳ bị chặn kèm gợi ý mua gói; một số điện thoại không nhận dùng thử lần hai; thời gian dùng thử và hạn mức đổi được bằng cấu hình, không viết cứng trong code.
+Chủ trọ dùng thử miễn phí `trial_days` ngày (mặc định 30) với tối đa `trial_listing_limit` tin đang hiện (mặc định 2); cả hai chỉnh bằng bảng `settings`. Một số điện thoại chỉ nhận dùng thử một lần (đã có ở đăng ký, không xác thực bằng mã gửi về). Chỉ tin đang hiện tính vào hạn mức, ẩn một tin là trả lại một chỗ. Hết kỳ dùng thử mà không có gói đang hiệu lực thì mọi tin của chủ trọ tự biến khỏi công khai (suy ra lúc đọc, không cần cron), chủ trọ vẫn xem và sửa được tin của mình; có gói thì tin hiện lại. Người tìm trọ không bị giới hạn. Đã chốt ngày 2026-10-11; còn lại cho `/architect`: cột lưu hạn dùng thử, mã lỗi và thông báo khi chạm hạn mức, cách tính hạn mức hiện hành khi có gói.
+**Done when:** tài khoản chủ trọ mới có một kỳ dùng thử và một hạn mức tin; đăng hoặc hiện thêm tin khi đã đủ hạn mức bị chặn kèm gợi ý mua gói; ẩn một tin thì đăng thêm được; hết kỳ dùng thử mà chưa có gói thì tin của chủ trọ biến khỏi danh sách công khai; một số điện thoại không nhận dùng thử lần hai; số ngày và số tin dùng thử đổi được bằng `settings`, không viết cứng trong code.
 - [ ] Design it (spec): `/architect free trial and listing quota`
 
 ## Release 10: mua gói
 
-### 10. Mua gói và gia hạn theo tháng · planned · needs a decision
-Có sẵn vài gói thành viên theo tháng; người đăng bài chọn gói và thanh toán, gói có hiệu lực 30 ngày và gia hạn nối tiếp theo tháng, hạn mức tin tăng theo gói. Admin quản lý bảng giá và xác nhận thanh toán. Cách thu tiền (tiền thật hay chỉ demo) do spec chốt.
-**Done when:** xem được bảng giá công khai; tạo đơn mua gói và thấy trạng thái đơn; khi thanh toán được ghi nhận thì gói có hiệu lực ngay và hạn mức mới áp dụng; gia hạn cộng nối tiếp 30 ngày; gói hết hạn thì tài khoản quay về trạng thái cần mua; xem được lịch sử giao dịch.
+### 10. Mua gói (thanh toán thử) và gia hạn theo tháng · planned · needs a decision
+Chủ trọ xem bảng giá gói (công khai), chọn gói, tạo đơn rồi bấm thanh toán thử; đơn thành `paid` và gói có hiệu lực 30 ngày ngay, hạn mức tin tăng theo gói; gia hạn cộng nối tiếp 30 ngày. Admin quản lý gói (tên, giá, số tin tối đa, bật hay tắt). Không có cổng thanh toán, không có tiền thật, không biến môi trường mới (VNPay đã bỏ ngày 2026-10-11). Đã chốt; còn lại cho `/architect`: cột và mã lỗi, ai được hủy đơn, xử lý khi hạn mức của gói mới thấp hơn số tin đang hiện.
+**Done when:** xem được bảng giá công khai; tạo đơn mua gói và thấy trạng thái đơn; bấm thanh toán thử thì đơn thành `paid` và gói có hiệu lực ngay, bấm hai lần không tạo hai gói; gia hạn cộng nối tiếp 30 ngày; gói hết hạn thì tài khoản quay về trạng thái cần mua; xem được lịch sử đơn của mình; admin tạo, sửa và tắt gói.
 - [ ] Design it (spec): `/architect membership packages and payment`
 
 ## Release 11: theo dõi chủ trọ
 
 ### 11. Theo dõi chủ trọ và số người biết đến · planned · needs a decision
-Người tìm trọ theo dõi (follow) một chủ trọ. Chủ trọ và người xem thấy số người theo dõi cùng tổng lượt xem tin của chủ trọ trên hồ sơ công khai. Số này tích lũy trên tài khoản nên bỏ tài khoản để lập cái mới sẽ mất hết, giữ chủ trọ ở lại và mua gói. Chỉ giữ một loại lượt xem: lượt xem tin đã đếm ở hàng 8, cộng dồn theo chủ trọ, không làm thêm bộ đếm lượt xem hồ sơ riêng.
+Người tìm trọ theo dõi (follow) một chủ trọ. Chủ trọ và người xem thấy số người theo dõi cùng tổng lượt xem tin của chủ trọ trên hồ sơ công khai. Số này tích lũy trên tài khoản nên bỏ tài khoản để lập cái mới sẽ mất hết, giữ chủ trọ ở lại và mua gói. Chỉ giữ một loại lượt xem: lượt xem tin đã đếm ở hàng 8 (cột `view_count` của tin), cộng dồn theo chủ trọ, không làm thêm bộ đếm lượt xem hồ sơ riêng. Giữ trong MVP (chốt 2026-10-11).
 **Done when:** người tìm trọ đã đăng nhập theo dõi và bỏ theo dõi một chủ trọ, mỗi người chỉ tính một lần, không tự theo dõi chính mình; hồ sơ chủ trọ hiện số người theo dõi và tổng lượt xem tin; số cập nhật đúng khi có người bỏ theo dõi hoặc tài khoản bị khóa.
 - [ ] Design it (spec): `/architect landlord follow and reach`
+
+## Release 12: lưu phòng
+
+### 12. Lưu phòng yêu thích · planned · needs a decision
+Người tìm trọ lưu một tin vào danh sách yêu thích, bỏ lưu và xem danh sách đã lưu. Giữ trong MVP theo lựa chọn của bạn ngày 2026-10-11. Cần hàng 8 có trước.
+**Done when:** người tìm trọ đã đăng nhập lưu và bỏ lưu một tin, mỗi tin chỉ lưu một lần; xem được danh sách tin đã lưu; tin không còn hiển thị công khai (bị ẩn, chủ trọ bị khóa hoặc hết kỳ dùng thử) không hiện trong danh sách đã lưu.
+- [ ] Design it (spec): `/architect favorites`
+
+## Release 13: dọn danh mục quyền
+
+### 13. Dọn danh mục quyền theo MVP · done
+Thu danh mục quyền trong code về đúng bảng ở spec 0003 (bỏ các module đã hoãn, đổi `product` thành `plan`, bỏ `order:refund` và `order:gift`), thêm migration gỡ khóa thừa khỏi `account_types.permissions`, sửa test và `verify.md`. Không đổi hành vi API đang chạy ngoài việc `GET /permissions` ngắn lại. Nên làm trước hàng 8 để quyền thừa không lọt vào tính năng mới.
+**Done when:** `GET /permissions` chỉ liệt kê module của MVP; quyền mặc định của `landlord` và `tenant` khớp bảng ở 0003; mọi test qua; không route hay test nào còn dùng khóa đã bỏ.
+- [x] Design it (spec): đã chốt trong spec 0003, cập nhật 2026-10-11
+- [x] Build it: `/develop permission catalog cleanup`
+Đã chạy thật trên hai DB thử (một DB có khóa thừa thêm tay, một DB dựng từ đầu): landlord 14 quyền, tenant 7, `migrate diff` không lệch, Newman 27 request không lỗi, 136 test qua. DB dev của bạn cần `npm run migration:deploy` một lần.
+Spec [0003](../specs/0001-backend-foundation/0003-authorization-rbac.md) · code in `src/common/auth/permission-catalog.ts`, `prisma/migrations/20261011090000_mvp_permission_cleanup/` · tài liệu in `docs/api/`
 
 ## Deferred
 Ngoài phạm vi bản này, giữ lại để kế hoạch trung thực.
@@ -150,7 +169,8 @@ Ngoài phạm vi bản này, giữ lại để kế hoạch trung thực.
 - **Decorator Swagger cho lỗi** (`@ApiProblemResponses`)
 - **Kiểm hai điều của spec 0002** trước khi đóng gói: băm mật khẩu chạy được trong image Docker (amd64 và arm64), và cookie `SameSite=Strict` đi đúng giữa hai cổng localhost trên Chrome, Firefox, Safari. Spec còn ghi phương án lùi về `bcrypt`, nhưng gói này đã được gỡ khỏi dự án.
 - **Giao dịch nhiều bước và chạy migration trong container**: làm cùng tính năng cần chúng (hàng 5 khi gán vai trò lúc đăng ký, và spec 0006).
-- **Tìm kiếm và bộ lọc tin, lưu phòng, liên hệ chủ trọ, tin nổi bật và đẩy tin, báo cáo tin, thống kê cho chủ trọ**: thêm bằng `/scope` khi tới lượt, sau hàng 8 · needs a decision
+- **Duyệt tin trước khi hiển thị**: đã bỏ hẳn ngày 2026-10-11, thay bằng admin ẩn tin sau khi đăng (hàng 8). Không làm lại trừ khi bạn đổi ý.
+- **Hoãn khỏi MVP (chốt 2026-10-11)**: xác thực chủ trọ và ảnh giấy tờ, báo cáo tin xấu, liên hệ chủ trọ có giới hạn mỗi ngày, đẩy tin và tin nổi bật, kiểm tra tại chỗ, quảng cáo, thu chi và dashboard doanh thu, thống kê cho chủ trọ, tìm quanh địa điểm mốc, lịch sử giá tin, cổng thanh toán thật (VNPay), hoàn tiền và tặng gói, đổi loại tài khoản. Thêm lại bằng `/scope` khi tới lượt · needs a decision
 
 ## Legend
 

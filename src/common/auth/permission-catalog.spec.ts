@@ -101,8 +101,8 @@ describe('permission catalog', () => {
 	describe('quyền chỉ admin giữ', () => {
 		it('hành động chỉ admin và module chỉ admin', () => {
 			expect(isAdminOnly('listing:moderate')).toBe(true);
-			expect(isAdminOnly('order:refund')).toBe(true);
-			expect(isAdminOnly('finance:read')).toBe(true);
+			expect(isAdminOnly('plan:create')).toBe(true);
+			expect(isAdminOnly('setting:update')).toBe(true);
 			expect(isAdminOnly('account_type:update')).toBe(true);
 		});
 
@@ -113,10 +113,54 @@ describe('permission catalog', () => {
 
 		it('manage của module có hành động chỉ admin cũng là chỉ admin (lỗ hổng listing:manage)', () => {
 			expect(isAdminOnly('listing:manage')).toBe(true);
-			expect(isAdminOnly('order:manage')).toBe(true);
+			expect(isAdminOnly('plan:manage')).toBe(true);
 			expect(isAdminOnly('profile:manage')).toBe(false);
+			expect(isAdminOnly('order:manage')).toBe(false);
 			expect(isManageKey('listing:manage')).toBe(true);
 			expect(isManageKey('listing:read')).toBe(false);
+		});
+	});
+
+	describe('phạm vi MVP', () => {
+		it('đúng 12 module của MVP', () => {
+			expect(
+				describeCatalog()
+					.map((entry) => entry.module)
+					.sort(),
+			).toEqual(
+				[
+					'profile',
+					'user',
+					'account_type',
+					'catalog',
+					'setting',
+					'property',
+					'listing',
+					'favorite',
+					'follow',
+					'plan',
+					'order',
+					'subscription',
+				].sort(),
+			);
+		});
+
+		it.each([
+			'contact:reveal',
+			'report:create',
+			'verification:create',
+			'boost:create',
+			'product:read',
+			'inspection:create',
+			'ad:read',
+			'expense:read',
+			'finance:read',
+			'dashboard:read',
+			'stats:read',
+			'order:refund',
+			'order:gift',
+		])('khóa của phần đã hoãn %s không còn hợp lệ', (key) => {
+			expect(isPermissionKey(key)).toBe(false);
 		});
 	});
 });

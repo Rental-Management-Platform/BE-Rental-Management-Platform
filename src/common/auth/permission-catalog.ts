@@ -7,8 +7,10 @@ interface ModuleDefinition {
 }
 
 /**
- * Danh mục quyền khởi đầu (spec 0003). Nằm trong code vì mỗi quyền phải có đoạn code kiểm tra nó.
- * Mỗi tính năng sau thêm khóa của mình ở đây, kèm migration thêm khóa mặc định cho landlord và tenant.
+ * Danh mục quyền của MVP (spec 0003, cập nhật 2026-10-11). Nằm trong code vì mỗi quyền phải có đoạn
+ * code kiểm tra nó. Mỗi tính năng sau thêm khóa của mình ở đây, kèm migration thêm khóa mặc định cho
+ * landlord và tenant. Các module đã hoãn khỏi MVP (liên hệ, báo cáo tin, xác thực, đẩy tin, kiểm tra
+ * tại chỗ, quảng cáo, thu chi, dashboard, thống kê) không có ở đây; thêm lại cùng tính năng của chúng.
  */
 export const PERMISSION_CATALOG = {
 	profile: {
@@ -56,67 +58,17 @@ export const PERMISSION_CATALOG = {
 		ownerScoped: true,
 		adminActions: [],
 	},
-	contact: {
-		actions: ['reveal'],
-		ownerScoped: false,
-		adminActions: [],
-	},
-	report: {
-		actions: ['create', 'read', 'resolve'],
-		ownerScoped: true,
-		adminActions: ['resolve'],
-	},
-	verification: {
-		actions: ['create', 'review'],
-		ownerScoped: true,
-		adminActions: ['review'],
-	},
-	boost: {
-		actions: ['create'],
-		ownerScoped: true,
-		adminActions: [],
-	},
-	product: {
+	plan: {
 		actions: ['read', 'create', 'update', 'delete'],
 		ownerScoped: false,
 		adminActions: ['read', 'create', 'update', 'delete'],
 	},
 	order: {
-		actions: ['create', 'read', 'cancel', 'refund', 'gift'],
-		ownerScoped: true,
-		adminActions: ['refund', 'gift'],
-	},
-	subscription: {
-		actions: ['read'],
+		actions: ['create', 'read', 'cancel'],
 		ownerScoped: true,
 		adminActions: [],
 	},
-	inspection: {
-		actions: ['create', 'perform'],
-		ownerScoped: true,
-		adminActions: ['perform'],
-	},
-	ad: {
-		actions: ['read', 'create', 'update', 'delete'],
-		ownerScoped: false,
-		adminActions: ['read', 'create', 'update', 'delete'],
-	},
-	expense: {
-		actions: ['read', 'create', 'update', 'delete'],
-		ownerScoped: false,
-		adminActions: ['read', 'create', 'update', 'delete'],
-	},
-	finance: {
-		actions: ['read'],
-		ownerScoped: false,
-		adminActions: ['read'],
-	},
-	dashboard: {
-		actions: ['read'],
-		ownerScoped: false,
-		adminActions: ['read'],
-	},
-	stats: {
+	subscription: {
 		actions: ['read'],
 		ownerScoped: true,
 		adminActions: [],

@@ -11,18 +11,18 @@ Spec tổng gồm 6 spec con. Mỗi spec con đủ để build riêng và có l�
 - [0002 Đăng nhập và token](0002-authentication-tokens.md): access token, refresh token xoay vòng bằng một câu `UPDATE` có điều kiện, phiên đăng nhập, quên mật khẩu. Hỗ trợ quyết định "xử lý token refresh và access".
 - [0003 Loại tài khoản và phân quyền](0003-authorization-rbac.md): mỗi tài khoản thuộc đúng một trong ba loại (`admin`, `landlord`, `tenant`), loại và quyền của loại lưu ở bảng `account_types`, danh mục quyền theo module và hành động, guard, API để admin chỉnh quyền của từng loại. Hỗ trợ quyết định "mỗi tài khoản một loại, loại quyết định được làm gì".
 - [0004 Xử lý lỗi và kiểm tra dữ liệu](0004-error-handling-and-validation.md): một dạng lỗi gọn thống nhất, bộ lọc toàn cục, ValidationPipe, dạng phản hồi. Bản rút gọn: không dịch lỗi PostgreSQL, không luật ESLint cho lỗi. Hỗ trợ quyết định "xử lý lỗi tập trung, validate dữ liệu".
-- [0005 Quy ước dữ liệu PostgreSQL](0005-postgres-data-conventions.md): bản đồ bảng, kiểu cột, khóa ngoại và chỉ mục, giao dịch, tìm từ khóa tiếng Việt, tìm theo khu vực, migration, seed. Hỗ trợ quyết định "dùng PostgreSQL và Prisma 7".
+- [0005 Quy ước dữ liệu PostgreSQL](0005-postgres-data-conventions.md): bản đồ bảng, kiểu cột, khóa ngoại và chỉ mục, giao dịch, tìm từ khóa tiếng Việt, tìm theo khu vực (đã hoãn khỏi MVP), migration, seed. Hỗ trợ quyết định "dùng PostgreSQL và Prisma 7".
 - [0006 Đóng gói Docker và phát hành](0006-docker-packaging-and-release.md): Docker Compose gồm `db` và `api`, image trên GitHub Container Registry, biến môi trường, lưu ảnh, email, CI, lát cắt đầu tiên. Hỗ trợ quyết định "người dùng chỉ cần Docker và chạy localhost".
 
 ## Summary
 
-Đây là bộ quyết định nền cho API của nền tảng thuê trọ, chốt trước khi làm từng tính năng. API viết bằng NestJS, lưu dữ liệu ở PostgreSQL 18 qua Prisma 7, và được đóng gói bằng Docker Compose gồm hai container (`api` và `db`). Người dùng chỉ cần cài Docker, tải `compose.yaml` cùng `.env.example`, điền file `.env`, chạy `docker compose up -d`, rồi mở API ở `http://localhost:3000`. Đăng nhập dùng access token 15 phút mang sẵn danh sách quyền, cộng refresh token xoay vòng (mỗi lần dùng được đổi sang token mới) nằm trong cookie httpOnly; mỗi tài khoản đăng ký miễn phí và thuộc một loại (người đăng bài, người tìm trọ hoặc admin), quyền của loại là dữ liệu trong DB nên admin chỉnh được mà không sửa code. Thu tiền gói chỉ là demo bằng VNPay sandbox. Mọi lỗi đi qua một bộ lọc toàn cục, dữ liệu vào được kiểm tra bằng class-validator, và `any` bị chặn bởi trình biên dịch, ESLint và CI. Hai điểm cần chú ý: chạy lần đầu vẫn phải điền `.env` (kể cả App Password Gmail), và Prisma 7 còn mới nhưng phần lớn điểm cần kiểm đã kiểm xong (`CHECK` và chỉ mục một phần viết bằng SQL trong migration không bị báo lệch, chỉ mục GIN thì khai báo trong schema), chi tiết ở `rationale.md` và bảng giả định của 0006.
+Đây là bộ quyết định nền cho API của nền tảng thuê trọ, chốt trước khi làm từng tính năng. API viết bằng NestJS, lưu dữ liệu ở PostgreSQL 18 qua Prisma 7, và được đóng gói bằng Docker Compose gồm hai container (`api` và `db`). Người dùng chỉ cần cài Docker, tải `compose.yaml` cùng `.env.example`, điền file `.env`, chạy `docker compose up -d`, rồi mở API ở `http://localhost:3000`. Đăng nhập dùng access token 15 phút mang sẵn danh sách quyền, cộng refresh token xoay vòng (mỗi lần dùng được đổi sang token mới) nằm trong cookie httpOnly; mỗi tài khoản đăng ký miễn phí và thuộc một loại (người đăng bài, người tìm trọ hoặc admin), quyền của loại là dữ liệu trong DB nên admin chỉnh được mà không sửa code. Đây là MVP để demo (xem mục "Phạm vi MVP"): tin đăng hiện ngay sau khi đăng, không có bước duyệt; chủ trọ dùng thử một tháng với vài tin rồi phải mua gói để đăng thêm; việc mua gói chỉ là thanh toán thử, không có tiền thật và không có cổng thanh toán ngoài. Mọi lỗi đi qua một bộ lọc toàn cục, dữ liệu vào được kiểm tra bằng class-validator, và `any` bị chặn bởi trình biên dịch, ESLint và CI. Hai điểm cần chú ý: chạy lần đầu vẫn phải điền `.env` (kể cả App Password Gmail), và Prisma 7 còn mới nhưng phần lớn điểm cần kiểm đã kiểm xong (`CHECK` và chỉ mục một phần viết bằng SQL trong migration không bị báo lệch, chỉ mục GIN thì khai báo trong schema), chi tiết ở `rationale.md` và bảng giả định của 0006.
 
 ## Decision
 
 **Chosen option**: Option 1: NestJS, PostgreSQL 18 qua Prisma 7, đóng gói Docker Compose chạy localhost, tự xử lý token trên các thư viện chuẩn
 
-Dùng NestJS 11 với PostgreSQL 18 (qua Prisma 7; basis: kiểu sinh tự động hợp luật không any, tài liệu và skill chính thức của Prisma) làm API REST chạy trong container, đóng gói bằng Docker Compose và phát hành image lên GitHub Container Registry, tự xử lý access và refresh token bằng `@nestjs/jwt` và Passport, phân quyền theo loại tài khoản (mỗi tài khoản một loại, quyền của loại lưu trong DB), thanh toán demo bằng VNPay sandbox, và áp dụng sáu spec con như bộ quy ước bắt buộc cho mọi tính năng về sau.
+Dùng NestJS 11 với PostgreSQL 18 (qua Prisma 7; basis: kiểu sinh tự động hợp luật không any, tài liệu và skill chính thức của Prisma) làm API REST chạy trong container, đóng gói bằng Docker Compose và phát hành image lên GitHub Container Registry, tự xử lý access và refresh token bằng `@nestjs/jwt` và Passport, phân quyền theo loại tài khoản (mỗi tài khoản một loại, quyền của loại lưu trong DB), thanh toán thử tự ghi nhận (không cổng ngoài), và áp dụng sáu spec con như bộ quy ước bắt buộc cho mọi tính năng về sau.
 
 **Implementation skills**: `nestjs-best-practices` (`kadajett/agent-nestjs-skills`, `.agents/skills/nestjs-best-practices/`) · `supabase-postgres-best-practices` (`supabase/agent-skills`, `.agents/skills/supabase-postgres-best-practices/`) · `docker-compose-patterns` (`docker/skills`, `.agents/skills/docker-compose-patterns/`) · `multi-stage-dockerfile` (`github/awesome-copilot`, `.agents/skills/multi-stage-dockerfile/`) · `prisma-orm-setup` (`prisma/skills`, `.agents/skills/prisma-orm-setup/`; mặc định app mới lên Prisma 8, nhưng dự án ghim bản 7) · `prisma-client-api` (`prisma/skills`, `.agents/skills/prisma-client-api/`) · `prisma-cli` (`prisma/skills`, `.agents/skills/prisma-cli/`)
 
@@ -34,7 +34,7 @@ Dùng NestJS 11 với PostgreSQL 18 (qua Prisma 7; basis: kiểu sinh tự độ
 | Runtime | Node 24 LTS, image `node:24-slim` | Repo đang chạy Node 24; nền glibc ít rủi ro với thư viện gốc |
 | Framework | NestJS 11 trên Express | Đã có sẵn trong repo (11.2.7), cấu trúc module rõ, hợp nhóm nhỏ |
 | API | REST, tiền tố `/api/v1`, Swagger ở `/api/docs` (bật mặc định) | FE tách repo nên cần hợp đồng API đọc được; REST đủ cho CRUD |
-| Primary DB | PostgreSQL 18, image chính thức `postgres:18` | Domain nhiều quan hệ, sổ giao dịch, ràng buộc duy nhất, báo cáo thu chi |
+| Primary DB | PostgreSQL 18, image chính thức `postgres:18` | Domain nhiều quan hệ, đơn hàng gói, ràng buộc duy nhất |
 | ORM | Prisma 7 (`prisma`, `@prisma/client`, `@prisma/adapter-pg` cùng driver `pg`, ghim `@7`); schema một file `prisma/schema.prisma`; migration của `prisma migrate` | Bạn chọn: kiểu sinh tự động hợp luật không any |
 | Auth | `@nestjs/jwt` cộng Passport JWT, argon2id, refresh token ngẫu nhiên lưu bản băm | Đúng yêu cầu token refresh và access, dùng thành phần đã được kiểm chứng |
 | Authorization | Ba loại tài khoản cố định (`account_types`), mỗi tài khoản một loại, quyền của loại lưu trong DB và chọn từ danh mục có kiểu trong code, guard toàn cục | Admin chỉnh được việc mỗi loại làm mà vẫn kiểm tra kiểu lúc biên dịch |
@@ -45,12 +45,31 @@ Dùng NestJS 11 với PostgreSQL 18 (qua Prisma 7; basis: kiểu sinh tự độ
 | Logging, health | `nestjs-pino` ghi JSON kèm requestId ra stdout; `@nestjs/terminus` cho `/api/v1/health` | `docker compose logs` đọc được; health ping DB, dùng cho `HEALTHCHECK` của Docker |
 | File storage | Ổ đĩa trong volume Docker `uploads`, sau `StorageService` | Chạy offline, không cần tài khoản ngoài |
 | Email | Nodemailer qua Gmail SMTP, sau `MailService`; `MAIL_*` bắt buộc | Bạn chọn giữ Gmail; đổi nhà cung cấp chỉ sửa một file |
-| Payment | VNPay sandbox qua giao diện `PaymentGateway` (demo, không có tiền thật) | Bạn chọn: thu tiền gói bằng cổng thử nghiệm; đổi nhà cung cấp chỉ sửa một file |
+| Payment | Thanh toán thử tự ghi nhận: chủ trọ bấm xác nhận thì đơn thành `paid`, không cổng ngoài, không có tiền thật | Bạn chọn (2026-10-11): demo gọn, không biến `VNPAY_*`, không phụ thuộc mạng; muốn thu thật sau này thì thêm một cổng thanh toán ở bước tạo và xác nhận đơn |
 | Packaging | Docker Compose: `db` và `api`; cổng API mở ở `127.0.0.1:3000`, DB không mở cổng | Người dùng chỉ cần Docker; máy khác trong mạng không vào được |
 | Phát hành | GitHub Actions dựng image `linux/amd64` và `linux/arm64`, đẩy lên GitHub Container Registry khi gắn tag, đính `compose.yaml` và `.env.example` vào Release | Người dùng không cần Git hay Node |
 | CI | GitHub Actions kiểm tra mỗi PR: `check`, `e2e`, `image` | Chặn lỗi kiểu, lint, lệch schema và lỗi Dockerfile trước khi merge |
 | Dev và test | `compose.override.yaml` mở cổng DB cho máy dev; test e2e dùng Testcontainers với `postgres:18` | Test trên DB thật, không phải giả lập |
 | Background jobs | Không dùng | Trạng thái hết hạn đều suy ra khi đọc (spec chức năng mục 6), không cần cron hay hàng đợi |
+
+## Phạm vi MVP (cập nhật 2026-10-11)
+
+Bạn chốt lại: hệ thống chỉ cần MVP để demo, không làm phức tạp. Mục này là nguồn duy nhất cho câu hỏi "cái gì nằm trong MVP"; các spec con và `docs/scope/scope.md` theo mục này. Lý do và các phương án đã cân nhắc nằm ở [rationale.md](rationale.md), mục "Thu hẹp phạm vi MVP".
+
+**Trong MVP**:
+- **Tài khoản:** đăng ký miễn phí và chọn một trong hai loại, `landlord` (chủ trọ, người đăng bài) hoặc `tenant` (người tìm trọ, gồm sinh viên); `admin` do seed tạo. Khóa `tenant` giữ nguyên, gọi là "sinh viên" hay "người thuê" trên giao diện là việc của FE.
+- **Nhà trọ và tin:** chủ trọ tạo nhà trọ (địa chỉ, phường, phí, tiện ích) rồi đăng tin phòng thuộc nhà trọ đó. Tin hiện ngay khi đăng, không có nháp và không có duyệt. Tin có ba trạng thái: `visible`; `hidden_by_owner` (chủ trọ tự ẩn và tự hiện lại); `hidden_by_admin` (chủ trọ không tự hiện lại được; khi admin gỡ ẩn, tin về `hidden_by_owner` để chủ trọ tự bấm hiện và đi qua kiểm tra hạn mức).
+- **Kiểm duyệt sau khi đăng:** admin ẩn hoặc gỡ ẩn tin của người khác kèm lý do (quyền `listing:moderate`), khóa và mở khóa tài khoản (đã làm). Không có hàng chờ duyệt.
+- **Dùng thử và hạn mức:** chủ trọ dùng thử `trial_days` ngày (mặc định 30) với tối đa `trial_listing_limit` tin đang hiện (mặc định 2); cả hai là tham số trong bảng `settings`, admin đổi được. Một số điện thoại chỉ nhận một lần dùng thử (đã làm ở 0002 AC-13). Chỉ tin `visible` tính vào hạn mức. Đây là chỗ thu tiền: muốn đăng thêm thì mua gói.
+- **Hết kỳ dùng thử mà không có gói đang hiệu lực:** mọi tin của chủ trọ tự biến khỏi kết quả công khai (suy ra lúc đọc, không cần cron). Chủ trọ vẫn xem và sửa được tin của mình, không đăng hay hiện thêm được. Có gói hiệu lực thì tin hiện lại.
+- **Gói và thanh toán thử:** bảng giá công khai; admin quản lý gói (tên, giá, số tin tối đa, 30 ngày). Chủ trọ chọn gói, tạo đơn, bấm thanh toán thử thì đơn thành `paid` và gói có hiệu lực ngay; gia hạn cộng nối tiếp 30 ngày.
+- **Người tìm trọ:** xem danh sách tin công khai có lọc đơn giản (từ khóa, phường, khoảng giá; sắp xếp mới nhất hoặc theo giá), xem chi tiết tin (mỗi lần mở cộng một lượt xem, trừ chính chủ tin), lưu phòng yêu thích, theo dõi chủ trọ. Hồ sơ công khai của chủ trọ hiện số người theo dõi và tổng lượt xem tin.
+- **Ảnh:** tải lên ổ đĩa, tối đa 5 ảnh mỗi tin.
+- **Đã có và giữ nguyên:** xử lý lỗi, kiểm tra dữ liệu, token, phân quyền theo loại, quên và đổi mật khẩu bằng email Gmail.
+
+**Hoãn khỏi MVP** (nằm ở mục Deferred của scope, thêm lại bằng `/scope` khi cần): xác thực chủ trọ và ảnh giấy tờ, báo cáo tin xấu, liên hệ chủ trọ có giới hạn mỗi ngày, đẩy tin và tin nổi bật, kiểm tra tại chỗ, quảng cáo, thu chi và dashboard doanh thu, thống kê cho chủ trọ, tìm quanh địa điểm mốc (bảng `landmarks`), lịch sử giá tin, cổng thanh toán thật (VNPay), hoàn tiền và tặng gói, đổi loại tài khoản.
+
+**Phần code còn lệch so với mục này** (việc của `/develop`, không phải của tài liệu): danh mục quyền ở `src/common/auth/permission-catalog.ts` và quyền mặc định trong migration `20261008090000_account_types_phone` vẫn còn các module đã hoãn (`contact`, `report`, `verification`, `boost`, `product`, `inspection`, `ad`, `expense`, `finance`, `dashboard`, `stats`) và các hành động `order:refund`, `order:gift`. Cần dọn một lần: thu danh mục về đúng danh sách ở 0003, thêm migration gỡ khóa thừa khỏi `account_types.permissions`, sửa test và `verify.md` theo. Trong lúc chưa dọn, các khóa thừa vô hại (không route nào dùng) nhưng vẫn hiện ở `GET /permissions`.
 
 ## Cross child contract
 
@@ -114,17 +133,17 @@ Quy ước cho mọi code truy cập dữ liệu. Chi tiết nằm ở 0001 con 
 - Giới hạn tần suất dùng bộ nhớ trong, không chia sẻ giữa nhiều bản sao API.
 - Quy ước chặt (strictTypeChecked, repository bắt buộc) làm chậm lúc viết ban đầu và buộc sửa vài file hiện có.
 - Mỗi tài khoản một loại: người vừa thuê vừa cho thuê phải dùng hai tài khoản; logic nghiệp vụ dựa vào quyền và chủ sở hữu dữ liệu, không dựa tên loại (trừ quy tắc dùng thử và hạn mức của người đăng bài).
-- Thanh toán chỉ là VNPay sandbox, không có tiền thật; số điện thoại chỉ kiểm trùng, không xác thực bằng mã, nên người khác có thể nhập số của mình để chặn mình đăng ký tài khoản đăng bài và người đổi SIM vẫn lấy thêm một lần dùng thử; `409 PHONE_TAKEN` cũng cho biết một số đã đăng ký làm người đăng bài, giảm nhẹ bằng giới hạn tần suất đăng ký theo IP (chấp nhận cho demo).
+- Thanh toán chỉ là thanh toán thử: chủ trọ nào bấm xác nhận cũng được gói, không có tiền thật, nên chưa thu tiền được; số điện thoại chỉ kiểm trùng, không xác thực bằng mã, nên người khác có thể nhập số của mình để chặn mình đăng ký tài khoản đăng bài và người đổi SIM vẫn lấy thêm một lần dùng thử; `409 PHONE_TAKEN` cũng cho biết một số đã đăng ký làm người đăng bài, giảm nhẹ bằng giới hạn tần suất đăng ký theo IP (chấp nhận cho demo).
 
 **Neutral**:
-- Cần cập nhật `dactachucnang.md`: F08 vẫn giữ ưu tiên P1 nhưng làm hay không tùy tiến độ; "trường" và "cơ sở" ở F02, F07, F08, mục 8 và 9 đổi thành "địa điểm mốc" (`landmarks`, gồm trường, nơi làm việc, nơi khác); mục 8 thêm bảng `landmarks` và bỏ `provinces`, `schools`, `campuses` riêng.
-- Bản chức năng cũ `dactachucnang.md` không còn trong thư mục làm việc (còn ở commit đầu). Hai phần của nó sai với mô hình mới: gói Miễn phí vĩnh viễn 5 tin (F21, F23, BR-22) thành dùng thử có thời hạn, và thu tiền chuyển khoản xác nhận thủ công (F22) thành VNPay sandbox.
+- Bản chức năng cũ `dactachucnang.md` không còn trong thư mục làm việc (còn ở commit đầu) và không còn là nguồn đúng. Nó sai với mô hình hiện tại ở các điểm: gói Miễn phí vĩnh viễn 5 tin (F21, F23, BR-22) thành dùng thử có thời hạn; thu tiền chuyển khoản xác nhận thủ công (F22) thành thanh toán thử; duyệt tin (F06) bị bỏ, thay bằng admin ẩn tin sau khi đăng; và các chức năng ở mục "Hoãn khỏi MVP" ở trên (kể cả F08 tìm quanh địa điểm mốc). Phạm vi MVP hiện hành là mục "Phạm vi MVP" của file này.
 - Chi tiết từng tính năng (nhà trọ, tin đăng, tìm kiếm, thanh toán, gói) làm bằng `/architect` riêng, theo quy ước ở đây.
 - Muốn có địa chỉ công khai sau này chỉ cần chạy cùng `compose.yaml` trên một máy chủ, đặt `COOKIE_SECURE=true` sau lớp HTTPS.
 
 ## Follow-up
 
-- [ ] Chạy `/architect` cho từng tính năng theo thứ tự spec chức năng: nhà trọ và tin đăng (F04, F05, F12), duyệt tin (F06), tìm kiếm (F07), liên hệ và lưu (F11, F13), dùng thử và hạn mức tin, mua gói bằng VNPay sandbox, theo dõi chủ trọ (thay cho F21 đến F23), đẩy tin và nổi bật (F24), báo cáo tài chính (F27), rồi các mục còn lại.
+- [ ] Chạy `/architect` cho từng tính năng MVP theo thứ tự scope: nhà trọ và tin đăng kèm lọc đơn giản và ảnh (hàng 8), dùng thử và hạn mức tin (hàng 9), mua gói bằng thanh toán thử (hàng 10), theo dõi chủ trọ (hàng 11), lưu phòng yêu thích (hàng 12). Các chức năng ở mục "Hoãn khỏi MVP" không làm trong giai đoạn này.
+- [ ] Dọn danh mục quyền trong code và migration cho khớp 0003 (xem "Phần code còn lệch" ở mục Phạm vi MVP). Việc của `/develop`.
 - [ ] Cập nhật `dactachucnang.md` theo mục Neutral ở trên (spec chức năng là tài liệu của bạn, `/architect` không sửa). File này hiện không còn trong thư mục làm việc, nên chỉ cần làm nếu bạn còn giữ một bản.
 - [ ] Chưa có `AGENTS.md` cho dự án. Nên có một file ghi stack và các quy ước ở đây để mọi skill sau đọc được (`/audit` sở hữu việc ghi file này). Mục `## Agent skills` nên ghi bốn skill đã cài: `nestjs-best-practices`, `supabase-postgres-best-practices`, `docker-compose-patterns`, `multi-stage-dockerfile`. Mục Declined nên ghi các skill tìm thấy nhưng chưa cài vì bạn chọn chỉ bản của nhà lớn: Neon Postgres, PostgreSQL Table Design, GitHub PostgreSQL Optimization và Code Review, các skill Docker cộng đồng, bảy skill còn lại của `prisma/skills` và ba skill Prisma cộng đồng; chưa tìm được MCP server đáng tin cho PostgreSQL, Docker, Testcontainers. Prisma MCP server chính thức (`github.com/prisma/mcp`) đã được đề xuất và bạn chọn bỏ qua lúc này. Mục `## Agent skills` còn nên ghi thêm ba skill đã cài: `prisma-orm-setup`, `prisma-client-api`, `prisma-cli`.
 - [ ] Chưa có `docs/scope/`. Nếu muốn theo dõi các tính năng, chạy `/scope`; khi tính năng có dòng scope trỏ tới spec này thì trạng thái spec sẽ đi theo vòng đời tính năng.
@@ -134,7 +153,7 @@ Quy ước cho mọi code truy cập dữ liệu. Chi tiết nằm ở 0001 con 
 - [ ] Chốt tên image và tổ chức GitHub chính xác cho GitHub Container Registry (xem 0006).
 - [ ] NestJS đang cài là 11.2.7, báo cáo tra web nói đã có bản chính 12; nâng cấp là quyết định riêng.
 - [ ] Nguồn dữ liệu 168 phường/xã của TP.HCM cho bước seed chưa được chốt; bạn cần chọn nguồn (file JSON trong repo) trước khi làm F03.
-- [ ] Quyết định làm F08 (tìm quanh một địa điểm mốc hoặc một điểm bất kỳ) hay chưa theo tiến độ; khi làm thì viết spec riêng.
+- [ ] F08 (tìm quanh một địa điểm mốc hoặc một điểm bất kỳ) đã hoãn khỏi MVP; khi cần thì viết spec riêng.
 
 ## Rationale
 

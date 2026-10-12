@@ -191,8 +191,8 @@ Admin có tất cả quyền. Quyền của `landlord` và `tenant` nằm trong 
 
 | Loại | Quyền mặc định |
 |---|---|
-| `tenant` | `profile:read`, `profile:update`, `favorite:read`, `favorite:create`, `favorite:delete`, `follow:create`, `follow:delete`, `contact:reveal`, `report:create` |
-| `landlord` | `profile:read`, `profile:update`, `property:read`, `property:create`, `property:update`, `property:delete`, `listing:read`, `listing:create`, `listing:update`, `listing:delete`, `verification:create`, `boost:create`, `order:create`, `order:read`, `order:cancel`, `subscription:read`, `inspection:create`, `stats:read` |
+| `tenant` (7 quyền) | `profile:read`, `profile:update`, `favorite:read`, `favorite:create`, `favorite:delete`, `follow:create`, `follow:delete` |
+| `landlord` (14 quyền) | `profile:read`, `profile:update`, `property:read`, `property:create`, `property:update`, `property:delete`, `listing:read`, `listing:create`, `listing:update`, `listing:delete`, `order:create`, `order:read`, `order:cancel`, `subscription:read` |
 | `admin` | Tất cả |
 
 Quyền admin chỉnh được **chỉ gồm hành động lẻ** của các module không dành riêng cho admin. Các hành động trong cột "Chỉ admin" bên dưới và mọi khóa `module:manage` không thể cấp cho landlord hay tenant.
@@ -212,21 +212,11 @@ Quyền admin chỉnh được **chỉ gồm hành động lẻ** của các mod
 | `listing` | read, create, update, delete, moderate | có | `moderate` | chưa |
 | `favorite` | read, create, delete | có | | chưa |
 | `follow` | create, delete | có | | chưa |
-| `contact` | reveal | | | chưa |
-| `report` | create, read, resolve | có | `resolve` | chưa |
-| `verification` | create, review | có | `review` | chưa |
-| `boost` | create | có | | chưa |
-| `product` | read, create, update, delete | | tất cả | chưa |
-| `order` | create, read, cancel, refund, gift | có | `refund`, `gift` | chưa |
+| `plan` | read, create, update, delete | | tất cả | chưa |
+| `order` | create, read, cancel | có | | chưa |
 | `subscription` | read | có | | chưa |
-| `inspection` | create, perform | có | `perform` | chưa |
-| `ad` | read, create, update, delete | | tất cả | chưa |
-| `expense` | read, create, update, delete | | tất cả | chưa |
-| `finance` | read | | tất cả | chưa |
-| `dashboard` | read | | tất cả | chưa |
-| `stats` | read | có | | chưa |
 
-Báo cáo tài chính và doanh thu (`finance`, `dashboard`) chỉ admin được xem, vì phần mềm phục vụ admin kinh doanh.
+Danh mục chỉ có **12 module** của bản MVP. Các module `contact`, `report`, `verification`, `boost`, `product`, `inspection`, `ad`, `expense`, `finance`, `dashboard`, `stats` và hai hành động `order:refund`, `order:gift` đã bị gỡ (xem nhật ký 2026-10-12). Khóa của chúng không còn hợp lệ: gửi lên `PATCH /account-types/:key` sẽ nhận 400 `PERMISSION_UNKNOWN`.
 
 ### Quyền đổi thì FE thấy khi nào
 
@@ -515,17 +505,38 @@ Backend sẽ làm theo thứ tự dưới đây. Mỗi mục khi xong sẽ vào 
 | Thứ tự | Tính năng | Ảnh hưởng tới FE |
 |---|---|---|
 | 7 | **Giới hạn tần suất** cho đăng nhập, đăng ký, quên mật khẩu, refresh | Sẽ có lỗi 429 `RATE_LIMITED` kèm header `Retry-After` (giây). FE nên chuẩn bị hiện "thử lại sau N giây" |
-| 8 | **Nhà trọ, đăng tin, xem tin**: người đăng bài tạo nhà trọ và tin phòng, admin duyệt trước khi hiển thị, người tìm trọ xem chi tiết tin (mỗi lần mở tính một lượt xem) | Trang quản lý tin, hàng chờ duyệt cho admin, trang chi tiết tin |
-| 9 | **Dùng thử miễn phí và hạn mức tin** cho người đăng bài (khoảng một tháng, khoảng 1 đến 2 tin) | Lỗi chặn đăng thêm kèm gợi ý mua gói |
-| 10 | **Mua gói và gia hạn theo tháng**, thanh toán thử bằng VNPay sandbox (không có tiền thật) | Trang chọn gói, trang thanh toán, lịch sử giao dịch |
+| 8 | **Nhà trọ, đăng tin, xem tin**: chủ trọ tạo nhà trọ và tin phòng, **tin hiện ngay khi đăng, không có bước duyệt**. Chủ trọ tự ẩn và hiện lại tin của mình; admin ẩn hoặc gỡ ẩn tin của người khác kèm lý do. Người tìm trọ xem danh sách tin có lọc đơn giản (từ khóa, phường, khoảng giá, sắp xếp) và chi tiết tin (mỗi lần mở tính một lượt xem). Ảnh tải lên, tối đa 5 ảnh mỗi tin | Trang quản lý nhà trọ và tin của chủ trọ (có nút ẩn, hiện), trang danh sách có bộ lọc, trang chi tiết tin, nút ẩn tin cho admin. **Không cần hàng chờ duyệt** |
+| 9 | **Dùng thử miễn phí và hạn mức tin** cho chủ trọ: dùng thử 30 ngày, tối đa 2 tin đang hiện (admin đổi được hai con số này). Hết kỳ dùng thử mà chưa mua gói thì tin của chủ trọ tự biến khỏi danh sách công khai | Lỗi chặn đăng hoặc hiện thêm tin kèm gợi ý mua gói; hiện ngày hết hạn dùng thử và số tin còn lại |
+| 10 | **Mua gói và gia hạn theo tháng**, **thanh toán thử** (bấm xác nhận là có gói, không có tiền thật, không chuyển sang cổng thanh toán nào, nên **không có trang VNPay**) | Trang chọn gói, nút thanh toán thử, lịch sử đơn |
 | 11 | **Theo dõi chủ trọ** và hiển thị số người theo dõi, tổng lượt xem tin | Nút theo dõi, số liệu trên hồ sơ chủ trọ |
+| 12 | **Lưu phòng yêu thích** cho người tìm trọ | Nút lưu trên tin, trang danh sách tin đã lưu |
 | sau | API **danh sách người dùng** cho admin, API hồ sơ cá nhân | Màn hình quản lý người dùng, trang hồ sơ |
+
+**Đã bỏ khỏi kế hoạch (2026-10-11), FE đừng làm màn hình cho các phần này:** duyệt tin trước khi hiển thị, thanh toán qua VNPay, xác thực chủ trọ bằng giấy tờ, báo cáo tin xấu, liên hệ chủ trọ có giới hạn mỗi ngày, đẩy tin và tin nổi bật, kiểm tra tại chỗ, quảng cáo, báo cáo thu chi và dashboard, thống kê cho chủ trọ, tìm quanh địa điểm mốc, đổi loại tài khoản.
+
+**Về danh sách quyền ở mục 5:** từ 2026-10-12 danh mục quyền chỉ còn 12 module của MVP, khớp với các tính năng ở bảng trên. Các module thuộc phần đã bỏ đã được gỡ khỏi backend (xem nhật ký 2026-10-12).
 
 ---
 
 ## 11. Nhật ký thay đổi
 
 Mới nhất ở trên cùng. Mục nào **phá vỡ** cách FE đang gọi sẽ ghi rõ "ĐỔI KHÁC VỚI TRƯỚC".
+
+### 2026-10-12 · Dọn danh mục quyền theo MVP (ĐỔI KHÁC VỚI TRƯỚC)
+
+- **Không thêm hay bỏ endpoint nào**, nhưng nội dung ba API đọc quyền **đã đổi**:
+  - `GET /permissions` từ 23 module còn **12 module** (`profile`, `user`, `account_type`, `catalog`, `setting`, `property`, `listing`, `favorite`, `follow`, `plan`, `order`, `subscription`). Module `product` đổi tên thành `plan`. Module `order` chỉ còn hành động `create`, `read`, `cancel`.
+  - `GET /account-types`: quyền mặc định của `landlord` từ 18 còn **14**, của `tenant` từ 9 còn **7**. Quyền của `admin` (toàn bộ) cũng ngắn lại theo danh mục.
+  - `GET /auth/me`: `permissions` của người dùng ngắn lại theo, token cấp mới sau thay đổi này không còn khóa cũ.
+- **Khóa đã bỏ**: `contact:reveal`, `report:*`, `verification:*`, `boost:*`, `product:*`, `inspection:*`, `ad:*`, `expense:*`, `finance:*`, `dashboard:*`, `stats:*`, `order:refund`, `order:gift`. Gửi chúng lên `PATCH /account-types/:key` nhận **400 `PERMISSION_UNKNOWN`** (trước đây một số khóa nhận `PERMISSION_ADMIN_ONLY`).
+- **FE cần làm**: nếu màn hình chọn quyền hay phân nhóm quyền đang cứng các module trên thì gỡ ra, nên vẽ theo `GET /permissions`. Token cấp trước thay đổi có thể còn mang khóa cũ đến lần refresh kế tiếp, vô hại vì không route nào dùng chúng.
+
+### 2026-10-11 · Đổi kế hoạch: bỏ duyệt tin, bỏ VNPay, thu gọn phạm vi MVP
+
+- **Chỉ đổi kế hoạch, chưa đổi API nào đang chạy.** Không có endpoint, mã lỗi hay trường nào thay đổi.
+- Tin đăng sẽ **hiện ngay khi đăng**; không có hàng chờ duyệt. Admin ẩn tin vi phạm sau khi đăng.
+- Mua gói là **thanh toán thử**, không chuyển sang VNPay.
+- Thêm hàng 12 (lưu phòng yêu thích) vào kế hoạch; xem danh sách phần đã bỏ ở mục 10.
 
 ### 2026-10-08 · Quên mật khẩu, đặt lại mật khẩu, đổi mật khẩu
 

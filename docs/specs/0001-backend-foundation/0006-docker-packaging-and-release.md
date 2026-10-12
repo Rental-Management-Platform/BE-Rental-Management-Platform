@@ -119,14 +119,12 @@ Biến môi trường (nguồn duy nhất, đọc qua `AppConfigService`; thiế
 | `TRUST_PROXY_HOPS` | số lớp proxy tin cậy để đọc IP khách | `0` (không có proxy) | không | không |
 | `MAIL_HOST`, `MAIL_PORT`, `MAIL_USER`, `MAIL_FROM` | SMTP | `smtp.gmail.com`, `465`; hai biến sau là địa chỉ Gmail | có | không |
 | `MAIL_PASSWORD` | App Password của Gmail | `CHANGE_ME` | có | **có** |
-| `VNPAY_TMN_CODE`, `VNPAY_PAY_URL`, `VNPAY_RETURN_URL` | thanh toán demo bằng VNPay sandbox: mã đơn vị thu, địa chỉ cổng thanh toán, địa chỉ VNPay đưa trình duyệt quay về | điền theo tài khoản sandbox bạn đăng ký; `VNPAY_RETURN_URL` trỏ về `localhost` | không (thiếu thì chỉ endpoint tạo thanh toán trả 503 `PAYMENT_NOT_CONFIGURED`, API vẫn khởi động) | không |
-| `VNPAY_HASH_SECRET` | khóa ký và kiểm chữ ký giao dịch | `CHANGE_ME` | cùng điều kiện với ba biến trên | **có** |
 | `UPLOAD_DIR`, `MAX_UPLOAD_BYTES` | thư mục ảnh, dung lượng tối đa mỗi ảnh | `/data/uploads`, `5242880` | không | không |
 | `ADMIN_SEED_EMAIL`, `ADMIN_SEED_NAME` | admin đầu tiên | | có | không |
 | `ADMIN_SEED_PASSWORD` | mật khẩu admin đầu tiên (chỉ dùng khi seed) | `CHANGE_ME` | có | **có** |
 | `LOG_LEVEL`, `SWAGGER_ENABLED` | log và tài liệu API | `info`, `true` | không | không |
 
-Bỏ các biến cũ: `MONGODB_*`, `CLOUDINARY_*`, `CLIENT_IP_HEADER`, `JWT_SECRET`, `JWT_EXPIRES_IN`. Tham số nghiệp vụ (BR-16) không nằm ở biến môi trường mà ở bảng `settings`. `.env.example` cập nhật theo bảng, giá trị bí mật là `CHANGE_ME`; `.env` đã bị git bỏ qua.
+Bỏ các biến cũ: `MONGODB_*`, `CLOUDINARY_*`, `CLIENT_IP_HEADER`, `JWT_SECRET`, `JWT_EXPIRES_IN`. Không có biến `VNPAY_*` vì thanh toán chỉ là thanh toán thử (2026-10-11). Tham số nghiệp vụ (số ngày và số tin dùng thử) không nằm ở biến môi trường mà ở bảng `settings`. `.env.example` cập nhật theo bảng, giá trị bí mật là `CHANGE_ME`; `.env` đã bị git bỏ qua.
 
 Hợp đồng với FE (FE là repo khác, tự chạy ở cổng riêng trên localhost):
 - Origin của FE nằm trong `ALLOWED_ORIGINS` và `APP_BASE_URL`.
@@ -136,16 +134,16 @@ Hợp đồng với FE (FE là repo khác, tự chạy ở cổng riêng trên l
 
 Bảo mật vận hành (đã nằm trong `createApp`): `helmet`, CORS theo `ALLOWED_ORIGINS` kèm `credentials: true`, giới hạn body JSON `100kb`, `trust proxy` theo `TRUST_PROXY_HOPS`, Swagger bật theo `SWAGGER_ENABLED`, bí mật chỉ nằm ở `.env`, log che mật khẩu và token. Container chạy bằng người dùng không root, DB không mở cổng ra ngoài, API chỉ nghe ở `127.0.0.1` của máy chủ.
 
-Giới hạn tần suất: `@nestjs/throttler` dùng bộ nhớ trong (mặc định), đủ vì chỉ có một container API. Bộ đếm về 0 khi container khởi động lại, chấp nhận được. Giới hạn đặt bằng hằng số trong code theo nhóm endpoint (đăng nhập, đăng ký, quên mật khẩu, refresh, liên hệ, báo cáo). Nếu sau này chạy nhiều bản sao thì đổi storage sang Redis mà không đổi nơi gọi.
+Giới hạn tần suất: `@nestjs/throttler` dùng bộ nhớ trong (mặc định), đủ vì chỉ có một container API. Bộ đếm về 0 khi container khởi động lại, chấp nhận được. Giới hạn đặt bằng hằng số trong code theo nhóm endpoint (đăng nhập, đăng ký, quên mật khẩu, đặt lại mật khẩu, refresh; liên hệ và báo cáo tin đã hoãn khỏi MVP). Nếu sau này chạy nhiều bản sao thì đổi storage sang Redis mà không đổi nơi gọi.
 
 Email: giao diện `MailService.send(message)` với một hiện thực Nodemailer đọc `MAIL_*`; nội dung email viết bằng tiếng Việt. Lúc khởi động chỉ kiểm tra các biến có mặt và đúng định dạng, không thử đăng nhập SMTP (để chạy được khi mất mạng).
 
-Thanh toán: giao diện `PaymentGateway` (tạo địa chỉ thanh toán đã ký, kiểm chữ ký và số tiền khi VNPay đưa trình duyệt quay về) với một hiện thực VNPay sandbox đọc `VNPAY_*`. Chỉ là sandbox, không có tiền thật; luồng đơn hàng, số tiền và trạng thái do spec thanh toán quyết định. Đổi nhà cung cấp chỉ sửa một file.
+Thanh toán: chỉ là thanh toán thử (quyết định 2026-10-11). Không có cổng ngoài, không có biến môi trường riêng, không cần mạng: chủ trọ tạo đơn rồi gọi một endpoint xác nhận, đơn thành `paid` và gói có hiệu lực ngay. Luồng đơn hàng, trạng thái và gia hạn do spec mua gói quyết định. Muốn thu tiền thật sau này thì thêm một cổng thanh toán (ví dụ VNPay) vào bước tạo và xác nhận đơn; bản VNPay sandbox đã được thiết kế trước đó bị bỏ vì demo không cần.
 
 Lưu ảnh (`StorageService`, hợp đồng; endpoint tải lên do spec tính năng upload quyết định):
-- Giao diện `put`, `get`, `delete` theo khóa. Khóa do server sinh dạng `public/<uuid>.<đuôi>` hoặc `private/<uuid>.<đuôi>`, kiểm bằng biểu thức chính quy trước khi chạm ổ đĩa, nên không thể đi ra ngoài `UPLOAD_DIR`.
-- Ảnh công khai (ảnh tin) phục vụ ở `GET /api/v1/media/public/:key` với `Cache-Control` dài hạn (khóa không đổi). Ảnh riêng tư (giấy tờ xác minh) không có đường công khai; chỉ endpoint có quyền `verification:review` mới đọc và truyền lại luồng dữ liệu.
-- Chỉ nhận JPEG, PNG, WebP, kiểm bằng nội dung tệp (magic bytes) thay vì tin `Content-Type` của client; dung lượng tối đa `MAX_UPLOAD_BYTES`; tối đa 10 ảnh mỗi tin. MVP chưa nén hay đổi kích thước ảnh.
+- Giao diện `put`, `get`, `delete` theo khóa. Khóa do server sinh dạng `public/<uuid>.<đuôi>`, kiểm bằng biểu thức chính quy trước khi chạm ổ đĩa, nên không thể đi ra ngoài `UPLOAD_DIR`. Giao diện chừa chỗ cho khóa `private/...` khi sau này làm xác thực chủ trọ, MVP chưa dùng.
+- Ảnh tin phục vụ công khai ở `GET /api/v1/media/public/:key` với `Cache-Control` dài hạn (khóa không đổi). MVP không có ảnh riêng tư (giấy tờ xác minh đã hoãn).
+- Chỉ nhận JPEG, PNG, WebP, kiểm bằng nội dung tệp (magic bytes) thay vì tin `Content-Type` của client; dung lượng tối đa `MAX_UPLOAD_BYTES`; tối đa 5 ảnh mỗi tin. MVP chưa nén hay đổi kích thước ảnh.
 
 CI/CD (GitHub Actions):
 - Mỗi PR: job `check` chạy `npm ci` và `npm run check` (gồm `tsc --noEmit`, `eslint . --max-warnings 0`, `jest`, `nest build`); job `e2e` chạy test với Testcontainers và kiểm tra lệch schema (spec 0005); job `image` dựng image (không đẩy) để bắt lỗi Dockerfile.
@@ -180,9 +178,8 @@ CI/CD (GitHub Actions):
 | 14 | `@prisma/adapter-pg` nhận được cỡ pool, hạn kết nối, hạn rảnh và múi giờ phiên UTC (mặc định của `pg` không có hạn kết nối) | đọc tài liệu, đặt giá trị, kiểm bằng `SHOW timezone` và thử quá tải | dựng `pg.Pool` riêng rồi đưa cho adapter, hoặc đặt múi giờ qua tham số URL |
 | 15 | `prisma migrate deploy` chạy được trong image `node:24-slim` khi `prisma` nằm ở `dependencies`, và thoát mã khác 0 khi migration lỗi | dựng image, làm hỏng một migration, xem mã thoát | chạy migrate trong một service Compose dùng một lần dựng từ giai đoạn build |
 | 16 | Cột `@db.Date` đọc ra là `Date` nửa đêm UTC; `String[]` tạo được `text[]` không mặc định DB; `omit` loại được `passwordHash` | tạo bảng thử rồi đọc và ghi | chỉnh `toVnDay`, đặt mặc định mảng bằng SQL tay |
-| 17 | Sandbox VNPay xác nhận được kết quả qua địa chỉ trả về (trình duyệt quay về `localhost`) với chữ ký hợp lệ; máy chủ VNPay không gọi được về `localhost` nên không dựa vào thông báo từ máy chủ (IPN) | tạo một đơn thử số tiền nhỏ bằng thẻ thử của sandbox, xem tham số trả về và kiểm chữ ký | dùng một đường hầm công khai cho IPN, hoặc gọi API truy vấn giao dịch của VNPay sau khi quay về |
 
-Đã kiểm chứng ngày 2026-10-06 bằng cách chạy thật trên PostgreSQL 18.1 của máy dev: giả định 2 (`uuidv7()` làm mặc định, id đọc lại được sau khi chèn); giả định 5 phần chạy trong NestJS 11.2.x dạng CommonJS (build và khởi động được); giả định 6 (`CHECK` và chỉ mục duy nhất một phần viết tay bị `migrate diff` bỏ qua, còn chỉ mục GIN không khai báo trong schema thì bị đòi xóa, khai báo xong thì sạch); giả định 14 (adapter nhận cỡ pool, hạn kết nối, hạn rảnh, và `options` đặt múi giờ phiên là UTC); giả định 16 phần `String[]` (sinh `text[]` cho phép rỗng, migration thêm `NOT NULL` bằng tay) và `omit`. Còn lại: giả định 3, 4, 7 đến 13, 15, 17, phần `strictTypeChecked` của giả định 5 (ESLint chưa chuyển sang bộ luật chặt), và phần `@db.Date` của giả định 16.
+Đã kiểm chứng ngày 2026-10-06 bằng cách chạy thật trên PostgreSQL 18.1 của máy dev: giả định 2 (`uuidv7()` làm mặc định, id đọc lại được sau khi chèn); giả định 5 phần chạy trong NestJS 11.2.x dạng CommonJS (build và khởi động được); giả định 6 (`CHECK` và chỉ mục duy nhất một phần viết tay bị `migrate diff` bỏ qua, còn chỉ mục GIN không khai báo trong schema thì bị đòi xóa, khai báo xong thì sạch); giả định 14 (adapter nhận cỡ pool, hạn kết nối, hạn rảnh, và `options` đặt múi giờ phiên là UTC); giả định 16 phần `String[]` (sinh `text[]` cho phép rỗng, migration thêm `NOT NULL` bằng tay) và `omit`. Còn lại: giả định 3, 4, 7 đến 13, 15 (giả định 17 về VNPay đã bỏ cùng VNPay), phần `strictTypeChecked` của giả định 5 (ESLint chưa chuyển sang bộ luật chặt), và phần `@db.Date` của giả định 16.
 
 **Lưu ý máy dev (2026-10-05):** cụm PostgreSQL cài trên Windows mặc định WIN1252 nên database phải tạo riêng bằng UTF8.
 
@@ -212,9 +209,9 @@ Bạn muốn người dùng chỉ cần Docker và chạy trên localhost, nên 
 - Chạy lần đầu vẫn cần điền `.env`, kể cả App Password của Gmail, nên "chỉ cần tải Docker" chưa đúng hẳn: người nhận bản demo phải được bạn gửi sẵn một file `.env` đã điền, hoặc tự tạo App Password của họ.
 - Thiếu `MAIL_*` thì API không khởi động, nên không thể xem thử API khi chưa có thông tin Gmail. Đây là lựa chọn của bạn.
 - Không còn link công khai để gửi cho người khác bấm vào; mỗi người phải tự chạy trên máy mình.
-- Thanh toán chỉ chạy bằng VNPay sandbox nên không có tiền thật; muốn thu thật phải đăng ký đơn vị thu với VNPay, đổi cấu hình và kiểm lại cả luồng thanh toán.
+- Thanh toán chỉ là thanh toán thử nên không có tiền thật; muốn thu thật phải chọn và tích hợp một cổng thanh toán, đăng ký đơn vị thu và kiểm lại cả luồng đơn hàng.
 - Dữ liệu và ảnh nằm trong volume Docker: không tự sao lưu, `down -v` xóa sạch.
-- Ảnh lưu ổ đĩa chưa được nén hay đổi kích thước; API tự lo kiểm tra loại ảnh, dung lượng và quyền đọc ảnh giấy tờ.
+- Ảnh lưu ổ đĩa chưa được nén hay đổi kích thước; API tự lo kiểm tra loại ảnh và dung lượng.
 - Giới hạn tần suất dùng bộ nhớ trong, không chia sẻ giữa nhiều bản sao.
 - Dựng đa kiến trúc làm CI chậm hơn; image mới phải qua đủ job mới phát hành được.
 - Cookie phụ thuộc việc FE và API cùng dùng host `localhost`; trộn `127.0.0.1` làm refresh im lặng hỏng.
@@ -228,7 +225,7 @@ Bạn muốn người dùng chỉ cần Docker và chạy trên localhost, nên 
 - [ ] Làm slice 0 và điền kết quả cho các giả định còn lại (xem đoạn "Đã kiểm chứng" dưới bảng); nếu giả định 4 sai thì quay lại `/architect`.
 - [ ] Chốt tên image và tên tổ chức GitHub chính xác (`ghcr.io/rental-management-platform/rental-api` là giả định theo địa chỉ repo hiện tại).
 - [ ] Viết README cho người dùng (năm bước chạy, sao lưu, phục hồi, cảnh báo `down -v`).
-- [ ] Spec tính năng upload ảnh quyết định endpoint tải lên, giới hạn và cách đọc ảnh riêng tư; nén ảnh (ví dụ thư viện `sharp`) làm sau nếu cần.
+- [ ] Spec tính năng upload ảnh quyết định endpoint tải lên và giới hạn (tối đa 5 ảnh mỗi tin); nén ảnh (ví dụ thư viện `sharp`) làm sau nếu cần.
 - [ ] Khi muốn FE cùng origin với API, thêm dịch vụ nginx vào Compose (cần quyết định cách FE đóng thành image).
 - [ ] NestJS đang cài là 11.2.7; báo cáo tra web nói đã có bản chính 12. Nâng cấp là một quyết định riêng, kiểm tra tương thích trước.
 - [ ] Gói phát hành hiện cần điền thông tin Gmail; nếu muốn người nhận chạy ngay không cần Gmail thì quay lại quyết định về email và về việc bắt buộc `MAIL_*`.

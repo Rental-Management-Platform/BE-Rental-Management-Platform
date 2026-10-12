@@ -18,7 +18,7 @@ Chuẩn bị một lần: `.env` có `JWT_ACCESS_SECRET`, `ALLOWED_ORIGINS`, `AD
 - [ ] không token → 401 `TOKEN_MISSING`; tenant gọi `GET /account-types` → 403 `PERMISSION_DENIED`; `GET /` công khai → 200 → AC-4
 - [ ] đăng nhập admin (tài khoản seed): token có `type: "admin"` và `account_type:manage` → AC-2
 - [ ] `GET /account-types` → 3 loại, admin có toàn bộ quyền; `GET /permissions` → danh mục kèm `adminActions` → AC-2, AC-6
-- [ ] `PATCH /account-types/tenant` gửi `["listing:manage"]`, `["profile:manage"]`, `["listing:moderate"]`, `["finance:read"]` → mỗi lần 400 `PERMISSION_ADMIN_ONLY` → AC-6, AC-11
+- [ ] `PATCH /account-types/tenant` gửi `["listing:manage"]`, `["profile:manage"]`, `["listing:moderate"]`, `["plan:create"]` → mỗi lần 400 `PERMISSION_ADMIN_ONLY` → AC-6, AC-11
 - [ ] `PATCH` với khóa lạ → 400 `PERMISSION_UNKNOWN`; sửa `admin` → 409 `SYSTEM_TYPE_PROTECTED`; loại không có → 404 `ACCOUNT_TYPE_NOT_FOUND` → AC-1, AC-2, AC-6
 - [ ] admin bỏ `favorite:create` khỏi tenant (gửi danh sách trùng, kết quả đã bỏ trùng) → token cũ của tenant chưa đổi; sau `POST /auth/refresh` token mới không còn `favorite:manage` nhưng còn `favorite:read` và `favorite:delete` → AC-10
 ### Khóa tài khoản (spec 0003)
@@ -38,7 +38,7 @@ Chuẩn bị một lần: `.env` có `JWT_ACCESS_SECRET`, `ALLOWED_ORIGINS`, `AD
 - [ ] truy vấn DB: `account_types` có 3 dòng; `users_landlord_phone_check` và `users_landlord_phone_unique` tồn tại; ghi thẳng một `landlord` không có `phone` bị `CHECK` chặn → AC-2, AC-3
 
 ## Acceptance-criteria coverage
-- spec 0003: AC-1 danh mục + `PERMISSION_UNKNOWN` · AC-2 ba loại, admin bảo vệ · AC-3 một loại mỗi tài khoản · AC-4 khai báo mọi route · AC-5 `assertOwner` (test đơn vị; chưa có route dùng, kiểm lại khi có tính năng đầu tiên theo chủ sở hữu) · AC-6 sửa quyền loại · AC-7 khóa, mở khóa, thu hồi · AC-8 `@FreshAuth()` · AC-9 seed · AC-10 quyền đổi sau refresh · AC-11 báo cáo tài chính chỉ admin
+- spec 0003: AC-1 danh mục + `PERMISSION_UNKNOWN` · AC-2 ba loại, admin bảo vệ · AC-3 một loại mỗi tài khoản · AC-4 khai báo mọi route · AC-5 `assertOwner` (test đơn vị; chưa có route dùng, kiểm lại khi có tính năng đầu tiên theo chủ sở hữu) · AC-6 sửa quyền loại · AC-7 khóa, mở khóa, thu hồi · AC-8 `@FreshAuth()` · AC-9 seed · AC-10 quyền đổi sau refresh · AC-11 các module chỉ admin (`plan`, `catalog`, `setting`...) không cấp được cho loại khác
 - spec 0002: AC-1 đăng ký chọn loại · AC-3 payload có `type` và `perms` · AC-6 refresh đọc lại quyền của loại · AC-13 số điện thoại
 
 ## Value sourcing (mỗi nguồn giá trị một bước)
@@ -84,3 +84,29 @@ _Bước thử bằng Postman folder `02 Quên và đổi mật khẩu`. Cần `
 - [ ] người gửi lấy từ `MAIL_FROM`, máy chủ và đăng nhập SMTP từ `MAIL_HOST`, `MAIL_PORT`, `MAIL_USER`, `MAIL_PASSWORD` (`secure` chỉ khi cổng 465) → AC-8
 - [ ] lời chào lấy từ `users.name` (tên có `<` hoặc `&` được thoát trong bản HTML); không có tên thì chào chung → AC-8
 - [ ] `users.password_changed_at` được ghi lúc đặt lại hoặc đổi mật khẩu thành công → AC-8, AC-9
+
+---
+
+## Hàng 13: dọn danh mục quyền theo MVP (spec 0003 AC-1, AC-2, AC-6, AC-9, AC-11) · cập nhật 2026-10-12
+_Danh mục quyền chỉ còn 12 module của MVP; migration `20261011090000_mvp_permission_cleanup` gỡ khóa thừa khỏi quyền của landlord và tenant. Xem mục "Phạm vi MVP" trong `index.md`._
+
+### UI / manual
+- [ ] admin gọi `GET /permissions` → đúng 12 module (`profile`, `user`, `account_type`, `catalog`, `setting`, `property`, `listing`, `favorite`, `follow`, `plan`, `order`, `subscription`), không còn `contact`, `report`, `verification`, `boost`, `product`, `inspection`, `ad`, `expense`, `finance`, `dashboard`, `stats` → AC-1
+- [ ] `GET /account-types` → landlord 14 quyền, tenant 7 quyền, admin có đủ hành động của 12 module; không loại nào còn khóa của module đã bỏ → AC-2, AC-9
+- [ ] `PATCH /account-types/tenant` gửi `["contact:reveal"]` hoặc `["finance:read"]` → 400 `PERMISSION_UNKNOWN`; gửi `["plan:create"]` hoặc `["listing:moderate"]` → 400 `PERMISSION_ADMIN_ONLY`; gửi đúng 7 quyền mặc định → 200 → AC-1, AC-6, AC-11
+- [ ] đăng ký một landlord và một tenant mới, gọi `GET /auth/me` → `permissions` đúng 14 và 7 khóa theo bảng mặc định ở spec 0003 → AC-9
+- [ ] trên DB đã có dữ liệu cũ: thêm tay `order:refund` và `stats:manage` vào `account_types.permissions` của landlord, áp migration → hai khóa đó mất, các khóa còn lại giữ nguyên thứ tự → AC-9
+
+### Commands
+- [ ] `npm test` → toàn bộ qua, gồm `migration-defaults.spec.ts` (đọc cả hai migration) và `permission-catalog.spec.ts` (đúng 12 module, khóa của phần đã hoãn không hợp lệ) → AC-1, AC-9
+- [ ] `npx tsc --noEmit` và `npx eslint "src/**/*.ts"` → sạch
+- [ ] `DATABASE_NAME=<db> npx prisma migrate deploy` trên DB trống, rồi `prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code` → "No difference detected" (migration chỉ sửa dữ liệu) → AC-9
+- [ ] `newman run docs/api/postman-collection.json` các folder 00, 01, 03, 04, 05 → không lỗi (folder 02 cần token email nên bỏ)
+- [ ] log API sau khi chạy các bước trên không có dòng cảnh báo "khóa quyền không còn trong danh mục" → AC-9
+
+### Acceptance-criteria coverage
+- spec 0003: AC-1 khóa lạ bị `PERMISSION_UNKNOWN` · AC-2 ba loại kèm quyền mặc định mới · AC-6 PATCH loại · AC-9 quyền mặc định qua migration · AC-11 module chỉ admin
+
+### Value sourcing
+- [ ] quyền mặc định của landlord và tenant lấy từ hai migration (danh sách chèn ban đầu trừ danh sách gỡ), phải khớp bảng ở spec 0003: test `migration-defaults.spec.ts` canh, so thêm bằng truy vấn `account_types` sau khi áp → AC-9
+- [ ] danh sách module trả về của `GET /permissions` lấy từ `PERMISSION_CATALOG` trong code, không từ DB: đổi quyền một loại bằng API rồi gọi lại, danh mục không đổi → AC-1

@@ -736,7 +736,14 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));"
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('đúng 12 module của MVP, không còn module đã hoãn', () => {",
+                  "    const modules = pm.response.json().map((entry) => entry.module);",
+                  "    pm.expect(modules).to.have.lengthOf(12);",
+                  "    pm.expect(modules).to.include('plan');",
+                  "    ['contact', 'report', 'verification', 'boost', 'product', 'inspection', 'ad', 'expense', 'finance', 'dashboard', 'stats'].forEach((gone) => pm.expect(modules).to.not.include(gone));",
+                  "});"
                 ]
               }
             }
@@ -753,7 +760,7 @@
                 "permissions"
               ]
             },
-            "description": "Cần quyền `account_type:read`. Danh mục mọi module, hành động, module nào chỉ áp cho dữ liệu của chính người gọi (`ownerScoped`) và hành động nào chỉ admin được giữ (`adminActions`). Dùng để vẽ màn hình chọn quyền."
+            "description": "Cần quyền `account_type:read`. Danh mục 12 module của MVP, hành động, module nào chỉ áp cho dữ liệu của chính người gọi (`ownerScoped`) và hành động nào chỉ admin được giữ (`adminActions`). Dùng để vẽ màn hình chọn quyền."
           }
         },
         {
@@ -766,7 +773,12 @@
                 "exec": [
                   "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
                   "",
-                  "pm.test('có đủ ba loại', () => pm.expect(pm.response.json().map((t) => t.key).sort()).to.eql(['admin', 'landlord', 'tenant']));"
+                  "pm.test('có đủ ba loại', () => pm.expect(pm.response.json().map((t) => t.key).sort()).to.eql(['admin', 'landlord', 'tenant']));",
+                  "",
+                  "pm.test('không loại nào còn quyền của module đã hoãn', () => {",
+                  "    const gone = ['contact', 'report', 'verification', 'boost', 'product', 'inspection', 'ad', 'expense', 'finance', 'dashboard', 'stats'];",
+                  "    pm.response.json().forEach((type) => type.permissions.forEach((permission) => pm.expect(gone).to.not.include(permission.split(':')[0])));",
+                  "});"
                 ]
               }
             }
@@ -820,7 +832,7 @@
             "description": "Cần quyền `account_type:update`, kiểm lại DB mỗi lần gọi. THAY TOÀN BỘ danh sách quyền của loại (không phải thêm bớt). Danh sách trùng được bỏ trùng. Request này gửi danh sách mặc định của tenant trừ `favorite:create`. Token cũ của tenant giữ quyền cũ đến khi refresh (tối đa 15 phút).",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"permissions\": [\n    \"contact:reveal\",\n    \"favorite:delete\",\n    \"favorite:read\",\n    \"follow:create\",\n    \"follow:delete\",\n    \"profile:read\",\n    \"profile:update\",\n    \"report:create\"\n  ]\n}",
+              "raw": "{\n  \"permissions\": [\n    \"favorite:delete\",\n    \"favorite:read\",\n    \"follow:create\",\n    \"follow:delete\",\n    \"profile:read\",\n    \"profile:update\"\n  ]\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -860,10 +872,10 @@
                 "tenant"
               ]
             },
-            "description": "Gửi lại đúng danh sách quyền mặc định của tenant (9 quyền).",
+            "description": "Gửi lại đúng danh sách quyền mặc định của tenant (7 quyền: hồ sơ, lưu phòng, theo dõi chủ trọ).",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"permissions\": [\n    \"contact:reveal\",\n    \"favorite:create\",\n    \"favorite:delete\",\n    \"favorite:read\",\n    \"follow:create\",\n    \"follow:delete\",\n    \"profile:read\",\n    \"profile:update\",\n    \"report:create\"\n  ]\n}",
+              "raw": "{\n  \"permissions\": [\n    \"favorite:create\",\n    \"favorite:delete\",\n    \"favorite:read\",\n    \"follow:create\",\n    \"follow:delete\",\n    \"profile:read\",\n    \"profile:update\"\n  ]\n}",
               "options": {
                 "raw": {
                   "language": "json"
