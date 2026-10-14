@@ -41,6 +41,19 @@ export enum ErrorCode {
 	CANNOT_LOCK_SELF = 'CANNOT_LOCK_SELF',
 	ACCOUNT_ALREADY_LOCKED = 'ACCOUNT_ALREADY_LOCKED',
 	ACCOUNT_NOT_LOCKED = 'ACCOUNT_NOT_LOCKED',
+
+	// Nhà trọ, tin đăng và danh mục phường, tiện ích (spec 0002)
+	WARD_UNKNOWN = 'WARD_UNKNOWN',
+	AMENITY_UNKNOWN = 'AMENITY_UNKNOWN',
+	CATALOG_CODE_TAKEN = 'CATALOG_CODE_TAKEN',
+	CATALOG_IN_USE = 'CATALOG_IN_USE',
+	PROPERTY_NOT_FOUND = 'PROPERTY_NOT_FOUND',
+	PROPERTY_HAS_LISTINGS = 'PROPERTY_HAS_LISTINGS',
+	LISTING_NOT_FOUND = 'LISTING_NOT_FOUND',
+	LISTING_STATE_INVALID = 'LISTING_STATE_INVALID',
+	LISTING_HIDDEN_BY_ADMIN = 'LISTING_HIDDEN_BY_ADMIN',
+	LISTING_IMAGE_LIMIT = 'LISTING_IMAGE_LIMIT',
+	IMAGE_INVALID = 'IMAGE_INVALID',
 }
 
 export interface ErrorDefinition {
@@ -189,6 +202,52 @@ export const ERRORS: Record<ErrorCode, ErrorDefinition> = {
 	[ErrorCode.ACCOUNT_NOT_LOCKED]: {
 		status: HttpStatus.CONFLICT,
 		message: 'Tài khoản này hiện không bị khóa.',
+	},
+	[ErrorCode.WARD_UNKNOWN]: {
+		status: HttpStatus.BAD_REQUEST,
+		message: 'Phường hoặc xã này không có trong danh mục.',
+	},
+	[ErrorCode.AMENITY_UNKNOWN]: {
+		status: HttpStatus.BAD_REQUEST,
+		message: 'Có tiện ích không nằm trong danh mục.',
+	},
+	[ErrorCode.CATALOG_CODE_TAKEN]: {
+		status: HttpStatus.CONFLICT,
+		message: 'Mã này đã có trong danh mục.',
+	},
+	[ErrorCode.CATALOG_IN_USE]: {
+		status: HttpStatus.CONFLICT,
+		message: 'Mục này đang được nhà trọ sử dụng nên chưa thể xóa.',
+	},
+	[ErrorCode.PROPERTY_NOT_FOUND]: {
+		status: HttpStatus.NOT_FOUND,
+		message: 'Không tìm thấy nhà trọ.',
+	},
+	[ErrorCode.PROPERTY_HAS_LISTINGS]: {
+		status: HttpStatus.CONFLICT,
+		message: 'Nhà trọ còn tin đăng. Hãy xóa các tin trước khi xóa nhà trọ.',
+	},
+	[ErrorCode.LISTING_NOT_FOUND]: {
+		status: HttpStatus.NOT_FOUND,
+		message: 'Không tìm thấy tin đăng.',
+	},
+	[ErrorCode.LISTING_STATE_INVALID]: {
+		status: HttpStatus.CONFLICT,
+		message:
+			'Không thể chuyển tin sang trạng thái này từ trạng thái hiện tại.',
+	},
+	[ErrorCode.LISTING_HIDDEN_BY_ADMIN]: {
+		status: HttpStatus.FORBIDDEN,
+		message:
+			'Tin này đã bị quản trị viên ẩn nên bạn không thể tự hiện lại.',
+	},
+	[ErrorCode.LISTING_IMAGE_LIMIT]: {
+		status: HttpStatus.CONFLICT,
+		message: 'Mỗi tin chỉ có tối đa 5 ảnh.',
+	},
+	[ErrorCode.IMAGE_INVALID]: {
+		status: HttpStatus.BAD_REQUEST,
+		message: 'Ảnh không hợp lệ. Chỉ nhận tệp JPEG, PNG hoặc WebP.',
 	},
 };
 

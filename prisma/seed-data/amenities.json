@@ -1,0 +1,15 @@
+[
+  { "key": "wifi", "name": "Wifi" },
+  { "key": "air_conditioner", "name": "Máy lạnh" },
+  { "key": "water_heater", "name": "Máy nước nóng" },
+  { "key": "private_bathroom", "name": "Phòng vệ sinh riêng" },
+  { "key": "kitchen", "name": "Bếp" },
+  { "key": "loft", "name": "Gác lửng" },
+  { "key": "washing_machine", "name": "Máy giặt" },
+  { "key": "parking", "name": "Chỗ để xe" },
+  { "key": "elevator", "name": "Thang máy" },
+  { "key": "security_camera", "name": "Camera an ninh" },
+  { "key": "free_hours", "name": "Giờ giấc tự do" },
+  { "key": "furnished", "name": "Có nội thất" },
+  { "key": "balcony", "name": "Ban công" }
+]

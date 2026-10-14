@@ -6,11 +6,13 @@ import { PrismaClient } from '../generated/prisma/client';
 import { normalizeEmail } from '../users/users.service';
 import { buildDatabaseUrl } from './build-database-url';
 import { loadEnvFile } from './load-env';
+import { seedCatalog } from './seed-catalog';
 
 /**
- * Seed chạy lại nhiều lần vẫn đúng (spec 0003 AC-9). Chỉ làm hai việc: kiểm ba loại tài khoản
- * đã có (do migration tạo; thiếu thì dừng) và tạo admin đầu tiên khi chưa có admin nào. Không
- * bao giờ ghi đè quyền của loại, vì admin có thể đã chỉnh.
+ * Seed chạy lại nhiều lần vẫn đúng (spec 0003 AC-9, spec 0002 AC-1). Làm ba việc: kiểm ba loại tài
+ * khoản đã có (do migration tạo; thiếu thì dừng), thêm danh mục phường và tiện ích còn thiếu, và tạo
+ * admin đầu tiên khi chưa có admin nào. Không bao giờ ghi đè quyền của loại hay tên danh mục, vì admin
+ * có thể đã chỉnh.
  */
 async function main(): Promise<void> {
 	loadEnvFile();
@@ -43,6 +45,9 @@ async function main(): Promise<void> {
 				`Thiếu loại tài khoản: ${missing.join(', ')}. Hãy chạy migration trước: npm run migration:deploy.`,
 			);
 		}
+
+		// Danh mục chạy trước phần admin vì phần admin có thể kết thúc sớm (đã có admin).
+		await seedCatalog(prisma);
 
 		// Tính cả admin bị khóa và đã xóa mềm: đã từng có admin thì không tự tạo thêm.
 		const admins = await prisma.user.count({

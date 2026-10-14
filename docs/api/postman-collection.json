@@ -1587,6 +1587,111 @@
           }
         }
       ]
+    },
+    {
+      "name": "07 Danh mục phường, xã và tiện ích",
+      "description": "Hai API công khai, không cần đăng nhập, dùng cho ô chọn địa chỉ và tiện ích của biểu mẫu nhà trọ. Địa chỉ theo đơn vị hành chính hai cấp sau sáp nhập (tỉnh hoặc thành phố, rồi phường, xã hoặc đặc khu): không có quận huyện. Cần đã chạy `npm run seed` để có dữ liệu.",
+      "item": [
+        {
+          "name": "Danh sách phường, xã, đặc khu (GET /wards)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('mỗi phần tử có code 5 chữ số, name, provinceCode, provinceName', () => {",
+                  "    const wards = pm.response.json();",
+                  "    pm.expect(wards).to.be.an('array').that.is.not.empty;",
+                  "    wards.forEach((ward) => {",
+                  "        pm.expect(ward.code).to.match(/^[0-9]{5}$/);",
+                  "        pm.expect(ward.name).to.be.a('string').that.is.not.empty;",
+                  "        pm.expect(ward.provinceCode).to.be.a('string').that.is.not.empty;",
+                  "        pm.expect(ward.provinceName).to.be.a('string').that.is.not.empty;",
+                  "    });",
+                  "});",
+                  "",
+                  "pm.test('địa chỉ hai cấp sau sáp nhập: tên kèm loại đơn vị, không có quận huyện', () => {",
+                  "    pm.response.json().forEach((ward) => {",
+                  "        pm.expect(ward.name).to.match(/^(Phường|Xã|Đặc khu) /);",
+                  "        pm.expect(ward.name).to.not.match(/quận|huyện/i);",
+                  "    });",
+                  "});",
+                  "",
+                  "pm.test('đúng 168 đơn vị của TP. Hồ Chí Minh sau seed mặc định (đổi số này nếu admin đã thêm hoặc xóa)', () => {",
+                  "    const wards = pm.response.json();",
+                  "    pm.expect(wards).to.have.lengthOf(168);",
+                  "    pm.expect(new Set(wards.map((ward) => ward.provinceCode)).size).to.eql(1);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/wards",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wards"
+              ]
+            },
+            "description": "Công khai. Mảng `{ code, name, provinceCode, provinceName }` xếp theo tên tiếng Việt. `name` đã kèm loại đơn vị (Phường, Xã, Đặc khu). Sau seed mặc định có đúng 168 đơn vị của Thành phố Hồ Chí Minh (113 phường, 54 xã, 1 đặc khu), không có quận huyện.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Danh sách tiện ích (GET /amenities)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('mỗi phần tử có key đúng dạng và name', () => {",
+                  "    const amenities = pm.response.json();",
+                  "    pm.expect(amenities).to.be.an('array').that.is.not.empty;",
+                  "    amenities.forEach((amenity) => {",
+                  "        pm.expect(amenity.key).to.match(/^[a-z][a-z0-9_]{1,29}$/);",
+                  "        pm.expect(amenity.name).to.be.a('string').that.is.not.empty;",
+                  "    });",
+                  "});",
+                  "",
+                  "pm.test('có 13 tiện ích mẫu sau seed mặc định (đổi số này nếu admin đã thêm hoặc xóa)', () => {",
+                  "    pm.expect(pm.response.json()).to.have.lengthOf(13);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/amenities",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "amenities"
+              ]
+            },
+            "description": "Công khai. Mảng `{ key, name }` xếp theo tên tiếng Việt. Sau seed mặc định có 13 tiện ích mẫu. `key` ổn định, dùng khi gửi tiện ích của nhà trọ.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        }
+      ]
     }
   ]
 }

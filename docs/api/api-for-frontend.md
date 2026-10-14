@@ -1,6 +1,6 @@
 # Tài liệu API và nghiệp vụ cho Frontend
 
-Cập nhật lần cuối: 2026-10-08 (xem mục [Nhật ký thay đổi](#11-nhật-ký-thay-đổi) để biết thay đổi gần nhất).
+Cập nhật lần cuối: 2026-10-14 (xem mục [Nhật ký thay đổi](#11-nhật-ký-thay-đổi) để biết thay đổi gần nhất).
 
 File này do đội backend giữ và **cập nhật cùng mỗi thay đổi API**. Mục đích: để bên FE hiểu hệ thống làm gì, mỗi màn hình cần gọi API nào, và xử lý lỗi ra sao. Đi kèm file này là bộ request thử trong Postman: [`postman-collection.json`](postman-collection.json) (import vào Postman để gọi thử từng API).
 
@@ -50,7 +50,8 @@ Mỗi tài khoản chỉ thuộc **một** loại, chọn lúc đăng ký và **
 | Khóa, mở khóa tài khoản, thu hồi phiên (admin) | Có |
 | Quên mật khẩu, đặt lại và đổi mật khẩu | Có (mới, 2026-10-08) |
 | Giới hạn tần suất (lỗi 429) | Có (mới, 2026-10-12) |
-| Nhà trọ, đăng tin, xem tin | Chưa có |
+| Danh sách phường, xã, đặc khu và tiện ích (cho biểu mẫu nhà trọ) | Có (mới, 2026-10-14) |
+| Nhà trọ, đăng tin, xem tin | Chưa có (đang làm từng phần, mục 10) |
 | Dùng thử, hạn mức, mua gói | Chưa có |
 | Theo dõi chủ trọ, lượt xem | Chưa có |
 
@@ -463,6 +464,34 @@ Danh sách này **thay toàn bộ** quyền của loại (không phải thêm ho
 
 **Lỗi**: 400 `PERMISSION_UNKNOWN` (khóa không có trong danh mục) · 400 `PERMISSION_ADMIN_ONLY` (quyền chỉ admin hoặc khóa `*:manage`) · 409 `SYSTEM_TYPE_PROTECTED` (`:key` là `admin`) · 404 `ACCOUNT_TYPE_NOT_FOUND` · 403 `PERMISSION_DENIED` · 403 `ACCOUNT_LOCKED`. Với hai lỗi 400 đầu, `errors` có một dòng `field: "permissions"` nêu các khóa gây lỗi.
 
+### 6.15 Danh sách phường, xã, đặc khu
+
+`GET /wards` · công khai (không cần đăng nhập)
+
+**Địa chỉ ở Việt Nam từ 01/07/2025 chỉ còn hai cấp** (sau sáp nhập): tỉnh hoặc thành phố, rồi phường, xã hoặc đặc khu. **Không còn cấp quận, huyện**, nên FE **đừng làm ô chọn quận huyện**. Một địa chỉ nhà trọ gồm: số nhà và tên đường (người dùng gõ), phường hoặc xã (chọn từ danh sách này) và tỉnh hoặc thành phố (đi kèm phường). Gợi ý hiển thị: `{số nhà và đường}, {name}, {provinceName}`, ví dụ `12 Lê Lợi, Phường Bến Thành, Thành phố Hồ Chí Minh`.
+
+**200 OK**: mảng, xếp theo `name` theo thứ tự chữ cái tiếng Việt:
+
+```json
+[
+  { "code": "26732", "name": "Đặc khu Côn Đảo", "provinceCode": "79", "provinceName": "Thành phố Hồ Chí Minh" },
+  { "code": "26743", "name": "Phường Bến Thành", "provinceCode": "79", "provinceName": "Thành phố Hồ Chí Minh" },
+  { "code": "26737", "name": "Phường Tân Định", "provinceCode": "79", "provinceName": "Thành phố Hồ Chí Minh" }
+]
+```
+
+Cần nhớ:
+- `name` là **tên đầy đủ kèm loại đơn vị** (`Phường ...`, `Xã ...`, `Đặc khu ...`), hiển thị thẳng được, không cần tự ghép "Phường" vào trước.
+- `code` là mã 5 chữ số theo danh mục hành chính mới. **Dùng `code` để lưu và so sánh**, đừng so chuỗi `name` (cách đặt dấu thanh theo nguồn, ví dụ `Hoà`, người dùng có thể gõ `Hòa`; tìm kiếm tin sẽ bỏ dấu nên không bị ảnh hưởng).
+- Bản demo có **168 đơn vị của Thành phố Hồ Chí Minh** (113 phường, 54 xã, 1 đặc khu), kể cả các phường thuộc Bình Dương và Bà Rịa Vũng Tàu cũ vì hai tỉnh đó đã sáp nhập vào thành phố. Mỗi phần tử có sẵn `provinceCode` và `provinceName` nên thêm tỉnh khác sau này không đổi API.
+- Danh sách ít thay đổi (chỉ admin sửa được, về sau): FE có thể lưu tạm trong phiên làm việc.
+
+### 6.16 Danh sách tiện ích
+
+`GET /amenities` · công khai
+
+**200 OK**: mảng `{ "key": "wifi", "name": "Wifi" }`, 13 tiện ích mẫu (wifi, máy lạnh, máy nước nóng, phòng vệ sinh riêng, bếp, gác lửng, máy giặt, chỗ để xe, thang máy, camera an ninh, giờ giấc tự do, có nội thất, ban công), xếp theo tên. `key` ổn định, dùng để gửi lên khi tạo hoặc sửa nhà trọ (khi API nhà trọ có).
+
 ---
 
 ## 7. Luồng màn hình gợi ý
@@ -502,6 +531,7 @@ Hai ô: mật khẩu hiện tại, mật khẩu mới. Gọi `POST /auth/change-
 - **Email** duy nhất toàn hệ thống, không phân biệt hoa thường; tài khoản đã xóa vẫn giữ email của nó (đăng ký lại bằng email đó vẫn báo `EMAIL_TAKEN`).
 - **Số điện thoại** của người đăng bài duy nhất toàn hệ thống (kể cả tài khoản đã xóa) và người đăng bài không tự đổi số sau khi đăng ký. Mục đích: mỗi số chỉ nhận một lần dùng thử miễn phí (sẽ làm sau). Người tìm trọ có thể trùng số.
 - **Loại tài khoản không đổi.** Không có API đổi loại.
+- **Địa chỉ hai cấp.** Mọi địa chỉ trong hệ thống theo đơn vị hành chính mới sau sáp nhập: số nhà và đường, phường hoặc xã (`GET /wards`), tỉnh hoặc thành phố. Không có quận huyện. Xem mục 6.15.
 - **Khóa tài khoản**: tài khoản bị khóa không đăng nhập, không refresh được và mọi phiên bị hủy lúc khóa. Đăng nhập sai mật khẩu vẫn báo `INVALID_CREDENTIALS` (không lộ tài khoản có bị khóa hay không); chỉ khi đúng mật khẩu mới báo `ACCOUNT_LOCKED`. Admin không tự khóa mình được.
 - **Đổi hoặc đặt lại mật khẩu** hủy phiên: đặt lại hủy **tất cả**; đổi (khi đang đăng nhập) hủy tất cả **trừ phiên đang dùng**.
 - **Mật khẩu mới** có thể trùng mật khẩu cũ (backend không cấm).
@@ -527,7 +557,7 @@ Backend sẽ làm theo thứ tự dưới đây. Mỗi mục khi xong sẽ vào 
 
 | Thứ tự | Tính năng | Ảnh hưởng tới FE |
 |---|---|---|
-| 8 | **Nhà trọ, đăng tin, xem tin**: chủ trọ tạo nhà trọ và tin phòng, **tin hiện ngay khi đăng, không có bước duyệt**. Chủ trọ tự ẩn và hiện lại tin của mình; admin ẩn hoặc gỡ ẩn tin của người khác kèm lý do. Người tìm trọ xem danh sách tin có lọc đơn giản (từ khóa, phường, khoảng giá, sắp xếp) và chi tiết tin (mỗi lần mở tính một lượt xem). Ảnh tải lên, tối đa 5 ảnh mỗi tin | Trang quản lý nhà trọ và tin của chủ trọ (có nút ẩn, hiện), trang danh sách có bộ lọc, trang chi tiết tin, nút ẩn tin cho admin. **Không cần hàng chờ duyệt** |
+| 8 | **Nhà trọ, đăng tin, xem tin** (đã có danh sách phường, xã và tiện ích, mục 6.15 và 6.16; các phần còn lại làm dần): chủ trọ tạo nhà trọ và tin phòng, **tin hiện ngay khi đăng, không có bước duyệt**. Chủ trọ tự ẩn và hiện lại tin của mình; admin ẩn hoặc gỡ ẩn tin của người khác kèm lý do. Người tìm trọ xem danh sách tin có lọc đơn giản (từ khóa, phường, khoảng giá, sắp xếp) và chi tiết tin (mỗi lần mở tính một lượt xem). Ảnh tải lên, tối đa 5 ảnh mỗi tin | Trang quản lý nhà trọ và tin của chủ trọ (có nút ẩn, hiện), trang danh sách có bộ lọc, trang chi tiết tin, nút ẩn tin cho admin. **Không cần hàng chờ duyệt** |
 | 9 | **Dùng thử miễn phí và hạn mức tin** cho chủ trọ: dùng thử 30 ngày, tối đa 2 tin đang hiện (admin đổi được hai con số này). Hết kỳ dùng thử mà chưa mua gói thì tin của chủ trọ tự biến khỏi danh sách công khai | Lỗi chặn đăng hoặc hiện thêm tin kèm gợi ý mua gói; hiện ngày hết hạn dùng thử và số tin còn lại |
 | 10 | **Mua gói và gia hạn theo tháng**, **thanh toán thử** (bấm xác nhận là có gói, không có tiền thật, không chuyển sang cổng thanh toán nào, nên **không có trang VNPay**) | Trang chọn gói, nút thanh toán thử, lịch sử đơn |
 | 11 | **Theo dõi chủ trọ** và hiển thị số người theo dõi, tổng lượt xem tin | Nút theo dõi, số liệu trên hồ sơ chủ trọ |
@@ -543,6 +573,13 @@ Backend sẽ làm theo thứ tự dưới đây. Mỗi mục khi xong sẽ vào 
 ## 11. Nhật ký thay đổi
 
 Mới nhất ở trên cùng. Mục nào **phá vỡ** cách FE đang gọi sẽ ghi rõ "ĐỔI KHÁC VỚI TRƯỚC".
+
+### 2026-10-14 · Danh sách phường, xã, đặc khu và tiện ích (địa chỉ mới sau sáp nhập)
+
+- Thêm `GET /wards` và `GET /amenities`, **công khai**. Xem mục 6.15 và 6.16.
+- **Địa chỉ theo đơn vị hành chính hai cấp sau sáp nhập**: phường, xã, đặc khu của Thành phố Hồ Chí Minh (168 đơn vị, mã 5 chữ số), **không có quận huyện**. `name` đã kèm loại đơn vị.
+- Không đổi API nào đang chạy. Thêm 11 mã lỗi vào bảng mã lỗi của backend (`WARD_UNKNOWN`, `AMENITY_UNKNOWN`, `CATALOG_CODE_TAKEN`, `CATALOG_IN_USE`, `PROPERTY_NOT_FOUND`, `PROPERTY_HAS_LISTINGS`, `LISTING_NOT_FOUND`, `LISTING_STATE_INVALID`, `LISTING_HIDDEN_BY_ADMIN`, `LISTING_IMAGE_LIMIT`, `IMAGE_INVALID`); chưa API nào trả chúng, FE đừng xử lý trước, sẽ được ghi ở mục 3 khi API tương ứng ra mắt.
+- **FE cần làm**: ô chọn phường hoặc xã lấy từ `GET /wards`; **không làm ô quận huyện**.
 
 ### 2026-10-12 · Giới hạn tần suất, lỗi 429 (ĐỔI KHÁC VỚI TRƯỚC)
 

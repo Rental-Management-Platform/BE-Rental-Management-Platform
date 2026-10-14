@@ -24,7 +24,7 @@ _Đây là các khuyến nghị để việc làm gọn gàng, không phải yê
 | 5 | Phân quyền theo loại tài khoản | Release 5 | done |
 | 6 | Quên mật khẩu và đổi mật khẩu | Release 6 | done |
 | 7 | Giới hạn tần suất | Release 7 | done |
-| 8 | Nhà trọ, đăng tin và xem tin | Release 8 | planned |
+| 8 | Nhà trọ, đăng tin và xem tin | Release 8 | in-progress |
 | 9 | Dùng thử miễn phí và hạn mức tin | Release 9 | planned |
 | 10 | Mua gói (thanh toán thử) và gia hạn theo tháng | Release 10 | planned |
 | 11 | Theo dõi chủ trọ và số người biết đến | Release 11 | planned |
@@ -119,10 +119,17 @@ Spec [0002](../specs/0001-backend-foundation/0002-authentication-tokens.md) (AC-
 
 ## Release 8: nhà trọ và đăng tin
 
-### 8. Nhà trọ, đăng tin và xem tin · planned · needs a decision
+### 8. Nhà trọ, đăng tin và xem tin · in-progress · needs a decision
 Chủ trọ tạo nhà trọ (địa chỉ, phường, phí, tiện ích) rồi đăng tin phòng thuộc nhà trọ đó; tin hiện ngay khi đăng, không có nháp và không có duyệt. Chủ trọ tự ẩn và hiện lại tin của mình; admin ẩn hoặc gỡ ẩn tin của người khác kèm lý do (quyền `listing:moderate`). Người tìm trọ xem danh sách tin công khai có lọc đơn giản (từ khóa, phường, khoảng giá, sắp xếp) và xem chi tiết tin. Ảnh tải lên ổ đĩa, tối đa 5 ảnh mỗi tin. Đây là lát cắt để hạn mức, gói và lượt theo dõi có chỗ bám vào. Đã chốt ngày 2026-10-11 (spec 0001, mục Phạm vi MVP); còn lại cho `/architect`: cột và API chi tiết, mã ngắn của tin, nguồn dữ liệu 168 phường, quy tắc đếm lượt xem.
 **Done when:** chủ trọ tạo nhà trọ và đăng tin, tin hiện ngay trong danh sách công khai; chủ trọ ẩn và hiện lại tin của mình; admin ẩn tin của chủ trọ thì tin biến khỏi danh sách công khai và chủ trọ không tự hiện lại được; chỉ tin đang hiện của tài khoản đang hoạt động mới hiển thị công khai; người tìm trọ lọc được danh sách và mở được chi tiết, mỗi lần mở (trừ chính chủ tin) cộng một lượt xem; tải lên được tối đa 5 ảnh mỗi tin.
 - [ ] Design it (spec): `/architect property listings`
+- [ ] Build it: `/develop property listings`
+   - [x] Mốc 1: nền dữ liệu (7 bảng, 11 mã lỗi, hàm `toSearchKey`, `toSlug`, nhận loại ảnh) và `GET /wards`, `GET /amenities` theo địa chỉ hai cấp sau sáp nhập, kèm seed 168 phường (AC-1)
+   - [ ] Mốc 2: nhà trọ, phí và tiện ích, xóa mềm có chặn khi còn tin (AC-3, AC-4)
+   - [ ] Mốc 3: đăng tin, danh sách và chi tiết công khai, lượt xem, tin của chủ trọ, sửa, ẩn và hiện (AC-5, AC-6, AC-7, AC-10 đến AC-14)
+   - [ ] Mốc 4: ảnh tin, tối đa 5 ảnh mỗi tin (AC-8)
+   - [ ] Mốc 5: kiểm duyệt của admin, danh mục admin, giới hạn tần suất, tài liệu và kiểm cuối (AC-2, AC-9, AC-15)
+Spec [0002](../specs/0002-property-listings/index.md) (đang `In Progress`, chưa được `/architect` Accept; lượt build mốc 1 bắt đầu theo lệnh của bạn ngày 2026-10-14) · code in `src/catalog/`, `src/common/text/`, `src/common/files/`, `src/database/seed-data.ts`, `src/database/seed-catalog.ts`, `prisma/seed-data/`, `prisma/migrations/20261014090000_property_listings/` · tài liệu in `docs/api/`
 
 ## Release 9: dùng thử và hạn mức
 

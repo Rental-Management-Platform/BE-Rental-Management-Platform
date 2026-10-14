@@ -37,6 +37,7 @@ model User {
   sessions       AuthSession[]
   moderationLogs ModerationLog[]
   passwordResets PasswordReset[]
+  properties     Property[]
 
   @@index([accountType], map: "users_account_type_idx")
   @@map("users")
@@ -117,4 +118,139 @@ model PasswordReset {
 
   @@index([userId], map: "password_resets_user_id_idx")
   @@map("password_resets")
+}
+
+/// Phường, xã, đặc khu theo địa chỉ hai cấp sau sáp nhập (tỉnh hoặc thành phố, rồi phường hoặc xã); không còn quận huyện.
+/// Dữ liệu seed ở prisma/seed-data/wards.json (spec 0002, spec 0005). Admin thêm, sửa tên, xóa được.
+model Ward {
+  /// Mã 5 chữ số của đơn vị hành chính (đã đổi theo Quyết định 19/2025/QĐ-TTg).
+  code         String   @id(map: "wards_pkey")
+  /// Tên đầy đủ kèm loại đơn vị, ví dụ "Phường Bến Thành", "Xã Bình Chánh", "Đặc khu Côn Đảo".
+  name         String
+  /// Mã tỉnh hoặc thành phố; TP. Hồ Chí Minh là 79.
+  provinceCode String   @map("province_code")
+  provinceName String   @map("province_name")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  properties Property[]
+
+  @@map("wards")
+}
+
+/// Tiện ích của nhà trọ (wifi, máy lạnh...). CHECK ở migration: key dạng ^[a-z][a-z0-9_]{1,29}$.
+model Amenity {
+  key       String   @id(map: "amenities_pkey")
+  name      String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  properties PropertyAmenity[]
+
+  @@map("amenities")
+}
+
+/// Nhà trọ: nơi giữ địa chỉ, phí và tiện ích; mỗi tin phòng thuộc một nhà trọ. Xóa mềm.
+/// Địa chỉ gồm số nhà và đường (addressText) cộng phường hoặc xã (ward); tỉnh hoặc thành phố lấy từ ward.
+model Property {
+  id          String    @id(map: "properties_pkey") @default(dbgenerated("uuidv7()")) @db.Uuid
+  landlordId  String    @map("landlord_id") @db.Uuid
+  name        String
+  /// Số nhà và tên đường, KHÔNG gồm phường, xã, tỉnh (đã nằm ở ward).
+  addressText String    @map("address_text")
+  wardCode    String    @map("ward_code")
+  /// Cả hai cùng rỗng hoặc cùng có (CHECK ở migration); vĩ độ trong [-90, 90], kinh độ trong [-180, 180].
+  latitude    Float?
+  longitude   Float?
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  landlord  User              @relation(fields: [landlordId], references: [id], onDelete: Restrict, map: "properties_landlord_id_fk")
+  ward      Ward              @relation(fields: [wardCode], references: [code], onDelete: Restrict, map: "properties_ward_code_fk")
+  fees      PropertyFee[]
+  amenities PropertyAmenity[]
+  listings  Listing[]
+
+  @@index([landlordId], map: "properties_landlord_id_idx")
+  @@index([wardCode], map: "properties_ward_code_idx")
+  @@map("properties")
+}
+
+/// Khoản phí của nhà trọ, tối đa một khoản cho mỗi loại (UNIQUE) nên tối đa 6 dòng.
+model PropertyFee {
+  id         String  @id(map: "property_fees_pkey") @default(dbgenerated("uuidv7()")) @db.Uuid
+  propertyId String  @map("property_id") @db.Uuid
+  /// CHECK ở migration: electricity, water, internet, parking, service, other.
+  kind       String
+  /// Đơn giá, đồng Việt Nam (CHECK price >= 0).
+  price      Int
+  /// CHECK ở migration: per_kwh, per_m3, per_month, per_person_month, per_vehicle_month.
+  unit       String
+  note       String?
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade, map: "property_fees_property_id_fk")
+
+  @@unique([propertyId, kind], map: "property_fees_property_id_kind_unique")
+  @@map("property_fees")
+}
+
+model PropertyAmenity {
+  propertyId String @map("property_id") @db.Uuid
+  amenityKey String @map("amenity_key")
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade, map: "property_amenities_property_id_fk")
+  amenity  Amenity  @relation(fields: [amenityKey], references: [key], onDelete: Restrict, map: "property_amenities_amenity_key_fk")
+
+  @@id([propertyId, amenityKey], map: "property_amenities_pkey")
+  @@index([amenityKey], map: "property_amenities_amenity_key_idx")
+  @@map("property_amenities")
+}
+
+/// Tin phòng thuộc một nhà trọ (spec 0002). Sinh ra là `visible`; không nháp, không duyệt. Xóa mềm.
+/// Điều kiện hiển thị công khai là phép nối với nhà trọ và chủ trọ, viết một lần ở Repository (không cờ sao chép).
+model Listing {
+  id            String    @id(map: "listings_pkey") @default(dbgenerated("uuidv7()")) @db.Uuid
+  propertyId    String    @map("property_id") @db.Uuid
+  /// Mã ngắn 8 ký tự do Service sinh, dùng ở đường dẫn công khai `slug-mã`.
+  code          String    @unique(map: "listings_code_unique")
+  title         String
+  description   String
+  /// Giá thuê mỗi tháng, đồng (CHECK price > 0).
+  price         Int
+  areaM2        Float     @map("area_m2")
+  deposit       Int?
+  availableFrom DateTime? @map("available_from") @db.Date
+  /// CHECK ở migration: visible, hidden_by_owner, hidden_by_admin.
+  status        String    @default("visible")
+  /// Chỉ tăng, qua một câu UPDATE nguyên tử (spec 0002 AC-13).
+  viewCount     Int       @default(0) @map("view_count")
+  /// Dẫn xuất: toSearchKey(tiêu đề, tên nhà trọ, địa chỉ, tên phường). Ba đường cập nhật duy nhất (spec 0002).
+  searchKey     String    @map("search_key")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  property Property       @relation(fields: [propertyId], references: [id], onDelete: Restrict, map: "listings_property_id_fk")
+  images   ListingImage[]
+
+  // Hai chỉ mục một phần (created_at DESC, id DESC) và (price, id) cho điều kiện hiển thị viết SQL ở migration.
+  @@index([propertyId], map: "listings_property_id_idx")
+  @@index([searchKey(ops: raw("gin_trgm_ops"))], type: Gin, map: "listings_search_key_gin")
+  @@map("listings")
+}
+
+/// Ảnh của tin, tối đa 5 (CHECK position BETWEEN 0 AND 4 cộng UNIQUE). Vị trí nhỏ nhất là ảnh bìa.
+model ListingImage {
+  id         String   @id(map: "listing_images_pkey") @default(dbgenerated("uuidv7()")) @db.Uuid
+  listingId  String   @map("listing_id") @db.Uuid
+  position   Int      @db.SmallInt
+  /// Khóa lưu trữ do server sinh, dạng public/<uuid>.<jpg|png|webp>.
+  storageKey String   @unique(map: "listing_images_storage_key_unique") @map("storage_key")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade, map: "listing_images_listing_id_fk")
+
+  @@unique([listingId, position], map: "listing_images_listing_id_position_unique")
+  @@map("listing_images")
 }
