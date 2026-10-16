@@ -38,7 +38,10 @@ const stranger = {
 interface Harness {
 	service: PropertiesService;
 	repository: Record<keyof PropertiesRepository, jest.Mock>;
-	listings: Record<keyof ListingsRepository, jest.Mock>;
+	listings: Record<
+		'countLiveByProperty' | 'findLiveTitlesByProperty' | 'setSearchKey',
+		jest.Mock
+	>;
 	catalog: Record<'findWard' | 'findUnknownAmenityKeys', jest.Mock>;
 }
 

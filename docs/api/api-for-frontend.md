@@ -25,7 +25,7 @@ Quy ước đọc file: phần nào ghi **Chưa có** nghĩa là đã lên kế 
 
 ## 1. Hệ thống làm gì
 
-Nền tảng quản lý và cho thuê nhà trọ. Hiện backend đã có phần **tài khoản và phân quyền**, danh mục địa chỉ và tiện ích, và **nhà trọ của chủ trọ** (tạo, xem, sửa, xóa mềm); phần tin đăng, gói thành viên sẽ làm tiếp (mục 10).
+Nền tảng quản lý và cho thuê nhà trọ. Hiện backend đã có phần **tài khoản và phân quyền**, danh mục địa chỉ và tiện ích, **nhà trọ của chủ trọ** (tạo, xem, sửa, xóa mềm) và **tin đăng** (đăng, sửa, ẩn, hiện, xóa; khách xem danh sách và chi tiết); phần ảnh tin, admin ẩn tin, gói thành viên sẽ làm tiếp (mục 10).
 
 ### Ba loại tài khoản
 
@@ -52,7 +52,8 @@ Mỗi tài khoản chỉ thuộc **một** loại, chọn lúc đăng ký và **
 | Giới hạn tần suất (lỗi 429) | Có (mới, 2026-10-12) |
 | Danh sách phường, xã, đặc khu và tiện ích (cho biểu mẫu nhà trọ) | Có (mới, 2026-10-14) |
 | Nhà trọ của chủ trọ (tạo, xem danh sách và chi tiết, sửa, xóa mềm) | Có (mới, 2026-10-16) |
-| Đăng tin, xem tin công khai, ảnh tin, ẩn và hiện tin | Chưa có (đang làm từng phần, mục 10) |
+| Tin đăng: đăng, sửa, xóa, ẩn và hiện của chủ trọ; danh sách và chi tiết tin công khai (có lọc, số điện thoại cho người đăng nhập, đếm lượt xem) | Có (mới, 2026-10-16) |
+| Ảnh tin; admin ẩn tin và quản lý danh mục phường, tiện ích | Chưa có (đang làm từng phần, mục 10) |
 | Dùng thử, hạn mức, mua gói | Chưa có |
 | Theo dõi chủ trọ, lượt xem | Chưa có |
 
@@ -74,7 +75,8 @@ Mỗi tài khoản chỉ thuộc **một** loại, chọn lúc đăng ký và **
 | Trường lạ | Gửi trường không có trong mô tả bị từ chối 400 `VALIDATION_FAILED` (không âm thầm bỏ qua) |
 | Ngôn ngữ | Mọi `message` trả về là tiếng Việt, hiển thị thẳng cho người dùng được. `code` là hằng số tiếng Anh, FE dùng `code` để rẽ nhánh, không so chuỗi `message` |
 | Truy vết | Mỗi response có header `X-Request-Id` (trùng `requestId` trong body lỗi). Gửi kèm khi báo lỗi cho backend |
-| Phân trang | Query `page` (từ 1, mặc định 1) và `pageSize` (1 đến 50, mặc định 20). Trả `{ "items": [...], "total": 37, "page": 1, "pageSize": 20 }`. `total` là tổng số dòng thỏa điều kiện, không phải số dòng của trang này. Trang quá cuối trả `items` rỗng (không phải lỗi). `pageSize` quá 50, `page` nhỏ hơn 1 hoặc không phải số nguyên là 400 `VALIDATION_FAILED`. Hiện chỉ `GET /properties` phân trang |
+| Phân trang | Query `page` (từ 1, mặc định 1) và `pageSize` (1 đến 50, mặc định 20). Trả `{ "items": [...], "total": 37, "page": 1, "pageSize": 20 }`. `total` là tổng số dòng thỏa điều kiện, không phải số dòng của trang này. Trang quá cuối trả `items` rỗng (không phải lỗi). `pageSize` quá 50, `page` nhỏ hơn 1 hoặc không phải số nguyên là 400 `VALIDATION_FAILED`. Hiện có `GET /properties`, `GET /listings` và `GET /me/listings` phân trang |
+| Đọc đăng nhập tùy chọn | `GET /listings/:slugCode` là route công khai nhưng **nên gửi `Authorization: Bearer ...` nếu người dùng đã đăng nhập**: có token hợp lệ thì thấy số điện thoại chủ trọ; không có, sai hoặc hết hạn thì coi như khách (`phone: null`) và vẫn 200, **không bao giờ 401**. Xem 6.20 |
 
 Email được chuẩn hóa: cắt khoảng trắng đầu cuối và đổi thành chữ thường. `An@Example.com` và `an@example.com` là cùng một tài khoản.
 
@@ -144,6 +146,9 @@ Lưu ý: **một trường có thể xuất hiện nhiều lần** trong `errors
 | `AMENITY_UNKNOWN` | 400 | Có khóa tiện ích (`amenityKeys`) không có trong `GET /amenities`. `errors` có một dòng `field: "amenityKeys"` nêu các khóa lạ | Tải lại `GET /amenities` rồi cho chọn lại |
 | `PROPERTY_NOT_FOUND` | 404 | Nhà trọ không có, hoặc đã xóa mềm | Quay về danh sách nhà trọ |
 | `PROPERTY_HAS_LISTINGS` | 409 | Xóa nhà trọ còn tin chưa xóa | Báo "xóa các tin của nhà trọ này trước" |
+| `LISTING_NOT_FOUND` | 404 | Tin không có hoặc đã xóa; ở route công khai còn gồm tin không hiển thị công khai vì bất kỳ lý do nào (đang ẩn, chủ trọ bị khóa...), kể cả với chính chủ, và đường dẫn không lấy được mã tin | Hiện "tin không còn", quay về danh sách |
+| `LISTING_STATE_INVALID` | 409 | Chuyển trạng thái tin không hợp lệ (ẩn tin không đang hiện, hiện tin đã hiện, ẩn tin đang bị admin ẩn) | Tải lại tin (`GET /me/listings/:id`) rồi cập nhật nút |
+| `LISTING_HIDDEN_BY_ADMIN` | 403 | Chủ trọ cố hiện lại tin đang bị admin ẩn | Hiện nhãn "bị quản trị viên ẩn" kèm `moderationReason`, ẩn nút "Hiện" |
 | `CANNOT_LOCK_SELF` | 409 | Admin tự khóa chính mình | Hiện `message` |
 | `ACCOUNT_ALREADY_LOCKED` | 409 | Khóa tài khoản đang bị khóa | Làm mới trạng thái trên giao diện |
 | `ACCOUNT_NOT_LOCKED` | 409 | Mở khóa tài khoản không bị khóa | Làm mới trạng thái trên giao diện |
@@ -154,7 +159,7 @@ Lưu ý: **một trường có thể xuất hiện nhiều lần** trong `errors
 
 ### Lỗi 429 `RATE_LIMITED`: gọi quá nhanh
 
-Chỉ **sáu API đăng nhập và mật khẩu, cùng các API ghi nhà trọ** có giới hạn (các API đọc thì chưa). Body lỗi cùng dạng như mọi lỗi khác (có `requestId`), kèm header **`Retry-After`**: số giây còn phải đợi (số nguyên, ít nhất 1). Mỗi API đếm riêng, nên bị chặn đăng nhập không làm hỏng việc đọc `GET /auth/me` hay đăng xuất.
+Chỉ **sáu API đăng nhập và mật khẩu, các API ghi nhà trọ và tin, và hai API đọc tin công khai** có giới hạn (các API đọc khác thì chưa). Body lỗi cùng dạng như mọi lỗi khác (có `requestId`), kèm header **`Retry-After`**: số giây còn phải đợi (số nguyên, ít nhất 1). Mỗi API đếm riêng, nên bị chặn đăng nhập không làm hỏng việc đọc `GET /auth/me` hay đăng xuất.
 
 | API | Giới hạn theo IP | Giới hạn theo email (hoặc người dùng) | Bị chặn trong |
 |---|---|---|---|
@@ -164,7 +169,10 @@ Chỉ **sáu API đăng nhập và mật khẩu, cùng các API ghi nhà trọ**
 | `POST /auth/forgot-password` | 10 lần mỗi giờ | 3 lần mỗi giờ (theo email trong body) | 1 giờ |
 | `POST /auth/reset-password` | 20 lần mỗi giờ | không | 1 giờ |
 | `POST /auth/change-password` | không | 10 lần mỗi 15 phút (theo người dùng đang đăng nhập) | 15 phút |
-| `POST /properties`, `PATCH /properties/:id`, `DELETE /properties/:id` | không | 30 lần mỗi giờ, **chung một bộ đếm cho cả ba** (theo người dùng đang đăng nhập) | 1 giờ |
+| `POST /properties`, `PATCH /properties/:id`, `DELETE /properties/:id` | không | 30 lần mỗi giờ **cho mỗi API** (ba API đếm riêng, theo người dùng đang đăng nhập) | 1 giờ |
+| `POST /properties/:propertyId/listings`, `PATCH /listings/:id`, `DELETE /listings/:id`, `POST /listings/:id/hide`, `POST /listings/:id/show` | không | 60 lần mỗi giờ **cho mỗi API** (năm API đếm riêng, theo người dùng đang đăng nhập) | 1 giờ |
+| `GET /listings` (công khai) | 300 lần mỗi phút | không | 1 phút |
+| `GET /listings/:slugCode` (công khai) | 300 lần mỗi phút | 60 lần mỗi phút, **chỉ khi request có access token hợp lệ** (khách không bị bộ đếm này, chỉ chịu giới hạn theo IP) | 1 phút |
 
 Cách đếm: vượt số lần trong cột thì **lần vượt đó bị từ chối và bị chặn đúng khoảng thời gian ở cột "Bị chặn trong"** kể từ lần vượt; `Retry-After` cho biết còn bao lâu. Email được so không phân biệt hoa thường và bỏ khoảng trắng đầu cuối (`An@Example.com` và ` an@example.com ` là một). Gửi email sai dạng hoặc không có email thì tính vào bộ đếm email theo IP, nên không né được giới hạn bằng cách bỏ trống.
 
@@ -238,7 +246,7 @@ Quyền admin chỉnh được **chỉ gồm hành động lẻ** của các mod
 | `catalog` | read, create, update, delete | | tất cả | chưa |
 | `setting` | read, update | | tất cả | chưa |
 | `property` | read, create, update, delete | có | | có (mục 6.17) |
-| `listing` | read, create, update, delete, moderate | có | `moderate` | chưa |
+| `listing` | read, create, update, delete, moderate | có | `moderate` | `read`, `create`, `update`, `delete` (mục 6.18 đến 6.23); `moderate` chưa |
 | `favorite` | read, create, delete | có | | chưa |
 | `follow` | create, delete | có | | chưa |
 | `plan` | read, create, update, delete | | tất cả | chưa |
@@ -500,7 +508,7 @@ Cần nhớ:
 
 ### 6.17 Nhà trọ của chủ trọ
 
-Nhà trọ là nơi giữ **địa chỉ, phí và tiện ích**; về sau mỗi tin phòng thuộc về một nhà trọ. Chủ trọ tạo nhà trọ một lần rồi đăng nhiều tin vào đó (API đăng tin chưa có, mục 10). Mọi API dưới đây cần đăng nhập, **chỉ làm việc trên nhà trọ của chính người gọi**: dữ liệu của chủ trọ khác bị 403 `NOT_RESOURCE_OWNER`. Người tìm trọ (`tenant`) không có quyền `property:*` nên mọi API này trả 403 `PERMISSION_DENIED`. Admin cũng chỉ thao tác được trên nhà trọ của chính mình.
+Nhà trọ là nơi giữ **địa chỉ, phí và tiện ích**; về sau mỗi tin phòng thuộc về một nhà trọ. Chủ trọ tạo nhà trọ một lần rồi đăng nhiều tin vào đó (mục 6.18). Mọi API dưới đây cần đăng nhập, **chỉ làm việc trên nhà trọ của chính người gọi**: dữ liệu của chủ trọ khác bị 403 `NOT_RESOURCE_OWNER`. Người tìm trọ (`tenant`) không có quyền `property:*` nên mọi API này trả 403 `PERMISSION_DENIED`. Admin cũng chỉ thao tác được trên nhà trọ của chính mình.
 
 **Hình dạng một nhà trọ** (kết quả của tạo, xem chi tiết và sửa; mỗi dòng của danh sách có thêm `listingCount`):
 
@@ -564,7 +572,7 @@ Cần nhớ:
 
 `GET /properties?page=1&pageSize=20` · quyền `property:read`
 
-**200 OK**: `{ "items": [...], "total": 3, "page": 1, "pageSize": 20 }` (quy ước phân trang ở mục 2). Chỉ nhà trọ chưa xóa của người gọi, **mới tạo xếp trước**. Mỗi phần tử có hình dạng như trên cộng `"listingCount": 0`: số tin chưa xóa của nhà trọ đó (mọi trạng thái, kể cả tin đang ẩn). Hiện chưa có API đăng tin nên luôn là 0.
+**200 OK**: `{ "items": [...], "total": 3, "page": 1, "pageSize": 20 }` (quy ước phân trang ở mục 2). Chỉ nhà trọ chưa xóa của người gọi, **mới tạo xếp trước**. Mỗi phần tử có hình dạng như trên cộng `"listingCount": 0`: số tin chưa xóa của nhà trọ đó (mọi trạng thái, kể cả tin đang ẩn; tin đã xóa không tính).
 
 **Lỗi**: 400 `VALIDATION_FAILED` (`page` hoặc `pageSize` sai) · 403 `PERMISSION_DENIED`.
 
@@ -584,7 +592,7 @@ Body có các trường như lúc tạo, **mọi trường đều tùy chọn**,
 - Trường không gửi thì **giữ nguyên**. Gửi `{}` cũng được (không đổi gì, chỉ cập nhật `updatedAt`).
 - `fees` và `amenityKeys` nếu gửi thì **thay cả danh sách** bằng danh sách mới, nên FE gửi lại danh sách đầy đủ sau khi người dùng chỉnh; mảng rỗng `[]` là xóa hết.
 - **Xóa tọa độ** bằng `"latitude": null, "longitude": null` (cả hai). Đặt tọa độ mới thì gửi cả hai số. Gửi chỉ một trong hai, hoặc một số một `null`, là 400.
-- Đổi `name`, `addressText` hay `wardCode` sẽ làm mới khóa tìm kiếm của các tin của nhà trọ (có tác dụng khi API tin ra mắt).
+- Đổi `name`, `addressText` hay `wardCode` sẽ làm mới khóa tìm kiếm của các tin của nhà trọ (ô tìm kiếm ở `GET /listings` tìm thấy tên và địa chỉ mới ngay).
 
 **200 OK**: nhà trọ sau khi sửa.
 
@@ -597,6 +605,181 @@ Body có các trường như lúc tạo, **mọi trường đều tùy chọn**,
 **204 No Content**. Đây là **xóa mềm**: nhà trọ biến khỏi mọi API (xem, sửa, danh sách đều 404 hoặc không thấy). **Chỉ xóa được khi nhà trọ không còn tin chưa xóa**; còn tin thì 409 `PROPERTY_HAS_LISTINGS`, FE nên báo "hãy xóa các tin của nhà trọ này trước".
 
 **Lỗi**: 409 `PROPERTY_HAS_LISTINGS` · 404 `PROPERTY_NOT_FOUND` (kể cả xóa lần hai) · 403 `NOT_RESOURCE_OWNER` · 403 `PERMISSION_DENIED` · 400 `INVALID_ID` · 429 `RATE_LIMITED`.
+
+### 6.18 Đăng tin
+
+`POST /properties/:propertyId/listings` · quyền `listing:create`
+
+Chủ trọ đăng một tin phòng vào **nhà trọ của chính mình** (`:propertyId`, xem 6.17). **Tin hiện ngay khi đăng**: không có bản nháp, không có bước duyệt.
+
+| Trường | Kiểu | Bắt buộc | Luật |
+|---|---|---|---|
+| `title` | chuỗi | có | 5 đến 120 ký tự (đã cắt khoảng trắng đầu cuối) |
+| `description` | chuỗi | có | 10 đến 5000 ký tự. Văn bản thuần, FE tự thoát khi hiển thị |
+| `price` | số nguyên | có | Giá thuê mỗi tháng, đồng, từ 100.000 đến 100.000.000 |
+| `areaM2` | số | có | Diện tích, từ 1 đến 1000, **tối đa một chữ số thập phân** (`22.5` được, `22.55` bị 400) |
+| `deposit` | số nguyên | không | Tiền cọc, đồng, từ 0 đến 1.000.000.000. `null` coi như không gửi |
+| `availableFrom` | chuỗi | không | Ngày vào ở, đúng dạng `YYYY-MM-DD` và là ngày có thật (`2026-02-30` bị 400). Ngày đã qua vẫn được. `null` coi như không gửi |
+
+Không gửi `status`, `code`, `propertyId`, `viewCount` (bị 400 vì trường lạ): trạng thái luôn là `visible`, mã ngắn do backend sinh, nhà trọ lấy từ đường dẫn.
+
+**201 Created**: **Tin của chủ trọ**, hình dạng dùng chung cho mọi API ghi tin và cho `GET /me/listings/:id`:
+
+```json
+{
+  "id": "0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8d9f",
+  "code": "k7m2xq9p",
+  "slug": "phong-dep-co-gac-gan-cho-ben-thanh",
+  "title": "Phòng đẹp có gác gần chợ Bến Thành",
+  "description": "Phòng sạch sẽ thoáng mát, có gác lửng, giờ giấc tự do.",
+  "price": 3500000,
+  "areaM2": 22.5,
+  "deposit": 3500000,
+  "availableFrom": "2026-11-01",
+  "coverImageUrl": null,
+  "images": [],
+  "ward": { "code": "26743", "name": "Phường Bến Thành" },
+  "addressText": "12 Lê Lợi",
+  "fullAddress": "12 Lê Lợi, Phường Bến Thành, Thành phố Hồ Chí Minh",
+  "property": {
+    "id": "0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8d9e",
+    "name": "Nhà trọ Hoa Hồng",
+    "addressText": "12 Lê Lợi",
+    "fullAddress": "12 Lê Lợi, Phường Bến Thành, Thành phố Hồ Chí Minh",
+    "ward": { "code": "26743", "name": "Phường Bến Thành", "provinceCode": "79", "provinceName": "Thành phố Hồ Chí Minh" },
+    "latitude": 10.7721,
+    "longitude": 106.6983,
+    "fees": [ { "kind": "electricity", "price": 3500, "unit": "per_kwh", "note": null } ],
+    "amenities": [ { "key": "loft", "name": "Gác lửng" }, { "key": "wifi", "name": "Wifi" } ]
+  },
+  "viewCount": 0,
+  "status": "visible",
+  "moderationReason": null,
+  "createdAt": "2026-10-16T04:20:11.000Z"
+}
+```
+
+Cần nhớ:
+- `code` là mã ngắn 8 ký tự (chữ thường và số, bỏ các chữ dễ nhầm). **Đường dẫn công khai của tin là `<slug>-<code>`** (ví dụ `phong-dep-co-gac-gan-cho-ben-thanh-k7m2xq9p`). Chỉ phần `code` ở cuối được dùng để tra, nên đổi tiêu đề (slug đổi) thì link cũ vẫn mở được.
+- `status` là một trong `visible` (đang hiện), `hidden_by_owner` (chủ trọ tự ẩn), `hidden_by_admin` (admin ẩn). `moderationReason` có giá trị khi `status` là `hidden_by_admin` (lý do admin ghi), ngược lại `null`.
+- `coverImageUrl` là ảnh bìa và `images[]` là các ảnh theo thứ tự `position`; **ảnh tin chưa có API tải lên** nên hiện luôn là `null` và `[]`. Khi có, `url` là đường dẫn tương đối `/api/v1/media/public/<uuid>.<đuôi>`, FE tự nối với địa chỉ API.
+- `deposit` và `availableFrom` là `null` khi không có. `availableFrom` luôn là chuỗi `YYYY-MM-DD`.
+- `fullAddress` do backend ghép sẵn (xem 6.17), FE hiển thị thẳng.
+
+**Lỗi**: 400 `VALIDATION_FAILED` · 404 `PROPERTY_NOT_FOUND` · 403 `NOT_RESOURCE_OWNER` (nhà trọ của người khác) · 403 `PERMISSION_DENIED` · 400 `INVALID_ID` · 429 `RATE_LIMITED` (quá 60 lần mỗi giờ). Lỗi thì không có tin nào được tạo.
+
+### 6.19 Danh sách tin công khai
+
+`GET /listings` · công khai (không cần đăng nhập)
+
+Danh sách cho trang tìm trọ. **Chỉ tin đang hiện công khai**: tin `visible`, chưa xóa, thuộc nhà trọ chưa xóa của chủ trọ đang hoạt động. Tin bị ẩn, bị xóa, hoặc chủ trọ bị khóa biến khỏi danh sách **ngay**, không có độ trễ.
+
+| Query | Kiểu | Mặc định | Luật |
+|---|---|---|---|
+| `q` | chuỗi | không lọc | Từ khóa **không phân biệt dấu và chữ hoa thường** (`tan dinh` tìm ra "Tân Định"). Tìm trong tiêu đề, tên nhà trọ, địa chỉ và tên phường. Tối đa 6 từ (từ thừa bị bỏ), mỗi từ tối đa 50 ký tự (dài hơn bị cắt), các từ nối bằng AND. `%`, `_`, `\` chỉ khớp đúng ký tự đó. `q` rỗng thì không lọc. Tối đa 500 ký tự |
+| `wardCode` | chuỗi | không lọc | Mã 5 chữ số của phường hoặc xã (`GET /wards`). Mã đúng dạng nhưng không có trong danh mục trả danh sách rỗng (không phải lỗi); sai dạng là 400 |
+| `minPrice`, `maxPrice` | số nguyên | không lọc | Từ 0 đến 100.000.000, so với giá thuê. `minPrice` lớn hơn `maxPrice` là 400 |
+| `sort` | chuỗi | `newest` | `newest` (mới đăng trước), `price_asc` (giá tăng dần), `price_desc` (giá giảm dần). Cùng giá thì xếp ổn định, tin đăng sau trước với `price_desc` |
+| `page`, `pageSize` | số nguyên | 1 và 20 | Quy ước phân trang ở mục 2 (`pageSize` tối đa 50) |
+
+**200 OK**: `{ "items": [...], "total": 41, "page": 1, "pageSize": 20 }`. Mỗi phần tử là **tin tóm tắt**:
+
+```json
+{
+  "id": "0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8d9f",
+  "code": "k7m2xq9p",
+  "slug": "phong-dep-co-gac-gan-cho-ben-thanh",
+  "title": "Phòng đẹp có gác gần chợ Bến Thành",
+  "price": 3500000,
+  "areaM2": 22.5,
+  "deposit": 3500000,
+  "availableFrom": "2026-11-01",
+  "coverImageUrl": null,
+  "ward": { "code": "26743", "name": "Phường Bến Thành" },
+  "addressText": "12 Lê Lợi",
+  "fullAddress": "12 Lê Lợi, Phường Bến Thành, Thành phố Hồ Chí Minh",
+  "landlord": { "id": "0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8d01", "name": "Anh Nam" },
+  "createdAt": "2026-10-16T04:20:11.000Z"
+}
+```
+
+Cần nhớ:
+- **Danh sách không bao giờ có số điện thoại** (dù có đăng nhập). Số chỉ có ở trang chi tiết (6.20).
+- `landlord.name` là `null` khi chủ trọ chưa đặt tên.
+- Link sang trang chi tiết: `/<slug>-<code>` (hoặc chỉ `<code>`).
+- Giới hạn 300 lần mỗi phút theo IP (mục 3).
+
+**Lỗi**: 400 `VALIDATION_FAILED` (query sai, `minPrice` lớn hơn `maxPrice`, `pageSize` quá 50...) · 429 `RATE_LIMITED`.
+
+### 6.20 Chi tiết tin công khai
+
+`GET /listings/:slugCode` · công khai, **đọc đăng nhập tùy chọn**
+
+`:slugCode` là `slug-mã` hoặc chỉ `mã`. **Chỉ phần mã (8 ký tự sau dấu `-` cuối cùng) được dùng để tra**: slug sai hoặc cũ vẫn mở được, và phản hồi trả `slug` đúng để FE thay địa chỉ trên thanh địa chỉ. Không lấy được mã hợp lệ cũng là 404 (không phải 400).
+
+**Gửi kèm `Authorization: Bearer <accessToken>` nếu người dùng đã đăng nhập.** Có token hợp lệ thì thấy số điện thoại của chủ trọ; khách, token sai hoặc token hết hạn thì `landlord.phone` là `null` và **vẫn 200, không bao giờ 401**. Vì vậy FE nên làm mới token hết hạn trước khi mở trang chi tiết nếu muốn hiện số. Phản hồi có `Cache-Control: private, no-store` (nội dung đổi theo người xem), đừng cho proxy hay CDN cache.
+
+**200 OK**: tin tóm tắt (6.19, nhưng `landlord` đổi thành `{ id, name, phone }`) cộng:
+- `description`: mô tả đầy đủ.
+- `viewCount`: số lượt xem (đã gồm lượt vừa tính nếu có).
+- `images`: `[ { "id", "position", "url" } ]` theo `position` tăng dần (ảnh bìa là `position` nhỏ nhất). Chưa có API tải ảnh nên hiện là `[]`.
+- `property`: `{ id, name, addressText, fullAddress, ward { code, name, provinceCode, provinceName }, latitude, longitude, fees[], amenities[] }` (như 6.17: `fees` theo thứ tự cố định, `amenities` theo tên tiếng Việt).
+
+**Cách tính lượt xem**: mỗi người xem được cộng **một lượt cho mỗi tin trong 30 phút**. Người xem là tài khoản nếu có token hợp lệ, không thì là địa chỉ IP. **Chủ tin mở không được tính.** Tải lại trong 30 phút không làm số tăng. Tin không hiển thị công khai (404) thì không được cộng. Nhiều người dùng chung một IP (ký túc xá, quán cà phê) mà không đăng nhập thì tính chung một lượt mỗi 30 phút.
+
+**Lỗi**: 404 `LISTING_NOT_FOUND` (mã lạ; tin bị ẩn, bị xóa, hết hiển thị vì bất kỳ lý do nào, **kể cả với chính chủ** ở route công khai này) · 429 `RATE_LIMITED` (quá 300 lần mỗi phút theo IP, hoặc quá 60 lần mỗi phút nếu đã đăng nhập).
+
+### 6.21 Tin của tôi
+
+`GET /me/listings` · quyền `listing:read`
+
+Mọi tin chưa xóa của chính người gọi, **ở mọi trạng thái kể cả tin đang ẩn**, mới đăng xếp trước. Query: `status` (tùy chọn: `visible`, `hidden_by_owner` hoặc `hidden_by_admin`; giá trị khác là 400), `page`, `pageSize`.
+
+**200 OK**: `{ "items": [...], "total", "page", "pageSize" }`. Mỗi phần tử là tin tóm tắt (6.19) **không có `landlord`**, cộng `status`, `moderationReason` và `viewCount`. Đây là danh sách cho trang quản lý tin: dùng `status` để hiện nhãn và nút "Ẩn" hoặc "Hiện".
+
+`GET /me/listings/:id` · quyền `listing:read`
+
+**200 OK**: **Tin của chủ trọ** (hình dạng ở 6.18), có đủ mô tả, ảnh, nhà trọ, `status` và `moderationReason`. Dùng để mở biểu mẫu sửa.
+
+**Lỗi**: 400 `VALIDATION_FAILED` (`status` lạ) · 400 `INVALID_ID` · 404 `LISTING_NOT_FOUND` (không có hoặc đã xóa) · 403 `NOT_RESOURCE_OWNER` · 403 `PERMISSION_DENIED`.
+
+### 6.22 Sửa và xóa tin
+
+`PATCH /listings/:id` · quyền `listing:update`
+
+Body có các trường `title`, `description`, `price`, `areaM2`, `deposit`, `availableFrom` với **luật như lúc đăng** (6.18); **mọi trường đều tùy chọn**, trường không gửi thì giữ nguyên, gửi `{}` cũng được. `title`, `description`, `price`, `areaM2` không nhận `null`; `deposit` và `availableFrom` nhận `null` để xóa giá trị. **Không đổi được nhà trọ, trạng thái hay mã** (gửi `propertyId`, `status`, `code` là 400). Sửa được ở **mọi trạng thái**, kể cả tin đang bị admin ẩn. Đổi `title` làm đổi `slug` (link cũ vẫn mở được) và làm mới khóa tìm kiếm.
+
+**200 OK**: Tin của chủ trọ sau khi sửa.
+
+**Lỗi**: 400 `VALIDATION_FAILED` · 400 `INVALID_ID` · 404 `LISTING_NOT_FOUND` · 403 `NOT_RESOURCE_OWNER` · 403 `PERMISSION_DENIED` · 429 `RATE_LIMITED` (quá 60 lần mỗi giờ). Lỗi thì không có gì bị đổi.
+
+`DELETE /listings/:id` · quyền `listing:delete`
+
+**204 No Content**. **Xóa mềm** ở mọi trạng thái: tin biến khỏi mọi API (công khai, `/me/listings`), và không còn tính vào `listingCount` của nhà trọ nên sau khi xóa hết tin thì xóa được nhà trọ (6.17).
+
+**Lỗi**: 404 `LISTING_NOT_FOUND` (kể cả xóa lần hai) · 403 `NOT_RESOURCE_OWNER` · 403 `PERMISSION_DENIED` · 400 `INVALID_ID` · 429 `RATE_LIMITED`.
+
+### 6.23 Ẩn và hiện tin
+
+`POST /listings/:id/hide` · quyền `listing:update` (không có body)
+`POST /listings/:id/show` · quyền `listing:update` (không có body)
+
+Chủ trọ tự ẩn tin (ví dụ khi hết phòng) và hiện lại khi còn phòng. Mỗi lần chuyển là **một thao tác nguyên tử** có kiểm trạng thái nguồn:
+
+| Trạng thái hiện tại | `hide` | `show` |
+|---|---|---|
+| `visible` | thành `hidden_by_owner` | 409 `LISTING_STATE_INVALID` |
+| `hidden_by_owner` | 409 `LISTING_STATE_INVALID` | thành `visible` |
+| `hidden_by_admin` | 409 `LISTING_STATE_INVALID` | **403 `LISTING_HIDDEN_BY_ADMIN`** |
+
+**200 OK**: Tin của chủ trọ sau khi chuyển (đọc `status` để cập nhật giao diện).
+
+Cần nhớ:
+- Tin `hidden_by_admin` **chủ trọ không tự hiện lại được**: FE hiện nhãn "Bị quản trị viên ẩn", hiển thị `moderationReason` (lý do admin ghi) và ẩn nút "Hiện", thay bằng hướng dẫn liên hệ admin (hệ thống chưa có kháng nghị). Chủ trọ vẫn **sửa được** tin để khắc phục. Khi admin gỡ ẩn, tin về `hidden_by_owner` và chủ trọ hiện lại được.
+- Admin ẩn đúng lúc chủ trọ bấm hiện thì **admin luôn thắng**: chủ trọ nhận 403 `LISTING_HIDDEN_BY_ADMIN` và trạng thái cuối là `hidden_by_admin`. FE gặp 409 hoặc 403 ở hai API này thì tải lại tin (`GET /me/listings/:id`) để lấy trạng thái thật.
+- Tin `hidden_by_owner` và `hidden_by_admin` biến khỏi danh sách và chi tiết công khai.
+
+**Lỗi**: 409 `LISTING_STATE_INVALID` · 403 `LISTING_HIDDEN_BY_ADMIN` (chỉ `show`) · 404 `LISTING_NOT_FOUND` · 403 `NOT_RESOURCE_OWNER` · 403 `PERMISSION_DENIED` · 400 `INVALID_ID` · 429 `RATE_LIMITED`.
 
 ---
 
@@ -633,6 +816,20 @@ Hai ô: mật khẩu hiện tại, mật khẩu mới. Gọi `POST /auth/change-
 3. **Xóa**: hỏi xác nhận; gặp 409 `PROPERTY_HAS_LISTINGS` thì báo phải xóa các tin trước.
 4. Lỗi `VALIDATION_FAILED` hiện dưới từng ô theo `errors[].field`; với phí, `field` có dạng `fees.0.price` (số thứ tự trong mảng đã gửi).
 
+### Đăng và quản lý tin (chủ trọ)
+
+1. **Trang quản lý tin**: `GET /me/listings` (lọc theo `status` nếu muốn), mỗi dòng hiện ảnh bìa, tiêu đề, giá, `fullAddress`, `viewCount` và nhãn trạng thái. Nút theo trạng thái: `visible` có "Ẩn"; `hidden_by_owner` có "Hiện"; `hidden_by_admin` **không có nút Hiện**, thay bằng nhãn "Bị quản trị viên ẩn" kèm `moderationReason`.
+2. **Đăng tin** từ trang một nhà trọ (hoặc chọn nhà trọ trước): biểu mẫu tiêu đề, mô tả, giá, diện tích, tiền cọc và ngày vào ở (không bắt buộc). Gọi `POST /properties/:propertyId/listings`. **Tin hiện ngay**, nên sau khi thành công có thể mở luôn trang công khai `/<slug>-<code>` cho chủ trọ xem. Chưa có nhà trọ thì dẫn đi tạo nhà trọ trước.
+3. **Sửa tin**: mở biểu mẫu bằng `GET /me/listings/:id`, gửi `PATCH` các trường đã đổi (cho phép sửa cả khi tin đang ẩn, kể cả bị admin ẩn). Muốn bỏ tiền cọc hoặc ngày vào ở thì gửi `null`.
+4. **Xóa tin**: hỏi xác nhận, `DELETE`. Muốn xóa nhà trọ thì phải xóa hết tin của nó trước.
+5. Gặp 409 `LISTING_STATE_INVALID` hoặc 403 `LISTING_HIDDEN_BY_ADMIN` ở nút ẩn, hiện: tải lại tin để lấy trạng thái thật (có thể admin vừa ẩn).
+
+### Tìm trọ (khách và người tìm trọ)
+
+1. **Trang danh sách**: `GET /listings` với ô tìm kiếm (`q`), ô chọn phường (`wardCode` lấy từ `GET /wards`), khoảng giá (`minPrice`, `maxPrice`) và kiểu sắp xếp (`sort`). Phân trang theo mục 2. Chỉ có tin tóm tắt, **không có số điện thoại**. Hiện `fullAddress` thẳng.
+2. **Trang chi tiết** (địa chỉ `/<slug>-<code>`): gọi `GET /listings/:slugCode`, **gửi kèm access token nếu đã đăng nhập** để thấy số điện thoại. Khách thì thay chỗ số bằng nút "Đăng nhập để xem số điện thoại". Nếu `slug` trả về khác `slug` trên địa chỉ thì thay địa chỉ trên thanh địa chỉ (`history.replaceState`). 404 thì báo "tin không còn".
+3. Số lượt xem hiện ở `viewCount`. Đừng tự cộng ở FE: backend đã tính theo người xem trong 30 phút.
+
 ### Màn hình admin
 
 - **Chỉnh quyền loại tài khoản**: lấy `GET /permissions` (danh mục) và `GET /account-types` (quyền hiện tại). Vẽ ma trận hành động theo module cho `landlord` và `tenant`. Tắt (không cho chọn) mọi hành động trong `adminActions`. Khi lưu, gửi **toàn bộ** danh sách đang chọn bằng `PATCH /account-types/:key`. Nên ghi chú: người dùng đang đăng nhập nhận quyền mới trong tối đa 15 phút hoặc khi họ refresh.
@@ -651,6 +848,10 @@ Hai ô: mật khẩu hiện tại, mật khẩu mới. Gọi `POST /auth/change-
 - **Loại tài khoản không đổi.** Không có API đổi loại.
 - **Địa chỉ hai cấp.** Mọi địa chỉ trong hệ thống theo đơn vị hành chính mới sau sáp nhập: số nhà và đường, phường hoặc xã (`GET /wards`), tỉnh hoặc thành phố. Không có quận huyện. Xem mục 6.15.
 - **Nhà trọ** thuộc đúng một chủ trọ (không đổi chủ). Mỗi nhà trọ có tối đa một khoản phí cho mỗi loại trong 6 loại, tiện ích chọn từ danh mục. Xóa nhà trọ là xóa mềm và chỉ được khi không còn tin chưa xóa. Mọi thao tác chỉ trên nhà trọ của chính mình (403 `NOT_RESOURCE_OWNER` nếu khác), kể cả admin.
+- **Tin đăng** thuộc một nhà trọ, nên chủ tin là chủ nhà trọ (không đổi). Tin **hiện ngay khi đăng**, không nháp, không duyệt. Ba trạng thái: `visible`, `hidden_by_owner`, `hidden_by_admin`. Chủ trọ tự chuyển giữa `visible` và `hidden_by_owner`; tin `hidden_by_admin` chủ trọ không tự hiện lại được nhưng vẫn sửa và xóa được.
+- **Một tin hiện ra công khai khi và chỉ khi** tin `visible` và chưa xóa, nhà trọ chưa xóa, và chủ trọ đang hoạt động (không bị khóa, chưa xóa). Tính lúc đọc nên khóa tài khoản chủ trọ làm mọi tin của họ biến khỏi danh sách ngay, mở khóa thì hiện lại. (Về sau thêm điều kiện còn dùng thử hoặc có gói.)
+- **Số điện thoại chủ trọ** chỉ trả ở chi tiết tin và chỉ cho người gọi có access token hợp lệ; không có ở danh sách và không bao giờ có cho khách.
+- **Lượt xem** tính một lần cho mỗi người xem trong 30 phút, chủ tin không tính (6.20).
 - **Khóa tài khoản**: tài khoản bị khóa không đăng nhập, không refresh được và mọi phiên bị hủy lúc khóa. Đăng nhập sai mật khẩu vẫn báo `INVALID_CREDENTIALS` (không lộ tài khoản có bị khóa hay không); chỉ khi đúng mật khẩu mới báo `ACCOUNT_LOCKED`. Admin không tự khóa mình được.
 - **Đổi hoặc đặt lại mật khẩu** hủy phiên: đặt lại hủy **tất cả**; đổi (khi đang đăng nhập) hủy tất cả **trừ phiên đang dùng**.
 - **Mật khẩu mới** có thể trùng mật khẩu cũ (backend không cấm).
@@ -667,7 +868,12 @@ Hai ô: mật khẩu hiện tại, mật khẩu mới. Gọi `POST /auth/change-
 - **Giới hạn tần suất nằm trong bộ nhớ** của backend: khởi động lại là về 0, và nếu sau này chạy nhiều bản backend thì mỗi bản đếm riêng. Chạy localhost không qua proxy thì mọi client cùng một IP.
 - Người xấu có thể cố ý gọi đăng nhập dồn bằng email của người khác để **khóa đăng nhập email đó trong 15 phút** (đánh đổi của việc giới hạn theo email). Tương tự, người ta có thể gọi dồn quên mật khẩu bằng email đó để chặn việc xin liên kết mới trong 1 giờ. Liên kết đặt lại đã gửi trước đó vẫn dùng được.
 - **Chưa có API danh sách người dùng** nên màn hình admin chưa tìm được người để khóa ngoài việc biết sẵn id.
-- **Nhà trọ chưa gắn với tin**: chưa có API đăng tin nên `listingCount` luôn là 0 và nhà trọ nào cũng xóa được. Quy tắc chặn xóa khi còn tin (409 `PROPERTY_HAS_LISTINGS`) đã chạy nhưng chưa thể gặp qua API cho đến khi có API đăng tin.
+- **Lượt xem tính trong bộ nhớ** của backend: khởi động lại thì mọi người xem được tính lại từ đầu (cộng dư vài lượt), và nếu sau này chạy nhiều bản backend thì mỗi bản tính riêng. Nhiều người không đăng nhập dùng chung một IP chỉ tính một lượt mỗi 30 phút.
+- **Số điện thoại với tài khoản vừa bị khóa**: access token còn hạn (tối đa 15 phút) vẫn được coi là đã đăng nhập ở trang chi tiết tin, nên tài khoản vừa bị khóa còn thấy số điện thoại đến khi token hết hạn. Mọi phiên của tài khoản đã bị hủy nên không refresh được.
+- **Tin chưa có hạn mức, dùng thử và gói**: hiện mọi chủ trọ đăng được số tin không giới hạn và tin hiện mãi (mục 10, hàng 9 và 10). Tin không tự hết hạn: phòng đã cho thuê mà chủ trọ quên ẩn thì tin vẫn nằm đó.
+- **Chưa có ảnh tin** và **chưa có kháng nghị** khi bị ẩn tin: chủ trọ sửa tin xong vẫn phải liên hệ admin ngoài hệ thống.
+- **Tìm kiếm** chỉ khớp theo từng từ (không sửa lỗi chính tả, không tìm gần đúng). Từ ngắn dưới 3 ký tự vẫn tìm được nhưng chậm hơn khi có hàng chục nghìn tin.
+- **Số tổng `total` của danh sách** là một phép đếm riêng nên chậm dần khi có hàng chục nghìn tin; chấp nhận ở bản demo.
 - Ghi phí hoặc tiện ích khi sửa nhà trọ là **thay cả danh sách** (không có API thêm hay bỏ từng khoản), nên hai thiết bị cùng sửa một nhà trọ thì bản gửi sau thắng.
 
 ---
@@ -678,7 +884,7 @@ Backend sẽ làm theo thứ tự dưới đây. Mỗi mục khi xong sẽ vào 
 
 | Thứ tự | Tính năng | Ảnh hưởng tới FE |
 |---|---|---|
-| 8 | **Nhà trọ, đăng tin, xem tin** (đã có danh sách phường, xã và tiện ích, mục 6.15 và 6.16, và **nhà trọ của chủ trọ**, mục 6.17; phần **tin phòng** còn lại làm dần): chủ trọ đăng tin phòng vào nhà trọ của mình, **tin hiện ngay khi đăng, không có bước duyệt**. Chủ trọ tự ẩn và hiện lại tin của mình; admin ẩn hoặc gỡ ẩn tin của người khác kèm lý do. Người tìm trọ xem danh sách tin có lọc đơn giản (từ khóa, phường, khoảng giá, sắp xếp) và chi tiết tin (mỗi lần mở tính một lượt xem). Ảnh tải lên, tối đa 5 ảnh mỗi tin | Trang quản lý nhà trọ và tin của chủ trọ (có nút ẩn, hiện), trang danh sách có bộ lọc, trang chi tiết tin, nút ẩn tin cho admin. **Không cần hàng chờ duyệt** |
+| 8 | **Phần còn lại của nhà trọ và tin** (đã có: danh sách phường, xã và tiện ích, nhà trọ, đăng tin, xem tin, ẩn và hiện tin, mục 6.15 đến 6.23): **ảnh tin** (tải lên từng ảnh, tối đa 5 ảnh mỗi tin, xem ảnh), **admin ẩn và gỡ ẩn tin kèm lý do** cùng danh sách tin để kiểm duyệt, **admin quản lý danh mục phường và tiện ích** | Nút tải ảnh trong biểu mẫu tin; màn hình kiểm duyệt cho admin; `moderationReason` đã có sẵn trong API tin của chủ trọ. **Không cần hàng chờ duyệt** |
 | 9 | **Dùng thử miễn phí và hạn mức tin** cho chủ trọ: dùng thử 30 ngày, tối đa 2 tin đang hiện (admin đổi được hai con số này). Hết kỳ dùng thử mà chưa mua gói thì tin của chủ trọ tự biến khỏi danh sách công khai | Lỗi chặn đăng hoặc hiện thêm tin kèm gợi ý mua gói; hiện ngày hết hạn dùng thử và số tin còn lại |
 | 10 | **Mua gói và gia hạn theo tháng**, **thanh toán thử** (bấm xác nhận là có gói, không có tiền thật, không chuyển sang cổng thanh toán nào, nên **không có trang VNPay**) | Trang chọn gói, nút thanh toán thử, lịch sử đơn |
 | 11 | **Theo dõi chủ trọ** và hiển thị số người theo dõi, tổng lượt xem tin | Nút theo dõi, số liệu trên hồ sơ chủ trọ |
@@ -695,13 +901,25 @@ Backend sẽ làm theo thứ tự dưới đây. Mỗi mục khi xong sẽ vào 
 
 Mới nhất ở trên cùng. Mục nào **phá vỡ** cách FE đang gọi sẽ ghi rõ "ĐỔI KHÁC VỚI TRƯỚC".
 
+### 2026-10-16 · Tin đăng: đăng, xem công khai, ẩn và hiện
+
+- Thêm 9 API: `POST /properties/:propertyId/listings` (201), `GET /listings` (công khai, có lọc và phân trang), `GET /listings/:slugCode` (công khai, đọc đăng nhập tùy chọn), `GET /me/listings`, `GET /me/listings/:id`, `PATCH /listings/:id`, `DELETE /listings/:id` (204, xóa mềm), `POST /listings/:id/hide`, `POST /listings/:id/show`. Xem mục 6.18 đến 6.23. Quyền `listing:create`, `listing:read`, `listing:update`, `listing:delete` (landlord đã có sẵn); người tìm trọ nhận 403 `PERMISSION_DENIED` ở các API của chủ trọ.
+- **Tin hiện ngay khi đăng**, không nháp, không duyệt. Đường dẫn công khai của tin là `<slug>-<code>`, chỉ phần `code` (8 ký tự) dùng để tra.
+- **Số điện thoại chủ trọ chỉ có ở chi tiết tin và chỉ khi gửi access token hợp lệ**; danh sách không bao giờ có. Token sai hoặc hết hạn ở trang chi tiết không bị 401, chỉ mất số điện thoại.
+- Mỗi người xem được cộng một lượt xem cho mỗi tin trong 30 phút; chủ tin không tính.
+- Ba mã lỗi bắt đầu được trả: `LISTING_NOT_FOUND`, `LISTING_STATE_INVALID`, `LISTING_HIDDEN_BY_ADMIN` (đã thêm vào bảng ở mục 3). Còn lại của đợt 2026-10-14 (`CATALOG_*`, `LISTING_IMAGE_LIMIT`, `IMAGE_INVALID`) vẫn chưa có API trả, FE đừng xử lý trước.
+- **Giới hạn tần suất mới** (mục 3): năm API ghi tin mỗi API 60 lần mỗi giờ theo người dùng; `GET /listings` 300 lần mỗi phút theo IP; `GET /listings/:slugCode` 300 lần mỗi phút theo IP và 60 lần mỗi phút cho người đăng nhập.
+- `listingCount` ở `GET /properties` giờ có số thật; xóa nhà trọ còn tin trả 409 `PROPERTY_HAS_LISTINGS` (đã chạy từ trước, giờ gặp được qua API).
+- Không đổi API nào đang chạy.
+- **FE cần làm**: trang quản lý tin và biểu mẫu đăng, sửa tin cho chủ trọ; trang danh sách có bộ lọc và trang chi tiết cho khách (nhớ gửi access token ở trang chi tiết khi đã đăng nhập); xử lý nhãn trạng thái và `moderationReason`; xử lý 429 ở các biểu mẫu ghi.
+
 ### 2026-10-16 · Nhà trọ của chủ trọ
 
 - Thêm 5 API cho chủ trọ: `POST /properties` (201), `GET /properties` (có phân trang), `GET /properties/:id`, `PATCH /properties/:id`, `DELETE /properties/:id` (204, xóa mềm). Xem mục 6.17. Quyền `property:create`, `property:read`, `property:update`, `property:delete` (landlord đã có sẵn từ trước). Người tìm trọ nhận 403 `PERMISSION_DENIED`.
 - **Địa chỉ trả sẵn `fullAddress`** (số nhà và đường, phường hoặc xã, tỉnh hoặc thành phố; không có quận huyện). FE hiển thị thẳng, không tự ghép.
 - Thêm **quy ước phân trang** chung (mục 2): `page`, `pageSize` (tối đa 50), trả `{ items, total, page, pageSize }`. Mới `GET /properties` dùng.
 - Bốn mã lỗi bắt đầu được trả: `WARD_UNKNOWN`, `AMENITY_UNKNOWN`, `PROPERTY_NOT_FOUND`, `PROPERTY_HAS_LISTINGS` (đã thêm vào bảng ở mục 3). `NOT_RESOURCE_OWNER` lần đầu có API dùng đến. Bảy mã còn lại của đợt 2026-10-14 (`CATALOG_*`, `LISTING_*`, `IMAGE_INVALID`) vẫn chưa có API trả, FE đừng xử lý trước.
-- **Giới hạn tần suất mới**: ba API ghi nhà trọ (`POST`, `PATCH`, `DELETE`) dùng chung bộ đếm 30 lần mỗi giờ cho mỗi người dùng, vượt thì 429 `RATE_LIMITED` (mục 3, phần "Lỗi 429"). Các API đọc không bị giới hạn.
+- **Giới hạn tần suất mới**: ba API ghi nhà trọ (`POST`, `PATCH`, `DELETE`) mỗi API bị giới hạn 30 lần mỗi giờ cho mỗi người dùng (đếm riêng từng API), vượt thì 429 `RATE_LIMITED` (mục 3, phần "Lỗi 429"). Các API đọc không bị giới hạn.
 - Không đổi API nào đang chạy.
 - **FE cần làm**: trang danh sách và biểu mẫu tạo, sửa nhà trọ cho chủ trọ (luồng gợi ý ở mục 7); xử lý 429 ở các biểu mẫu ghi; hiển thị `fullAddress` thẳng.
 

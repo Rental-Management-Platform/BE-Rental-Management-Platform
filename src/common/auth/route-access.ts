@@ -1,6 +1,7 @@
 import type { Reflector } from '@nestjs/core';
 import { FRESH_AUTH_KEY } from './fresh-auth.decorator';
 import { IS_AUTHENTICATED_ONLY_KEY } from './authenticated-only.decorator';
+import { IS_OPTIONAL_AUTH_KEY } from './optional-auth.decorator';
 import { IS_PUBLIC_KEY } from './public.decorator';
 import type { PermissionKey } from './permission-catalog';
 import { REQUIRED_PERMISSIONS_KEY } from './require-permissions.decorator';
@@ -19,6 +20,8 @@ export interface RouteAccess {
 	/** Số khai báo tìm thấy: phải đúng 1 (spec 0003 AC-4). */
 	readonly declarationCount: number;
 	readonly freshAuth: boolean;
+	/** `@OptionalAuth()`: route công khai vẫn thử đọc người đăng nhập (spec 0002). */
+	readonly optionalAuth: boolean;
 }
 
 type Target = Parameters<Reflector['getAllAndOverride']>[1][number];
@@ -51,6 +54,11 @@ export function readRouteAccess(
 			FRESH_AUTH_KEY,
 			targets,
 		) === true;
+	const optionalAuth =
+		reflector.getAllAndOverride<boolean | undefined>(
+			IS_OPTIONAL_AUTH_KEY,
+			targets,
+		) === true;
 
 	const found: RouteDeclaration[] = [];
 	if (isPublic === true) found.push({ kind: 'public' });
@@ -61,5 +69,6 @@ export function readRouteAccess(
 		declaration: found.length === 1 ? (found[0] ?? null) : null,
 		declarationCount: found.length,
 		freshAuth,
+		optionalAuth,
 	};
 }

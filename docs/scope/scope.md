@@ -126,10 +126,10 @@ Chủ trọ tạo nhà trọ (địa chỉ, phường, phí, tiện ích) rồi 
 - [ ] Build it: `/develop property listings`
    - [x] Mốc 1: nền dữ liệu (7 bảng, 11 mã lỗi, hàm `toSearchKey`, `toSlug`, nhận loại ảnh) và `GET /wards`, `GET /amenities` theo địa chỉ hai cấp sau sáp nhập, kèm seed 168 phường (AC-1)
    - [x] Mốc 2: nhà trọ, phí và tiện ích, xóa mềm có chặn khi còn tin, `fullAddress` (AC-3, AC-4, AC-16)
-   - [ ] Mốc 3: đăng tin, danh sách và chi tiết công khai, lượt xem, tin của chủ trọ, sửa, ẩn và hiện (AC-5, AC-6, AC-7, AC-10 đến AC-14, AC-16)
+   - [x] Mốc 3: đăng tin, danh sách và chi tiết công khai, lượt xem, tin của chủ trọ, sửa, ẩn và hiện (AC-5, AC-6, AC-7, AC-10 đến AC-14, AC-16)
    - [ ] Mốc 4: ảnh tin, tối đa 5 ảnh mỗi tin (AC-8)
    - [ ] Mốc 5: kiểm duyệt của admin, danh mục admin, giới hạn tần suất, tài liệu và kiểm cuối (AC-2, AC-9, AC-15)
-Spec [0002](../specs/0002-property-listings/index.md) (16 AC, 5 mốc, đã được bạn Accept ngày 2026-10-14; trạng thái spec đi theo tính năng) · code in `src/catalog/`, `src/properties/`, `src/listings/`, `src/common/pagination/`, `src/common/text/`, `src/common/files/`, `src/database/seed-data.ts`, `src/database/seed-catalog.ts`, `prisma/seed-data/`, `prisma/migrations/20261014090000_property_listings/` · tài liệu in `docs/api/`
+Spec [0002](../specs/0002-property-listings/index.md) (16 AC, 5 mốc, đã được bạn Accept ngày 2026-10-14; trạng thái spec đi theo tính năng) · code in `src/catalog/`, `src/properties/`, `src/listings/`, `src/common/pagination/`, `src/common/auth/optional-auth.decorator.ts`, `src/common/text/`, `src/common/files/`, `src/database/seed-data.ts`, `src/database/seed-catalog.ts`, `prisma/seed-data/`, `prisma/migrations/20261014090000_property_listings/` · tài liệu in `docs/api/`
 
 ## Release 9: dùng thử và hạn mức
 

@@ -10,3 +10,9 @@ export const CurrentUser = createParamDecorator(
 	(_: unknown, context: ExecutionContext): RequestUser =>
 		context.switchToHttp().getRequest<AuthenticatedRequest>().user,
 );
+
+/** Dành cho route `@OptionalAuth()`: người gọi nếu có access token hợp lệ, `undefined` nếu là khách. */
+export const OptionalUser = createParamDecorator(
+	(_: unknown, context: ExecutionContext): RequestUser | undefined =>
+		context.switchToHttp().getRequest<{ user?: RequestUser }>().user,
+);

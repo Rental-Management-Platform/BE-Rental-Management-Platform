@@ -22,4 +22,30 @@ export class ModerationLogsRepository {
 	): Promise<void> {
 		await (tx ?? this.prisma).moderationLog.create({ data: input });
 	}
+
+	/**
+	 * Lý do ẩn gần nhất của từng tin trong danh sách (dòng `hide_listing` mới nhất), để chủ trọ biết vì sao tin
+	 * bị admin ẩn (spec 0002 AC-9, AC-14). Tin không có dòng nào thì vắng trong kết quả. Một câu truy vấn cho cả
+	 * trang, dùng chỉ mục `(target_type, target_id, created_at)`.
+	 */
+	async findLatestListingHideReasons(
+		listingIds: readonly string[],
+	): Promise<Map<string, string>> {
+		const reasons = new Map<string, string>();
+		if (listingIds.length === 0) return reasons;
+		const rows = await this.prisma.moderationLog.findMany({
+			where: {
+				targetType: 'listing',
+				targetId: { in: [...listingIds] },
+				action: 'hide_listing',
+			},
+			orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+			select: { targetId: true, reason: true },
+		});
+		for (const row of rows) {
+			if (!reasons.has(row.targetId))
+				reasons.set(row.targetId, row.reason);
+		}
+		return reasons;
+	}
 }

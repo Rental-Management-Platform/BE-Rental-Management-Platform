@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Rental Management Platform API",
-    "description": "Bộ request để thử API backend. Cập nhật cùng mỗi thay đổi API (xem docs/api/api-for-frontend.md, mục Nhật ký thay đổi).\n\nCách dùng:\n1. Import file này vào Postman.\n2. Mở tab Variables của collection, điền `adminEmail` và `adminPassword` theo ADMIN_SEED_* trong .env (không commit mật khẩu thật).\n3. Chạy API (`npm run start:dev`), rồi chạy lần lượt folder 00, 01, 02, 03, 04, 05, 07, 08. Folder 06 (giới hạn tần suất, lỗi 429) chạy riêng, đừng chạy cả bộ nhiều lần liên tiếp: bộ đếm nằm trong bộ nhớ backend, muốn chạy lại ngay thì khởi động lại backend.\n4. Các request tự lưu token vào biến `userToken` và `adminToken`.\n\nCookie refresh (`rt`) có Path `/api/v1/auth`, Postman tự giữ và tự gửi cho các request dưới đường dẫn đó.",
+    "description": "Bộ request để thử API backend. Cập nhật cùng mỗi thay đổi API (xem docs/api/api-for-frontend.md, mục Nhật ký thay đổi).\n\nCách dùng:\n1. Import file này vào Postman.\n2. Mở tab Variables của collection, điền `adminEmail` và `adminPassword` theo ADMIN_SEED_* trong .env (không commit mật khẩu thật).\n3. Chạy API (`npm run start:dev`), rồi chạy lần lượt folder 00, 01, 02, 03, 04, 05, 07, 08, 09. Folder 06 (giới hạn tần suất, lỗi 429) chạy riêng, đừng chạy cả bộ nhiều lần liên tiếp: bộ đếm nằm trong bộ nhớ backend, muốn chạy lại ngay thì khởi động lại backend.\n4. Các request tự lưu token vào biến `userToken` và `adminToken`.\n\nCookie refresh (`rt`) có Path `/api/v1/auth`, Postman tự giữ và tự gửi cho các request dưới đường dẫn đó.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -79,6 +79,31 @@
       "key": "otherLandlordToken",
       "value": "",
       "description": "Access token của chủ trọ thứ hai (để thử lỗi chủ sở hữu). Tự lưu."
+    },
+    {
+      "key": "tenantToken",
+      "value": "",
+      "description": "Access token của người tìm trọ (folder 09). Tự lưu."
+    },
+    {
+      "key": "listingPropertyId",
+      "value": "",
+      "description": "Id nhà trọ dùng để đăng tin (folder 09). Tự lưu."
+    },
+    {
+      "key": "listingId",
+      "value": "",
+      "description": "Id tin vừa đăng. Tự lưu."
+    },
+    {
+      "key": "listingCode",
+      "value": "",
+      "description": "Mã ngắn 8 ký tự của tin vừa đăng. Tự lưu."
+    },
+    {
+      "key": "listingSlug",
+      "value": "",
+      "description": "Slug của tin vừa đăng (đổi khi sửa tiêu đề). Tự lưu."
     }
   ],
   "auth": {
@@ -1710,7 +1735,7 @@
     },
     {
       "name": "08 Nhà trọ của chủ trọ",
-      "description": "Chủ trọ tạo, xem, sửa và xóa mềm nhà trọ của mình (spec nhà trọ và tin đăng 0002, mốc 2). Chạy từ trên xuống, ngay sau folder 07 (cần đã `npm run seed` để có phường và tiện ích). Hai request đầu đăng ký hai chủ trọ mới: chủ trọ thứ nhất dùng `userToken`, chủ trọ thứ hai dùng `otherLandlordToken` để thử lỗi NOT_RESOURCE_OWNER. Mỗi lần chạy tốn 2 lần trong giới hạn 10 lần đăng ký mỗi giờ theo IP, và 9 lần ghi của chủ trọ thứ nhất (kể cả các request thử lỗi) trong giới hạn 30 lần mỗi giờ của nhà trọ; hai chủ trọ mới mỗi lượt nên lượt chạy sau không bị dồn. Xóa nhà trọ còn tin bị 409 PROPERTY_HAS_LISTINGS chỉ thử được sau khi có API đăng tin (mốc 3).",
+      "description": "Chủ trọ tạo, xem, sửa và xóa mềm nhà trọ của mình (spec nhà trọ và tin đăng 0002, mốc 2). Chạy từ trên xuống, ngay sau folder 07 (cần đã `npm run seed` để có phường và tiện ích). Hai request đầu đăng ký hai chủ trọ mới: chủ trọ thứ nhất dùng `userToken`, chủ trọ thứ hai dùng `otherLandlordToken` để thử lỗi NOT_RESOURCE_OWNER. Mỗi lần chạy tốn 2 lần trong giới hạn 10 lần đăng ký mỗi giờ theo IP, và tối đa 6 lần cho mỗi API ghi (kể cả các request thử lỗi), dưới giới hạn 30 lần mỗi giờ cho mỗi API ghi nhà trọ; hai chủ trọ mới mỗi lượt nên lượt chạy sau không bị dồn. Xóa nhà trọ còn tin bị 409 PROPERTY_HAS_LISTINGS chỉ thử được sau khi có API đăng tin (mốc 3).",
       "item": [
         {
           "name": "Đăng ký chủ trọ thứ nhất",
@@ -2700,6 +2725,1257 @@
               ]
             },
             "description": "Danh sách của chủ trọ không còn nhà trọ đã xóa mềm."
+          }
+        }
+      ]
+    },
+    {
+      "name": "09 Tin đăng của chủ trọ và xem tin công khai",
+      "description": "Chủ trọ đăng, sửa, ẩn, hiện, xóa tin; khách và người tìm trọ xem danh sách và chi tiết (spec nhà trọ và tin đăng 0002, mốc 3). **Chạy ngay sau folder 08 và từ trên xuống**: dùng lại `userToken` (chủ trọ thứ nhất) và `otherLandlordToken` (chủ trọ thứ hai) mà folder 08 đã lưu, và cần đã `npm run seed`. Request đầu đăng ký thêm một người tìm trọ (`tenantToken`); cả bộ tốn 1 lần trong giới hạn 10 lần đăng ký mỗi giờ theo IP. Tin hiện ngay khi đăng, không có bước duyệt. Ảnh tin chưa có (mốc 4), nên `coverImageUrl` là `null` và `images` rỗng. Admin ẩn tin chưa có API (mốc 5), nên lỗi `LISTING_HIDDEN_BY_ADMIN` chưa thử được ở đây.",
+      "item": [
+        {
+          "name": "Đăng ký người tìm trọ (tenant) để xem số điện thoại",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('tenantEmail', 'timtro' + Date.now() + '@example.com');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "",
+                  "pm.collectionVariables.set('tenantToken', pm.response.json().accessToken);",
+                  "pm.test('là tài khoản tenant', () => pm.expect(pm.response.json().user.accountType).to.eql('tenant'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Công khai. Tạo một tenant mới và lưu token vào `tenantToken`. Dùng để thử \"đăng nhập thì thấy số điện thoại\" và \"tenant không đăng được tin\".",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{tenantEmail}}\",\n  \"password\": \"MatKhau12345\",\n  \"name\": \"Người Tìm Trọ\",\n  \"accountType\": \"tenant\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Tạo nhà trọ để đăng tin (POST /properties)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('listingPropertyId', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/properties",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties"
+              ]
+            },
+            "description": "Chủ trọ thứ nhất (`userToken`) tạo một nhà trọ mới; tin sẽ đăng vào nhà trọ này. Lưu id vào `listingPropertyId`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Nhà trọ Hoa Hồng\",\n  \"addressText\": \"12 Lê Lợi\",\n  \"wardCode\": \"{{wardCode}}\",\n  \"fees\": [\n    {\n      \"kind\": \"electricity\",\n      \"price\": 3500,\n      \"unit\": \"per_kwh\"\n    },\n    {\n      \"kind\": \"water\",\n      \"price\": 20000,\n      \"unit\": \"per_m3\"\n    }\n  ],\n  \"amenityKeys\": [\n    \"wifi\",\n    \"loft\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Đăng tin (POST /properties/:propertyId/listings)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "",
+                  "const listing = pm.response.json();",
+                  "pm.collectionVariables.set('listingId', listing.id);",
+                  "pm.collectionVariables.set('listingCode', listing.code);",
+                  "pm.collectionVariables.set('listingSlug', listing.slug);",
+                  "",
+                  "pm.test('tin hiện ngay: status visible, 0 lượt xem, không có lý do ẩn', () => {",
+                  "    pm.expect(listing.status).to.eql('visible');",
+                  "    pm.expect(listing.viewCount).to.eql(0);",
+                  "    pm.expect(listing.moderationReason).to.eql(null);",
+                  "});",
+                  "",
+                  "pm.test('mã ngắn 8 ký tự do hệ thống sinh', () => pm.expect(listing.code).to.match(/^[a-z0-9]{8}$/));",
+                  "pm.test('slug bỏ dấu từ tiêu đề', () => pm.expect(listing.slug).to.eql('phong-dep-co-gac-gan-cho-ben-thanh'));",
+                  "pm.test('fullAddress hai cấp, không có quận huyện', () => {",
+                  "    pm.expect(listing.fullAddress).to.eql(listing.addressText + ', ' + listing.ward.name + ', ' + listing.property.ward.provinceName);",
+                  "    pm.expect(listing.fullAddress).to.not.match(/quận|huyện/i);",
+                  "});",
+                  "pm.test('tin của chủ trọ không có landlord, chưa có ảnh', () => {",
+                  "    pm.expect(listing).to.not.have.property('landlord');",
+                  "    pm.expect(listing.images).to.eql([]);",
+                  "    pm.expect(listing.coverImageUrl).to.eql(null);",
+                  "});",
+                  "pm.test('ngày vào ở trả YYYY-MM-DD', () => pm.expect(listing.availableFrom).to.eql('2026-11-01'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/properties/{{listingPropertyId}}/listings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "{{listingPropertyId}}",
+                "listings"
+              ]
+            },
+            "description": "Quyền `listing:create`, giới hạn 60 lần ghi mỗi giờ cho mỗi API. Chỉ đăng được vào nhà trọ của chính mình. **Tin hiện ngay**: `status` luôn là `visible`, `viewCount` 0, không có bản nháp hay bước duyệt. Không gửi `status`, `code`, `propertyId` (bị 400): trạng thái do hệ thống đặt, mã ngắn 8 ký tự do hệ thống sinh, nhà trọ lấy từ đường dẫn. `title` 5 đến 120 ký tự, `description` 10 đến 5000, `price` số nguyên 100.000 đến 100.000.000, `areaM2` từ 1 đến 1000 tối đa một chữ số thập phân; `deposit` (0 đến 1 tỷ) và `availableFrom` (`YYYY-MM-DD`) tùy chọn. Lỗi có thể gặp: 400 VALIDATION_FAILED, 404 PROPERTY_NOT_FOUND, 403 NOT_RESOURCE_OWNER, 403 PERMISSION_DENIED, 429 RATE_LIMITED.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Phòng đẹp có gác gần chợ Bến Thành\",\n  \"description\": \"Phòng sạch sẽ thoáng mát, có gác lửng, giờ giấc tự do, gần chợ và trạm xe buýt.\",\n  \"price\": 3500000,\n  \"areaM2\": 22.5,\n  \"deposit\": 3500000,\n  \"availableFrom\": \"2026-11-01\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Danh sách tin công khai, không cần đăng nhập (GET /listings)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const body = pm.response.json();",
+                  "pm.test('đúng hình dạng trang', () => pm.expect(Object.keys(body).sort()).to.eql(['items', 'page', 'pageSize', 'total']));",
+                  "pm.test('tin vừa đăng nằm trong danh sách', () => {",
+                  "    const item = body.items.find((i) => i.code === pm.collectionVariables.get('listingCode'));",
+                  "    pm.expect(item).to.be.an(\"object\");",
+                  "    pm.expect(Object.keys(item).sort()).to.eql(['addressText', 'areaM2', 'availableFrom', 'code', 'coverImageUrl', 'createdAt', 'deposit', 'fullAddress', 'id', 'landlord', 'price', 'slug', 'title', 'ward']);",
+                  "    pm.expect(Object.keys(item.landlord).sort()).to.eql(['id', 'name']);",
+                  "});",
+                  "pm.test('không có số điện thoại ở danh sách', () => pm.expect(JSON.stringify(body)).to.not.match(/\"phone\"/));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings?page=1&pageSize=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Công khai. Chỉ tin đang hiện: `status` `visible`, chưa xóa, nhà trọ chưa xóa, chủ trọ đang hoạt động. Mới nhất trước. Mỗi dòng là **tin tóm tắt**: không có số điện thoại, không có mô tả. Giới hạn 300 lần mỗi phút theo IP.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Lọc danh sách: từ khóa, phường, khoảng giá, sắp xếp",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('tin vừa đăng khớp mọi điều kiện lọc', () => pm.expect(pm.response.json().items.map((i) => i.code)).to.include(pm.collectionVariables.get('listingCode')));",
+                  "pm.test('kết quả đều trong khoảng giá', () => pm.response.json().items.forEach((i) => pm.expect(i.price).to.be.within(1000000, 5000000)));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings?q=gac&wardCode={{wardCode}}&minPrice=1000000&maxPrice=5000000&sort=price_asc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "gac"
+                },
+                {
+                  "key": "wardCode",
+                  "value": "{{wardCode}}"
+                },
+                {
+                  "key": "minPrice",
+                  "value": "1000000"
+                },
+                {
+                  "key": "maxPrice",
+                  "value": "5000000"
+                },
+                {
+                  "key": "sort",
+                  "value": "price_asc"
+                }
+              ]
+            },
+            "description": "`q` không phân biệt dấu và chữ hoa thường, tối đa 6 từ, các từ nối bằng AND, tìm trong tiêu đề, tên nhà trọ, địa chỉ và tên phường. `wardCode` là mã 5 chữ số (mã không có trong danh mục trả danh sách rỗng, không phải lỗi). `minPrice`, `maxPrice` số nguyên 0 đến 100.000.000 (`minPrice` lớn hơn `maxPrice` là 400). `sort`: `newest` (mặc định), `price_asc`, `price_desc`.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Chi tiết tin cho khách (GET /listings/:slugCode)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const detail = pm.response.json();",
+                  "pm.test('khách: landlord.phone là null, không lộ số ở chỗ nào', () => {",
+                  "    pm.expect(detail.landlord.phone).to.eql(null);",
+                  "    pm.expect(Object.keys(detail.landlord).sort()).to.eql(['id', 'name', 'phone']);",
+                  "});",
+                  "pm.test('lượt xem đầu tiên của IP này được cộng: viewCount là 1', () => pm.expect(detail.viewCount).to.eql(1));",
+                  "pm.test('có mô tả, ảnh, nhà trọ kèm phí và tiện ích', () => {",
+                  "    pm.expect(detail.description).to.be.a(\"string\");",
+                  "    pm.expect(detail.images).to.eql([]);",
+                  "    pm.expect(detail.property.fees.map((f) => f.kind)).to.eql(['electricity', 'water']);",
+                  "    pm.expect(detail.property.amenities.map((a) => a.key)).to.eql(['loft', 'wifi']);",
+                  "});",
+                  "pm.test('Cache-Control private, no-store', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('private, no-store'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{listingSlug}}-{{listingCode}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{listingSlug}}-{{listingCode}}"
+              ]
+            },
+            "description": "Công khai, đọc đăng nhập tùy chọn. `:slugCode` là `slug-mã` hoặc chỉ `mã`; **chỉ phần mã ở cuối được dùng để tra**. **Khách thấy `landlord.phone` là `null`.** Mỗi người xem được cộng một lượt xem trong 30 phút (khách tính theo IP). Phản hồi có `Cache-Control: private, no-store`.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Chi tiết tin khi đã đăng nhập: thấy số điện thoại",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('đăng nhập: có số điện thoại của chủ trọ', () => pm.expect(pm.response.json().landlord.phone).to.match(/^0\\d{9}$/));",
+                  "pm.test('tài khoản là người xem khác: viewCount là 2', () => pm.expect(pm.response.json().viewCount).to.eql(2));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{listingCode}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{listingCode}}"
+              ]
+            },
+            "description": "Người tìm trọ đăng nhập thì thấy `landlord.phone`. Người xem này (tài khoản) là người xem khác với khách cùng IP nên được cộng thêm một lượt. Token sai hoặc hết hạn thì **không** bị 401 mà coi như khách (`phone: null`), nên FE nhớ làm mới token trước khi mở trang chi tiết.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Chi tiết tin: slug sai nhưng đúng mã vẫn mở được",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('trả slug đúng để FE đổi URL', () => pm.expect(pm.response.json().slug).to.eql(pm.collectionVariables.get('listingSlug')));",
+                  "pm.test('không cộng lượt khi cùng IP mở lại trong 30 phút', () => pm.expect(pm.response.json().viewCount).to.eql(2));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/duong-dan-cu-da-doi-{{listingCode}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "duong-dan-cu-da-doi-{{listingCode}}"
+              ]
+            },
+            "description": "Mở bằng một slug cũ hoặc sai nhưng đúng mã: vẫn 200 và trả `slug` đúng để FE thay URL. Cùng IP mở lại trong 30 phút nên không cộng lượt.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Tin của tôi: danh sách (GET /me/listings)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('có tin vừa đăng, kèm status, moderationReason, viewCount', () => {",
+                  "    const item = pm.response.json().items.find((i) => i.id === pm.collectionVariables.get('listingId'));",
+                  "    pm.expect(item.status).to.eql('visible');",
+                  "    pm.expect(item.moderationReason).to.eql(null);",
+                  "    pm.expect(item.viewCount).to.eql(2);",
+                  "    pm.expect(item).to.not.have.property('landlord');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me/listings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "listings"
+              ]
+            },
+            "description": "Quyền `listing:read`. Mọi tin chưa xóa của chính người gọi, **kể cả tin đang ẩn**, mới nhất trước; lọc bằng `?status=visible|hidden_by_owner|hidden_by_admin`. Mỗi dòng là tin tóm tắt (không có `landlord`) cộng `status`, `moderationReason` và `viewCount`."
+          }
+        },
+        {
+          "name": "Tin của tôi: chi tiết (GET /me/listings/:id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('có status và moderationReason, không có landlord', () => {",
+                  "    const listing = pm.response.json();",
+                  "    pm.expect(listing.status).to.eql('visible');",
+                  "    pm.expect(listing.moderationReason).to.eql(null);",
+                  "    pm.expect(listing).to.not.have.property('landlord');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me/listings/{{listingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "listings",
+                "{{listingId}}"
+              ]
+            },
+            "description": "Quyền `listing:read`. Chi tiết tin của mình ở mọi trạng thái, kèm `status` và `moderationReason` (có giá trị khi admin ẩn tin). Tin của chủ trọ khác là 403, không có hoặc đã xóa là 404."
+          }
+        },
+        {
+          "name": "Sửa tin (PATCH /listings/:id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const listing = pm.response.json();",
+                  "pm.collectionVariables.set('listingSlug', listing.slug);",
+                  "pm.test('tiêu đề, giá đổi; cọc bị xóa', () => {",
+                  "    pm.expect(listing.title).to.eql('Phòng cao cấp view đẹp gần chợ');",
+                  "    pm.expect(listing.price).to.eql(4000000);",
+                  "    pm.expect(listing.deposit).to.eql(null);",
+                  "});",
+                  "pm.test('slug đổi theo tiêu đề, mã giữ nguyên', () => {",
+                  "    pm.expect(listing.slug).to.eql('phong-cao-cap-view-dep-gan-cho');",
+                  "    pm.expect(listing.code).to.eql(pm.collectionVariables.get('listingCode'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{listingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{listingId}}"
+              ]
+            },
+            "description": "Quyền `listing:update`, giới hạn 60 lần ghi mỗi giờ. Sửa ở mọi trạng thái (kể cả tin bị admin ẩn). Mọi trường tùy chọn; `title`, `description`, `price`, `areaM2` không nhận `null`; `deposit` và `availableFrom` nhận `null` để xóa. **Không đổi được nhà trọ, trạng thái hay mã.** Đổi tiêu đề đổi `slug` nhưng link cũ vẫn mở được (chỉ phần mã dùng để tra).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Phòng cao cấp view đẹp gần chợ\",\n  \"price\": 4000000,\n  \"deposit\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Ẩn tin (POST /listings/:id/hide)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('trạng thái hidden_by_owner', () => pm.expect(pm.response.json().status).to.eql('hidden_by_owner'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{listingId}}/hide",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{listingId}}",
+                "hide"
+              ]
+            },
+            "description": "Quyền `listing:update`. `visible` sang `hidden_by_owner`, ví dụ khi hết phòng. Tin ẩn biến khỏi danh sách và chi tiết công khai nhưng chủ trọ vẫn thấy ở `/me/listings`."
+          }
+        },
+        {
+          "name": "Tin đã ẩn: công khai không còn thấy",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 404 LISTING_NOT_FOUND', () => {",
+                  "    pm.response.to.have.status(404);",
+                  "    pm.expect(pm.response.json().code).to.eql('LISTING_NOT_FOUND');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{listingCode}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{listingCode}}"
+              ]
+            },
+            "description": "Tin không hiển thị công khai (vì bất kỳ lý do nào, kể cả với chính chủ) trả 404 LISTING_NOT_FOUND.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: ẩn tin đã ẩn",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 409 LISTING_STATE_INVALID', () => {",
+                  "    pm.response.to.have.status(409);",
+                  "    pm.expect(pm.response.json().code).to.eql('LISTING_STATE_INVALID');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{listingId}}/hide",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{listingId}}",
+                "hide"
+              ]
+            },
+            "description": "Mong đợi 409 LISTING_STATE_INVALID (chuyển trạng thái không hợp lệ)."
+          }
+        },
+        {
+          "name": "Hiện lại tin (POST /listings/:id/show)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('trạng thái visible', () => pm.expect(pm.response.json().status).to.eql('visible'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{listingId}}/show",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{listingId}}",
+                "show"
+              ]
+            },
+            "description": "Quyền `listing:update`. `hidden_by_owner` sang `visible`. Tin đang bị **admin** ẩn thì chủ trọ không tự hiện lại được: 403 LISTING_HIDDEN_BY_ADMIN (chưa thử được ở bộ này vì admin ẩn tin thuộc mốc sau)."
+          }
+        },
+        {
+          "name": "Thử lỗi: hiện tin đã hiện",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 409 LISTING_STATE_INVALID', () => {",
+                  "    pm.response.to.have.status(409);",
+                  "    pm.expect(pm.response.json().code).to.eql('LISTING_STATE_INVALID');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{listingId}}/show",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{listingId}}",
+                "show"
+              ]
+            },
+            "description": "Mong đợi 409 LISTING_STATE_INVALID."
+          }
+        },
+        {
+          "name": "Thử lỗi: đăng tin giá quá thấp",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 400 VALIDATION_FAILED', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED');",
+                  "});",
+                  "pm.test('lỗi ở trường price', () => pm.expect(pm.response.json().errors.map((e) => e.field)).to.include('price'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/properties/{{listingPropertyId}}/listings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "{{listingPropertyId}}",
+                "listings"
+              ]
+            },
+            "description": "Mong đợi 400 VALIDATION_FAILED, `errors` nêu trường `price`. Không có tin nào được tạo.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Phòng đẹp có gác gần chợ Bến Thành\",\n  \"description\": \"Phòng sạch sẽ thoáng mát, có gác lửng, giờ giấc tự do, gần chợ và trạm xe buýt.\",\n  \"price\": 50000,\n  \"areaM2\": 22.5,\n  \"deposit\": 3500000,\n  \"availableFrom\": \"2026-11-01\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: ngày vào ở không có thật",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 400 VALIDATION_FAILED', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED');",
+                  "});",
+                  "pm.test('lỗi ở trường availableFrom', () => pm.expect(pm.response.json().errors.map((e) => e.field)).to.include('availableFrom'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/properties/{{listingPropertyId}}/listings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "{{listingPropertyId}}",
+                "listings"
+              ]
+            },
+            "description": "Mong đợi 400 VALIDATION_FAILED, `errors` nêu trường `availableFrom`. Ngày phải đúng dạng `YYYY-MM-DD` và là ngày có thật; ngày đã qua thì được.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Phòng đẹp có gác gần chợ Bến Thành\",\n  \"description\": \"Phòng sạch sẽ thoáng mát, có gác lửng, giờ giấc tự do, gần chợ và trạm xe buýt.\",\n  \"price\": 3500000,\n  \"areaM2\": 22.5,\n  \"deposit\": 3500000,\n  \"availableFrom\": \"2026-02-30\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: gửi trạng thái khi đăng tin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 400 VALIDATION_FAILED', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/properties/{{listingPropertyId}}/listings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "{{listingPropertyId}}",
+                "listings"
+              ]
+            },
+            "description": "Mong đợi 400 VALIDATION_FAILED vì trường lạ: trạng thái do hệ thống đặt (luôn `visible`), không nhận từ client.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Phòng đẹp có gác gần chợ Bến Thành\",\n  \"description\": \"Phòng sạch sẽ thoáng mát, có gác lửng, giờ giấc tự do, gần chợ và trạm xe buýt.\",\n  \"price\": 3500000,\n  \"areaM2\": 22.5,\n  \"deposit\": 3500000,\n  \"availableFrom\": \"2026-11-01\",\n  \"status\": \"hidden_by_admin\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: đăng tin vào nhà trọ của chủ trọ khác",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 403 NOT_RESOURCE_OWNER', () => {",
+                  "    pm.response.to.have.status(403);",
+                  "    pm.expect(pm.response.json().code).to.eql('NOT_RESOURCE_OWNER');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/properties/{{listingPropertyId}}/listings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "{{listingPropertyId}}",
+                "listings"
+              ]
+            },
+            "description": "Dùng token của chủ trọ thứ hai. Mong đợi 403 NOT_RESOURCE_OWNER.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Phòng đẹp có gác gần chợ Bến Thành\",\n  \"description\": \"Phòng sạch sẽ thoáng mát, có gác lửng, giờ giấc tự do, gần chợ và trạm xe buýt.\",\n  \"price\": 3500000,\n  \"areaM2\": 22.5,\n  \"deposit\": 3500000,\n  \"availableFrom\": \"2026-11-01\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{otherLandlordToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: người tìm trọ đăng tin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 403 PERMISSION_DENIED', () => {",
+                  "    pm.response.to.have.status(403);",
+                  "    pm.expect(pm.response.json().code).to.eql('PERMISSION_DENIED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/properties/{{listingPropertyId}}/listings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "{{listingPropertyId}}",
+                "listings"
+              ]
+            },
+            "description": "Mong đợi 403 PERMISSION_DENIED: tenant không có quyền `listing:*`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Phòng đẹp có gác gần chợ Bến Thành\",\n  \"description\": \"Phòng sạch sẽ thoáng mát, có gác lửng, giờ giấc tự do, gần chợ và trạm xe buýt.\",\n  \"price\": 3500000,\n  \"areaM2\": 22.5,\n  \"deposit\": 3500000,\n  \"availableFrom\": \"2026-11-01\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: chủ trọ khác sửa tin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 403 NOT_RESOURCE_OWNER', () => {",
+                  "    pm.response.to.have.status(403);",
+                  "    pm.expect(pm.response.json().code).to.eql('NOT_RESOURCE_OWNER');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{listingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{listingId}}"
+              ]
+            },
+            "description": "Mong đợi 403 NOT_RESOURCE_OWNER và tin không đổi.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Cướp tin của người khác\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{otherLandlordToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: chủ trọ khác xem tin của tôi",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 403 NOT_RESOURCE_OWNER', () => {",
+                  "    pm.response.to.have.status(403);",
+                  "    pm.expect(pm.response.json().code).to.eql('NOT_RESOURCE_OWNER');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me/listings/{{listingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "listings",
+                "{{listingId}}"
+              ]
+            },
+            "description": "Mong đợi 403 NOT_RESOURCE_OWNER.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{otherLandlordToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: khoảng giá ngược",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 400 VALIDATION_FAILED', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings?minPrice=5000000&maxPrice=1000000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings"
+              ],
+              "query": [
+                {
+                  "key": "minPrice",
+                  "value": "5000000"
+                },
+                {
+                  "key": "maxPrice",
+                  "value": "1000000"
+                }
+              ]
+            },
+            "description": "Mong đợi 400 VALIDATION_FAILED vì `minPrice` lớn hơn `maxPrice`.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: mã tin không có",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 404 LISTING_NOT_FOUND', () => {",
+                  "    pm.response.to.have.status(404);",
+                  "    pm.expect(pm.response.json().code).to.eql('LISTING_NOT_FOUND');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/phong-dep-zzzzzzzz",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "phong-dep-zzzzzzzz"
+              ]
+            },
+            "description": "Mong đợi 404 LISTING_NOT_FOUND. Đường dẫn không lấy được mã hợp lệ cũng 404 (không phải 400).",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: xóa nhà trọ còn tin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 409 PROPERTY_HAS_LISTINGS', () => {",
+                  "    pm.response.to.have.status(409);",
+                  "    pm.expect(pm.response.json().code).to.eql('PROPERTY_HAS_LISTINGS');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/properties/{{listingPropertyId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "{{listingPropertyId}}"
+              ]
+            },
+            "description": "Nhà trọ còn tin chưa xóa: mong đợi 409 PROPERTY_HAS_LISTINGS và nhà trọ vẫn còn. Phải xóa các tin trước."
+          }
+        },
+        {
+          "name": "Xóa mềm tin (DELETE /listings/:id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 204', () => pm.response.to.have.status(204));",
+                  "pm.test('không có body', () => pm.expect(pm.response.text()).to.eql(''));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{listingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{listingId}}"
+              ]
+            },
+            "description": "Quyền `listing:delete`, giới hạn 60 lần ghi mỗi giờ. Xóa mềm ở mọi trạng thái; tin biến khỏi mọi API."
+          }
+        },
+        {
+          "name": "Sau khi xóa: tin của tôi không còn",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 404 LISTING_NOT_FOUND', () => {",
+                  "    pm.response.to.have.status(404);",
+                  "    pm.expect(pm.response.json().code).to.eql('LISTING_NOT_FOUND');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me/listings/{{listingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "listings",
+                "{{listingId}}"
+              ]
+            },
+            "description": "Mong đợi 404 LISTING_NOT_FOUND."
+          }
+        },
+        {
+          "name": "Sau khi xóa tin: xóa nhà trọ được",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/properties/{{listingPropertyId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "{{listingPropertyId}}"
+              ]
+            },
+            "description": "Không còn tin chưa xóa nên xóa mềm nhà trọ thành công (204)."
           }
         }
       ]

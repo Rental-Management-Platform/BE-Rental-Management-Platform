@@ -1,5 +1,6 @@
 import {
 	emailTrackerKey,
+	hasUser,
 	RATE_LIMIT_NAMES,
 	RATE_LIMITS,
 	userTrackerKey,
@@ -66,6 +67,20 @@ describe('giới hạn tần suất: khóa của bộ đếm', () => {
 	});
 });
 
+describe('hasUser', () => {
+	it('có người đăng nhập khi JwtAuthGuard đã gắn userId', () => {
+		expect(hasUser({ user: { userId: 'u-1' } })).toBe(true);
+	});
+
+	it.each([
+		['khách', {}],
+		['user là null', { user: null }],
+		['userId không phải chuỗi', { user: { userId: 42 } }],
+	])('không có người dùng với %s', (_name, req) => {
+		expect(hasUser(req)).toBe(false);
+	});
+});
+
 describe('giới hạn tần suất: bảng RATE_LIMITS', () => {
 	const groups = Object.keys(RATE_LIMITS) as RateLimitGroup[];
 
@@ -74,8 +89,11 @@ describe('giới hạn tần suất: bảng RATE_LIMITS', () => {
 			[
 				'changePassword',
 				'forgotPassword',
+				'listingWrite',
 				'login',
 				'propertyWrite',
+				'publicDetail',
+				'publicRead',
 				'refresh',
 				'register',
 				'resetPassword',
@@ -108,6 +126,12 @@ describe('giới hạn tần suất: bảng RATE_LIMITS', () => {
 		}
 		expect(Object.keys(RATE_LIMITS.changePassword)).toEqual(['user']);
 		expect(Object.keys(RATE_LIMITS.propertyWrite)).toEqual(['user']);
+		expect(Object.keys(RATE_LIMITS.listingWrite)).toEqual(['user']);
+		expect(Object.keys(RATE_LIMITS.publicRead)).toEqual(['ip']);
+		expect(Object.keys(RATE_LIMITS.publicDetail).sort()).toEqual([
+			'ip',
+			'user',
+		]);
 	});
 
 	it('chỉ login và forgotPassword đếm theo email', () => {
@@ -134,6 +158,12 @@ describe('giới hạn tần suất: bảng RATE_LIMITS', () => {
 			resetPassword: { ip: { limit: 20, ttlMs: hour } },
 			changePassword: { user: { limit: 10, ttlMs: 15 * minute } },
 			propertyWrite: { user: { limit: 30, ttlMs: hour } },
+			listingWrite: { user: { limit: 60, ttlMs: hour } },
+			publicRead: { ip: { limit: 300, ttlMs: minute } },
+			publicDetail: {
+				ip: { limit: 300, ttlMs: minute },
+				user: { limit: 60, ttlMs: minute },
+			},
 		});
 	});
 });

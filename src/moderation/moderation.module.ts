@@ -9,5 +9,7 @@ import { ModerationService } from './moderation.service';
 	imports: [UsersModule, AuthModule],
 	controllers: [ModerationController],
 	providers: [ModerationService, ModerationLogsRepository],
+	// Module tin đọc lý do admin ẩn tin từ lịch sử kiểm duyệt (spec 0002 AC-14).
+	exports: [ModerationLogsRepository],
 })
 export class ModerationModule {}

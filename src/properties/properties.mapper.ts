@@ -1,6 +1,8 @@
 import { toAmenityResponse, toWardResponse } from '../catalog/catalog.mapper';
+import type { AmenityResponse } from '../catalog/dto/catalog.response';
 import { toFullAddress } from '../common/text/to-full-address';
 import type {
+	PropertyFeeResponse,
 	PropertyListItemResponse,
 	PropertyResponse,
 } from './dto/property.response';
@@ -13,6 +15,37 @@ const VIETNAMESE = new Intl.Collator('vi');
 const FEE_ORDER: ReadonlyMap<string, number> = new Map(
 	FEE_KINDS.map((kind, index) => [kind, index]),
 );
+
+/** Phí theo thứ tự loại cố định electricity, water, internet, parking, service, other; không sắp tại chỗ mảng gốc. */
+export function toFeeResponses(
+	fees: PropertyDetail['fees'],
+): PropertyFeeResponse[] {
+	return [...fees]
+		.sort(
+			(a, b) =>
+				(FEE_ORDER.get(a.kind) ?? FEE_KINDS.length) -
+				(FEE_ORDER.get(b.kind) ?? FEE_KINDS.length),
+		)
+		.map((fee) => ({
+			kind: fee.kind,
+			price: fee.price,
+			unit: fee.unit,
+			note: fee.note,
+		}));
+}
+
+/** Tiện ích theo tên tiếng Việt, chỉ gồm `key` và `name`. */
+export function toAmenityResponses(
+	rows: PropertyDetail['amenities'],
+): AmenityResponse[] {
+	return rows
+		.map((row) => toAmenityResponse(row.amenity))
+		.sort(
+			(a, b) =>
+				VIETNAMESE.compare(a.name, b.name) ||
+				a.key.localeCompare(b.key),
+		);
+}
 
 /**
  * Nhà trọ trên đường truyền (spec 0002, "Hình dạng trả về"): `fees[]` theo thứ tự loại cố định, `amenities[]`
@@ -27,25 +60,8 @@ export function toPropertyResponse(property: PropertyDetail): PropertyResponse {
 		ward: toWardResponse(property.ward),
 		latitude: property.latitude,
 		longitude: property.longitude,
-		fees: [...property.fees]
-			.sort(
-				(a, b) =>
-					(FEE_ORDER.get(a.kind) ?? FEE_KINDS.length) -
-					(FEE_ORDER.get(b.kind) ?? FEE_KINDS.length),
-			)
-			.map((fee) => ({
-				kind: fee.kind,
-				price: fee.price,
-				unit: fee.unit,
-				note: fee.note,
-			})),
-		amenities: property.amenities
-			.map((row) => toAmenityResponse(row.amenity))
-			.sort(
-				(a, b) =>
-					VIETNAMESE.compare(a.name, b.name) ||
-					a.key.localeCompare(b.key),
-			),
+		fees: toFeeResponses(property.fees),
+		amenities: toAmenityResponses(property.amenities),
 		createdAt: property.createdAt,
 		updatedAt: property.updatedAt,
 	};

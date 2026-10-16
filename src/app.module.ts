@@ -6,6 +6,7 @@ import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { CatalogModule } from './catalog/catalog.module';
 import { AllExceptionsFilter } from './common/errors/all-exceptions.filter';
+import { ListingsModule } from './listings/listings.module';
 import { PersistenceModule } from './common/persistence/persistence.module';
 import { AppConfigModule } from './config/app-config.module';
 import { PrismaModule } from './database/prisma.module';
@@ -24,6 +25,7 @@ import { UsersModule } from './users/users.module';
 		ModerationModule,
 		CatalogModule,
 		PropertiesModule,
+		ListingsModule,
 	],
 	controllers: [AppController],
 	providers: [

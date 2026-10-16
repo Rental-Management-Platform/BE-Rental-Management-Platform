@@ -21,7 +21,10 @@ export type RateLimitGroup =
 	| 'forgotPassword'
 	| 'resetPassword'
 	| 'changePassword'
-	| 'propertyWrite';
+	| 'propertyWrite'
+	| 'listingWrite'
+	| 'publicRead'
+	| 'publicDetail';
 
 export interface RateLimit {
 	/** Số lần được phép trong một cửa sổ. */
@@ -57,6 +60,16 @@ export const RATE_LIMITS: Readonly<
 	changePassword: { user: { limit: 10, ttlMs: 15 * MINUTE } },
 	// Spec nhà trọ và tin đăng (0002) AC-15, con số bạn duyệt ngày 2026-10-14: tạo, sửa, xóa nhà trọ.
 	propertyWrite: { user: { limit: 30, ttlMs: HOUR } },
+	// Cùng bảng đã duyệt: đăng, sửa, xóa, ẩn, hiện tin của chủ trọ.
+	listingWrite: { user: { limit: 60, ttlMs: HOUR } },
+	// Danh sách công khai. 300 lần mỗi phút theo IP đủ rộng cho nhiều sinh viên dùng chung một IP ký túc xá.
+	publicRead: { ip: { limit: 300, ttlMs: MINUTE } },
+	// Chi tiết tin công khai. Bộ đếm `user` chỉ chạy khi request có người đăng nhập (xem `hasUser`), để một
+	// tài khoản miễn phí không cào số điện thoại của mọi chủ trọ; khách chỉ chịu bộ đếm `ip`.
+	publicDetail: {
+		ip: { limit: 300, ttlMs: MINUTE },
+		user: { limit: 60, ttlMs: MINUTE },
+	},
 };
 
 /** Mặc định của ba bộ đếm; chỉ là lưới an toàn, vì mỗi route gắn `@RateLimited` đặt số riêng. */
@@ -92,6 +105,11 @@ export function emailTrackerKey(req: Record<string, unknown>): string {
 		return `email:${email}`;
 	}
 	return `ip:${ipOf(req)}`;
+}
+
+/** Request có người đăng nhập (JwtAuthGuard đã gắn `req.user`)? Khách và token sai đều là `false`. */
+export function hasUser(req: Record<string, unknown>): boolean {
+	return readString(req['user'], 'userId') !== undefined;
 }
 
 /** Khóa của bộ đếm `user`: id người dùng do JwtAuthGuard gắn vào request; không có thì rơi về IP. */
