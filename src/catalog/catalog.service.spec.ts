@@ -23,6 +23,14 @@ function serviceWith(wards: Ward[], amenities: Amenity[] = []): CatalogService {
 	const repository = {
 		findAllWards: () => Promise.resolve(wards),
 		findAllAmenities: () => Promise.resolve(amenities),
+		findWardByCode: (code: string) =>
+			Promise.resolve(wards.find((item) => item.code === code) ?? null),
+		findExistingAmenityKeys: (keys: readonly string[]) =>
+			Promise.resolve(
+				amenities
+					.map((item) => item.key)
+					.filter((key) => keys.includes(key)),
+			),
 	} as unknown as CatalogRepository;
 	return new CatalogService(repository);
 }
@@ -91,6 +99,39 @@ describe('CatalogService', () => {
 				{ key: 'air_conditioner', name: 'Máy lạnh' },
 				{ key: 'wifi', name: 'Wifi' },
 			]);
+		});
+	});
+
+	describe('findWard', () => {
+		it('trả phường có trong danh mục và null cho mã lạ', async () => {
+			const service = serviceWith([ward('26734', 'Phường Sài Gòn')]);
+			expect((await service.findWard('26734'))?.name).toBe(
+				'Phường Sài Gòn',
+			);
+			expect(await service.findWard('00000')).toBeNull();
+		});
+	});
+
+	describe('findUnknownAmenityKeys', () => {
+		const service = serviceWith(
+			[],
+			[amenity('wifi', 'Wifi'), amenity('loft', 'Gác lửng')],
+		);
+
+		it('mọi khóa đều có thì trả mảng rỗng', async () => {
+			expect(
+				await service.findUnknownAmenityKeys(['wifi', 'loft']),
+			).toEqual([]);
+		});
+
+		it('trả đúng các khóa lạ, giữ thứ tự đã gửi', async () => {
+			expect(
+				await service.findUnknownAmenityKeys(['pool', 'wifi', 'sauna']),
+			).toEqual(['pool', 'sauna']);
+		});
+
+		it('danh sách rỗng thì không cần hỏi DB', async () => {
+			expect(await service.findUnknownAmenityKeys([])).toEqual([]);
 		});
 	});
 });

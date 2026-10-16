@@ -21,4 +21,23 @@ export class CatalogRepository {
 	findAllAmenities(tx?: Prisma.TransactionClient): Promise<Amenity[]> {
 		return this.client(tx).amenity.findMany({ orderBy: { key: 'asc' } });
 	}
+
+	findWardByCode(
+		code: string,
+		tx?: Prisma.TransactionClient,
+	): Promise<Ward | null> {
+		return this.client(tx).ward.findUnique({ where: { code } });
+	}
+
+	/** Trong các khóa đã cho, những khóa có thật trong danh mục (đầu vào của việc tìm khóa lạ). */
+	async findExistingAmenityKeys(
+		keys: readonly string[],
+		tx?: Prisma.TransactionClient,
+	): Promise<string[]> {
+		const rows = await this.client(tx).amenity.findMany({
+			where: { key: { in: [...keys] } },
+			select: { key: true },
+		});
+		return rows.map((row) => row.key);
+	}
 }

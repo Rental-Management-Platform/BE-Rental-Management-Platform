@@ -75,7 +75,7 @@ Bạn chọn làm luôn API admin cho danh mục ở hàng 8 thay vì phương �
 | Ảnh | Không bắt buộc, ảnh vị trí nhỏ nhất là bìa, không đổi thứ tự (bạn chọn) | Endpoint đổi thứ tự; bắt buộc một ảnh | Tin hiện ngay và không có trạng thái nháp nên không thể bắt buộc ảnh mà không làm request tạo tin phức tạp |
 | Chống lạm dụng | Chỉ giới hạn tần suất ghi theo tài khoản (bạn chọn) | Trần cứng 20 nhà trọ và 100 tin | Ít luật nhất; hạn mức tin đang hiện là việc hàng 9 |
 | Hết hạn tin | Không, chủ trọ tự ẩn (bạn chọn) | Tự biến sau 60 ngày | Đúng ba trạng thái đã chốt, không thêm cột hay endpoint làm mới |
-| Nguồn 168 phường | Bộ thanglequoc, MIT (bạn chọn) | provinces.open-api.vn v2; bạn tự đưa file | Giấy phép rõ; `/develop` đếm đúng 168 dòng hoặc dừng |
+| Nguồn 168 phường | Bộ thanglequoc, MIT (bạn chọn); đã dựng và kiểm ở mốc 1, xem mục "Cập nhật 2026-10-14" cuối file | provinces.open-api.vn v2; bạn tự đưa file | Giấy phép rõ; `/develop` đếm đúng 168 dòng hoặc dừng |
 | Mục Tham khảo | Không (bạn chọn) | Chỉ tên nguồn; tên nguồn kèm đường dẫn | Giữ spec gọn |
 | Mã ngắn của tin | 8 ký tự ngẫu nhiên từ 31 ký tự dễ đọc, cột `code` duy nhất, đường dẫn `slug-mã`, `slug` tính lúc đọc (mình quyết) | Dùng tiền tố UUID; số thứ tự tăng dần | Số thứ tự để lộ số tin; tiền tố UUID dài hơn; `slug` không lưu nên đổi tiêu đề không làm hỏng link cũ |
 | Phân trang | `page` và `pageSize` kèm `total` (mình quyết) | Phân trang theo con trỏ | Cần tổng số và sắp theo giá; quy mô demo; con trỏ khó hơn với sắp theo giá |
@@ -99,3 +99,32 @@ Kết quả một lần tra web ngày 2026-10-12 bằng subagent rẻ tiền (t�
 | tranngocminhhieu/vietnamadminunits | MIT | bộ dữ liệu đã xử lý theo đơn vị mới | chưa kiểm | tên file chưa kiểm |
 
 Danh mục chính thức của Tổng cục Thống kê không truy cập được (lỗi DNS) và tệp Quyết định 19/2025/QĐ-TTg (Phụ lục II) không tải được, nên chưa có phép đối chiếu với nguồn chính thức. Vì vậy `/develop` phải đếm đúng 168 dòng cho tỉnh mã `79`, đối chiếu với `provinces.open-api.vn`, và dừng hỏi bạn khi lệch (xem Follow-up trong `index.md`). Mã phường sau sáp nhập khác mã trước sáp nhập, nên không trộn hai nguồn.
+
+## Cập nhật 2026-10-14 (sau mốc 1)
+
+Lượt `/architect` này cập nhật spec tại chỗ sau khi mốc 1 đã build. Bạn từng chọn "viết spec mới thay thế" rồi xác nhận lại là chọn nhầm và muốn cập nhật tại chỗ; việc đó giữ nguyên số spec nên scope, `verify.md` và các chú thích "spec 0002" trong code không phải đổi.
+
+| Điểm | Quyết định | Phương án còn lại | Lý do |
+|---|---|---|---|
+| Địa chỉ | Hai cấp sau sáp nhập: số nhà và đường (`address_text`), phường hoặc xã (`wards`), tỉnh hoặc thành phố (`wards.province_name`); không có quận huyện (theo ghi chú của bạn) | Giữ cả quận huyện cho tiện người dùng quen | Từ 01/07/2025 không còn cấp quận huyện; dữ liệu mã mới không có cột đó |
+| `fullAddress` | Backend ghép lúc đọc, không lưu cột (bạn chọn, đúng đề xuất) | FE tự ghép | Mọi màn hình hiển thị địa chỉ giống nhau, không ai ghép sai kiểu cũ |
+| `wards.name` | Tên đầy đủ kèm loại đơn vị, ví dụ "Phường Bến Thành" (mình chọn ở mốc 1) | Tên ngắn "Bến Thành" kèm cột loại đơn vị | Địa chỉ đúng cần có loại đơn vị; không thêm cột mới; tìm từ khóa vẫn khớp vì `contains` |
+| Thứ tự `/wards` | `Intl.Collator('vi')` theo `name` ở Service (mình chọn ở mốc 1) | `ORDER BY name` của DB | Collation DB Windows và Linux xếp tiếng Việt khác nhau; 168 dòng nên sắp ở ứng dụng là rẻ nhất. Hệ quả: "Đặc khu Côn Đảo" đứng đầu, 54 xã đứng cuối |
+| Dấu thanh | Giữ nguyên cách viết của nguồn (`Hoà`) | Đổi hết sang `Hòa` | Nguồn do bạn chọn; `toSearchKey` bỏ dấu nên tìm kiếm không bị ảnh hưởng |
+| Giới hạn tần suất | Giữ bảng của spec (bạn duyệt) | Đổi con số | Đủ rộng cho nhiều sinh viên dùng chung IP ký túc xá |
+
+**Bằng chứng nguồn 168 phường (kiểm lại bằng cách chạy thật ngày 2026-10-14, thay cho các ô "chưa kiểm" ở bảng bên trên):**
+
+| Nguồn | Kết quả |
+|---|---|
+| thanglequoc/vietnamese-provinces-database | Giấy phép MIT (đã đọc file LICENSE). Bản dữ liệu `v5.2.0`, nghị quyết mới nhất `388/NQ-UBTVQH16`, tạo ngày 2026-09-20; README nêu nền là Quyết định 19/2025/QĐ-TTg và nhiều nghị quyết thành lập thêm phường ở tỉnh khác sau đó. 34 tỉnh; tỉnh `79` là "Thành phố Hồ Chí Minh" với **168** đơn vị, mã 5 chữ số duy nhất, gồm 113 phường, 54 xã, 1 đặc khu (Côn Đảo), và có các phường của Bình Dương và Bà Rịa Vũng Tàu cũ (Thủ Dầu Một, Vũng Tàu) |
+| provinces.open-api.vn v2 | Tỉnh `79` có đúng 168 phường, **cùng đúng 168 mã** với nguồn trên (không thiếu, không thừa ở hai chiều); 17 tên khác nhau chỉ ở cách đặt dấu thanh (`Hoà` và `Hòa`), không có khác biệt thật sau khi bỏ dấu |
+| Bản chính thức (Quyết định 19/2025/QĐ-TTg, Phụ lục II) | Vẫn chưa đối chiếu được, ghi ở Follow-up |
+
+Ghi chú về phiên bản nguồn: bản mới nhất của nguồn đã thêm các phường ở tỉnh khác (Đồng Nai, Quảng Ninh, Bắc Ninh) sau Quyết định 19/2025, nhưng số đơn vị của TP. Hồ Chí Minh vẫn là 168, nên không ảnh hưởng spec này. Kho nguồn có chỗ nói "34 tỉnh thành", có chỗ nói "37"; ta không dùng số đó vì chỉ lấy một tỉnh.
+
+**Kiểm tra chéo (2026-10-14).** Một model khác (Opus, chỉ đọc) đọc spec và báo 11 chỗ thiếu quyết định cùng 8 vấn đề thiết kế. Mình kiểm lại những điểm kiểm chứng được rồi xử lý như sau:
+- **Sửa thẳng, không cần bạn quyết** (đúng kỹ thuật): lệnh ẩn của admin phải đặt điều kiện trạng thái nguồn ngay trong câu `updateMany` (`IN ('visible','hidden_by_owner')`) nếu không "admin luôn thắng" bị đua; chỉ mục giá `(price, id)` không khớp khóa sắp xếp nên khóa phụ của hai kiểu giá chỉ còn `id`; xóa nhà trọ và đăng tin cùng khóa dòng `properties`; commit lỗi cũng xóa tệp ảnh; dọn bộ đếm lượt xem định kỳ thay vì quét mỗi request.
+- **Hai spec nói khác nhau về tìm từ khóa**: mình chạy thật trên DB thử. Prisma `contains` **không** thoát `%` và `_` (gõ `_` khớp mọi dòng), nhưng tự thoát bằng `\` trước khi đưa vào thì đúng (`\_` ra đúng 6 khóa tiện ích có dấu gạch dưới). Nên chốt "thoát tay bằng `escapeLike` rồi `contains`", sửa cả 0002 và 0005.
+- **13 quyết định áp dụng theo đề xuất** (bạn chọn). Hai chỗ mình chỉnh so với đề xuất thô của agent: (1) id sai định dạng trả **400 `INVALID_ID`** theo `uuidParam()` đã có trong dự án và spec 0004, không phải 404; chỉ `slugCode` mới là 404; (2) "ảnh phục vụ khi tin còn hiển thị **hoặc người gọi là chủ**" bỏ vế "hoặc chủ" vì thẻ ảnh của trình duyệt không gửi token, nên chủ trọ không xem được ảnh tin đang ẩn của mình qua đường công khai (hệ quả ghi ở spec).
+- **Không làm**: không thêm route riêng để chủ trọ xem ảnh tin bị ẩn; thêm sau nếu cần.

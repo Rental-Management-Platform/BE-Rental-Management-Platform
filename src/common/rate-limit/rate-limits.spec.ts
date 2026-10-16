@@ -69,12 +69,13 @@ describe('giới hạn tần suất: khóa của bộ đếm', () => {
 describe('giới hạn tần suất: bảng RATE_LIMITS', () => {
 	const groups = Object.keys(RATE_LIMITS) as RateLimitGroup[];
 
-	it('có đủ sáu nhóm theo spec 0002 AC-10 và hàng đổi mật khẩu', () => {
+	it('có đủ sáu nhóm theo spec đăng nhập AC-10, hàng đổi mật khẩu và nhóm ghi nhà trọ (spec nhà trọ AC-15)', () => {
 		expect([...groups].sort()).toEqual(
 			[
 				'changePassword',
 				'forgotPassword',
 				'login',
+				'propertyWrite',
 				'refresh',
 				'register',
 				'resetPassword',
@@ -106,6 +107,7 @@ describe('giới hạn tần suất: bảng RATE_LIMITS', () => {
 			expect(RATE_LIMITS[group].ip).toBeDefined();
 		}
 		expect(Object.keys(RATE_LIMITS.changePassword)).toEqual(['user']);
+		expect(Object.keys(RATE_LIMITS.propertyWrite)).toEqual(['user']);
 	});
 
 	it('chỉ login và forgotPassword đếm theo email', () => {
@@ -115,7 +117,7 @@ describe('giới hạn tần suất: bảng RATE_LIMITS', () => {
 		expect(withEmail.sort()).toEqual(['forgotPassword', 'login']);
 	});
 
-	it('con số đúng bảng đã chốt ngày 2026-10-12', () => {
+	it('con số đúng bảng đã chốt ngày 2026-10-12, cộng nhóm nhà trọ chốt ngày 2026-10-14', () => {
 		const minute = 60 * 1000;
 		const hour = 60 * minute;
 		expect(RATE_LIMITS).toEqual({
@@ -131,6 +133,7 @@ describe('giới hạn tần suất: bảng RATE_LIMITS', () => {
 			},
 			resetPassword: { ip: { limit: 20, ttlMs: hour } },
 			changePassword: { user: { limit: 10, ttlMs: 15 * minute } },
+			propertyWrite: { user: { limit: 30, ttlMs: hour } },
 		});
 	});
 });

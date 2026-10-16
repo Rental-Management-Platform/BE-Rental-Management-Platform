@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Rental Management Platform API",
-    "description": "Bộ request để thử API backend. Cập nhật cùng mỗi thay đổi API (xem docs/api/api-for-frontend.md, mục Nhật ký thay đổi).\n\nCách dùng:\n1. Import file này vào Postman.\n2. Mở tab Variables của collection, điền `adminEmail` và `adminPassword` theo ADMIN_SEED_* trong .env (không commit mật khẩu thật).\n3. Chạy API (`npm run start:dev`), rồi chạy lần lượt folder 00, 01, 02, 03, 04, 05. Folder 06 (giới hạn tần suất, lỗi 429) chạy riêng, đừng chạy cả bộ nhiều lần liên tiếp: bộ đếm nằm trong bộ nhớ backend, muốn chạy lại ngay thì khởi động lại backend.\n4. Các request tự lưu token vào biến `userToken` và `adminToken`.\n\nCookie refresh (`rt`) có Path `/api/v1/auth`, Postman tự giữ và tự gửi cho các request dưới đường dẫn đó.",
+    "description": "Bộ request để thử API backend. Cập nhật cùng mỗi thay đổi API (xem docs/api/api-for-frontend.md, mục Nhật ký thay đổi).\n\nCách dùng:\n1. Import file này vào Postman.\n2. Mở tab Variables của collection, điền `adminEmail` và `adminPassword` theo ADMIN_SEED_* trong .env (không commit mật khẩu thật).\n3. Chạy API (`npm run start:dev`), rồi chạy lần lượt folder 00, 01, 02, 03, 04, 05, 07, 08. Folder 06 (giới hạn tần suất, lỗi 429) chạy riêng, đừng chạy cả bộ nhiều lần liên tiếp: bộ đếm nằm trong bộ nhớ backend, muốn chạy lại ngay thì khởi động lại backend.\n4. Các request tự lưu token vào biến `userToken` và `adminToken`.\n\nCookie refresh (`rt`) có Path `/api/v1/auth`, Postman tự giữ và tự gửi cho các request dưới đường dẫn đó.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -64,6 +64,21 @@
       "key": "targetUserId",
       "value": "",
       "description": "Id tài khoản bị khóa hoặc mở khóa. Tự lưu khi đăng ký."
+    },
+    {
+      "key": "wardCode",
+      "value": "26743",
+      "description": "Mã phường dùng khi tạo nhà trọ (26743 là Phường Bến Thành, có sau `npm run seed`). Lấy mã khác từ GET /wards."
+    },
+    {
+      "key": "propertyId",
+      "value": "",
+      "description": "Id nhà trọ vừa tạo. Tự lưu."
+    },
+    {
+      "key": "otherLandlordToken",
+      "value": "",
+      "description": "Access token của chủ trọ thứ hai (để thử lỗi chủ sở hữu). Tự lưu."
     }
   ],
   "auth": {
@@ -1689,6 +1704,1002 @@
             "auth": {
               "type": "noauth"
             }
+          }
+        }
+      ]
+    },
+    {
+      "name": "08 Nhà trọ của chủ trọ",
+      "description": "Chủ trọ tạo, xem, sửa và xóa mềm nhà trọ của mình (spec nhà trọ và tin đăng 0002, mốc 2). Chạy từ trên xuống, ngay sau folder 07 (cần đã `npm run seed` để có phường và tiện ích). Hai request đầu đăng ký hai chủ trọ mới: chủ trọ thứ nhất dùng `userToken`, chủ trọ thứ hai dùng `otherLandlordToken` để thử lỗi NOT_RESOURCE_OWNER. Mỗi lần chạy tốn 2 lần trong giới hạn 10 lần đăng ký mỗi giờ theo IP, và 9 lần ghi của chủ trọ thứ nhất (kể cả các request thử lỗi) trong giới hạn 30 lần mỗi giờ của nhà trọ; hai chủ trọ mới mỗi lượt nên lượt chạy sau không bị dồn. Xóa nhà trọ còn tin bị 409 PROPERTY_HAS_LISTINGS chỉ thử được sau khi có API đăng tin (mốc 3).",
+      "item": [
+        {
+          "name": "Đăng ký chủ trọ thứ nhất",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('propertyOwnerEmail', 'chutro' + Date.now() + '@example.com');",
+                  "const tail = String(Math.floor(Math.random() * 1e8)).padStart(8, '0');",
+                  "pm.collectionVariables.set('propertyOwnerPhone', '09' + tail);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('userToken', body.accessToken);",
+                  "pm.test('là tài khoản landlord', () => pm.expect(body.user.accountType).to.eql('landlord'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Công khai. Tạo một landlord mới cho nhóm này và lưu token vào `userToken`. Email và số điện thoại sinh mới mỗi lần chạy.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{propertyOwnerEmail}}\",\n  \"password\": \"MatKhau12345\",\n  \"name\": \"Chủ trọ Thử\",\n  \"accountType\": \"landlord\",\n  \"phone\": \"{{propertyOwnerPhone}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Đăng ký chủ trọ thứ hai (để thử lỗi chủ sở hữu)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('otherLandlordEmail', 'chutro2-' + Date.now() + '@example.com');",
+                  "const tail = String(Math.floor(Math.random() * 1e8)).padStart(8, '0');",
+                  "pm.collectionVariables.set('otherLandlordPhone', '09' + tail);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "",
+                  "pm.collectionVariables.set('otherLandlordToken', pm.response.json().accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Công khai. Tạo landlord thứ hai và lưu token vào `otherLandlordToken`. Các request \"chủ trọ khác\" bên dưới dùng token này.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{otherLandlordEmail}}\",\n  \"password\": \"MatKhau12345\",\n  \"name\": \"Chủ trọ Khác\",\n  \"accountType\": \"landlord\",\n  \"phone\": \"{{otherLandlordPhone}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Tạo nhà trọ (POST /properties)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "",
+                  "const property = pm.response.json();",
+                  "pm.collectionVariables.set('propertyId', property.id);",
+                  "",
+                  "pm.test('đúng các trường của nhà trọ, không lộ landlordId hay deletedAt', () => {",
+                  "    pm.expect(Object.keys(property).sort()).to.eql([",
+                  "        'addressText', 'amenities', 'createdAt', 'fees', 'fullAddress', 'id',",
+                  "        'latitude', 'longitude', 'name', 'updatedAt', 'ward',",
+                  "    ]);",
+                  "});",
+                  "",
+                  "pm.test('fullAddress là số nhà và đường, tên phường hoặc xã, tên tỉnh hoặc thành phố; không có quận huyện', () => {",
+                  "    pm.expect(property.fullAddress).to.eql(property.addressText + ', ' + property.ward.name + ', ' + property.ward.provinceName);",
+                  "    pm.expect(property.fullAddress).to.not.match(/quận|huyện/i);",
+                  "});",
+                  "",
+                  "pm.test('ward có đủ code, name, provinceCode, provinceName', () => {",
+                  "    pm.expect(Object.keys(property.ward).sort()).to.eql(['code', 'name', 'provinceCode', 'provinceName']);",
+                  "});",
+                  "",
+                  "pm.test('phí xếp theo thứ tự cố định electricity, water, parking', () => {",
+                  "    pm.expect(property.fees.map((fee) => fee.kind)).to.eql(['electricity', 'water', 'parking']);",
+                  "    pm.expect(property.fees[0].note).to.eql(null);",
+                  "    pm.expect(property.fees[1].note).to.eql('Tính theo đồng hồ');",
+                  "});",
+                  "",
+                  "pm.test('tiện ích xếp theo tên tiếng Việt', () => {",
+                  "    pm.expect(property.amenities.map((amenity) => amenity.name)).to.eql(['Ban công', 'Gác lửng', 'Wifi']);",
+                  "});",
+                  "",
+                  "pm.test('tọa độ được lưu', () => pm.expect([property.latitude, property.longitude]).to.eql([10.7721, 106.6983]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/properties",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties"
+              ]
+            },
+            "description": "Quyền `property:create`, giới hạn 30 lần ghi mỗi giờ theo người dùng. Chủ nhà trọ là người đang đăng nhập (không gửi `landlordId`). `wardCode` phải có trong `GET /wards`, `amenityKeys` phải có trong `GET /amenities`. `addressText` chỉ là số nhà và tên đường. `fees` tối đa một khoản cho mỗi loại trong 6 loại; `latitude` và `longitude` gửi cùng nhau hoặc không gửi. Lỗi có thể gặp: 400 VALIDATION_FAILED, 400 WARD_UNKNOWN, 400 AMENITY_UNKNOWN, 403 PERMISSION_DENIED, 429 RATE_LIMITED.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Nhà trọ Hoa Hồng\",\n  \"addressText\": \"12 Lê Lợi\",\n  \"wardCode\": \"{{wardCode}}\",\n  \"latitude\": 10.7721,\n  \"longitude\": 106.6983,\n  \"fees\": [\n    {\n      \"kind\": \"water\",\n      \"price\": 20000,\n      \"unit\": \"per_m3\",\n      \"note\": \"Tính theo đồng hồ\"\n    },\n    {\n      \"kind\": \"electricity\",\n      \"price\": 3500,\n      \"unit\": \"per_kwh\"\n    },\n    {\n      \"kind\": \"parking\",\n      \"price\": 100000,\n      \"unit\": \"per_vehicle_month\"\n    }\n  ],\n  \"amenityKeys\": [\n    \"wifi\",\n    \"loft\",\n    \"balcony\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Danh sách nhà trọ của tôi (GET /properties)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const body = pm.response.json();",
+                  "pm.test('đúng hình dạng trang', () => pm.expect(Object.keys(body).sort()).to.eql(['items', 'page', 'pageSize', 'total']));",
+                  "",
+                  "pm.test('nhà trọ vừa tạo đứng đầu, có listingCount là 0', () => {",
+                  "    pm.expect(body.items[0].id).to.eql(pm.collectionVariables.get('propertyId'));",
+                  "    pm.expect(body.items[0].listingCount).to.eql(0);",
+                  "    pm.expect(body.total).to.eql(1);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/properties?page=1&pageSize=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Quyền `property:read`. Chỉ nhà trọ chưa xóa của chính người gọi, mới nhất trước. Phân trang `page` từ 1, `pageSize` từ 1 đến 50 (mặc định 1 và 20), trả `{ items, total, page, pageSize }`. Mỗi dòng như chi tiết nhà trọ, cộng `listingCount` (số tin chưa xóa của nhà trọ)."
+          }
+        },
+        {
+          "name": "Chi tiết nhà trọ (GET /properties/:id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const property = pm.response.json();",
+                  "pm.test('đúng nhà trọ vừa tạo', () => pm.expect(property.id).to.eql(pm.collectionVariables.get('propertyId')));",
+                  "",
+                  "pm.test('đúng các trường của nhà trọ, không lộ landlordId hay deletedAt', () => {",
+                  "    pm.expect(Object.keys(property).sort()).to.eql([",
+                  "        'addressText', 'amenities', 'createdAt', 'fees', 'fullAddress', 'id',",
+                  "        'latitude', 'longitude', 'name', 'updatedAt', 'ward',",
+                  "    ]);",
+                  "});",
+                  "",
+                  "pm.test('fullAddress là số nhà và đường, tên phường hoặc xã, tên tỉnh hoặc thành phố; không có quận huyện', () => {",
+                  "    pm.expect(property.fullAddress).to.eql(property.addressText + ', ' + property.ward.name + ', ' + property.ward.provinceName);",
+                  "    pm.expect(property.fullAddress).to.not.match(/quận|huyện/i);",
+                  "});",
+                  "",
+                  "pm.test('ward có đủ code, name, provinceCode, provinceName', () => {",
+                  "    pm.expect(Object.keys(property.ward).sort()).to.eql(['code', 'name', 'provinceCode', 'provinceName']);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/properties/{{propertyId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "{{propertyId}}"
+              ]
+            },
+            "description": "Quyền `property:read`. Chỉ chủ nhà trọ xem được: chủ trọ khác 403 NOT_RESOURCE_OWNER, id không có hoặc đã xóa mềm 404 PROPERTY_NOT_FOUND, id không phải UUID 400 INVALID_ID."
+          }
+        },
+        {
+          "name": "Sửa nhà trọ: đổi tên, thay phí và tiện ích (PATCH)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const property = pm.response.json();",
+                  "pm.test('tên đổi, phí và tiện ích được thay cả danh sách', () => {",
+                  "    pm.expect(property.name).to.eql('Nhà trọ Hoa Lài');",
+                  "    pm.expect(property.fees.map((fee) => fee.kind)).to.eql(['internet']);",
+                  "    pm.expect(property.amenities.map((amenity) => amenity.key)).to.eql(['kitchen', 'wifi']);",
+                  "});",
+                  "",
+                  "pm.test('trường không gửi thì giữ nguyên (địa chỉ, tọa độ)', () => {",
+                  "    pm.expect(property.addressText).to.eql('12 Lê Lợi');",
+                  "    pm.expect([property.latitude, property.longitude]).to.eql([10.7721, 106.6983]);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/properties/{{propertyId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "{{propertyId}}"
+              ]
+            },
+            "description": "Quyền `property:update`, giới hạn 30 lần ghi mỗi giờ. Mọi trường tùy chọn và không nhận `null` (trừ cặp tọa độ). `fees` và `amenityKeys` nếu gửi thì **thay cả danh sách** (mảng rỗng là xóa hết); không gửi thì giữ nguyên. Đổi tên, địa chỉ hay phường làm mới khóa tìm kiếm của các tin của nhà trọ.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Nhà trọ Hoa Lài\",\n  \"fees\": [\n    {\n      \"kind\": \"internet\",\n      \"price\": 100000,\n      \"unit\": \"per_month\"\n    }\n  ],\n  \"amenityKeys\": [\n    \"wifi\",\n    \"kitchen\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Xóa tọa độ nhà trọ (PATCH với latitude và longitude null)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('tọa độ đã xóa', () => {",
+                  "    const property = pm.response.json();",
+                  "    pm.expect([property.latitude, property.longitude]).to.eql([null, null]);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/properties/{{propertyId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "{{propertyId}}"
+              ]
+            },
+            "description": "Xóa tọa độ bằng `null` cả hai. Gửi chỉ một trong hai tọa độ, hoặc một số một `null`, là 400 VALIDATION_FAILED.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"latitude\": null,\n  \"longitude\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: phường không có trong danh mục",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 400 WARD_UNKNOWN', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    pm.expect(pm.response.json().code).to.eql('WARD_UNKNOWN');",
+                  "});",
+                  "pm.test('errors nêu trường wardCode', () => pm.expect(pm.response.json().errors[0].field).to.eql('wardCode'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/properties",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties"
+              ]
+            },
+            "description": "Mong đợi 400 WARD_UNKNOWN, `errors[0].field` là `wardCode`. Không có dòng nào được tạo.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Nhà trọ Lạ\",\n  \"addressText\": \"1 Đường Một\",\n  \"wardCode\": \"00000\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: tiện ích không có trong danh mục",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 400 AMENITY_UNKNOWN', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    pm.expect(pm.response.json().code).to.eql('AMENITY_UNKNOWN');",
+                  "});",
+                  "pm.test('thông báo nêu khóa lạ', () => pm.expect(pm.response.json().errors[0].message).to.include('ho_boi'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/properties",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties"
+              ]
+            },
+            "description": "Mong đợi 400 AMENITY_UNKNOWN, thông báo nêu khóa lạ (`ho_boi`). Không có dòng nào được tạo.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Nhà trọ Lạ\",\n  \"addressText\": \"1 Đường Một\",\n  \"wardCode\": \"{{wardCode}}\",\n  \"amenityKeys\": [\n    \"wifi\",\n    \"ho_boi\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: hai khoản phí cùng loại",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 400 VALIDATION_FAILED', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED');",
+                  "});",
+                  "pm.test('lỗi ở trường fees', () => pm.expect(pm.response.json().errors.map((e) => e.field)).to.include('fees'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/properties",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties"
+              ]
+            },
+            "description": "Mong đợi 400 VALIDATION_FAILED với `errors[].field` là `fees` (không để ràng buộc UNIQUE của DB thành 500).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Nhà trọ Lạ\",\n  \"addressText\": \"1 Đường Một\",\n  \"wardCode\": \"{{wardCode}}\",\n  \"fees\": [\n    {\n      \"kind\": \"water\",\n      \"price\": 20000,\n      \"unit\": \"per_m3\"\n    },\n    {\n      \"kind\": \"water\",\n      \"price\": 25000,\n      \"unit\": \"per_m3\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: chỉ gửi vĩ độ, thiếu kinh độ",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 400 VALIDATION_FAILED', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED');",
+                  "});",
+                  "pm.test('lỗi ở cả hai tọa độ', () => pm.expect(pm.response.json().errors.map((e) => e.field).sort()).to.eql(['latitude', 'longitude']));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/properties",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties"
+              ]
+            },
+            "description": "Mong đợi 400 VALIDATION_FAILED, lỗi ở cả `latitude` lẫn `longitude`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Nhà trọ Lạ\",\n  \"addressText\": \"1 Đường Một\",\n  \"wardCode\": \"{{wardCode}}\",\n  \"latitude\": 10.77\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: gửi landlordId trong body",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 400 VALIDATION_FAILED', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/properties",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties"
+              ]
+            },
+            "description": "Mong đợi 400 VALIDATION_FAILED vì trường lạ. Chủ nhà trọ luôn là người đăng nhập, không nhận từ body.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Nhà trọ Lạ\",\n  \"addressText\": \"1 Đường Một\",\n  \"wardCode\": \"{{wardCode}}\",\n  \"landlordId\": \"0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8d9e\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: chủ trọ khác xem nhà trọ",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 403 NOT_RESOURCE_OWNER', () => {",
+                  "    pm.response.to.have.status(403);",
+                  "    pm.expect(pm.response.json().code).to.eql('NOT_RESOURCE_OWNER');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/properties/{{propertyId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "{{propertyId}}"
+              ]
+            },
+            "description": "Dùng token của chủ trọ thứ hai. Mong đợi 403 NOT_RESOURCE_OWNER.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{otherLandlordToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: chủ trọ khác sửa nhà trọ",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 403 NOT_RESOURCE_OWNER', () => {",
+                  "    pm.response.to.have.status(403);",
+                  "    pm.expect(pm.response.json().code).to.eql('NOT_RESOURCE_OWNER');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/properties/{{propertyId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "{{propertyId}}"
+              ]
+            },
+            "description": "Dùng token của chủ trọ thứ hai. Mong đợi 403 NOT_RESOURCE_OWNER và tên nhà trọ không đổi.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Cướp tên\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{otherLandlordToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: chủ trọ khác xóa nhà trọ",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 403 NOT_RESOURCE_OWNER', () => {",
+                  "    pm.response.to.have.status(403);",
+                  "    pm.expect(pm.response.json().code).to.eql('NOT_RESOURCE_OWNER');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/properties/{{propertyId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "{{propertyId}}"
+              ]
+            },
+            "description": "Dùng token của chủ trọ thứ hai. Mong đợi 403 NOT_RESOURCE_OWNER.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{otherLandlordToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: không đăng nhập",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 401 TOKEN_MISSING', () => {",
+                  "    pm.response.to.have.status(401);",
+                  "    pm.expect(pm.response.json().code).to.eql('TOKEN_MISSING');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/properties",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties"
+              ]
+            },
+            "description": "Mong đợi 401 TOKEN_MISSING.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: id không phải UUID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 400 INVALID_ID', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    pm.expect(pm.response.json().code).to.eql('INVALID_ID');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/properties/khong-phai-uuid",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "khong-phai-uuid"
+              ]
+            },
+            "description": "Mong đợi 400 INVALID_ID."
+          }
+        },
+        {
+          "name": "Thử lỗi: nhà trọ không tồn tại",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 404 PROPERTY_NOT_FOUND', () => {",
+                  "    pm.response.to.have.status(404);",
+                  "    pm.expect(pm.response.json().code).to.eql('PROPERTY_NOT_FOUND');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/properties/0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8d9e",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8d9e"
+              ]
+            },
+            "description": "Mong đợi 404 PROPERTY_NOT_FOUND."
+          }
+        },
+        {
+          "name": "Thử lỗi: pageSize vượt 50",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 400 VALIDATION_FAILED', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/properties?pageSize=51",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties"
+              ],
+              "query": [
+                {
+                  "key": "pageSize",
+                  "value": "51"
+                }
+              ]
+            },
+            "description": "Mong đợi 400 VALIDATION_FAILED."
+          }
+        },
+        {
+          "name": "Xóa mềm nhà trọ (DELETE /properties/:id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 204', () => pm.response.to.have.status(204));",
+                  "pm.test('không có body', () => pm.expect(pm.response.text()).to.eql(''));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/properties/{{propertyId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "{{propertyId}}"
+              ]
+            },
+            "description": "Quyền `property:delete`, giới hạn 30 lần ghi mỗi giờ. Chỉ xóa được khi nhà trọ không còn tin chưa xóa; còn tin thì 409 PROPERTY_HAS_LISTINGS. Xóa mềm: dòng vẫn còn trong DB nhưng nhà trọ biến khỏi mọi API."
+          }
+        },
+        {
+          "name": "Sau khi xóa: xem lại nhà trọ",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 404 PROPERTY_NOT_FOUND', () => {",
+                  "    pm.response.to.have.status(404);",
+                  "    pm.expect(pm.response.json().code).to.eql('PROPERTY_NOT_FOUND');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/properties/{{propertyId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "{{propertyId}}"
+              ]
+            },
+            "description": "Mong đợi 404 PROPERTY_NOT_FOUND vì nhà trọ đã xóa mềm."
+          }
+        },
+        {
+          "name": "Sau khi xóa: danh sách không còn nhà trọ đó",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('danh sách rỗng', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.total).to.eql(0);",
+                  "    pm.expect(body.items).to.eql([]);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/properties",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties"
+              ]
+            },
+            "description": "Danh sách của chủ trọ không còn nhà trọ đã xóa mềm."
           }
         }
       ]

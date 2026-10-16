@@ -152,7 +152,7 @@ Quy ước cho mọi code truy cập dữ liệu. Chi tiết nằm ở 0001 con 
 - [ ] Lát cắt đầu tiên phải kiểm chứng các giả định còn lại về Docker và PostgreSQL 18 (danh sách ở 0006, mục "Giả định cần kiểm chứng"; phần Prisma 7 đã kiểm xong, trừ `@db.Date`, `strictTypeChecked` và chỉ mục trigram) trước khi viết tính năng.
 - [ ] Chốt tên image và tổ chức GitHub chính xác cho GitHub Container Registry (xem 0006).
 - [ ] NestJS đang cài là 11.2.7, báo cáo tra web nói đã có bản chính 12; nâng cấp là quyết định riêng.
-- [ ] Nguồn dữ liệu 168 phường/xã của TP.HCM cho bước seed chưa được chốt; bạn cần chọn nguồn (file JSON trong repo) trước khi làm F03.
+- [x] Nguồn dữ liệu 168 phường, xã, đặc khu của TP.HCM (địa chỉ hai cấp sau sáp nhập) đã chốt và dựng ngày 2026-10-14: `prisma/seed-data/wards.json`, ghi chú nguồn ở `prisma/seed-data/README.md`. Việc còn mở: đối chiếu với bản chính thức của Quyết định 19/2025/QĐ-TTg (Phụ lục II).
 - [ ] F08 (tìm quanh một địa điểm mốc hoặc một điểm bất kỳ) đã hoãn khỏi MVP; khi cần thì viết spec riêng.
 
 ## Rationale

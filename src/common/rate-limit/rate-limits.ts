@@ -20,7 +20,8 @@ export type RateLimitGroup =
 	| 'refresh'
 	| 'forgotPassword'
 	| 'resetPassword'
-	| 'changePassword';
+	| 'changePassword'
+	| 'propertyWrite';
 
 export interface RateLimit {
 	/** Số lần được phép trong một cửa sổ. */
@@ -54,6 +55,8 @@ export const RATE_LIMITS: Readonly<
 	resetPassword: { ip: { limit: 20, ttlMs: HOUR } },
 	// Ngoài AC-10: chặn dò mật khẩu hiện tại bằng access token bị đánh cắp.
 	changePassword: { user: { limit: 10, ttlMs: 15 * MINUTE } },
+	// Spec nhà trọ và tin đăng (0002) AC-15, con số bạn duyệt ngày 2026-10-14: tạo, sửa, xóa nhà trọ.
+	propertyWrite: { user: { limit: 30, ttlMs: HOUR } },
 };
 
 /** Mặc định của ba bộ đếm; chỉ là lưới an toàn, vì mỗi route gắn `@RateLimited` đặt số riêng. */

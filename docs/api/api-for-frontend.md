@@ -1,6 +1,6 @@
 # Tài liệu API và nghiệp vụ cho Frontend
 
-Cập nhật lần cuối: 2026-10-14 (xem mục [Nhật ký thay đổi](#11-nhật-ký-thay-đổi) để biết thay đổi gần nhất).
+Cập nhật lần cuối: 2026-10-16 (xem mục [Nhật ký thay đổi](#11-nhật-ký-thay-đổi) để biết thay đổi gần nhất).
 
 File này do đội backend giữ và **cập nhật cùng mỗi thay đổi API**. Mục đích: để bên FE hiểu hệ thống làm gì, mỗi màn hình cần gọi API nào, và xử lý lỗi ra sao. Đi kèm file này là bộ request thử trong Postman: [`postman-collection.json`](postman-collection.json) (import vào Postman để gọi thử từng API).
 
@@ -25,7 +25,7 @@ Quy ước đọc file: phần nào ghi **Chưa có** nghĩa là đã lên kế 
 
 ## 1. Hệ thống làm gì
 
-Nền tảng quản lý và cho thuê nhà trọ. Hiện backend đã có phần **tài khoản và phân quyền**; phần nhà trọ, tin đăng, gói thành viên sẽ làm tiếp (mục 10).
+Nền tảng quản lý và cho thuê nhà trọ. Hiện backend đã có phần **tài khoản và phân quyền**, danh mục địa chỉ và tiện ích, và **nhà trọ của chủ trọ** (tạo, xem, sửa, xóa mềm); phần tin đăng, gói thành viên sẽ làm tiếp (mục 10).
 
 ### Ba loại tài khoản
 
@@ -51,7 +51,8 @@ Mỗi tài khoản chỉ thuộc **một** loại, chọn lúc đăng ký và **
 | Quên mật khẩu, đặt lại và đổi mật khẩu | Có (mới, 2026-10-08) |
 | Giới hạn tần suất (lỗi 429) | Có (mới, 2026-10-12) |
 | Danh sách phường, xã, đặc khu và tiện ích (cho biểu mẫu nhà trọ) | Có (mới, 2026-10-14) |
-| Nhà trọ, đăng tin, xem tin | Chưa có (đang làm từng phần, mục 10) |
+| Nhà trọ của chủ trọ (tạo, xem danh sách và chi tiết, sửa, xóa mềm) | Có (mới, 2026-10-16) |
+| Đăng tin, xem tin công khai, ảnh tin, ẩn và hiện tin | Chưa có (đang làm từng phần, mục 10) |
 | Dùng thử, hạn mức, mua gói | Chưa có |
 | Theo dõi chủ trọ, lượt xem | Chưa có |
 
@@ -73,7 +74,7 @@ Mỗi tài khoản chỉ thuộc **một** loại, chọn lúc đăng ký và **
 | Trường lạ | Gửi trường không có trong mô tả bị từ chối 400 `VALIDATION_FAILED` (không âm thầm bỏ qua) |
 | Ngôn ngữ | Mọi `message` trả về là tiếng Việt, hiển thị thẳng cho người dùng được. `code` là hằng số tiếng Anh, FE dùng `code` để rẽ nhánh, không so chuỗi `message` |
 | Truy vết | Mỗi response có header `X-Request-Id` (trùng `requestId` trong body lỗi). Gửi kèm khi báo lỗi cho backend |
-| Phân trang | Chưa có API danh sách nên chưa có quy ước phân trang |
+| Phân trang | Query `page` (từ 1, mặc định 1) và `pageSize` (1 đến 50, mặc định 20). Trả `{ "items": [...], "total": 37, "page": 1, "pageSize": 20 }`. `total` là tổng số dòng thỏa điều kiện, không phải số dòng của trang này. Trang quá cuối trả `items` rỗng (không phải lỗi). `pageSize` quá 50, `page` nhỏ hơn 1 hoặc không phải số nguyên là 400 `VALIDATION_FAILED`. Hiện chỉ `GET /properties` phân trang |
 
 Email được chuẩn hóa: cắt khoảng trắng đầu cuối và đổi thành chữ thường. `An@Example.com` và `an@example.com` là cùng một tài khoản.
 
@@ -127,7 +128,7 @@ Lưu ý: **một trường có thể xuất hiện nhiều lần** trong `errors
 | `ACCOUNT_LOCKED` | 403 | Tài khoản bị admin khóa | Hiện `message`, không cho dùng tiếp |
 | `ORIGIN_NOT_ALLOWED` | 403 | `Origin` của request không nằm trong danh sách cho phép (chỉ ở refresh và logout) | Báo backend thêm origin của FE |
 | `PERMISSION_DENIED` | 403 | Đã đăng nhập nhưng không có quyền làm việc này | Hiện thông báo không đủ quyền |
-| `NOT_RESOURCE_OWNER` | 403 | Thao tác trên dữ liệu của người khác | Hiện `message` (chưa có API dùng đến) |
+| `NOT_RESOURCE_OWNER` | 403 | Thao tác trên dữ liệu của người khác (hiện: nhà trọ của chủ trọ khác) | Hiện `message`, quay về danh sách của mình |
 | `FORBIDDEN` | 403 | Bị từ chối khác | Hiện `message` |
 | `NOT_FOUND` | 404 | Route hoặc nội dung không tồn tại | Hiện `message` |
 | `EMAIL_TAKEN` | 409 | Email đã có tài khoản (kể cả tài khoản đã xóa) | Báo lỗi ở ô email |
@@ -139,17 +140,21 @@ Lưu ý: **một trường có thể xuất hiện nhiều lần** trong `errors
 | `SYSTEM_TYPE_PROTECTED` | 409 | Sửa quyền của loại `admin` | Không cho sửa loại admin |
 | `ACCOUNT_TYPE_NOT_FOUND` | 404 | Khóa loại tài khoản không có | Lỗi lập trình |
 | `USER_NOT_FOUND` | 404 | Không có người dùng với id này | Hiện `message` |
+| `WARD_UNKNOWN` | 400 | Mã phường hoặc xã (`wardCode`) không có trong `GET /wards`. `errors` có một dòng `field: "wardCode"` | Lỗi lập trình hoặc danh mục đã đổi: tải lại `GET /wards` rồi cho chọn lại |
+| `AMENITY_UNKNOWN` | 400 | Có khóa tiện ích (`amenityKeys`) không có trong `GET /amenities`. `errors` có một dòng `field: "amenityKeys"` nêu các khóa lạ | Tải lại `GET /amenities` rồi cho chọn lại |
+| `PROPERTY_NOT_FOUND` | 404 | Nhà trọ không có, hoặc đã xóa mềm | Quay về danh sách nhà trọ |
+| `PROPERTY_HAS_LISTINGS` | 409 | Xóa nhà trọ còn tin chưa xóa | Báo "xóa các tin của nhà trọ này trước" |
 | `CANNOT_LOCK_SELF` | 409 | Admin tự khóa chính mình | Hiện `message` |
 | `ACCOUNT_ALREADY_LOCKED` | 409 | Khóa tài khoản đang bị khóa | Làm mới trạng thái trên giao diện |
 | `ACCOUNT_NOT_LOCKED` | 409 | Mở khóa tài khoản không bị khóa | Làm mới trạng thái trên giao diện |
 | `DB_UNAVAILABLE` | 503 | Cơ sở dữ liệu tạm không dùng được | Hiện `message`, cho thử lại sau |
 | `INTERNAL_ERROR` | 500 | Lỗi hệ thống | Hiện `message`, gửi `requestId` cho backend |
 | `HTTP_ERROR` | khác | Lỗi HTTP khác chưa có mã riêng | Hiện `message` |
-| `RATE_LIMITED` | 429 | Gọi một API đăng nhập quá nhiều lần trong thời gian ngắn. Kèm header `Retry-After` (số giây phải đợi) | Hiện `message` kèm "thử lại sau N giây", chặn nút gửi đến hết thời gian, **không** tự thử lại. Xem phần "Lỗi 429" ngay dưới |
+| `RATE_LIMITED` | 429 | Gọi một API có giới hạn (đăng nhập, mật khẩu, ghi nhà trọ) quá nhiều lần trong thời gian ngắn. Kèm header `Retry-After` (số giây phải đợi) | Hiện `message` kèm "thử lại sau N giây", chặn nút gửi đến hết thời gian, **không** tự thử lại. Xem phần "Lỗi 429" ngay dưới |
 
 ### Lỗi 429 `RATE_LIMITED`: gọi quá nhanh
 
-Chỉ **sáu API** có giới hạn. Body lỗi cùng dạng như mọi lỗi khác (có `requestId`), kèm header **`Retry-After`**: số giây còn phải đợi (số nguyên, ít nhất 1). Mỗi API đếm riêng, nên bị chặn đăng nhập không làm hỏng việc đọc `GET /auth/me` hay đăng xuất.
+Chỉ **sáu API đăng nhập và mật khẩu, cùng các API ghi nhà trọ** có giới hạn (các API đọc thì chưa). Body lỗi cùng dạng như mọi lỗi khác (có `requestId`), kèm header **`Retry-After`**: số giây còn phải đợi (số nguyên, ít nhất 1). Mỗi API đếm riêng, nên bị chặn đăng nhập không làm hỏng việc đọc `GET /auth/me` hay đăng xuất.
 
 | API | Giới hạn theo IP | Giới hạn theo email (hoặc người dùng) | Bị chặn trong |
 |---|---|---|---|
@@ -159,6 +164,7 @@ Chỉ **sáu API** có giới hạn. Body lỗi cùng dạng như mọi lỗi kh
 | `POST /auth/forgot-password` | 10 lần mỗi giờ | 3 lần mỗi giờ (theo email trong body) | 1 giờ |
 | `POST /auth/reset-password` | 20 lần mỗi giờ | không | 1 giờ |
 | `POST /auth/change-password` | không | 10 lần mỗi 15 phút (theo người dùng đang đăng nhập) | 15 phút |
+| `POST /properties`, `PATCH /properties/:id`, `DELETE /properties/:id` | không | 30 lần mỗi giờ, **chung một bộ đếm cho cả ba** (theo người dùng đang đăng nhập) | 1 giờ |
 
 Cách đếm: vượt số lần trong cột thì **lần vượt đó bị từ chối và bị chặn đúng khoảng thời gian ở cột "Bị chặn trong"** kể từ lần vượt; `Retry-After` cho biết còn bao lâu. Email được so không phân biệt hoa thường và bỏ khoảng trắng đầu cuối (`An@Example.com` và ` an@example.com ` là một). Gửi email sai dạng hoặc không có email thì tính vào bộ đếm email theo IP, nên không né được giới hạn bằng cách bỏ trống.
 
@@ -231,7 +237,7 @@ Quyền admin chỉnh được **chỉ gồm hành động lẻ** của các mod
 | `account_type` | read, update | | tất cả | có |
 | `catalog` | read, create, update, delete | | tất cả | chưa |
 | `setting` | read, update | | tất cả | chưa |
-| `property` | read, create, update, delete | có | | chưa |
+| `property` | read, create, update, delete | có | | có (mục 6.17) |
 | `listing` | read, create, update, delete, moderate | có | `moderate` | chưa |
 | `favorite` | read, create, delete | có | | chưa |
 | `follow` | create, delete | có | | chưa |
@@ -490,7 +496,107 @@ Cần nhớ:
 
 `GET /amenities` · công khai
 
-**200 OK**: mảng `{ "key": "wifi", "name": "Wifi" }`, 13 tiện ích mẫu (wifi, máy lạnh, máy nước nóng, phòng vệ sinh riêng, bếp, gác lửng, máy giặt, chỗ để xe, thang máy, camera an ninh, giờ giấc tự do, có nội thất, ban công), xếp theo tên. `key` ổn định, dùng để gửi lên khi tạo hoặc sửa nhà trọ (khi API nhà trọ có).
+**200 OK**: mảng `{ "key": "wifi", "name": "Wifi" }`, 13 tiện ích mẫu (wifi, máy lạnh, máy nước nóng, phòng vệ sinh riêng, bếp, gác lửng, máy giặt, chỗ để xe, thang máy, camera an ninh, giờ giấc tự do, có nội thất, ban công), xếp theo tên. `key` ổn định, dùng để gửi lên khi tạo hoặc sửa nhà trọ (`amenityKeys`, mục 6.17).
+
+### 6.17 Nhà trọ của chủ trọ
+
+Nhà trọ là nơi giữ **địa chỉ, phí và tiện ích**; về sau mỗi tin phòng thuộc về một nhà trọ. Chủ trọ tạo nhà trọ một lần rồi đăng nhiều tin vào đó (API đăng tin chưa có, mục 10). Mọi API dưới đây cần đăng nhập, **chỉ làm việc trên nhà trọ của chính người gọi**: dữ liệu của chủ trọ khác bị 403 `NOT_RESOURCE_OWNER`. Người tìm trọ (`tenant`) không có quyền `property:*` nên mọi API này trả 403 `PERMISSION_DENIED`. Admin cũng chỉ thao tác được trên nhà trọ của chính mình.
+
+**Hình dạng một nhà trọ** (kết quả của tạo, xem chi tiết và sửa; mỗi dòng của danh sách có thêm `listingCount`):
+
+```json
+{
+  "id": "0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8d9e",
+  "name": "Nhà trọ Hoa Hồng",
+  "addressText": "12 Lê Lợi",
+  "fullAddress": "12 Lê Lợi, Phường Bến Thành, Thành phố Hồ Chí Minh",
+  "ward": { "code": "26743", "name": "Phường Bến Thành", "provinceCode": "79", "provinceName": "Thành phố Hồ Chí Minh" },
+  "latitude": 10.7721,
+  "longitude": 106.6983,
+  "fees": [
+    { "kind": "electricity", "price": 3500, "unit": "per_kwh", "note": null },
+    { "kind": "water", "price": 20000, "unit": "per_m3", "note": "Tính theo đồng hồ" }
+  ],
+  "amenities": [
+    { "key": "balcony", "name": "Ban công" },
+    { "key": "loft", "name": "Gác lửng" },
+    { "key": "wifi", "name": "Wifi" }
+  ],
+  "createdAt": "2026-10-16T03:40:12.345Z",
+  "updatedAt": "2026-10-16T03:40:12.345Z"
+}
+```
+
+Cần nhớ:
+- **`fullAddress` do backend ghép sẵn**: `addressText`, tên phường hoặc xã, tên tỉnh hoặc thành phố, nối bằng dấu phẩy, không có quận huyện. **FE hiển thị thẳng, đừng tự ghép.** Backend ghép lúc đọc nên admin đổi tên phường là mọi địa chỉ đổi theo.
+- **`addressText` chỉ là số nhà và tên đường** ("12 Lê Lợi"). Đừng cho người dùng gõ phường, xã, tỉnh vào đây: phường lấy từ ô chọn (`GET /wards`, gửi `wardCode`), tỉnh đi theo phường.
+- `fees` luôn xếp theo thứ tự cố định `electricity, water, internet, parking, service, other` (chỉ có những khoản đã khai). `amenities` xếp theo tên tiếng Việt. `note` của phí là `null` khi không có, không bao giờ chuỗi rỗng.
+- `latitude` và `longitude` là `null` khi chưa có tọa độ.
+- Không có `landlordId` trong kết quả: chủ nhà trọ là người đang đăng nhập.
+
+**Các khoản phí** (`fees`): tối đa **một khoản cho mỗi loại** trong 6 loại, nên tối đa 6 khoản.
+
+| Trường | Kiểu | Luật |
+|---|---|---|
+| `kind` | chuỗi | `electricity` (điện), `water` (nước), `internet`, `parking` (giữ xe), `service` (dịch vụ), `other` (khác) |
+| `price` | số nguyên | Đồng Việt Nam, từ 0 đến 100.000.000. `0` nghĩa là miễn phí |
+| `unit` | chuỗi | `per_kwh` (mỗi kWh), `per_m3` (mỗi m³), `per_month` (mỗi tháng), `per_person_month` (mỗi người mỗi tháng), `per_vehicle_month` (mỗi xe mỗi tháng). Backend không ràng buộc cặp `kind` với `unit` |
+| `note` | chuỗi | Không bắt buộc, tối đa 100 ký tự. Rỗng hoặc chỉ khoảng trắng được lưu là `null` |
+
+#### Tạo nhà trọ
+
+`POST /properties` · quyền `property:create`
+
+| Trường | Kiểu | Bắt buộc | Luật |
+|---|---|---|---|
+| `name` | chuỗi | có | 2 đến 100 ký tự (đã cắt khoảng trắng đầu cuối) |
+| `addressText` | chuỗi | có | 5 đến 200 ký tự, chỉ số nhà và tên đường |
+| `wardCode` | chuỗi | có | Đúng 5 chữ số, phải có trong `GET /wards` |
+| `latitude`, `longitude` | số | không | **Gửi cùng nhau hoặc không gửi.** Vĩ độ từ -90 đến 90, kinh độ từ -180 đến 180. Gửi `null` cả hai cũng được (coi như không có) |
+| `fees` | mảng | không | Tối đa 6 khoản, mỗi loại một khoản (xem bảng trên) |
+| `amenityKeys` | mảng chuỗi | không | Tối đa 30 khóa, không trùng, mỗi khóa phải có trong `GET /amenities` |
+
+**201 Created**: nhà trọ vừa tạo (hình dạng ở trên). Không gửi `landlordId` hay trường nào ngoài bảng (bị 400).
+
+**Lỗi**: 400 `VALIDATION_FAILED` (gồm hai khoản phí cùng loại, quá 6 khoản, chỉ một tọa độ, tiện ích trùng) · 400 `WARD_UNKNOWN` · 400 `AMENITY_UNKNOWN` · 403 `PERMISSION_DENIED` · 429 `RATE_LIMITED` (quá 30 lần ghi mỗi giờ). Lỗi thì **không có gì được lưu** (nhà trọ, phí và tiện ích được lưu cùng lúc hoặc không gì cả).
+
+#### Danh sách nhà trọ của tôi
+
+`GET /properties?page=1&pageSize=20` · quyền `property:read`
+
+**200 OK**: `{ "items": [...], "total": 3, "page": 1, "pageSize": 20 }` (quy ước phân trang ở mục 2). Chỉ nhà trọ chưa xóa của người gọi, **mới tạo xếp trước**. Mỗi phần tử có hình dạng như trên cộng `"listingCount": 0`: số tin chưa xóa của nhà trọ đó (mọi trạng thái, kể cả tin đang ẩn). Hiện chưa có API đăng tin nên luôn là 0.
+
+**Lỗi**: 400 `VALIDATION_FAILED` (`page` hoặc `pageSize` sai) · 403 `PERMISSION_DENIED`.
+
+#### Chi tiết nhà trọ
+
+`GET /properties/:id` · quyền `property:read`
+
+**200 OK**: nhà trọ (hình dạng ở trên).
+
+**Lỗi**: 400 `INVALID_ID` · 404 `PROPERTY_NOT_FOUND` (không có hoặc đã xóa mềm) · 403 `NOT_RESOURCE_OWNER` · 403 `PERMISSION_DENIED`.
+
+#### Sửa nhà trọ
+
+`PATCH /properties/:id` · quyền `property:update`
+
+Body có các trường như lúc tạo, **mọi trường đều tùy chọn**, và không trường nào nhận `null` (trừ cặp tọa độ). Cách hoạt động:
+- Trường không gửi thì **giữ nguyên**. Gửi `{}` cũng được (không đổi gì, chỉ cập nhật `updatedAt`).
+- `fees` và `amenityKeys` nếu gửi thì **thay cả danh sách** bằng danh sách mới, nên FE gửi lại danh sách đầy đủ sau khi người dùng chỉnh; mảng rỗng `[]` là xóa hết.
+- **Xóa tọa độ** bằng `"latitude": null, "longitude": null` (cả hai). Đặt tọa độ mới thì gửi cả hai số. Gửi chỉ một trong hai, hoặc một số một `null`, là 400.
+- Đổi `name`, `addressText` hay `wardCode` sẽ làm mới khóa tìm kiếm của các tin của nhà trọ (có tác dụng khi API tin ra mắt).
+
+**200 OK**: nhà trọ sau khi sửa.
+
+**Lỗi**: 400 `VALIDATION_FAILED` · 400 `WARD_UNKNOWN` · 400 `AMENITY_UNKNOWN` · 400 `INVALID_ID` · 404 `PROPERTY_NOT_FOUND` · 403 `NOT_RESOURCE_OWNER` · 403 `PERMISSION_DENIED` · 429 `RATE_LIMITED`. Lỗi thì không có gì bị đổi.
+
+#### Xóa nhà trọ
+
+`DELETE /properties/:id` · quyền `property:delete`
+
+**204 No Content**. Đây là **xóa mềm**: nhà trọ biến khỏi mọi API (xem, sửa, danh sách đều 404 hoặc không thấy). **Chỉ xóa được khi nhà trọ không còn tin chưa xóa**; còn tin thì 409 `PROPERTY_HAS_LISTINGS`, FE nên báo "hãy xóa các tin của nhà trọ này trước".
+
+**Lỗi**: 409 `PROPERTY_HAS_LISTINGS` · 404 `PROPERTY_NOT_FOUND` (kể cả xóa lần hai) · 403 `NOT_RESOURCE_OWNER` · 403 `PERMISSION_DENIED` · 400 `INVALID_ID` · 429 `RATE_LIMITED`.
 
 ---
 
@@ -515,6 +621,18 @@ Cần nhớ:
 
 Hai ô: mật khẩu hiện tại, mật khẩu mới. Gọi `POST /auth/change-password`. **204**: báo thành công, người dùng **vẫn đăng nhập**; thiết bị khác bị đăng xuất, nên nên nói rõ "các thiết bị khác sẽ phải đăng nhập lại". `CURRENT_PASSWORD_WRONG`: báo ở ô mật khẩu hiện tại.
 
+### Quản lý nhà trọ (chủ trọ)
+
+1. **Trang danh sách**: gọi `GET /properties` (phân trang), hiện tên, `fullAddress`, `listingCount` và nút sửa, xóa. Chưa có nhà trọ thì mời tạo nhà trọ đầu tiên. Chỉ hiện cho tài khoản có quyền `property:read` (kiểm `permissions` của `/auth/me`).
+2. **Biểu mẫu tạo và sửa** (dùng chung một biểu mẫu):
+   - Tên, ô **số nhà và tên đường** (`addressText`), ô chọn **phường hoặc xã** từ `GET /wards` (gửi `code`), và dòng chỉ-đọc hiện tên tỉnh hoặc thành phố đi theo phường đã chọn (`provinceName`). **Không có ô quận huyện.**
+   - Phí: tối đa 6 dòng, mỗi loại phí chỉ chọn một lần (ẩn loại đã chọn khỏi danh sách), mỗi dòng gồm giá, đơn vị tính và ghi chú tùy chọn.
+   - Tiện ích: nhiều ô chọn từ `GET /amenities` (gửi `key`).
+   - Tọa độ (không bắt buộc): nếu có thì phải đủ cả vĩ độ và kinh độ.
+   - Khi sửa, gửi lại **toàn bộ** `fees` và `amenityKeys` (backend thay cả danh sách). Chỉ gửi các trường người dùng đã đổi cũng được.
+3. **Xóa**: hỏi xác nhận; gặp 409 `PROPERTY_HAS_LISTINGS` thì báo phải xóa các tin trước.
+4. Lỗi `VALIDATION_FAILED` hiện dưới từng ô theo `errors[].field`; với phí, `field` có dạng `fees.0.price` (số thứ tự trong mảng đã gửi).
+
 ### Màn hình admin
 
 - **Chỉnh quyền loại tài khoản**: lấy `GET /permissions` (danh mục) và `GET /account-types` (quyền hiện tại). Vẽ ma trận hành động theo module cho `landlord` và `tenant`. Tắt (không cho chọn) mọi hành động trong `adminActions`. Khi lưu, gửi **toàn bộ** danh sách đang chọn bằng `PATCH /account-types/:key`. Nên ghi chú: người dùng đang đăng nhập nhận quyền mới trong tối đa 15 phút hoặc khi họ refresh.
@@ -532,6 +650,7 @@ Hai ô: mật khẩu hiện tại, mật khẩu mới. Gọi `POST /auth/change-
 - **Số điện thoại** của người đăng bài duy nhất toàn hệ thống (kể cả tài khoản đã xóa) và người đăng bài không tự đổi số sau khi đăng ký. Mục đích: mỗi số chỉ nhận một lần dùng thử miễn phí (sẽ làm sau). Người tìm trọ có thể trùng số.
 - **Loại tài khoản không đổi.** Không có API đổi loại.
 - **Địa chỉ hai cấp.** Mọi địa chỉ trong hệ thống theo đơn vị hành chính mới sau sáp nhập: số nhà và đường, phường hoặc xã (`GET /wards`), tỉnh hoặc thành phố. Không có quận huyện. Xem mục 6.15.
+- **Nhà trọ** thuộc đúng một chủ trọ (không đổi chủ). Mỗi nhà trọ có tối đa một khoản phí cho mỗi loại trong 6 loại, tiện ích chọn từ danh mục. Xóa nhà trọ là xóa mềm và chỉ được khi không còn tin chưa xóa. Mọi thao tác chỉ trên nhà trọ của chính mình (403 `NOT_RESOURCE_OWNER` nếu khác), kể cả admin.
 - **Khóa tài khoản**: tài khoản bị khóa không đăng nhập, không refresh được và mọi phiên bị hủy lúc khóa. Đăng nhập sai mật khẩu vẫn báo `INVALID_CREDENTIALS` (không lộ tài khoản có bị khóa hay không); chỉ khi đúng mật khẩu mới báo `ACCOUNT_LOCKED`. Admin không tự khóa mình được.
 - **Đổi hoặc đặt lại mật khẩu** hủy phiên: đặt lại hủy **tất cả**; đổi (khi đang đăng nhập) hủy tất cả **trừ phiên đang dùng**.
 - **Mật khẩu mới** có thể trùng mật khẩu cũ (backend không cấm).
@@ -548,6 +667,8 @@ Hai ô: mật khẩu hiện tại, mật khẩu mới. Gọi `POST /auth/change-
 - **Giới hạn tần suất nằm trong bộ nhớ** của backend: khởi động lại là về 0, và nếu sau này chạy nhiều bản backend thì mỗi bản đếm riêng. Chạy localhost không qua proxy thì mọi client cùng một IP.
 - Người xấu có thể cố ý gọi đăng nhập dồn bằng email của người khác để **khóa đăng nhập email đó trong 15 phút** (đánh đổi của việc giới hạn theo email). Tương tự, người ta có thể gọi dồn quên mật khẩu bằng email đó để chặn việc xin liên kết mới trong 1 giờ. Liên kết đặt lại đã gửi trước đó vẫn dùng được.
 - **Chưa có API danh sách người dùng** nên màn hình admin chưa tìm được người để khóa ngoài việc biết sẵn id.
+- **Nhà trọ chưa gắn với tin**: chưa có API đăng tin nên `listingCount` luôn là 0 và nhà trọ nào cũng xóa được. Quy tắc chặn xóa khi còn tin (409 `PROPERTY_HAS_LISTINGS`) đã chạy nhưng chưa thể gặp qua API cho đến khi có API đăng tin.
+- Ghi phí hoặc tiện ích khi sửa nhà trọ là **thay cả danh sách** (không có API thêm hay bỏ từng khoản), nên hai thiết bị cùng sửa một nhà trọ thì bản gửi sau thắng.
 
 ---
 
@@ -557,7 +678,7 @@ Backend sẽ làm theo thứ tự dưới đây. Mỗi mục khi xong sẽ vào 
 
 | Thứ tự | Tính năng | Ảnh hưởng tới FE |
 |---|---|---|
-| 8 | **Nhà trọ, đăng tin, xem tin** (đã có danh sách phường, xã và tiện ích, mục 6.15 và 6.16; các phần còn lại làm dần): chủ trọ tạo nhà trọ và tin phòng, **tin hiện ngay khi đăng, không có bước duyệt**. Chủ trọ tự ẩn và hiện lại tin của mình; admin ẩn hoặc gỡ ẩn tin của người khác kèm lý do. Người tìm trọ xem danh sách tin có lọc đơn giản (từ khóa, phường, khoảng giá, sắp xếp) và chi tiết tin (mỗi lần mở tính một lượt xem). Ảnh tải lên, tối đa 5 ảnh mỗi tin | Trang quản lý nhà trọ và tin của chủ trọ (có nút ẩn, hiện), trang danh sách có bộ lọc, trang chi tiết tin, nút ẩn tin cho admin. **Không cần hàng chờ duyệt** |
+| 8 | **Nhà trọ, đăng tin, xem tin** (đã có danh sách phường, xã và tiện ích, mục 6.15 và 6.16, và **nhà trọ của chủ trọ**, mục 6.17; phần **tin phòng** còn lại làm dần): chủ trọ đăng tin phòng vào nhà trọ của mình, **tin hiện ngay khi đăng, không có bước duyệt**. Chủ trọ tự ẩn và hiện lại tin của mình; admin ẩn hoặc gỡ ẩn tin của người khác kèm lý do. Người tìm trọ xem danh sách tin có lọc đơn giản (từ khóa, phường, khoảng giá, sắp xếp) và chi tiết tin (mỗi lần mở tính một lượt xem). Ảnh tải lên, tối đa 5 ảnh mỗi tin | Trang quản lý nhà trọ và tin của chủ trọ (có nút ẩn, hiện), trang danh sách có bộ lọc, trang chi tiết tin, nút ẩn tin cho admin. **Không cần hàng chờ duyệt** |
 | 9 | **Dùng thử miễn phí và hạn mức tin** cho chủ trọ: dùng thử 30 ngày, tối đa 2 tin đang hiện (admin đổi được hai con số này). Hết kỳ dùng thử mà chưa mua gói thì tin của chủ trọ tự biến khỏi danh sách công khai | Lỗi chặn đăng hoặc hiện thêm tin kèm gợi ý mua gói; hiện ngày hết hạn dùng thử và số tin còn lại |
 | 10 | **Mua gói và gia hạn theo tháng**, **thanh toán thử** (bấm xác nhận là có gói, không có tiền thật, không chuyển sang cổng thanh toán nào, nên **không có trang VNPay**) | Trang chọn gói, nút thanh toán thử, lịch sử đơn |
 | 11 | **Theo dõi chủ trọ** và hiển thị số người theo dõi, tổng lượt xem tin | Nút theo dõi, số liệu trên hồ sơ chủ trọ |
@@ -573,6 +694,16 @@ Backend sẽ làm theo thứ tự dưới đây. Mỗi mục khi xong sẽ vào 
 ## 11. Nhật ký thay đổi
 
 Mới nhất ở trên cùng. Mục nào **phá vỡ** cách FE đang gọi sẽ ghi rõ "ĐỔI KHÁC VỚI TRƯỚC".
+
+### 2026-10-16 · Nhà trọ của chủ trọ
+
+- Thêm 5 API cho chủ trọ: `POST /properties` (201), `GET /properties` (có phân trang), `GET /properties/:id`, `PATCH /properties/:id`, `DELETE /properties/:id` (204, xóa mềm). Xem mục 6.17. Quyền `property:create`, `property:read`, `property:update`, `property:delete` (landlord đã có sẵn từ trước). Người tìm trọ nhận 403 `PERMISSION_DENIED`.
+- **Địa chỉ trả sẵn `fullAddress`** (số nhà và đường, phường hoặc xã, tỉnh hoặc thành phố; không có quận huyện). FE hiển thị thẳng, không tự ghép.
+- Thêm **quy ước phân trang** chung (mục 2): `page`, `pageSize` (tối đa 50), trả `{ items, total, page, pageSize }`. Mới `GET /properties` dùng.
+- Bốn mã lỗi bắt đầu được trả: `WARD_UNKNOWN`, `AMENITY_UNKNOWN`, `PROPERTY_NOT_FOUND`, `PROPERTY_HAS_LISTINGS` (đã thêm vào bảng ở mục 3). `NOT_RESOURCE_OWNER` lần đầu có API dùng đến. Bảy mã còn lại của đợt 2026-10-14 (`CATALOG_*`, `LISTING_*`, `IMAGE_INVALID`) vẫn chưa có API trả, FE đừng xử lý trước.
+- **Giới hạn tần suất mới**: ba API ghi nhà trọ (`POST`, `PATCH`, `DELETE`) dùng chung bộ đếm 30 lần mỗi giờ cho mỗi người dùng, vượt thì 429 `RATE_LIMITED` (mục 3, phần "Lỗi 429"). Các API đọc không bị giới hạn.
+- Không đổi API nào đang chạy.
+- **FE cần làm**: trang danh sách và biểu mẫu tạo, sửa nhà trọ cho chủ trọ (luồng gợi ý ở mục 7); xử lý 429 ở các biểu mẫu ghi; hiển thị `fullAddress` thẳng.
 
 ### 2026-10-14 · Danh sách phường, xã, đặc khu và tiện ích (địa chỉ mới sau sáp nhập)
 

@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import type { Prisma, Ward } from '../generated/prisma/client';
 import { CatalogRepository } from './catalog.repository';
 import { toAmenityResponse, toWardResponse } from './catalog.mapper';
 import type { AmenityResponse, WardResponse } from './dto/catalog.response';
@@ -35,5 +36,25 @@ export class CatalogService {
 					VIETNAMESE.compare(a.name, b.name) ||
 					a.key.localeCompare(b.key),
 			);
+	}
+
+	/** Phường, xã, đặc khu theo mã, hoặc `null` nếu mã không có trong danh mục (nhà trọ kiểm trước khi lưu). */
+	findWard(
+		code: string,
+		tx?: Prisma.TransactionClient,
+	): Promise<Ward | null> {
+		return this.repository.findWardByCode(code, tx);
+	}
+
+	/** Các khóa tiện ích không có trong danh mục, giữ nguyên thứ tự đã gửi; rỗng nghĩa là mọi khóa đều hợp lệ. */
+	async findUnknownAmenityKeys(
+		keys: readonly string[],
+		tx?: Prisma.TransactionClient,
+	): Promise<string[]> {
+		if (keys.length === 0) return [];
+		const known = new Set(
+			await this.repository.findExistingAmenityKeys(keys, tx),
+		);
+		return keys.filter((key) => !known.has(key));
 	}
 }

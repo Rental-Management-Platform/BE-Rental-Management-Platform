@@ -10,6 +10,7 @@ import { PersistenceModule } from './common/persistence/persistence.module';
 import { AppConfigModule } from './config/app-config.module';
 import { PrismaModule } from './database/prisma.module';
 import { ModerationModule } from './moderation/moderation.module';
+import { PropertiesModule } from './properties/properties.module';
 import { UsersModule } from './users/users.module';
 
 @Module({
@@ -22,6 +23,7 @@ import { UsersModule } from './users/users.module';
 		AuthModule,
 		ModerationModule,
 		CatalogModule,
+		PropertiesModule,
 	],
 	controllers: [AppController],
 	providers: [

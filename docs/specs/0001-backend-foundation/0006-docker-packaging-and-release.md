@@ -82,7 +82,7 @@ Ghi chú cho file trên:
 - `compose.override.yaml` (chỉ có trong repo, không nằm trong gói phát hành) dành cho máy dev: mở `127.0.0.1:5432` của `db` và cho `api` dựng từ mã nguồn (`build: .`).
 
 Image API (`Dockerfile`, nhiều giai đoạn, ghim phiên bản):
-- `deps`: `node:24-slim`, `npm ci`. `build`: `npm run build`. `runtime`: `node:24-slim`, `npm ci --omit=dev`, chép `dist`, `prisma/` (schema và migration), `prisma.config.ts` và `docker-entrypoint.sh` (để `prisma migrate deploy` chạy được), đặt `NODE_ENV=production`, chạy bằng người dùng `node` (không root), thư mục `/data/uploads` thuộc người dùng đó.
+- `deps`: `node:24-slim`, `npm ci`. `build`: `npm run build`. `runtime`: `node:24-slim`, `npm ci --omit=dev`, chép `dist`, `prisma/` (schema, migration và `seed-data/`), `prisma.config.ts` và `docker-entrypoint.sh` (để `prisma migrate deploy` chạy được và `node dist/database/seed.js` đọc được `prisma/seed-data/wards.json` cùng `amenities.json`; thiếu thư mục này thì seed dừng với lỗi rõ), đặt `NODE_ENV=production`, chạy bằng người dùng `node` (không root), thư mục `/data/uploads` thuộc người dùng đó.
 - Chọn `node:24-slim` (nền glibc) thay vì Alpine để thư viện gốc như `@node-rs/argon2` và `bcrypt` có sẵn bản dựng sẵn, ít bất ngờ nhất.
 - `HEALTHCHECK` dùng chính Node để gọi `http://127.0.0.1:3000/api/v1/health` (image `slim` không có `curl`). Route này gắn `@Public()` (nếu không, guard toàn cục của spec 0003 sẽ chặn nó) và chỉ trả trạng thái, không lộ thông tin cấu hình.
 - `.dockerignore` loại `node_modules`, `dist`, `.git`, `.env`, `docs`.

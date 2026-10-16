@@ -19,6 +19,10 @@ export const VALIDATION_MESSAGES: Readonly<Record<string, string>> = {
 	maxLength: 'Giá trị quá dài.',
 	isArray: 'Phải là một danh sách.',
 	arrayMaxSize: 'Danh sách có quá nhiều phần tử.',
+	arrayUnique: 'Danh sách có phần tử bị trùng.',
+	isInt: 'Phải là số nguyên.',
+	min: 'Giá trị quá nhỏ.',
+	max: 'Giá trị quá lớn.',
 	isDefined: 'Không được thiếu trường này.',
 	whitelistValidation: 'Trường này không được phép gửi lên.',
 };
