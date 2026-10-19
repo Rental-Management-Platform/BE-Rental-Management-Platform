@@ -9,6 +9,7 @@ import type {
 } from '../memberships/memberships.service';
 import type { ModerationLogsRepository } from '../moderation/moderation-logs.repository';
 import type { PropertiesRepository } from '../properties/properties.repository';
+import type { SettingsService } from '../settings/settings.service';
 import type { UsersService } from '../users/users.service';
 import type { CreateListingDto } from './dto/create-listing.dto';
 import type {
@@ -96,6 +97,7 @@ interface Harness {
 	views: ViewDeduplicator;
 	users: Mocks<'lockById'>;
 	memberships: Mocks<'resolve'>;
+	settings: Mocks<'getValue'>;
 }
 
 function build(
@@ -105,6 +107,7 @@ function build(
 		reasons?: Map<string, string>;
 		membership?: Membership;
 		visibleCount?: number;
+		trialListingLimit?: number;
 	} = {},
 ): Harness {
 	const repository = {
@@ -141,6 +144,11 @@ function build(
 	const users = { lockById: jest.fn(() => Promise.resolve()) };
 	const memberships = {
 		resolve: jest.fn(() => Promise.resolve(options.membership ?? TRIAL)),
+	};
+	const settings = {
+		getValue: jest.fn(() =>
+			Promise.resolve(options.trialListingLimit ?? 2),
+		),
 	};
 	const properties = {
 		lockLiveById: jest.fn(() =>
@@ -179,6 +187,7 @@ function build(
 			views,
 			users as unknown as UsersService,
 			memberships as unknown as MembershipsService,
+			settings as unknown as SettingsService,
 		),
 		repository,
 		properties,
@@ -187,6 +196,7 @@ function build(
 		views,
 		users,
 		memberships,
+		settings,
 	};
 }
 
@@ -353,7 +363,7 @@ describe('ListingsService.create (AC-5)', () => {
 	});
 });
 
-describe('ListingsService.listPublic (AC-10)', () => {
+describe('ListingsService.listPublic (AC-10, spec 0003 AC-8, AC-9)', () => {
 	it('chuyển bộ lọc cho Repository, từ khóa đã tách từ và bỏ dấu', async () => {
 		const { service, repository } = build();
 		await service.listPublic(
@@ -366,6 +376,7 @@ describe('ListingsService.listPublic (AC-10)', () => {
 				page: 3,
 				pageSize: 10,
 			}),
+			NOW,
 		);
 		expect(repository.findPublicPage).toHaveBeenCalledWith(
 			{
@@ -375,15 +386,39 @@ describe('ListingsService.listPublic (AC-10)', () => {
 				maxPrice: 5_000_000,
 				sort: 'price_asc',
 			},
+			{ now: NOW, trialListingLimit: 2 },
 			20,
 			10,
 		);
+	});
+
+	it('truyền cho luật hiển thị đúng `now` của request và hạn mức đọc từ settings', async () => {
+		const { service, repository, settings } = build({
+			trialListingLimit: 5,
+		});
+		await service.listPublic(listQuery(), NOW);
+		expect(settings.getValue).toHaveBeenCalledTimes(1);
+		expect(settings.getValue).toHaveBeenCalledWith('trial_listing_limit');
+		expect(argsOf(repository.findPublicPage)[0]?.[1]).toEqual({
+			now: NOW,
+			trialListingLimit: 5,
+		});
+	});
+
+	it('hạn mức 0 vẫn được truyền xuống (luật hiển thị loại hết, Service không tự bỏ qua)', async () => {
+		const { service, repository } = build({ trialListingLimit: 0 });
+		await service.listPublic(listQuery(), NOW);
+		expect(argsOf(repository.findPublicPage)[0]?.[1]).toEqual({
+			now: NOW,
+			trialListingLimit: 0,
+		});
 	});
 
 	it('trả trang { items, total, page, pageSize } với tin tóm tắt', async () => {
 		const { service } = build();
 		const page = await service.listPublic(
 			listQuery({ page: 2, pageSize: 5 }),
+			NOW,
 		);
 		expect(page).toMatchObject({ total: 41, page: 2, pageSize: 5 });
 		expect(page.items).toHaveLength(1);
@@ -395,8 +430,8 @@ describe('ListingsService.listPublic (AC-10)', () => {
 
 	it('q rỗng hoặc vắng thì không lọc từ khóa', async () => {
 		const { service, repository } = build();
-		await service.listPublic(listQuery({ q: '   ' }));
-		await service.listPublic(listQuery());
+		await service.listPublic(listQuery({ q: '   ' }), NOW);
+		await service.listPublic(listQuery(), NOW);
 		for (const call of argsOf(repository.findPublicPage)) {
 			expect((call[0] as { searchWords: string[] }).searchWords).toEqual(
 				[],
@@ -405,10 +440,11 @@ describe('ListingsService.listPublic (AC-10)', () => {
 	});
 
 	it('minPrice lớn hơn maxPrice thì 400 VALIDATION_FAILED, không truy vấn', async () => {
-		const { service, repository } = build();
+		const { service, repository, settings } = build();
 		await expect(
 			service.listPublic(
 				listQuery({ minPrice: 5_000_000, maxPrice: 1_000_000 }),
+				NOW,
 			),
 		).rejects.toMatchObject({
 			code: ErrorCode.VALIDATION_FAILED,
@@ -417,6 +453,7 @@ describe('ListingsService.listPublic (AC-10)', () => {
 			],
 		});
 		expect(repository.findPublicPage).not.toHaveBeenCalled();
+		expect(settings.getValue).not.toHaveBeenCalled();
 	});
 
 	it('minPrice bằng maxPrice là hợp lệ', async () => {
@@ -424,40 +461,74 @@ describe('ListingsService.listPublic (AC-10)', () => {
 		await expect(
 			service.listPublic(
 				listQuery({ minPrice: 3_000_000, maxPrice: 3_000_000 }),
+				NOW,
 			),
 		).resolves.toBeDefined();
 	});
 });
 
-describe('ListingsService.getPublicDetail (AC-11, AC-12, AC-13)', () => {
+describe('ListingsService.getPublicDetail (AC-11, AC-12, AC-13, spec 0003 AC-8, AC-9)', () => {
 	const guest = { ip: '1.2.3.4' };
 
 	it('slugCode không lấy được mã thì 404 LISTING_NOT_FOUND, không truy vấn', async () => {
-		const { service, repository } = build();
+		const { service, repository, settings } = build();
 		await expect(
-			service.getPublicDetail('khong-co-ma', guest),
+			service.getPublicDetail('khong-co-ma', guest, NOW),
 		).rejects.toMatchObject({ code: ErrorCode.LISTING_NOT_FOUND });
 		expect(repository.findPublicByCode).not.toHaveBeenCalled();
+		expect(settings.getValue).not.toHaveBeenCalled();
 	});
 
 	it('chỉ phần mã ở cuối được dùng để tra: slug sai vẫn mở được', async () => {
 		const { service, repository } = build();
-		await service.getPublicDetail('slug-cu-da-doi-tieu-de-abcd2345', guest);
-		expect(repository.findPublicByCode).toHaveBeenCalledWith('abcd2345');
+		await service.getPublicDetail(
+			'slug-cu-da-doi-tieu-de-abcd2345',
+			guest,
+			NOW,
+		);
+		expect(repository.findPublicByCode).toHaveBeenCalledWith(
+			'abcd2345',
+			expect.anything(),
+		);
+	});
+
+	it('truyền cho luật hiển thị đúng `now` của request và hạn mức đọc một lần từ settings', async () => {
+		const { service, repository, settings } = build({
+			trialListingLimit: 3,
+		});
+		await service.getPublicDetail('abcd2345', guest, NOW);
+		expect(settings.getValue).toHaveBeenCalledTimes(1);
+		expect(settings.getValue).toHaveBeenCalledWith('trial_listing_limit');
+		expect(repository.findPublicByCode).toHaveBeenCalledWith('abcd2345', {
+			now: NOW,
+			trialListingLimit: 3,
+		});
 	});
 
 	it('tin không hiển thị công khai thì 404 và không cộng lượt xem', async () => {
 		const { service, repository } = build();
 		repository.findPublicByCode.mockResolvedValueOnce(null);
 		await expect(
-			service.getPublicDetail('abcd2345', guest),
+			service.getPublicDetail('abcd2345', guest, NOW),
 		).rejects.toMatchObject({ code: ErrorCode.LISTING_NOT_FOUND });
 		expect(repository.incrementViewCount).not.toHaveBeenCalled();
 	});
 
+	it('chủ tin hết hiển thị vì hạn mức cũng 404 với chính chủ (chủ xem tin của mình ở /me/listings)', async () => {
+		const { service, repository } = build();
+		repository.findPublicByCode.mockResolvedValueOnce(null);
+		await expect(
+			service.getPublicDetail(
+				'abcd2345',
+				{ userId: LANDLORD_ID, ip: '1.2.3.4' },
+				NOW,
+			),
+		).rejects.toMatchObject({ code: ErrorCode.LISTING_NOT_FOUND });
+	});
+
 	it('khách mở lần đầu: cộng một lượt và trả số sau khi cộng, phone là null', async () => {
 		const { service, repository } = build();
-		const detail = await service.getPublicDetail('abcd2345', guest);
+		const detail = await service.getPublicDetail('abcd2345', guest, NOW);
 		expect(repository.incrementViewCount).toHaveBeenCalledWith(LISTING_ID);
 		expect(detail.viewCount).toBe(8);
 		expect(detail.landlord.phone).toBeNull();
@@ -465,9 +536,9 @@ describe('ListingsService.getPublicDetail (AC-11, AC-12, AC-13)', () => {
 
 	it('cùng IP tải lại trong 30 phút không cộng nữa, số lượt là số đã đọc', async () => {
 		const { service, repository } = build();
-		await service.getPublicDetail('abcd2345', guest);
-		const second = await service.getPublicDetail('abcd2345', guest);
-		const third = await service.getPublicDetail('abcd2345', guest);
+		await service.getPublicDetail('abcd2345', guest, NOW);
+		const second = await service.getPublicDetail('abcd2345', guest, NOW);
+		const third = await service.getPublicDetail('abcd2345', guest, NOW);
 		expect(repository.incrementViewCount).toHaveBeenCalledTimes(1);
 		expect(second.viewCount).toBe(7);
 		expect(third.viewCount).toBe(7);
@@ -475,28 +546,29 @@ describe('ListingsService.getPublicDetail (AC-11, AC-12, AC-13)', () => {
 
 	it('hai IP khác nhau được đếm riêng', async () => {
 		const { service, repository } = build();
-		await service.getPublicDetail('abcd2345', { ip: '1.1.1.1' });
-		await service.getPublicDetail('abcd2345', { ip: '2.2.2.2' });
+		await service.getPublicDetail('abcd2345', { ip: '1.1.1.1' }, NOW);
+		await service.getPublicDetail('abcd2345', { ip: '2.2.2.2' }, NOW);
 		expect(repository.incrementViewCount).toHaveBeenCalledTimes(2);
 	});
 
 	it('người đăng nhập (không phải chủ tin): thấy phone, được đếm theo tài khoản, không theo IP', async () => {
 		const { service, repository } = build();
 		const viewer = { userId: stranger.userId, ip: '1.2.3.4' };
-		const detail = await service.getPublicDetail('abcd2345', viewer);
+		const detail = await service.getPublicDetail('abcd2345', viewer, NOW);
 		expect(detail.landlord.phone).toBe('0912345678');
 		expect(repository.incrementViewCount).toHaveBeenCalledTimes(1);
 		// cùng IP nhưng là khách vẫn được đếm: người xem khác nhau
-		await service.getPublicDetail('abcd2345', guest);
+		await service.getPublicDetail('abcd2345', guest, NOW);
 		expect(repository.incrementViewCount).toHaveBeenCalledTimes(2);
 	});
 
 	it('chủ tin mở thì không cộng lượt xem (dù lần đầu), nhưng thấy phone', async () => {
 		const { service, repository } = build();
-		const detail = await service.getPublicDetail('abcd2345', {
-			userId: LANDLORD_ID,
-			ip: '1.2.3.4',
-		});
+		const detail = await service.getPublicDetail(
+			'abcd2345',
+			{ userId: LANDLORD_ID, ip: '1.2.3.4' },
+			NOW,
+		);
 		expect(repository.incrementViewCount).not.toHaveBeenCalled();
 		expect(detail.viewCount).toBe(7);
 		expect(detail.landlord.phone).toBe('0912345678');
@@ -505,7 +577,7 @@ describe('ListingsService.getPublicDetail (AC-11, AC-12, AC-13)', () => {
 	it('tin vừa bị ẩn giữa lúc đọc và lúc cộng (cộng trả null) thì giữ số đã đọc', async () => {
 		const { service, repository } = build();
 		repository.incrementViewCount.mockResolvedValueOnce(null);
-		const detail = await service.getPublicDetail('abcd2345', guest);
+		const detail = await service.getPublicDetail('abcd2345', guest, NOW);
 		expect(detail.viewCount).toBe(7);
 	});
 });

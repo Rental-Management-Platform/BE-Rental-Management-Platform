@@ -1,6 +1,6 @@
 # Tài liệu API và nghiệp vụ cho Frontend
 
-Cập nhật lần cuối: 2026-10-16 (xem mục [Nhật ký thay đổi](#11-nhật-ký-thay-đổi) để biết thay đổi gần nhất).
+Cập nhật lần cuối: 2026-10-19 (xem mục [Nhật ký thay đổi](#11-nhật-ký-thay-đổi) để biết thay đổi gần nhất).
 
 File này do đội backend giữ và **cập nhật cùng mỗi thay đổi API**. Mục đích: để bên FE hiểu hệ thống làm gì, mỗi màn hình cần gọi API nào, và xử lý lỗi ra sao. Đi kèm file này là bộ request thử trong Postman: [`postman-collection.json`](postman-collection.json) (import vào Postman để gọi thử từng API).
 
@@ -56,7 +56,8 @@ Mỗi tài khoản chỉ thuộc **một** loại, chọn lúc đăng ký và **
 | Ảnh tin; admin ẩn tin và quản lý danh mục phường, tiện ích | Chưa có (đang làm từng phần, mục 10) |
 | Tham số hệ thống: admin xem và đổi số ngày dùng thử, số tin dùng thử | Có (mục 6.24). Đã áp vào đăng ký (số ngày) và vào đăng, hiện tin (số tin) từ 2026-10-19 |
 | Kỳ dùng thử lúc đăng ký; chặn đăng và hiện tin khi hết dùng thử hoặc đủ hạn mức | Có (mới, 2026-10-19, mục 6.1, 6.18, 6.23) |
-| Tin biến khỏi công khai khi hết dùng thử hoặc vượt hạn mức, `GET /me/membership`, cờ `isPublic`, mua gói | Chưa có (đang làm từng phần, mục 10) |
+| Tin biến khỏi công khai khi hết dùng thử hoặc vượt hạn mức (ẩn bớt theo thứ tự đăng) | Có (mới, 2026-10-19, mục 6.19, 6.20, 8) |
+| `GET /me/membership`, cờ `isPublic`, mua gói | Chưa có (đang làm từng phần, mục 10) |
 | Theo dõi chủ trọ, lượt xem | Chưa có |
 
 ---
@@ -680,7 +681,9 @@ Cần nhớ:
 
 `GET /listings` · công khai (không cần đăng nhập)
 
-Danh sách cho trang tìm trọ. **Chỉ tin đang hiện công khai**: tin `visible`, chưa xóa, thuộc nhà trọ chưa xóa của chủ trọ đang hoạt động. Tin bị ẩn, bị xóa, hoặc chủ trọ bị khóa biến khỏi danh sách **ngay**, không có độ trễ.
+Danh sách cho trang tìm trọ. **Chỉ tin đang hiện công khai**: tin `visible`, chưa xóa, thuộc nhà trọ chưa xóa của chủ trọ đang hoạt động **và còn trong kỳ dùng thử**, và tin nằm trong hạn mức của chủ trọ (khung dưới). Tin bị ẩn, bị xóa, chủ trọ bị khóa hoặc hết dùng thử biến khỏi danh sách **ngay**, không có độ trễ và không cần việc nền.
+
+> **Luật hiển thị theo hạng (từ 2026-10-19).** Mỗi chủ trọ chỉ có tối đa N tin hiện công khai, N là `trial_listing_limit` (mặc định 2, mục 6.24). Các tin `visible` của họ xếp theo ngày đăng (`createdAt` cũ trước, ngang nhau thì theo `id`), chỉ N tin đầu còn hiện. Khi admin hạ hạn mức xuống dưới số tin đang hiện, các tin đăng sau cùng biến khỏi danh sách và khỏi chi tiết (404), nhưng **`status` của chúng vẫn là `visible`** và chủ trọ vẫn thấy chúng ở `/me/listings`. Chủ trọ ẩn hoặc xóa một tin thì tin đăng sớm nhất kế tiếp trong số bị ẩn bớt hiện lại. Hết kỳ dùng thử mà chưa có gói thì hạn mức là 0: mọi tin của chủ trọ đó biến khỏi công khai từ đúng thời điểm hết kỳ. Admin nâng hạn mức hoặc chủ trọ có gói thì tin hiện lại ngay. `total` và các trang đã tính theo luật này, FE không cần lọc thêm.
 
 | Query | Kiểu | Mặc định | Luật |
 |---|---|---|---|
@@ -735,7 +738,7 @@ Cần nhớ:
 
 **Cách tính lượt xem**: mỗi người xem được cộng **một lượt cho mỗi tin trong 30 phút**. Người xem là tài khoản nếu có token hợp lệ, không thì là địa chỉ IP. **Chủ tin mở không được tính.** Tải lại trong 30 phút không làm số tăng. Tin không hiển thị công khai (404) thì không được cộng. Nhiều người dùng chung một IP (ký túc xá, quán cà phê) mà không đăng nhập thì tính chung một lượt mỗi 30 phút.
 
-**Lỗi**: 404 `LISTING_NOT_FOUND` (mã lạ; tin bị ẩn, bị xóa, hết hiển thị vì bất kỳ lý do nào, **kể cả với chính chủ** ở route công khai này) · 429 `RATE_LIMITED` (quá 300 lần mỗi phút theo IP, hoặc quá 60 lần mỗi phút nếu đã đăng nhập).
+**Lỗi**: 404 `LISTING_NOT_FOUND` (mã lạ; tin bị ẩn, bị xóa, chủ trọ hết dùng thử, tin bị ẩn bớt vì vượt hạn mức, hết hiển thị vì bất kỳ lý do nào, **kể cả với chính chủ** ở route công khai này) · 429 `RATE_LIMITED` (quá 300 lần mỗi phút theo IP, hoặc quá 60 lần mỗi phút nếu đã đăng nhập).
 
 ### 6.21 Tin của tôi
 
@@ -799,7 +802,7 @@ Hai tham số nghiệp vụ của kỳ dùng thử miễn phí, admin chỉnh đ
 | `trial_days` | 30 | 0 đến 365 | Số ngày dùng thử của chủ trọ đăng ký **sau** khi đổi. `0` nghĩa là hết dùng thử ngay lúc đăng ký (cách dựng cảnh "hết quyền" khi demo) |
 | `trial_listing_limit` | 2 | 0 đến 100 | Số tin đang hiện tối đa trong kỳ dùng thử, áp ngay cho mọi chủ trọ còn trong kỳ |
 
-> **Đã áp vào hành vi (từ 2026-10-19).** `trial_days` quyết định hạn dùng thử của chủ trọ đăng ký sau đó (6.1); `trial_listing_limit` quyết định số tin đang hiện tối đa của chủ trọ còn trong kỳ, kiểm lúc đăng và hiện lại tin (6.18, 6.23). Việc ẩn tin vượt hạn mức khỏi kết quả công khai và `GET /me/membership` chưa có (mục 10, hàng 9).
+> **Đã áp vào hành vi (từ 2026-10-19).** `trial_days` quyết định hạn dùng thử của chủ trọ đăng ký sau đó (6.1); `trial_listing_limit` quyết định số tin đang hiện tối đa của chủ trọ còn trong kỳ, kiểm lúc đăng và hiện lại tin (6.18, 6.23). Tin vượt hạn mức bị ẩn bớt khỏi kết quả công khai theo thứ tự đăng (6.19), có hiệu lực ngay khi đổi `trial_listing_limit`. `GET /me/membership` chưa có (mục 10, hàng 9).
 
 `GET /settings` · quyền `setting:read`
 
@@ -870,6 +873,8 @@ Hai ô: mật khẩu hiện tại, mật khẩu mới. Gọi `POST /auth/change-
 5. Gặp 409 `LISTING_STATE_INVALID` hoặc 403 `LISTING_HIDDEN_BY_ADMIN` ở nút ẩn, hiện: tải lại tin để lấy trạng thái thật (có thể admin vừa ẩn).
 6. **Hạn mức** (đăng tin và nút "Hiện"): gặp 403 `LISTING_QUOTA_REACHED` thì báo "bạn đã dùng hết số tin được hiện, hãy ẩn hoặc xóa bớt một tin" và giữ nguyên biểu mẫu để người dùng không mất chữ đã nhập; gặp 403 `MEMBERSHIP_REQUIRED` thì báo kỳ dùng thử đã hết kèm nút "Mua gói" (trang mua gói chưa có). **Không** coi hai lỗi này là lỗi hệ thống, và **không** thử lại tự động. Khi hết dùng thử vẫn cho ẩn, sửa, xóa tin và quản lý nhà trọ bình thường.
 
+7. Tin `visible` vẫn có thể không hiện công khai: chủ trọ hết dùng thử, hoặc tin đăng sau bị ẩn bớt vì vượt hạn mức (6.19). Cờ `isPublic` cho trang quản lý tin chưa có (mốc sau), nên chưa suy ra từ `status` rằng tin đang hiện với khách.
+
 ### Tìm trọ (khách và người tìm trọ)
 
 1. **Trang danh sách**: `GET /listings` với ô tìm kiếm (`q`), ô chọn phường (`wardCode` lấy từ `GET /wards`), khoảng giá (`minPrice`, `maxPrice`) và kiểu sắp xếp (`sort`). Phân trang theo mục 2. Chỉ có tin tóm tắt, **không có số điện thoại**. Hiện `fullAddress` thẳng.
@@ -897,7 +902,7 @@ Hai ô: mật khẩu hiện tại, mật khẩu mới. Gọi `POST /auth/change-
 - **Nhà trọ** thuộc đúng một chủ trọ (không đổi chủ). Mỗi nhà trọ có tối đa một khoản phí cho mỗi loại trong 6 loại, tiện ích chọn từ danh mục. Xóa nhà trọ là xóa mềm và chỉ được khi không còn tin chưa xóa. Mọi thao tác chỉ trên nhà trọ của chính mình (403 `NOT_RESOURCE_OWNER` nếu khác), kể cả admin.
 - **Dùng thử và hạn mức tin** (từ 2026-10-19). Chủ trọ có kỳ dùng thử từ lúc đăng ký (mặc định 30 ngày) và trong kỳ được hiện tối đa 2 tin (admin đổi cả hai con số). Hạn mức hiện hành là `trial_listing_limit` khi còn trong kỳ (so sánh chặt: đúng lúc hết hạn là hết), ngược lại là 0. Chỉ tin `visible` chưa xóa tính vào "đang hiện". Cửa hạn mức chỉ ở **đăng tin** và **hiện lại tin**; ẩn, sửa, xóa tin và mọi thao tác nhà trọ không bị chặn. Hạn mức tính lại mỗi lần gọi, không lưu: đổi tham số hay hết hạn có hiệu lực ngay.
 - **Tin đăng** thuộc một nhà trọ, nên chủ tin là chủ nhà trọ (không đổi). Tin **hiện ngay khi đăng**, không nháp, không duyệt. Ba trạng thái: `visible`, `hidden_by_owner`, `hidden_by_admin`. Chủ trọ tự chuyển giữa `visible` và `hidden_by_owner`; tin `hidden_by_admin` chủ trọ không tự hiện lại được nhưng vẫn sửa và xóa được.
-- **Một tin hiện ra công khai khi và chỉ khi** tin `visible` và chưa xóa, nhà trọ chưa xóa, và chủ trọ đang hoạt động (không bị khóa, chưa xóa). Tính lúc đọc nên khóa tài khoản chủ trọ làm mọi tin của họ biến khỏi danh sách ngay, mở khóa thì hiện lại. (Về sau thêm điều kiện còn dùng thử hoặc có gói.)
+- **Một tin hiện ra công khai khi và chỉ khi** tin `visible` và chưa xóa, nhà trọ chưa xóa, và chủ trọ đang hoạt động (không bị khóa, chưa xóa), **chủ trọ còn trong kỳ dùng thử, và tin nằm trong N tin `visible` đăng sớm nhất của chủ trọ** (N là `trial_listing_limit`, mục 6.19). Tính lúc đọc nên khóa tài khoản, hết dùng thử hay hạ hạn mức làm tin biến khỏi danh sách ngay, còn mở khóa, nâng hạn mức hay có gói thì tin hiện lại. (Về sau thêm điều kiện có gói còn hiệu lực, hàng 10.)
 - **Số điện thoại chủ trọ** chỉ trả ở chi tiết tin và chỉ cho người gọi có access token hợp lệ; không có ở danh sách và không bao giờ có cho khách.
 - **Lượt xem** tính một lần cho mỗi người xem trong 30 phút, chủ tin không tính (6.20).
 - **Khóa tài khoản**: tài khoản bị khóa không đăng nhập, không refresh được và mọi phiên bị hủy lúc khóa. Đăng nhập sai mật khẩu vẫn báo `INVALID_CREDENTIALS` (không lộ tài khoản có bị khóa hay không); chỉ khi đúng mật khẩu mới báo `ACCOUNT_LOCKED`. Admin không tự khóa mình được.
@@ -918,7 +923,7 @@ Hai ô: mật khẩu hiện tại, mật khẩu mới. Gọi `POST /auth/change-
 - **Chưa có API danh sách người dùng** nên màn hình admin chưa tìm được người để khóa ngoài việc biết sẵn id.
 - **Lượt xem tính trong bộ nhớ** của backend: khởi động lại thì mọi người xem được tính lại từ đầu (cộng dư vài lượt), và nếu sau này chạy nhiều bản backend thì mỗi bản tính riêng. Nhiều người không đăng nhập dùng chung một IP chỉ tính một lượt mỗi 30 phút.
 - **Số điện thoại với tài khoản vừa bị khóa**: access token còn hạn (tối đa 15 phút) vẫn được coi là đã đăng nhập ở trang chi tiết tin, nên tài khoản vừa bị khóa còn thấy số điện thoại đến khi token hết hạn. Mọi phiên của tài khoản đã bị hủy nên không refresh được.
-- **Hạn mức mới chặn ở phía ghi.** Đăng và hiện lại tin đã bị chặn khi hết dùng thử hoặc đủ hạn mức (6.18, 6.23), nhưng **tin của chủ trọ hết dùng thử vẫn còn hiện ở danh sách và chi tiết công khai**, và tin đã hiện vượt hạn mức (do admin hạ `trial_listing_limit`) cũng chưa bị ẩn. Hai việc đó thuộc mốc sau của tính năng dùng thử (mục 10, hàng 9), cùng với `GET /me/membership` và cờ `isPublic`. Chưa có gói (hàng 10). Tin không tự hết hạn: phòng đã cho thuê mà chủ trọ quên ẩn thì tin vẫn nằm đó.
+- **Chủ trọ chưa có cách xem trạng thái dùng thử.** Đăng và hiện lại tin bị chặn khi hết dùng thử hoặc đủ hạn mức (6.18, 6.23), và tin của chủ trọ hết dùng thử hay vượt hạn mức đã biến khỏi công khai (6.19, 6.20). Nhưng chưa có `GET /me/membership` và cờ `isPublic` (mốc sau của tính năng dùng thử, mục 10, hàng 9), nên chủ trọ chưa tự biết tin nào đang bị ẩn bớt. Chưa có gói (hàng 10). Tin không tự hết hạn: phòng đã cho thuê mà chủ trọ quên ẩn thì tin vẫn nằm đó.
 - **FE chưa biết hạn mức và hạn dùng thử của chủ trọ** cho đến khi có `GET /me/membership`: chỉ biết sau khi bị `MEMBERSHIP_REQUIRED` hoặc `LISTING_QUOTA_REACHED`. Đừng tự tính hạn dùng thử ở FE.
 - **Chủ trọ đăng ký trước 2026-10-16** nhận hạn dùng thử bằng thời điểm chạy migration cộng 30 ngày (không phải thời điểm họ đăng ký).
 - **Chưa có ảnh tin** và **chưa có kháng nghị** khi bị ẩn tin: chủ trọ sửa tin xong vẫn phải liên hệ admin ngoài hệ thống.
@@ -935,7 +940,7 @@ Backend sẽ làm theo thứ tự dưới đây. Mỗi mục khi xong sẽ vào 
 | Thứ tự | Tính năng | Ảnh hưởng tới FE |
 |---|---|---|
 | 8 | **Phần còn lại của nhà trọ và tin** (đã có: danh sách phường, xã và tiện ích, nhà trọ, đăng tin, xem tin, ẩn và hiện tin, mục 6.15 đến 6.23): **ảnh tin** (tải lên từng ảnh, tối đa 5 ảnh mỗi tin, xem ảnh), **admin ẩn và gỡ ẩn tin kèm lý do** cùng danh sách tin để kiểm duyệt, **admin quản lý danh mục phường và tiện ích** | Nút tải ảnh trong biểu mẫu tin; màn hình kiểm duyệt cho admin; `moderationReason` đã có sẵn trong API tin của chủ trọ. **Không cần hàng chờ duyệt** |
-| 9 | **Dùng thử miễn phí và hạn mức tin** cho chủ trọ: dùng thử 30 ngày, tối đa 2 tin đang hiện (admin đổi được hai con số này). Hết kỳ dùng thử mà chưa mua gói thì tin của chủ trọ tự biến khỏi danh sách công khai. **Đã có**: API admin xem và đổi hai tham số (mục 6.24); hạn dùng thử đặt lúc đăng ký (6.1); chặn đăng và hiện lại tin khi hết dùng thử hoặc đủ hạn mức (6.18, 6.23, mã lỗi `MEMBERSHIP_REQUIRED` và `LISTING_QUOTA_REACHED`). **Chưa có**: tin biến khỏi công khai khi hết kỳ hoặc vượt hạn mức, `GET /me/membership`, cờ `isPublic` | Lỗi chặn đăng hoặc hiện thêm tin kèm gợi ý mua gói; hiện ngày hết hạn dùng thử và số tin còn lại |
+| 9 | **Dùng thử miễn phí và hạn mức tin** cho chủ trọ: dùng thử 30 ngày, tối đa 2 tin đang hiện (admin đổi được hai con số này). Hết kỳ dùng thử mà chưa mua gói thì tin của chủ trọ tự biến khỏi danh sách công khai. **Đã có**: API admin xem và đổi hai tham số (mục 6.24); hạn dùng thử đặt lúc đăng ký (6.1); chặn đăng và hiện lại tin khi hết dùng thử hoặc đủ hạn mức (6.18, 6.23, mã lỗi `MEMBERSHIP_REQUIRED` và `LISTING_QUOTA_REACHED`); tin biến khỏi danh sách và chi tiết công khai khi hết kỳ hoặc vượt hạn mức, ẩn bớt theo thứ tự đăng (6.19, 6.20). **Chưa có**: `GET /me/membership`, cờ `isPublic` | Lỗi chặn đăng hoặc hiện thêm tin kèm gợi ý mua gói; hiện ngày hết hạn dùng thử và số tin còn lại |
 | 10 | **Mua gói và gia hạn theo tháng**, **thanh toán thử** (bấm xác nhận là có gói, không có tiền thật, không chuyển sang cổng thanh toán nào, nên **không có trang VNPay**) | Trang chọn gói, nút thanh toán thử, lịch sử đơn |
 | 11 | **Theo dõi chủ trọ** và hiển thị số người theo dõi, tổng lượt xem tin | Nút theo dõi, số liệu trên hồ sơ chủ trọ |
 | 12 | **Lưu phòng yêu thích** cho người tìm trọ | Nút lưu trên tin, trang danh sách tin đã lưu |
@@ -950,6 +955,16 @@ Backend sẽ làm theo thứ tự dưới đây. Mỗi mục khi xong sẽ vào 
 ## 11. Nhật ký thay đổi
 
 Mới nhất ở trên cùng. Mục nào **phá vỡ** cách FE đang gọi sẽ ghi rõ "ĐỔI KHÁC VỚI TRƯỚC".
+
+### 2026-10-19 · Tin biến khỏi công khai khi hết dùng thử hoặc vượt hạn mức (mốc 3 của dùng thử)
+
+- **ĐỔI KHÁC VỚI TRƯỚC**: `GET /listings` và `GET /listings/:slugCode` giờ chỉ trả tin của chủ trọ **còn trong kỳ dùng thử** và nằm trong **hạn mức** của họ. Mục này thay cho dòng "Chưa có (mốc sau)" của mốc 2 bên dưới: tin của chủ trọ hết dùng thử **không còn hiện** công khai.
+- Hết kỳ dùng thử (so chặt: đúng lúc `trial_ends_at` là hết) mà chưa có gói thì mọi tin của chủ trọ biến khỏi danh sách và chi tiết công khai (chi tiết 404 `LISTING_NOT_FOUND`) ngay, không cần việc nền. Chủ trọ vẫn xem, sửa, ẩn, xóa tin của mình ở `/me/listings`.
+- Admin hạ `trial_listing_limit` thấp hơn số tin đang hiện của một chủ trọ thì chỉ các tin **đăng sớm nhất** (theo `createdAt`, rồi `id`) còn hiện công khai. Tin còn lại bị ẩn bớt khỏi danh sách và chi tiết, nhưng `status` vẫn là `visible` và vẫn tính vào số tin đang hiện. Chủ trọ ẩn hoặc xóa một tin thì tin đăng sớm nhất kế tiếp trong số bị ẩn bớt hiện lại. Nâng hạn mức thì hiện lại ngay.
+- Hình dạng phản hồi **không đổi**; `total` và phân trang của `GET /listings` đã tính theo luật mới, nên số trang có thể ít đi so với trước. Chủ trọ hết dùng thử gọi chi tiết tin của chính mình ở route công khai cũng 404 (dùng `/me/listings/:id`).
+- Admin không có kỳ dùng thử nên tin do admin sở hữu (nếu có) không hiện công khai.
+- **Chưa có** (mốc sau): `GET /me/membership` và cờ `isPublic` để chủ trọ biết tin nào đang bị ẩn bớt.
+- **FE cần làm**: trang tìm trọ không cần đổi gì. Trang chi tiết đã xử lý 404 thì nay gặp thêm các tin vừa biến mất vì hết dùng thử hoặc hạn mức (báo "tin không còn hiển thị"). Trang quản lý tin của chủ trọ chưa phân biệt được tin bị ẩn bớt, chờ cờ `isPublic`.
 
 ### 2026-10-19 · Dùng thử và chặn đăng tin theo hạn mức (mốc 2 của dùng thử)
 

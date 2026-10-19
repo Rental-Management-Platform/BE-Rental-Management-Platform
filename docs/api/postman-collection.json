@@ -136,6 +136,11 @@
       "description": "Tin thứ hai của chủ trọ thử hạn mức (folder 11)."
     },
     {
+      "key": "quotaListingBCode",
+      "value": "",
+      "description": "Mã ngắn của tin thứ hai của chủ trọ thử hạn mức (folder 11), để mở chi tiết công khai."
+    },
+    {
       "key": "quotaListingC",
       "value": "",
       "description": "Tin thứ ba của chủ trọ thử hạn mức (folder 11)."
@@ -3007,7 +3012,7 @@
                 }
               ]
             },
-            "description": "Công khai. Chỉ tin đang hiện: `status` `visible`, chưa xóa, nhà trọ chưa xóa, chủ trọ đang hoạt động. Mới nhất trước. Mỗi dòng là **tin tóm tắt**: không có số điện thoại, không có mô tả. Giới hạn 300 lần mỗi phút theo IP.",
+            "description": "Công khai. Chỉ tin đang hiện công khai: `status` `visible`, chưa xóa, nhà trọ chưa xóa, chủ trọ đang hoạt động, chủ trọ còn trong kỳ dùng thử, và tin nằm trong hạn mức của chủ trọ (chỉ các tin đăng sớm nhất theo `trial_listing_limit`, xem folder 11). Mới nhất trước. Mỗi dòng là **tin tóm tắt**: không có số điện thoại, không có mô tả. Giới hạn 300 lần mỗi phút theo IP.",
             "auth": {
               "type": "noauth"
             }
@@ -4771,7 +4776,7 @@
     },
     {
       "name": "11 Dùng thử và hạn mức tin",
-      "description": "Kỳ dùng thử lúc đăng ký và chặn đăng, hiện lại tin theo hạn mức (spec 0003 dùng thử, mốc 2). **Chạy sau folder 07** (cần `wardCode`) **và từ trên xuống**; cần đã `npm run seed` (hai tham số mặc định 30 ngày và 2 tin) và điền `adminEmail`, `adminPassword`. Folder tự đăng nhập admin, đăng ký **hai** chủ trọ (tốn 2 trong 10 lần đăng ký mỗi giờ theo IP) và tự trả `trial_days` về 30, `trial_listing_limit` về 2 sau khi đổi; nếu chạy dở thì chạy lại hai request \"đặt lại\". Chưa thử được ở đây: tin biến khỏi công khai khi hết dùng thử (mốc 3) và `GET /me/membership` (mốc 4).",
+      "description": "Kỳ dùng thử lúc đăng ký và chặn đăng, hiện lại tin theo hạn mức (spec 0003 dùng thử, mốc 2 và 3). **Chạy sau folder 07** (cần `wardCode`) **và từ trên xuống**; cần đã `npm run seed` (hai tham số mặc định 30 ngày và 2 tin) và điền `adminEmail`, `adminPassword`. Folder tự đăng nhập admin, đăng ký **hai** chủ trọ (tốn 2 trong 10 lần đăng ký mỗi giờ theo IP) và tự trả `trial_days` về 30, `trial_listing_limit` về 2 sau khi đổi; nếu chạy dở thì chạy lại hai request \"đặt lại\". Mốc 3 thử được ở đây phần hạ hạn mức: chỉ các tin đăng sớm nhất còn hiện công khai, tin bị ẩn bớt trả 404 ở chi tiết, `status` vẫn `visible`. Chưa thử được bằng Postman: tin biến khỏi công khai khi hết dùng thử, vì chủ trọ hết dùng thử không còn đăng được tin và cần sửa `users.trial_ends_at` trực tiếp trong DB (các bước ở `verify.md` của spec 0003); và `GET /me/membership` (mốc 4).",
       "item": [
         {
           "name": "Đăng nhập admin",
@@ -5004,7 +5009,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
-                  "pm.collectionVariables.set('quotaListingB', pm.response.json().id);"
+                  "pm.collectionVariables.set('quotaListingB', pm.response.json().id);",
+                  "pm.collectionVariables.set('quotaListingBCode', pm.response.json().code);"
                 ]
               }
             }
@@ -5381,6 +5387,124 @@
           }
         },
         {
+          "name": "Hạ hạn mức: danh sách công khai chỉ còn tin đăng sớm nhất (GET /listings)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "const ids = pm.response.json().items.map((i) => i.id);",
+                  "pm.test('tin thứ nhất (đăng sớm nhất) còn hiện', () => pm.expect(ids).to.include(pm.collectionVariables.get('quotaListingA')));",
+                  "pm.test('tin thứ hai bị ẩn bớt khỏi danh sách', () => pm.expect(ids).to.not.include(pm.collectionVariables.get('quotaListingB')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings?q=han muc&pageSize=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "han muc"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Hạn mức đang là 1 mà chủ trọ có 2 tin `visible`: chỉ tin đăng sớm nhất (tin thứ nhất) còn trong danh sách, tin thứ hai bị ẩn bớt nhưng `status` của nó vẫn `visible` (xem request sau). Luật xếp hạng theo `created_at` rồi `id`.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Hạ hạn mức: chi tiết tin bị ẩn bớt trả 404 (GET /listings/:slugCode)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 404', () => pm.response.to.have.status(404));",
+                  "pm.test('mã LISTING_NOT_FOUND', () => pm.expect(pm.response.json().code).to.eql('LISTING_NOT_FOUND'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{quotaListingBCode}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{quotaListingBCode}}"
+              ]
+            },
+            "description": "Tin thứ hai đang bị ẩn bớt vì vượt hạn mức nên chi tiết công khai trả 404 `LISTING_NOT_FOUND`, giống tin không tồn tại.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Hạ hạn mức: chủ trọ vẫn thấy tin bị ẩn bớt, status vẫn visible (GET /me/listings/:id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('status vẫn visible dù đã bị ẩn bớt khỏi công khai', () => pm.expect(pm.response.json().status).to.eql('visible'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me/listings/{{quotaListingB}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "listings",
+                "{{quotaListingB}}"
+              ]
+            },
+            "description": "Chủ trọ luôn xem được tin của mình ở mọi trạng thái. Tin này vẫn `visible` và vẫn tính vào số tin đang hiện, chỉ là không còn hiện công khai.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{quotaToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
           "name": "Thử lỗi: đăng tin khi số tin đang hiện vượt hạn mức mới",
           "event": [
             {
@@ -5488,6 +5612,84 @@
                   "type": "string"
                 }
               ]
+            }
+          }
+        },
+        {
+          "name": "Đặt lại hạn mức 2: tin bị ẩn bớt hiện lại ngay (GET /listings)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "const ids = pm.response.json().items.map((i) => i.id);",
+                  "pm.test('cả hai tin hiện lại', () => {",
+                  "    pm.expect(ids).to.include(pm.collectionVariables.get('quotaListingA'));",
+                  "    pm.expect(ids).to.include(pm.collectionVariables.get('quotaListingB'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings?q=han muc&pageSize=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "han muc"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Hạn mức trở về 2: cả hai tin hiện lại ngay mà không cần việc nền, vì luật được tính lúc đọc.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Đặt lại hạn mức 2: chi tiết tin thứ hai mở lại được (GET /listings/:slugCode)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{quotaListingBCode}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{quotaListingBCode}}"
+              ]
+            },
+            "description": "Cùng tin ở request hạ hạn mức đã trả 404; nay trả 200.",
+            "auth": {
+              "type": "noauth"
             }
           }
         },

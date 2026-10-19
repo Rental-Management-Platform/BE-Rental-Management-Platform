@@ -11,6 +11,7 @@ import type { Prisma } from '../generated/prisma/client';
 import { MembershipsService } from '../memberships/memberships.service';
 import { ModerationLogsRepository } from '../moderation/moderation-logs.repository';
 import { PropertiesRepository } from '../properties/properties.repository';
+import { SettingsService } from '../settings/settings.service';
 import { UsersService } from '../users/users.service';
 import type { CreateListingDto } from './dto/create-listing.dto';
 import type {
@@ -37,7 +38,7 @@ import {
 	toOwnerSummary,
 } from './listings.mapper';
 import { ListingsRepository } from './listings.repository';
-import type { ListingChanges } from './listings.repository';
+import type { ListingChanges, PublicVisibility } from './listings.repository';
 import { toSearchWords } from './search-words';
 import { ViewDeduplicator } from './view-deduplicator';
 
@@ -75,6 +76,7 @@ export class ListingsService {
 		private readonly views: ViewDeduplicator,
 		private readonly users: UsersService,
 		private readonly memberships: MembershipsService,
+		private readonly settings: SettingsService,
 	) {}
 
 	// ----- đăng và sửa -----
@@ -336,9 +338,13 @@ export class ListingsService {
 
 	// ----- đọc công khai -----
 
-	/** Danh sách công khai có lọc, sắp xếp và phân trang. Chỉ tin thỏa `visibleListingsQuery`. */
+	/**
+	 * Danh sách công khai có lọc, sắp xếp và phân trang. Chỉ tin thỏa `publicListingCondition` (spec 0003 AC-8,
+	 * AC-9). `now` là đồng hồ ứng dụng do controller lấy một lần mỗi request.
+	 */
 	async listPublic(
 		query: ListListingsQueryDto,
+		now: Date,
 	): Promise<Page<ListingSummaryResponse>> {
 		if (
 			query.minPrice !== undefined &&
@@ -361,6 +367,7 @@ export class ListingsService {
 				maxPrice: query.maxPrice,
 				sort: query.sort,
 			},
+			await this.publicVisibility(now),
 			skipOf(query),
 			query.pageSize,
 		);
@@ -368,16 +375,21 @@ export class ListingsService {
 	}
 
 	/**
-	 * Chi tiết công khai theo `slug-mã`. Chỉ phần mã được dùng để tra. Mỗi người xem được cộng một lượt trong 30
-	 * phút (chủ tin không tính); số điện thoại chỉ có khi người gọi đã đăng nhập.
+	 * Chi tiết công khai theo `slug-mã`. Chỉ phần mã được dùng để tra. Tin hết hiển thị công khai (chủ trọ hết
+	 * dùng thử, hoặc tin bị ẩn bớt vì vượt hạn mức) thì 404 như tin không tồn tại. Mỗi người xem được cộng một
+	 * lượt trong 30 phút (chủ tin không tính); số điện thoại chỉ có khi người gọi đã đăng nhập.
 	 */
 	async getPublicDetail(
 		slugCode: string,
 		viewer: Viewer,
+		now: Date,
 	): Promise<ListingDetailResponse> {
 		const code = extractListingCode(slugCode);
 		if (code === null) throw new AppException(ErrorCode.LISTING_NOT_FOUND);
-		const row = await this.repository.findPublicByCode(code);
+		const row = await this.repository.findPublicByCode(
+			code,
+			await this.publicVisibility(now),
+		);
 		if (row === null) throw new AppException(ErrorCode.LISTING_NOT_FOUND);
 
 		let viewCount = row.viewCount;
@@ -397,6 +409,16 @@ export class ListingsService {
 	}
 
 	// ----- dùng chung -----
+
+	/** Hạn mức dùng thử đọc một lần mỗi request cho luật hiển thị công khai (spec 0003, "Value sourcing"). */
+	private async publicVisibility(now: Date): Promise<PublicVisibility> {
+		return {
+			now,
+			trialListingLimit: await this.settings.getValue(
+				'trial_listing_limit',
+			),
+		};
+	}
 
 	/** Tin chưa xóa của người gọi: 404 nếu không có, 403 nếu của chủ trọ khác. */
 	private async requireOwned(user: RequestUser, id: string) {

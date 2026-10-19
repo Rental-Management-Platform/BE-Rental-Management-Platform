@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { MembershipsModule } from '../memberships/memberships.module';
 import { ModerationModule } from '../moderation/moderation.module';
 import { PropertiesModule } from '../properties/properties.module';
+import { SettingsModule } from '../settings/settings.module';
 import { UsersModule } from '../users/users.module';
 import { ListingsDataModule } from './listings-data.module';
 import {
@@ -19,6 +20,7 @@ import { ViewDeduplicator } from './view-deduplicator';
 		PropertiesModule,
 		ModerationModule,
 		MembershipsModule,
+		SettingsModule,
 		UsersModule,
 	],
 	controllers: [

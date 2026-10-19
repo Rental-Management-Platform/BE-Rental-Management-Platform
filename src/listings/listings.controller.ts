@@ -69,7 +69,7 @@ export class ListingsController {
 	list(
 		@Query() query: ListListingsQueryDto,
 	): Promise<Page<ListingSummaryResponse>> {
-		return this.listings.listPublic(query);
+		return this.listings.listPublic(query, new Date());
 	}
 
 	/**
@@ -85,10 +85,11 @@ export class ListingsController {
 		@OptionalUser() user: RequestUser | undefined,
 		@Req() req: Request,
 	): Promise<ListingDetailResponse> {
-		return this.listings.getPublicDetail(slugCode, {
-			userId: user?.userId,
-			ip: req.ip ?? 'unknown',
-		});
+		return this.listings.getPublicDetail(
+			slugCode,
+			{ userId: user?.userId, ip: req.ip ?? 'unknown' },
+			new Date(),
+		);
 	}
 
 	@Patch(':id')
