@@ -12,6 +12,7 @@ import { AppConfigModule } from './config/app-config.module';
 import { PrismaModule } from './database/prisma.module';
 import { MembershipsModule } from './memberships/memberships.module';
 import { ModerationModule } from './moderation/moderation.module';
+import { OrdersModule } from './orders/orders.module';
 import { PlansModule } from './plans/plans.module';
 import { PropertiesModule } from './properties/properties.module';
 import { SettingsModule } from './settings/settings.module';
@@ -32,6 +33,7 @@ import { UsersModule } from './users/users.module';
 		SettingsModule,
 		MembershipsModule,
 		PlansModule,
+		OrdersModule,
 	],
 	controllers: [AppController],
 	providers: [

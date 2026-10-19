@@ -109,21 +109,34 @@ export interface PublicVisibility {
 	readonly trialListingLimit: number;
 }
 
-/** Phép nối mà `publicListingCondition` và mọi bộ lọc công khai giả định: `l` tin, `p` nhà trọ, `u` chủ trọ. */
-const PUBLIC_FROM = Prisma.sql`FROM listings l
+/**
+ * Phép nối mà `publicListingCondition` và mọi bộ lọc công khai giả định: `l` tin, `p` nhà trọ, `u` chủ trọ và
+ * `plan` là kỳ gói đang chạy của chủ trọ (spec 0004 AC-9): `starts_at` tính, `ends_at` không tính, nên đúng lúc
+ * `ends_at` là hết. Ràng buộc loại trừ ở DB bảo đảm tối đa một kỳ nên `LIMIT 1` chỉ là dây an toàn; không có kỳ thì
+ * `plan.max_listings` là `NULL`. Luôn đi cùng `publicListingCondition` với cùng `now`.
+ */
+export function publicListingFrom(now: Date): Prisma.Sql {
+	return Prisma.sql`FROM listings l
 	JOIN properties p ON p.id = l.property_id
-	JOIN users u ON u.id = p.landlord_id`;
+	JOIN users u ON u.id = p.landlord_id
+	LEFT JOIN LATERAL (
+		SELECT o.max_listings FROM subscriptions s
+		JOIN orders o ON o.id = s.order_id
+		WHERE s.user_id = u.id AND tstzrange(s.starts_at, s.ends_at) @> ${now.toISOString()}::timestamptz
+		LIMIT 1
+	) plan ON true`;
+}
 
 /**
  * Điều kiện để một tin hiện ra công khai, viết đúng một lần cho mọi đường đọc công khai (spec 0003, "Điều kiện
- * hiển thị công khai"; thay điều kiện Prisma cũ của spec 0002). Tính lúc đọc từ chính các cột, không cờ sao
- * chép, nên khóa tài khoản, xóa mềm, hết dùng thử hay hạ hạn mức có hiệu lực ngay:
+ * hiển thị công khai"; spec 0004 AC-9 thêm gói). Tính lúc đọc từ chính các cột, không cờ sao chép, nên khóa tài
+ * khoản, xóa mềm, hết gói, hết dùng thử hay hạ hạn mức có hiệu lực ngay:
  * - tin `visible` chưa xóa mềm, nhà trọ chưa xóa mềm, chủ trọ `active` chưa xóa mềm;
- * - chủ trọ còn dùng thử: `trial_ends_at` lớn hơn `now` (so chặt, giống `MembershipsService.resolve`);
- * - hạng của tin không vượt hạn mức: hạng = 1 cộng số tin `visible` chưa xóa của cùng chủ trọ có
+ * - hạn mức hiệu lực của chủ trọ: `max_listings` của kỳ gói đang chạy nếu có, không thì `trialListingLimit` khi
+ *   `trial_ends_at` lớn hơn `now` (so chặt, giống `MembershipsService.resolve`), không thì 0;
+ * - hạng của tin nhỏ hơn hạn mức hiệu lực: hạng = số tin `visible` chưa xóa của cùng chủ trọ có
  *   `(created_at, id)` nhỏ hơn, nên chỉ N tin đăng sớm nhất qua. Hạn mức 0 thì không tin nào qua.
- * Hàng 10: gói còn hiệu lực thay hai vế dùng thử bằng hạn mức của gói, đúng ở đây. Bọc trong ngoặc để ghép
- * bằng `AND` với bộ lọc an toàn dù sau này có `OR`.
+ * Bọc trong ngoặc để ghép bằng `AND` với bộ lọc dù sau này có `OR`. Cần phép nối của `publicListingFrom`.
  *
  * `now` đi vào dưới dạng chuỗi ISO có `Z` rồi mới ép `timestamptz`: tham số `Date` của Prisma được gửi như giờ
  * UTC không kèm múi giờ, nên `$1::timestamptz` sẽ bị hiểu theo múi giờ của phiên và lệch (đã kiểm với phiên
@@ -137,13 +150,15 @@ export function publicListingCondition(
 		l.status = 'visible' AND l.deleted_at IS NULL
 		AND p.deleted_at IS NULL
 		AND u.status = 'active' AND u.deleted_at IS NULL
-		AND u.trial_ends_at > ${now.toISOString()}::timestamptz
 		AND (
 			SELECT count(*) FROM listings l2
 			JOIN properties p2 ON p2.id = l2.property_id
 			WHERE p2.landlord_id = u.id AND l2.status = 'visible' AND l2.deleted_at IS NULL
 				AND (l2.created_at, l2.id) < (l.created_at, l.id)
-		) < ${trialListingLimit}
+		) < COALESCE(
+			plan.max_listings,
+			CASE WHEN u.trial_ends_at > ${now.toISOString()}::timestamptz THEN ${trialListingLimit}::int ELSE 0 END
+		)
 	)`;
 }
 
@@ -235,14 +250,15 @@ export class ListingsRepository {
 			],
 			' AND ',
 		);
+		const from = publicListingFrom(visibility.now);
 		const [pageRows, countRows] = await Promise.all([
 			this.prisma.$queryRaw<{ id: string }[]>`
-				SELECT l.id ${PUBLIC_FROM}
+				SELECT l.id ${from}
 				WHERE ${where}
 				ORDER BY ${ORDER_BY[filter.sort]}
 				LIMIT ${take} OFFSET ${skip}`,
 			this.prisma.$queryRaw<{ total: number }[]>`
-				SELECT count(*)::int AS total ${PUBLIC_FROM}
+				SELECT count(*)::int AS total ${from}
 				WHERE ${where}`,
 		]);
 		const total = countRows[0]?.total ?? 0;
@@ -267,7 +283,7 @@ export class ListingsRepository {
 		visibility: PublicVisibility,
 	): Promise<PublicDetailRow | null> {
 		const matched = await this.prisma.$queryRaw<{ id: string }[]>`
-			SELECT l.id ${PUBLIC_FROM}
+			SELECT l.id ${publicListingFrom(visibility.now)}
 			WHERE l.code = ${code}
 				AND ${publicListingCondition(visibility.now, visibility.trialListingLimit)}
 			LIMIT 1`;

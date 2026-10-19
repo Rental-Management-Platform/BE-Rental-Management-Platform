@@ -2,28 +2,34 @@ import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../generated/prisma/client';
 import { ListingsRepository } from '../listings/listings.repository';
 import { SettingsService } from '../settings/settings.service';
+import {
+	SubscriptionsRepository,
+	type ActiveSubscription,
+} from '../subscriptions/subscriptions.repository';
 import { UsersService } from '../users/users.service';
 import type { MembershipResponse } from './dto/membership.response';
 import { toMembershipResponse } from './memberships.mapper';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** `plan` (gói còn hiệu lực) do hàng 10 thêm vào đây. */
-export type MembershipState = 'trial' | 'expired';
+export type MembershipState = 'plan' | 'trial' | 'expired';
 
-/** Hạn mức tin đang hiện của một chủ trọ tại một thời điểm, suy ra lúc đọc và không lưu (spec 0003, AC-3). */
+/** Hạn mức tin đang hiện của một chủ trọ tại một thời điểm, suy ra lúc đọc và không lưu (spec 0003 AC-3, spec 0004 AC-8). */
 export interface Membership {
 	readonly state: MembershipState;
 	/** Số tin `visible` tối đa được hiện cùng lúc; 0 khi `expired`. */
 	readonly limit: number;
 	/** Cột `users.trial_ends_at`; `null` với tài khoản không phải chủ trọ. */
 	readonly trialEndsAt: Date | null;
+	/** Kỳ gói đang chạy (kèm phần đã chốt của đơn); chỉ có khi `state = 'plan'`, còn lại `null`. */
+	readonly subscription: ActiveSubscription | null;
 }
 
 /**
- * Nơi duy nhất trả lời "chủ trọ này được hiện bao nhiêu tin" (spec 0003, "Hạn mức hiện hành"). Mọi chỗ cần
- * hạn mức (cổng đăng và hiện tin, `/me/membership`, mảnh SQL hiển thị công khai) hỏi qua đây để hàng 10 chỉ
- * phải thêm nhánh "gói còn hiệu lực" vào `resolve`. `now` luôn do nơi gọi truyền xuống (một đồng hồ mỗi request).
+ * Nơi duy nhất trả lời "chủ trọ này được hiện bao nhiêu tin" (spec 0003, "Hạn mức hiện hành"; spec 0004 thêm
+ * nhánh gói). Mọi chỗ cần hạn mức (cổng đăng và hiện tin, `/me/membership`) hỏi qua đây; mảnh SQL hiển thị công
+ * khai (`publicListingCondition`) là bản SQL của cùng luật. `now` luôn do nơi gọi truyền xuống (một đồng hồ mỗi
+ * request).
  */
 @Injectable()
 export class MembershipsService {
@@ -31,16 +37,19 @@ export class MembershipsService {
 		private readonly users: UsersService,
 		private readonly settings: SettingsService,
 		private readonly listings: ListingsRepository,
+		private readonly subscriptions: SubscriptionsRepository,
 	) {}
 
 	/**
-	 * Các nhánh theo thứ tự (nhánh 1 thuộc hàng 10):
-	 * 1. (hàng 10) gói còn hiệu lực: `state = 'plan'`, hạn mức của gói.
+	 * Các nhánh theo thứ tự:
+	 * 1. Có kỳ gói đang chạy (`starts_at <= now < ends_at`, đúng lúc `ends_at` là hết): `state = 'plan'`, hạn mức
+	 *    là `max_listings` đã chốt trên đơn của kỳ đó.
 	 * 2. `trial_ends_at` lớn hơn `now` (so sánh chặt: đúng lúc `trial_ends_at` là hết): `state = 'trial'`, hạn mức
 	 *    là `trial_listing_limit`.
 	 * 3. Còn lại, kể cả tài khoản không có `trial_ends_at` hoặc không còn trong DB: `expired`, hạn mức 0.
 	 *
-	 * Có `tx` thì mọi lần đọc đi qua giao dịch đó (lúc đang giữ khóa dòng `users`, tránh mượn thêm kết nối).
+	 * `trialEndsAt` luôn có trong kết quả (mua gói không đổi nó). Có `tx` thì mọi lần đọc đi qua giao dịch đó
+	 * (lúc đang giữ khóa dòng `users`, tránh mượn thêm kết nối), và các lần đọc chạy tuần tự.
 	 */
 	async resolve(
 		userId: string,
@@ -49,25 +58,45 @@ export class MembershipsService {
 	): Promise<Membership> {
 		const user = await this.users.findById(userId, tx);
 		const trialEndsAt = user?.trialEndsAt ?? null;
+		const subscription = await this.subscriptions.findActive(
+			userId,
+			now,
+			tx,
+		);
+		if (subscription !== null) {
+			return {
+				state: 'plan',
+				limit: subscription.order.maxListings,
+				trialEndsAt,
+				subscription,
+			};
+		}
 		if (trialEndsAt !== null && trialEndsAt.getTime() > now.getTime()) {
 			return {
 				state: 'trial',
 				limit: await this.settings.getValue('trial_listing_limit', tx),
 				trialEndsAt,
+				subscription: null,
 			};
 		}
-		return { state: 'expired', limit: 0, trialEndsAt };
+		return { state: 'expired', limit: 0, trialEndsAt, subscription: null };
 	}
 
 	/**
-	 * Trạng thái dùng thử và hạn mức của chính chủ trọ cho `GET /me/membership` (spec 0003 AC-10): hạn mức từ
-	 * `resolve`, số tin đang hiện đếm như cổng đăng tin (tin bị ẩn bớt vì vượt hạn mức vẫn tính). Đọc, không
+	 * Trạng thái gói, dùng thử và hạn mức của chính chủ trọ cho `GET /me/membership` (spec 0003 AC-10, spec 0004
+	 * AC-10): hạn mức từ `resolve`, số tin đang hiện đếm như cổng đăng tin (tin bị ẩn bớt vì vượt hạn mức vẫn
+	 * tính), `paidUntil` là `ends_at` lớn nhất trong các kỳ của chủ trọ (chỉ tra khi có kỳ đang chạy). Đọc, không
 	 * khóa: con số chỉ để hiển thị, cổng đăng và hiện tin mới là nơi giữ hạn mức.
 	 */
 	async getStatus(userId: string, now: Date): Promise<MembershipResponse> {
 		const membership = await this.resolve(userId, now);
 		const visibleCount = await this.listings.countVisibleByLandlord(userId);
-		return toMembershipResponse(membership, visibleCount, now);
+		const paidUntil =
+			membership.subscription === null
+				? null
+				: ((await this.subscriptions.findLatestEndsAt(userId)) ??
+					membership.subscription.endsAt);
+		return toMembershipResponse(membership, visibleCount, paidUntil, now);
 	}
 
 	/**

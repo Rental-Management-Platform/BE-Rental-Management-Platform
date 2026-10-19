@@ -25,7 +25,7 @@ Quy ước đọc file: phần nào ghi **Chưa có** nghĩa là đã lên kế 
 
 ## 1. Hệ thống làm gì
 
-Nền tảng quản lý và cho thuê nhà trọ. Hiện backend đã có phần **tài khoản và phân quyền**, danh mục địa chỉ và tiện ích, **nhà trọ của chủ trọ** (tạo, xem, sửa, xóa mềm) và **tin đăng** (đăng, sửa, ẩn, hiện, xóa; khách xem danh sách và chi tiết); **bảng giá gói** cùng phần admin quản lý gói (mục 6.26); phần ảnh tin, admin ẩn tin, đơn mua gói sẽ làm tiếp (mục 10).
+Nền tảng quản lý và cho thuê nhà trọ. Hiện backend đã có phần **tài khoản và phân quyền**, danh mục địa chỉ và tiện ích, **nhà trọ của chủ trọ** (tạo, xem, sửa, xóa mềm) và **tin đăng** (đăng, sửa, ẩn, hiện, xóa; khách xem danh sách và chi tiết); **bảng giá gói** cùng phần admin quản lý gói (mục 6.26), **đơn mua gói và thanh toán thử** (mục 6.27); **gói đổi hạn mức tin** (mục 6.25); phần ảnh tin và admin ẩn tin sẽ làm tiếp (mục 10).
 
 ### Ba loại tài khoản
 
@@ -39,7 +39,7 @@ Mỗi tài khoản chỉ thuộc **một** loại, chọn lúc đăng ký và **
 
 ### Mô hình kinh doanh (để FE hiểu bối cảnh)
 
-Đăng ký miễn phí. Người tìm trọ dùng miễn phí mãi. Người đăng bài được dùng thử khoảng một tháng với khoảng 1 đến 2 tin, muốn tiếp tục phải mua gói theo tháng. Admin là người vận hành và thu tiền. **Kỳ dùng thử lúc đăng ký, việc chặn đăng và hiện tin theo hạn mức, tin biến khỏi công khai khi hết kỳ, và API xem trạng thái dùng thử (`GET /me/membership`) đã chạy** (từ 2026-10-19, mục 6.1, 6.18, 6.19, 6.23 và 6.25). **Bảng giá gói công khai và phần admin quản lý gói đã có** (từ 2026-10-19, mục 6.26); **tạo đơn, thanh toán thử và gia hạn chưa có API** (mục 10), nên hiện chưa mua được gói nào.
+Đăng ký miễn phí. Người tìm trọ dùng miễn phí mãi. Người đăng bài được dùng thử khoảng một tháng với khoảng 1 đến 2 tin, muốn tiếp tục phải mua gói theo tháng. Admin là người vận hành và thu tiền. **Kỳ dùng thử lúc đăng ký, việc chặn đăng và hiện tin theo hạn mức, tin biến khỏi công khai khi hết kỳ, và API xem trạng thái dùng thử (`GET /me/membership`) đã chạy** (từ 2026-10-19, mục 6.1, 6.18, 6.19, 6.23 và 6.25). **Bảng giá gói công khai và phần admin quản lý gói đã có** (từ 2026-10-19, mục 6.26); **Đơn mua gói, thanh toán thử và gia hạn nối tiếp đã có API** (từ 2026-10-19, mục 6.27), và **gói đã đổi hạn mức tin** (từ 2026-10-19, mục 6.25): mua xong, chủ trọ hết dùng thử đăng tiếp được ngay và tin của họ hiện lại ngay.
 
 ### Trạng thái các tính năng
 
@@ -59,7 +59,8 @@ Mỗi tài khoản chỉ thuộc **một** loại, chọn lúc đăng ký và **
 | Tin biến khỏi công khai khi hết dùng thử hoặc vượt hạn mức (ẩn bớt theo thứ tự đăng) | Có (mới, 2026-10-19, mục 6.19, 6.20, 8) |
 | Xem kỳ dùng thử và hạn mức của tôi (`GET /me/membership`); cờ `isPublic` ở tin của chủ trọ | Có (mới, 2026-10-19, mục 6.25 và 6.18) |
 | Bảng giá gói (công khai); admin tạo, sửa, tắt, xóa gói | Có (mới, 2026-10-19, mục 6.26) |
-| Tạo đơn mua gói, thanh toán thử, gia hạn, lịch sử đơn; gói đổi hạn mức tin | Chưa có (đang làm từng phần, mục 10) |
+| Tạo đơn mua gói, hủy đơn, thanh toán thử, gia hạn nối tiếp, lịch sử đơn | Có (mới, 2026-10-19, mục 6.27) |
+| Gói đổi hạn mức tin và hiển thị công khai; `state = plan` và `subscription` trong `GET /me/membership` | Có (mới, 2026-10-19, mục 6.25) |
 | Theo dõi chủ trọ, lượt xem | Chưa có |
 
 ---
@@ -154,14 +155,14 @@ Lưu ý: **một trường có thể xuất hiện nhiều lần** trong `errors
 | `LISTING_NOT_FOUND` | 404 | Tin không có hoặc đã xóa; ở route công khai còn gồm tin không hiển thị công khai vì bất kỳ lý do nào (đang ẩn, chủ trọ bị khóa...), kể cả với chính chủ, và đường dẫn không lấy được mã tin | Hiện "tin không còn", quay về danh sách |
 | `LISTING_STATE_INVALID` | 409 | Chuyển trạng thái tin không hợp lệ (ẩn tin không đang hiện, hiện tin đã hiện, ẩn tin đang bị admin ẩn) | Tải lại tin (`GET /me/listings/:id`) rồi cập nhật nút |
 | `LISTING_HIDDEN_BY_ADMIN` | 403 | Chủ trọ cố hiện lại tin đang bị admin ẩn | Hiện nhãn "bị quản trị viên ẩn" kèm `moderationReason`, ẩn nút "Hiện" |
-| `MEMBERSHIP_REQUIRED` | 403 | Đăng tin hoặc hiện lại tin khi **kỳ dùng thử đã hết** và chưa có gói (cả tài khoản admin, vì admin không có kỳ dùng thử). Chỉ hai API đăng và hiện tin trả mã này | Hiện `message` kèm nút "Mua gói" (trang mua gói chưa có, mục 10). Vẫn cho ẩn, sửa, xóa tin và quản lý nhà trọ |
-| `LISTING_QUOTA_REACHED` | 403 | Đăng tin hoặc hiện lại tin khi **còn trong kỳ dùng thử nhưng số tin đang hiện đã bằng hoặc vượt hạn mức** | Hiện `message`, gợi ý "ẩn hoặc xóa bớt một tin" (hoặc nâng gói). Chưa có API cho biết hạn mức, xem mục 9 |
-| `PLAN_NOT_FOUND` | 404 | Admin sửa hoặc xóa gói không có (về sau cả đặt đơn với gói không có) | Hiện `message`, tải lại danh sách gói |
+| `MEMBERSHIP_REQUIRED` | 403 | Đăng tin hoặc hiện lại tin khi **kỳ dùng thử đã hết và không có gói đang chạy** (cả tài khoản admin, vì admin không có kỳ dùng thử). Chỉ hai API đăng và hiện tin trả mã này. Mua gói xong là hết mã này | Hiện `message` kèm nút "Mua gói" dẫn tới trang bảng giá (mục 7). Vẫn cho ẩn, sửa, xóa tin và quản lý nhà trọ |
+| `LISTING_QUOTA_REACHED` | 403 | Đăng tin hoặc hiện lại tin khi **còn hạn mức (gói đang chạy hoặc kỳ dùng thử) nhưng số tin đang hiện đã bằng hoặc vượt hạn mức đó** | Hiện `message`, gợi ý "ẩn hoặc xóa bớt một tin" (hoặc mua gói lớn hơn). FE biết hạn mức trước qua `GET /me/membership` (6.25) |
+| `PLAN_NOT_FOUND` | 404 | Admin sửa hoặc xóa gói không có, hoặc chủ trọ đặt đơn với gói không có | Hiện `message`, tải lại danh sách gói |
 | `PLAN_NAME_TAKEN` | 409 | Admin tạo gói hoặc đổi tên gói trùng tên gói khác. `errors` có một dòng `field: "name"` | Báo lỗi ở ô tên |
-| `PLAN_IN_USE` | 409 | Admin xóa gói đã có đơn đặt (chưa có API tạo đơn nên hiện chưa gặp được) | Hiện `message`, gợi ý tắt gói thay vì xóa |
-| `PLAN_INACTIVE` | 409 | Đặt đơn hoặc thanh toán đơn của gói đã ngừng bán. **Chưa có API trả mã này** (đơn làm ở mốc sau) | Cho chọn gói khác |
-| `ORDER_NOT_FOUND` | 404 | Đơn không có. **Chưa có API trả mã này** | Quay về lịch sử đơn |
-| `ORDER_STATE_INVALID` | 409 | Thanh toán đơn đã hủy, hoặc hủy đơn đã trả. **Chưa có API trả mã này** | Tải lại đơn rồi cập nhật nút |
+| `PLAN_IN_USE` | 409 | Admin xóa gói đã có đơn đặt (đơn ở bất kỳ trạng thái nào) | Hiện `message`, gợi ý tắt gói thay vì xóa |
+| `PLAN_INACTIVE` | 409 | Đặt đơn bằng gói đã ngừng bán, hoặc thanh toán đơn mà gói đã bị tắt sau khi đặt (đơn vẫn `pending`) | Cho chọn gói khác rồi tạo đơn mới |
+| `ORDER_NOT_FOUND` | 404 | Đơn không có (xem, thanh toán, hủy) | Quay về lịch sử đơn |
+| `ORDER_STATE_INVALID` | 409 | Thanh toán đơn đã hủy, hoặc hủy đơn đã trả | Tải lại đơn rồi cập nhật nút |
 | `CANNOT_LOCK_SELF` | 409 | Admin tự khóa chính mình | Hiện `message` |
 | `ACCOUNT_ALREADY_LOCKED` | 409 | Khóa tài khoản đang bị khóa | Làm mới trạng thái trên giao diện |
 | `ACCOUNT_NOT_LOCKED` | 409 | Mở khóa tài khoản không bị khóa | Làm mới trạng thái trên giao diện |
@@ -172,7 +173,7 @@ Lưu ý: **một trường có thể xuất hiện nhiều lần** trong `errors
 
 ### Lỗi 429 `RATE_LIMITED`: gọi quá nhanh
 
-Chỉ **sáu API đăng nhập và mật khẩu, các API ghi nhà trọ và tin, và ba API đọc công khai (hai của tin, một của bảng giá)** có giới hạn (các API đọc khác thì chưa). Body lỗi cùng dạng như mọi lỗi khác (có `requestId`), kèm header **`Retry-After`**: số giây còn phải đợi (số nguyên, ít nhất 1). Mỗi API đếm riêng, nên bị chặn đăng nhập không làm hỏng việc đọc `GET /auth/me` hay đăng xuất.
+Chỉ **sáu API đăng nhập và mật khẩu, các API ghi nhà trọ, tin và đơn, và ba API đọc công khai (hai của tin, một của bảng giá)** có giới hạn (các API đọc khác thì chưa). Body lỗi cùng dạng như mọi lỗi khác (có `requestId`), kèm header **`Retry-After`**: số giây còn phải đợi (số nguyên, ít nhất 1). Mỗi API đếm riêng, nên bị chặn đăng nhập không làm hỏng việc đọc `GET /auth/me` hay đăng xuất.
 
 | API | Giới hạn theo IP | Giới hạn theo email (hoặc người dùng) | Bị chặn trong |
 |---|---|---|---|
@@ -184,6 +185,7 @@ Chỉ **sáu API đăng nhập và mật khẩu, các API ghi nhà trọ và tin
 | `POST /auth/change-password` | không | 10 lần mỗi 15 phút (theo người dùng đang đăng nhập) | 15 phút |
 | `POST /properties`, `PATCH /properties/:id`, `DELETE /properties/:id` | không | 30 lần mỗi giờ **cho mỗi API** (ba API đếm riêng, theo người dùng đang đăng nhập) | 1 giờ |
 | `POST /properties/:propertyId/listings`, `PATCH /listings/:id`, `DELETE /listings/:id`, `POST /listings/:id/hide`, `POST /listings/:id/show` | không | 60 lần mỗi giờ **cho mỗi API** (năm API đếm riêng, theo người dùng đang đăng nhập) | 1 giờ |
+| `POST /orders`, `POST /orders/:id/pay`, `POST /orders/:id/cancel` | không | 30 lần mỗi giờ **cho mỗi API** (ba API đếm riêng, theo người dùng đang đăng nhập) | 1 giờ |
 | `GET /listings` (công khai) | 300 lần mỗi phút | không | 1 phút |
 | `GET /plans` (công khai) | 300 lần mỗi phút | không | 1 phút |
 | `GET /listings/:slugCode` (công khai) | 300 lần mỗi phút | 60 lần mỗi phút, **chỉ khi request có access token hợp lệ** (khách không bị bộ đếm này, chỉ chịu giới hạn theo IP) | 1 phút |
@@ -301,7 +303,7 @@ Ký hiệu cột **Cần**: "công khai" = không cần đăng nhập; "đăng n
 
 Thứ tự kiểm trùng: email trước, số điện thoại sau.
 
-**Kỳ dùng thử.** Chủ trọ đăng ký xong có ngay một **kỳ dùng thử** tính từ đúng lúc đăng ký (mặc định **30 ngày**, admin đổi được `trial_days` ở 6.24; `0` nghĩa là hết dùng thử ngay, dùng để dựng cảnh "hết quyền" khi demo). Trong kỳ, chủ trọ được hiện tối đa `trial_listing_limit` tin (mặc định 2). Hạn dùng thử **không nằm trong phản hồi này** (`user` vẫn đúng 6 trường); sẽ xem được ở `GET /me/membership` khi API đó có (mục 10). Người tìm trọ không có kỳ dùng thử. Đăng ký trùng số điện thoại bị 409 và **không** tạo thêm kỳ dùng thử (mỗi số điện thoại một lần dùng thử).
+**Kỳ dùng thử.** Chủ trọ đăng ký xong có ngay một **kỳ dùng thử** tính từ đúng lúc đăng ký (mặc định **30 ngày**, admin đổi được `trial_days` ở 6.24; `0` nghĩa là hết dùng thử ngay, dùng để dựng cảnh "hết quyền" khi demo). Trong kỳ, chủ trọ được hiện tối đa `trial_listing_limit` tin (mặc định 2). Hạn dùng thử **không nằm trong phản hồi này** (`user` vẫn đúng 6 trường); xem ở `GET /me/membership` (6.25). Người tìm trọ không có kỳ dùng thử. Đăng ký trùng số điện thoại bị 409 và **không** tạo thêm kỳ dùng thử (mỗi số điện thoại một lần dùng thử).
 
 **201 Created**: đặt cookie `rt`, trả
 
@@ -679,22 +681,22 @@ Không gửi `status`, `code`, `propertyId`, `viewCount` (bị 400 vì trường
 Cần nhớ:
 - `code` là mã ngắn 8 ký tự (chữ thường và số, bỏ các chữ dễ nhầm). **Đường dẫn công khai của tin là `<slug>-<code>`** (ví dụ `phong-dep-co-gac-gan-cho-ben-thanh-k7m2xq9p`). Chỉ phần `code` ở cuối được dùng để tra, nên đổi tiêu đề (slug đổi) thì link cũ vẫn mở được.
 - `status` là một trong `visible` (đang hiện), `hidden_by_owner` (chủ trọ tự ẩn), `hidden_by_admin` (admin ẩn). `moderationReason` có giá trị khi `status` là `hidden_by_admin` (lý do admin ghi), ngược lại `null`.
-- **`isPublic`** (từ 2026-10-19) cho biết tin có đang hiện với khách hay không: `true` khi `status` là `visible` **và** tin nằm trong hạn mức hiện hành của chủ trọ (nằm trong N tin `visible` đăng sớm nhất, N là hạn mức, xem 6.19 và 6.25). Tin `visible` mà `isPublic` là `false` là tin đang bị ẩn bớt khỏi công khai vì vượt hạn mức hoặc vì hết dùng thử: nó vẫn `visible` và vẫn tính vào số tin đang hiện. Tin `hidden_by_owner` và `hidden_by_admin` luôn có `isPublic` `false`. Trường này có ở **mọi** phản hồi tin của chủ trọ (`POST` đăng, `PATCH`, `hide`, `show`, `GET /me/listings` và `GET /me/listings/:id`) và **không có** ở API công khai.
+- **`isPublic`** (từ 2026-10-19) cho biết tin có đang hiện với khách hay không: `true` khi `status` là `visible` **và** tin nằm trong hạn mức hiện hành của chủ trọ (nằm trong N tin `visible` đăng sớm nhất, N là hạn mức, xem 6.19 và 6.25). Tin `visible` mà `isPublic` là `false` là tin đang bị ẩn bớt khỏi công khai vì vượt hạn mức, hoặc vì hết dùng thử mà không có gói đang chạy: nó vẫn `visible` và vẫn tính vào số tin đang hiện. Tin `hidden_by_owner` và `hidden_by_admin` luôn có `isPublic` `false`. Trường này có ở **mọi** phản hồi tin của chủ trọ (`POST` đăng, `PATCH`, `hide`, `show`, `GET /me/listings` và `GET /me/listings/:id`) và **không có** ở API công khai.
 - `coverImageUrl` là ảnh bìa và `images[]` là các ảnh theo thứ tự `position`; **ảnh tin chưa có API tải lên** nên hiện luôn là `null` và `[]`. Khi có, `url` là đường dẫn tương đối `/api/v1/media/public/<uuid>.<đuôi>`, FE tự nối với địa chỉ API.
 - `deposit` và `availableFrom` là `null` khi không có. `availableFrom` luôn là chuỗi `YYYY-MM-DD`.
 - `fullAddress` do backend ghép sẵn (xem 6.17), FE hiển thị thẳng.
-- **Hạn mức tin (từ 2026-10-19).** Đăng tin là thêm một tin đang hiện, nên phải còn trong kỳ dùng thử và còn chỗ. Chỉ tin `visible` chưa xóa mới tính vào số tin đang hiện. Còn kỳ dùng thử mà số tin đang hiện đã **bằng hoặc vượt** hạn mức thì 403 `LISTING_QUOTA_REACHED`; hết kỳ dùng thử thì 403 `MEMBERSHIP_REQUIRED`. Ẩn hoặc xóa một tin trả lại một chỗ, đăng thêm được ngay. Hai yêu cầu đăng cùng lúc khi chỉ còn một chỗ thì đúng một yêu cầu thành công.
+- **Hạn mức tin (từ 2026-10-19).** Đăng tin là thêm một tin đang hiện, nên chủ trọ phải còn hạn mức (có gói đang chạy hoặc còn trong kỳ dùng thử) và còn chỗ. Hạn mức là số tin của **gói đang chạy** nếu có (thay hạn mức dùng thử, kể cả khi nhỏ hơn), không thì `trial_listing_limit` khi còn dùng thử. Chỉ tin `visible` chưa xóa mới tính vào số tin đang hiện. Có hạn mức mà số tin đang hiện đã **bằng hoặc vượt** nó thì 403 `LISTING_QUOTA_REACHED`; hết dùng thử và không có gói đang chạy thì 403 `MEMBERSHIP_REQUIRED` (mua gói xong hết mã này). Ẩn hoặc xóa một tin trả lại một chỗ, đăng thêm được ngay. Hai yêu cầu đăng cùng lúc khi chỉ còn một chỗ thì đúng một yêu cầu thành công.
 - Thứ tự báo lỗi: 404 `PROPERTY_NOT_FOUND` và 403 `NOT_RESOURCE_OWNER` luôn đến **trước** hai lỗi hạn mức; lỗi dữ liệu 400 `VALIDATION_FAILED` đến trước tất cả.
 
-**Lỗi**: 400 `VALIDATION_FAILED` · 404 `PROPERTY_NOT_FOUND` · 403 `NOT_RESOURCE_OWNER` (nhà trọ của người khác) · 403 `MEMBERSHIP_REQUIRED` (hết dùng thử) · 403 `LISTING_QUOTA_REACHED` (đủ hạn mức) · 403 `PERMISSION_DENIED` · 400 `INVALID_ID` · 429 `RATE_LIMITED` (quá 60 lần mỗi giờ). Lỗi thì không có tin nào được tạo.
+**Lỗi**: 400 `VALIDATION_FAILED` · 404 `PROPERTY_NOT_FOUND` · 403 `NOT_RESOURCE_OWNER` (nhà trọ của người khác) · 403 `MEMBERSHIP_REQUIRED` (hết dùng thử, không có gói) · 403 `LISTING_QUOTA_REACHED` (đủ hạn mức) · 403 `PERMISSION_DENIED` · 400 `INVALID_ID` · 429 `RATE_LIMITED` (quá 60 lần mỗi giờ). Lỗi thì không có tin nào được tạo.
 
 ### 6.19 Danh sách tin công khai
 
 `GET /listings` · công khai (không cần đăng nhập)
 
-Danh sách cho trang tìm trọ. **Chỉ tin đang hiện công khai**: tin `visible`, chưa xóa, thuộc nhà trọ chưa xóa của chủ trọ đang hoạt động **và còn trong kỳ dùng thử**, và tin nằm trong hạn mức của chủ trọ (khung dưới). Tin bị ẩn, bị xóa, chủ trọ bị khóa hoặc hết dùng thử biến khỏi danh sách **ngay**, không có độ trễ và không cần việc nền.
+Danh sách cho trang tìm trọ. **Chỉ tin đang hiện công khai**: tin `visible`, chưa xóa, thuộc nhà trọ chưa xóa của chủ trọ đang hoạt động, và tin nằm trong hạn mức của chủ trọ (khung dưới; chủ trọ không có gói và hết dùng thử thì hạn mức là 0). Tin bị ẩn, bị xóa, chủ trọ bị khóa, hết dùng thử mà không có gói, hoặc gói đã hết hạn biến khỏi danh sách **ngay**, không có độ trễ và không cần việc nền.
 
-> **Luật hiển thị theo hạng (từ 2026-10-19).** Mỗi chủ trọ chỉ có tối đa N tin hiện công khai, N là `trial_listing_limit` (mặc định 2, mục 6.24). Các tin `visible` của họ xếp theo ngày đăng (`createdAt` cũ trước, ngang nhau thì theo `id`), chỉ N tin đầu còn hiện. Khi admin hạ hạn mức xuống dưới số tin đang hiện, các tin đăng sau cùng biến khỏi danh sách và khỏi chi tiết (404), nhưng **`status` của chúng vẫn là `visible`** và chủ trọ vẫn thấy chúng ở `/me/listings`. Chủ trọ ẩn hoặc xóa một tin thì tin đăng sớm nhất kế tiếp trong số bị ẩn bớt hiện lại. Hết kỳ dùng thử mà chưa có gói thì hạn mức là 0: mọi tin của chủ trọ đó biến khỏi công khai từ đúng thời điểm hết kỳ. Admin nâng hạn mức hoặc chủ trọ có gói thì tin hiện lại ngay. `total` và các trang đã tính theo luật này, FE không cần lọc thêm.
+> **Luật hiển thị theo hạng (từ 2026-10-19).** Mỗi chủ trọ chỉ có tối đa N tin hiện công khai, N là hạn mức hiện hành của họ: số tin của **gói đang chạy** nếu có (thay hạn mức dùng thử, kể cả khi nhỏ hơn), không thì `trial_listing_limit` khi còn dùng thử (mặc định 2, mục 6.24), không thì 0. Các tin `visible` của họ xếp theo ngày đăng (`createdAt` cũ trước, ngang nhau thì theo `id`), chỉ N tin đầu còn hiện. Khi admin hạ hạn mức xuống dưới số tin đang hiện, các tin đăng sau cùng biến khỏi danh sách và khỏi chi tiết (404), nhưng **`status` của chúng vẫn là `visible`** và chủ trọ vẫn thấy chúng ở `/me/listings`. Chủ trọ ẩn hoặc xóa một tin thì tin đăng sớm nhất kế tiếp trong số bị ẩn bớt hiện lại. Hết kỳ dùng thử mà chưa có gói thì hạn mức là 0: mọi tin của chủ trọ đó biến khỏi công khai từ đúng thời điểm hết kỳ. Gói hết hạn cũng vậy (so chặt: đúng lúc `endsAt` là hết); gói hết mà dùng thử còn thì quay về hạn mức dùng thử. Admin nâng hạn mức hoặc chủ trọ mua gói thì tin hiện lại ngay. `total` và các trang đã tính theo luật này, FE không cần lọc thêm.
 
 | Query | Kiểu | Mặc định | Luật |
 |---|---|---|---|
@@ -749,7 +751,7 @@ Cần nhớ:
 
 **Cách tính lượt xem**: mỗi người xem được cộng **một lượt cho mỗi tin trong 30 phút**. Người xem là tài khoản nếu có token hợp lệ, không thì là địa chỉ IP. **Chủ tin mở không được tính.** Tải lại trong 30 phút không làm số tăng. Tin không hiển thị công khai (404) thì không được cộng. Nhiều người dùng chung một IP (ký túc xá, quán cà phê) mà không đăng nhập thì tính chung một lượt mỗi 30 phút.
 
-**Lỗi**: 404 `LISTING_NOT_FOUND` (mã lạ; tin bị ẩn, bị xóa, chủ trọ hết dùng thử, tin bị ẩn bớt vì vượt hạn mức, hết hiển thị vì bất kỳ lý do nào, **kể cả với chính chủ** ở route công khai này) · 429 `RATE_LIMITED` (quá 300 lần mỗi phút theo IP, hoặc quá 60 lần mỗi phút nếu đã đăng nhập).
+**Lỗi**: 404 `LISTING_NOT_FOUND` (mã lạ; tin bị ẩn, bị xóa, chủ trọ hết dùng thử và hết gói, tin bị ẩn bớt vì vượt hạn mức, hết hiển thị vì bất kỳ lý do nào, **kể cả với chính chủ** ở route công khai này) · 429 `RATE_LIMITED` (quá 300 lần mỗi phút theo IP, hoặc quá 60 lần mỗi phút nếu đã đăng nhập).
 
 ### 6.21 Tin của tôi
 
@@ -800,7 +802,7 @@ Cần nhớ:
 - Tin `hidden_by_admin` **chủ trọ không tự hiện lại được**: FE hiện nhãn "Bị quản trị viên ẩn", hiển thị `moderationReason` (lý do admin ghi) và ẩn nút "Hiện", thay bằng hướng dẫn liên hệ admin (hệ thống chưa có kháng nghị). Chủ trọ vẫn **sửa được** tin để khắc phục. Khi admin gỡ ẩn, tin về `hidden_by_owner` và chủ trọ hiện lại được.
 - Admin ẩn đúng lúc chủ trọ bấm hiện thì **admin luôn thắng**: chủ trọ nhận 403 `LISTING_HIDDEN_BY_ADMIN` và trạng thái cuối là `hidden_by_admin`. FE gặp 409 hoặc 403 ở hai API này thì tải lại tin (`GET /me/listings/:id`) để lấy trạng thái thật.
 - Tin `hidden_by_owner` và `hidden_by_admin` biến khỏi danh sách và chi tiết công khai.
-- **`hide` không bao giờ bị hạn mức chặn** (kể cả khi hết dùng thử). **`show` thì có**: hiện lại là thêm một tin đang hiện nên đi qua cùng cửa hạn mức với đăng tin (6.18). Thứ tự báo lỗi của `show`: 404 `LISTING_NOT_FOUND` hoặc 403 `NOT_RESOURCE_OWNER`, rồi `LISTING_HIDDEN_BY_ADMIN` hoặc 409 `LISTING_STATE_INVALID` (theo bảng trên), rồi 403 `MEMBERSHIP_REQUIRED` (hết dùng thử), rồi 403 `LISTING_QUOTA_REACHED` (đủ hạn mức). Bị chặn thì tin giữ nguyên `hidden_by_owner`.
+- **`hide` không bao giờ bị hạn mức chặn** (kể cả khi hết dùng thử và hết gói). **`show` thì có**: hiện lại là thêm một tin đang hiện nên đi qua cùng cửa hạn mức với đăng tin (6.18). Thứ tự báo lỗi của `show`: 404 `LISTING_NOT_FOUND` hoặc 403 `NOT_RESOURCE_OWNER`, rồi `LISTING_HIDDEN_BY_ADMIN` hoặc 409 `LISTING_STATE_INVALID` (theo bảng trên), rồi 403 `MEMBERSHIP_REQUIRED` (hết dùng thử, không có gói), rồi 403 `LISTING_QUOTA_REACHED` (đủ hạn mức của gói hoặc của kỳ dùng thử). Bị chặn thì tin giữ nguyên `hidden_by_owner`.
 
 **Lỗi**: 409 `LISTING_STATE_INVALID` · 403 `LISTING_HIDDEN_BY_ADMIN` (chỉ `show`) · 403 `MEMBERSHIP_REQUIRED` (chỉ `show`) · 403 `LISTING_QUOTA_REACHED` (chỉ `show`) · 404 `LISTING_NOT_FOUND` · 403 `NOT_RESOURCE_OWNER` · 403 `PERMISSION_DENIED` · 400 `INVALID_ID` · 429 `RATE_LIMITED`.
 
@@ -813,7 +815,7 @@ Hai tham số nghiệp vụ của kỳ dùng thử miễn phí, admin chỉnh đ
 | `trial_days` | 30 | 0 đến 365 | Số ngày dùng thử của chủ trọ đăng ký **sau** khi đổi. `0` nghĩa là hết dùng thử ngay lúc đăng ký (cách dựng cảnh "hết quyền" khi demo) |
 | `trial_listing_limit` | 2 | 0 đến 100 | Số tin đang hiện tối đa trong kỳ dùng thử, áp ngay cho mọi chủ trọ còn trong kỳ |
 
-> **Đã áp vào hành vi (từ 2026-10-19).** `trial_days` quyết định hạn dùng thử của chủ trọ đăng ký sau đó (6.1); `trial_listing_limit` quyết định số tin đang hiện tối đa của chủ trọ còn trong kỳ, kiểm lúc đăng và hiện lại tin (6.18, 6.23). Tin vượt hạn mức bị ẩn bớt khỏi kết quả công khai theo thứ tự đăng (6.19), có hiệu lực ngay khi đổi `trial_listing_limit`. Chủ trọ xem kết quả ở `GET /me/membership` (6.25) và ở cờ `isPublic` của từng tin (6.18).
+> **Đã áp vào hành vi (từ 2026-10-19).** `trial_days` quyết định hạn dùng thử của chủ trọ đăng ký sau đó (6.1); `trial_listing_limit` quyết định số tin đang hiện tối đa của chủ trọ còn trong kỳ, kiểm lúc đăng và hiện lại tin (6.18, 6.23). Tin vượt hạn mức bị ẩn bớt khỏi kết quả công khai theo thứ tự đăng (6.19), có hiệu lực ngay khi đổi `trial_listing_limit`. Chủ trọ xem kết quả ở `GET /me/membership` (6.25) và ở cờ `isPublic` của từng tin (6.18). Chủ trọ đang có gói đang chạy dùng hạn mức của gói nên `trial_listing_limit` không ảnh hưởng họ cho đến khi gói hết.
 
 `GET /settings` · quyền `setting:read`
 
@@ -844,7 +846,7 @@ Cần nhớ:
 
 `GET /me/membership` · quyền `subscription:read` (chủ trọ có sẵn quyền này, người tìm trọ không có)
 
-Cho chủ trọ biết kỳ dùng thử còn bao lâu, được hiện bao nhiêu tin, đang hiện bao nhiêu, và có tin nào đang bị ẩn bớt khỏi công khai. Không có tham số: luôn trả số liệu của chính người gọi.
+Cho chủ trọ biết gói đang chạy (nếu có), kỳ dùng thử còn bao lâu, được hiện bao nhiêu tin, đang hiện bao nhiêu, và có tin nào đang bị ẩn bớt khỏi công khai. Không có tham số: luôn trả số liệu của chính người gọi.
 
 **200 OK**:
 
@@ -853,6 +855,7 @@ Cho chủ trọ biết kỳ dùng thử còn bao lâu, được hiện bao nhiê
   "state": "trial",
   "trialEndsAt": "2026-11-18T03:00:00.000Z",
   "trialDaysLeft": 30,
+  "subscription": null,
   "listingLimit": 2,
   "visibleCount": 1,
   "remaining": 1,
@@ -860,22 +863,58 @@ Cho chủ trọ biết kỳ dùng thử còn bao lâu, được hiện bao nhiê
 }
 ```
 
+Khi chủ trọ đang có gói (`state` là `plan`):
+
+```json
+{
+  "state": "plan",
+  "trialEndsAt": "2026-10-18T03:00:00.000Z",
+  "trialDaysLeft": 0,
+  "subscription": {
+    "orderCode": "k7m2xq9p",
+    "planName": "Nâng cao",
+    "startsAt": "2026-10-19T03:00:00.000Z",
+    "endsAt": "2026-11-18T03:00:00.000Z",
+    "daysLeft": 30,
+    "paidUntil": "2026-12-18T03:00:00.000Z"
+  },
+  "listingLimit": 15,
+  "visibleCount": 4,
+  "remaining": 11,
+  "overLimitCount": 0
+}
+```
+
 | Trường | Ý nghĩa |
 |---|---|
-| `state` | `trial` (còn trong kỳ dùng thử) hoặc `expired` (hết kỳ, chưa có gói). Khi có gói (hàng 10) sẽ thêm giá trị `plan` |
+| `state` | `plan` (có gói đang chạy), `trial` (không có gói, còn trong kỳ dùng thử) hoặc `expired` (không có gói, hết dùng thử). Có gói đang chạy thì luôn là `plan`, dù dùng thử còn hay hết |
 | `trialEndsAt` | Hạn dùng thử, chuỗi ISO 8601 giờ UTC. `null` với tài khoản không có kỳ dùng thử (admin) |
-| `trialDaysLeft` | Số ngày còn lại, **làm tròn lên** (còn 1 giờ vẫn là 1). `0` khi đã hết. `null` khi `trialEndsAt` là `null` |
-| `listingLimit` | Số tin `visible` được hiện cùng lúc. Bằng `trial_listing_limit` khi `trial`, bằng `0` khi `expired` |
+| `trialDaysLeft` | Số ngày dùng thử còn lại, **làm tròn lên** (còn 1 giờ vẫn là 1). `0` khi đã hết. `null` khi `trialEndsAt` là `null`. **Chỉ phụ thuộc `trialEndsAt`, không phụ thuộc `state`**: đang có gói mà dùng thử còn thì vẫn có số ngày |
+| `subscription` | Gói đang chạy, hoặc `null` khi không có (xem bảng dưới) |
+| `listingLimit` | Số tin `visible` được hiện cùng lúc. Bằng số tin của gói khi `plan`, bằng `trial_listing_limit` khi `trial`, bằng `0` khi `expired` |
 | `visibleCount` | Số tin `visible` chưa xóa của chủ trọ, **kể cả tin đang bị ẩn bớt khỏi công khai vì vượt hạn mức** (đúng số mà cửa hạn mức của 6.18 và 6.23 đếm) |
 | `remaining` | `listingLimit` trừ `visibleCount`, không âm. Số tin còn đăng hoặc hiện thêm được |
 | `overLimitCount` | `visibleCount` trừ `listingLimit`, không âm. Số tin đang bị ẩn bớt khỏi công khai (admin hạ hạn mức; hết dùng thử thì bằng cả `visibleCount`) |
 
+Các trường của `subscription` (chỉ có khi `state` là `plan`):
+
+| Trường | Ý nghĩa |
+|---|---|
+| `orderCode` | Mã đơn đã mua kỳ đang chạy (cùng `code` ở 6.27) |
+| `planName` | Tên gói đã chốt trên đơn |
+| `startsAt`, `endsAt` | Hai đầu của kỳ đang chạy, ISO 8601 UTC. Đúng lúc `endsAt` là hết |
+| `daysLeft` | Số ngày còn lại của kỳ đang chạy, **làm tròn lên** |
+| `paidUntil` | `endsAt` lớn nhất trong mọi kỳ của chủ trọ: **đã trả đến ngày nào**, kể cả các kỳ nối tiếp chưa tới. Bằng `endsAt` khi chưa mua thêm |
+
 Cần nhớ:
 - Số liệu tính lúc gọi, không lưu. Sau mỗi lần đăng, ẩn, hiện hoặc xóa tin, hoặc khi admin đổi tham số, FE gọi lại để cập nhật.
-- `state` là `expired`: đăng và hiện tin bị 403 `MEMBERSHIP_REQUIRED` và mọi tin của chủ trọ đã biến khỏi công khai. FE hiện lời mời mua gói (trang mua gói chưa có).
+- `state` là `expired`: đăng và hiện tin bị 403 `MEMBERSHIP_REQUIRED` và mọi tin của chủ trọ đã biến khỏi công khai. FE hiện lời mời mua gói dẫn tới trang bảng giá (mục 7).
 - `overLimitCount` lớn hơn 0 khi còn kỳ dùng thử: FE báo "N tin của bạn đang bị ẩn khỏi khách, hãy ẩn hoặc xóa bớt, hoặc mua gói", và chỉ ra tin nào bằng cờ `isPublic` ở `GET /me/listings` (6.21).
 - `remaining` bằng 0 nghĩa là nút "Đăng tin" và "Hiện" sẽ bị 403 `LISTING_QUOTA_REACHED` hoặc `MEMBERSHIP_REQUIRED`. FE có thể tắt sẵn nút kèm lời giải thích, nhưng vẫn phải xử lý hai lỗi này vì số liệu có thể đã đổi.
-- Admin gọi được (admin có quyền này) nhưng luôn nhận `state` là `expired`, `trialEndsAt` và `trialDaysLeft` là `null`, `listingLimit` là 0: admin không có kỳ dùng thử.
+- `state` là `plan`: hạn mức, `remaining`, `overLimitCount` và `isPublic` đều theo số tin của gói, **thay** hạn mức dùng thử (gói 1 tin trong lúc dùng thử 2 tin thì hạn mức là 1). Gói hết hạn mà dùng thử còn thì `state` về `trial` và `subscription` về `null`. Mua gói **không đổi** `trialEndsAt`.
+- Mua thêm khi đang có gói thì kỳ mới nối vào cuối: `endsAt` vẫn là của kỳ đang chạy, chỉ `paidUntil` dời ra. Muốn hiện "gói đến hết ngày ..." thì dùng `paidUntil`.
+- Sau khi thanh toán thử xong (6.27), FE gọi lại API này để thấy `state = plan`.
+- Admin gọi được (admin có quyền này) nhưng luôn nhận `state` là `expired`, `subscription`, `trialEndsAt` và `trialDaysLeft` là `null`, `listingLimit` là 0: admin không có kỳ dùng thử và không mua được gói.
 - Không có giới hạn tần suất riêng cho API này, nhưng đừng gọi lặp mỗi giây.
 
 **Lỗi**: 403 `PERMISSION_DENIED` (người tìm trọ) · 401 `TOKEN_MISSING` (chưa đăng nhập) · 403 `ACCOUNT_LOCKED`.
@@ -884,7 +923,7 @@ Cần nhớ:
 
 Gói là thứ chủ trọ sẽ mua để có hạn mức tin cao hơn kỳ dùng thử. Bảng giá là công khai; chỉ admin tạo, sửa, tắt, xóa gói (quyền `plan:read`, `plan:create`, `plan:update`, `plan:delete`).
 
-> **Mới làm một nửa (2026-10-19).** Đã có bảng giá và phần quản lý gói. **Chưa có** tạo đơn, thanh toán thử và kỳ gói (mục 10), nên chưa ai mua được gói, và gói **chưa đổi hạn mức tin**: hạn mức vẫn là của kỳ dùng thử (6.25). FE dựng được trang bảng giá (nút "Mua" chưa làm việc được) và màn hình admin.
+> **Gói đã đổi hạn mức tin (từ 2026-10-19).** Mua gói ở mục 6.27; gói đang chạy thay hạn mức dùng thử (6.25) và tin của chủ trọ hiện lại ngay khi mua xong.
 
 `GET /plans` · **công khai**, không cần đăng nhập
 
@@ -934,11 +973,86 @@ Ba lệnh ghi này **luôn đọc lại quyền từ cơ sở dữ liệu**, nê
 
 - `POST` trả **201** gói ở dạng 8 trường. `PATCH` nhận một hay nhiều trường ở trên, trường nào không gửi thì giữ nguyên (không nhận `null`; thân rỗng là không đổi gì), trả **200** gói sau khi sửa với `updatedAt` mới. `DELETE` trả **204** không thân.
 - **Tắt gói** (`PATCH` với `{ "isActive": false }`) là cách ngừng bán: gói biến khỏi bảng giá nhưng vẫn ở `GET /plans/all`. Nên ưu tiên tắt hơn xóa.
-- **Xóa** chỉ được khi chưa có đơn nào đặt gói đó, ngược lại 409 `PLAN_IN_USE`. Hiện chưa có đơn nên xóa luôn được; khi có đơn, FE gợi ý "tắt gói thay vì xóa".
+- **Xóa** chỉ được khi chưa có đơn nào đặt gói đó (đơn đã hủy cũng tính), ngược lại 409 `PLAN_IN_USE`: FE gợi ý "tắt gói thay vì xóa".
 - Sửa giá, số tin hay số ngày chỉ ảnh hưởng đơn tạo **sau đó**; đơn đã tạo giữ nguyên giá, số tin và số ngày của lúc đặt.
 - Trường lạ (ví dụ `id`) bị từ chối 400 `VALIDATION_FAILED`.
 
 **Lỗi**: 400 `VALIDATION_FAILED` (giá trị ngoài khoảng, sai kiểu, trường lạ; `errors[].field` chỉ đúng trường) · 400 `INVALID_ID` · 404 `PLAN_NOT_FOUND` (sửa, xóa) · 409 `PLAN_NAME_TAKEN` (tạo, sửa) · 409 `PLAN_IN_USE` (xóa) · 403 `PERMISSION_DENIED` (chủ trọ, người tìm trọ gọi API admin) · 403 `ACCOUNT_LOCKED` (ba lệnh ghi) · 401 `TOKEN_MISSING` · 429 `RATE_LIMITED` (chỉ `GET /plans`).
+
+### 6.27 Đơn mua gói và thanh toán thử
+
+Chủ trọ chọn một gói ở bảng giá (6.26), tạo đơn, rồi bấm thanh toán thử: đơn thành `paid` và có một **kỳ gói**. **Không có tiền thật và không có cổng thanh toán nào**; "đã trả" chỉ nghĩa là chủ trọ tự bấm xác nhận. Mọi API dưới đây cần đăng nhập và **chỉ làm việc trên đơn của chính người gọi**.
+
+> **Gói đã đổi hạn mức tin (từ 2026-10-19).** Thanh toán xong, kỳ gói thay hạn mức dùng thử: `GET /me/membership` có `state = plan` và `subscription` (6.25), chủ trọ hết dùng thử đăng được ngay (hết 403 `MEMBERSHIP_REQUIRED`) và tin của họ hiện lại trong `GET /listings` ngay, không cần chờ gì.
+
+**Ai gọi được.** Chỉ tài khoản **chủ trọ** (`landlord`) tạo được đơn. Người tìm trọ không có quyền đơn nên mọi API đơn trả 403 `PERMISSION_DENIED`. Admin tạo đơn cũng bị 403 `PERMISSION_DENIED` (admin không mua gói); admin xem, thanh toán hay hủy đơn của người khác bị 403 `NOT_RESOURCE_OWNER`, và `GET /orders` của admin luôn rỗng. Chưa đăng nhập là 401.
+
+**Hình dạng một đơn** (dùng chung cho cả năm API):
+
+```json
+{
+  "id": "0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8d01",
+  "code": "k7m2xq9p",
+  "planId": "0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8d02",
+  "planName": "Nâng cao",
+  "price": 199000,
+  "maxListings": 15,
+  "durationDays": 30,
+  "status": "paid",
+  "paidAt": "2026-10-19T03:00:00.000Z",
+  "cancelledAt": null,
+  "startsAt": "2026-10-19T03:00:00.000Z",
+  "endsAt": "2026-11-18T03:00:00.000Z",
+  "createdAt": "2026-10-19T02:59:30.000Z"
+}
+```
+
+| Trường | Ý nghĩa |
+|---|---|
+| `code` | Mã ngắn 8 ký tự (chữ thường và số) để chủ trọ đối chiếu, duy nhất |
+| `planId` | Gói đã chọn |
+| `planName`, `price`, `maxListings`, `durationDays` | **Bản chốt của gói tại lúc tạo đơn.** Admin sửa giá, số tin hay số ngày của gói sau đó **không đổi** đơn này. Hiển thị các trường này, đừng tra lại gói |
+| `status` | `pending` (chờ thanh toán), `paid` (đã trả), `cancelled` (đã hủy). `paid` và `cancelled` là trạng thái cuối |
+| `paidAt` | Lúc bấm thanh toán; `null` khi chưa trả |
+| `cancelledAt` | Lúc hủy; `null` khi chưa hủy |
+| `startsAt`, `endsAt` | Kỳ gói của đơn `paid` (ISO 8601, UTC); `null` với đơn `pending` và `cancelled` |
+| `createdAt` | Lúc tạo đơn |
+
+Không có `userId` trong kết quả: đơn luôn là của người đang đăng nhập.
+
+`POST /orders` · quyền `order:create` và phải là tài khoản chủ trọ
+
+| Trường (body) | Kiểu | Bắt buộc | Luật |
+|---|---|---|---|
+| `planId` | chuỗi UUID | có | Id gói lấy từ `GET /plans`. **Chỉ gửi mỗi `planId`**: giá, số tin và số ngày do backend lấy từ gói, trường lạ (ví dụ `price`) bị 400 |
+
+**201 Created**: đơn `pending` (hình dạng ở trên, `paidAt`, `cancelledAt`, `startsAt`, `endsAt` đều `null`). Mỗi chủ trọ chỉ có **tối đa một đơn chờ**: nếu đang có một đơn `pending`, nó tự thành `cancelled` ngay trong lần tạo này. **Lỗi**: 400 `VALIDATION_FAILED` · 403 `PERMISSION_DENIED` · 404 `PLAN_NOT_FOUND` · 409 `PLAN_INACTIVE` (đơn chờ cũ **không** bị hủy khi tạo thất bại) · 401 · 429 `RATE_LIMITED`.
+
+`GET /orders` · quyền `order:read`
+
+Query: `page`, `pageSize` (mục 2) và `status` tùy chọn (`pending`, `paid` hoặc `cancelled`; giá trị khác là 400 `VALIDATION_FAILED`). **200 OK**: `{ items, total, page, pageSize }` gồm đơn của **chính người gọi**, **mới nhất trước**. Đây là lịch sử đơn.
+
+`GET /orders/:id` · quyền `order:read`
+
+**200 OK**: một đơn. **Lỗi**: 400 `INVALID_ID` · 404 `ORDER_NOT_FOUND` · 403 `NOT_RESOURCE_OWNER` (đơn của người khác, kể cả admin).
+
+`POST /orders/:id/pay` · quyền `order:create` · không có body
+
+Thanh toán thử. **200 OK**: đơn `paid` kèm `startsAt` và `endsAt`. Đơn thành `paid` và kỳ gói được tạo **cùng một lúc hoặc không gì cả**.
+- **Kỳ nối tiếp.** `startsAt` là thời điểm lớn hơn giữa lúc bấm thanh toán và `endsAt` lớn nhất của các kỳ trước của chủ trọ. Chưa có gói (hoặc gói cũ đã hết) thì kỳ bắt đầu ngay; đang có gói thì kỳ mới **nối vào cuối** kỳ đang chạy (kể cả khi mua gói khác), không chồng, không hở. `endsAt` là `startsAt` cộng đúng `durationDays` ngày (đã chốt trên đơn), chính xác đến mili giây.
+- **Bấm hai lần an toàn.** Thanh toán một đơn đã `paid` trả 200 với đúng kết quả lần trước và **không tạo kỳ mới**; bấm đồng thời nhiều lần cũng chỉ tạo một kỳ. FE vẫn nên khóa nút khi đang gửi.
+- **Lỗi** (theo thứ tự kiểm): 400 `INVALID_ID` · 404 `ORDER_NOT_FOUND` · 403 `NOT_RESOURCE_OWNER` · 409 `ORDER_STATE_INVALID` (đơn đã `cancelled`) · 409 `PLAN_INACTIVE` (gói đã bị tắt sau khi đặt; đơn vẫn `pending`, cho chủ trọ hủy rồi chọn gói khác) · 403 `PERMISSION_DENIED` · 401 · 429.
+
+`POST /orders/:id/cancel` · quyền `order:cancel` · không có body
+
+Hủy đơn chưa trả. **200 OK**: đơn `cancelled` có `cancelledAt`. Hủy lại đơn đã `cancelled` vẫn 200 với đúng kết quả cũ. Đơn `paid` **không hủy được**: 409 `ORDER_STATE_INVALID` (hoàn tiền chưa có trong bản này). Hủy đơn không đổi hạn mức tin. **Lỗi**: 400 `INVALID_ID` · 404 `ORDER_NOT_FOUND` · 403 `NOT_RESOURCE_OWNER` · 409 `ORDER_STATE_INVALID` · 403 `PERMISSION_DENIED` · 401 · 429.
+
+Cần nhớ:
+- **Đơn chờ không tự hết hạn.** Một đơn `pending` bỏ dở nằm đó cho đến khi chủ trọ hủy hoặc tạo đơn mới. Vào lại trang mua gói thì nên gọi `GET /orders?status=pending` và hỏi "tiếp tục thanh toán" hoặc "hủy".
+- **Chưa có API riêng cho kỳ gói.** Gói đang chạy và đã trả đến ngày nào xem ở `subscription` của `GET /me/membership` (6.25: `endsAt` của kỳ đang chạy, `paidUntil` của kỳ cuối cùng); lịch sử từng kỳ đọc ở `startsAt`, `endsAt` của các đơn `paid`.
+- **Nâng gói phải chờ.** Mọi đơn đã trả đều nối vào cuối kỳ cuối cùng, kể cả khi là gói khác. Chủ trọ đang có gói 5 tin mua gói 15 tin thì hạn mức 15 chỉ có hiệu lực từ lúc kỳ 5 tin hết; không có đổi gói ngay, không cắt gói cũ, không hoàn tiền. FE nên nói rõ điều này ở bước xác nhận đơn khi `subscription` khác `null`.
+- `paid` **không chứng minh đã thu tiền** (đây là thanh toán thử). Đừng hiển thị như biên lai thật.
+- Ba lệnh ghi (`POST /orders`, `/pay`, `/cancel`) giới hạn 30 lần mỗi giờ cho mỗi API theo người dùng (429 `RATE_LIMITED`, mục 3).
 
 ---
 
@@ -977,15 +1091,15 @@ Hai ô: mật khẩu hiện tại, mật khẩu mới. Gọi `POST /auth/change-
 
 ### Đăng và quản lý tin (chủ trọ)
 
-0. **Dải trạng thái dùng thử** đầu trang quản lý tin: gọi `GET /me/membership` (6.25) và hiện "Còn N ngày dùng thử · đang hiện X trên Y tin". `state` là `expired` thì đổi thành lời mời mua gói. `overLimitCount` lớn hơn 0 thì hiện cảnh báo có tin đang bị ẩn khỏi khách. Gọi lại sau mỗi lần đăng, ẩn, hiện, xóa.
-1. **Trang quản lý tin**: `GET /me/listings` (lọc theo `status` nếu muốn), mỗi dòng hiện ảnh bìa, tiêu đề, giá, `fullAddress`, `viewCount` và nhãn trạng thái. Với tin `visible` mà `isPublic` là `false`, thêm nhãn "Đang bị ẩn bớt vì vượt hạn mức" (hoặc "Hết dùng thử"), đừng hiện như một tin đang chạy bình thường. Nút theo trạng thái: `visible` có "Ẩn"; `hidden_by_owner` có "Hiện"; `hidden_by_admin` **không có nút Hiện**, thay bằng nhãn "Bị quản trị viên ẩn" kèm `moderationReason`.
+0. **Dải trạng thái dùng thử** đầu trang quản lý tin: gọi `GET /me/membership` (6.25) và hiện "Còn N ngày dùng thử · đang hiện X trên Y tin". `state` là `plan` thì hiện "Gói <planName> đến hết ngày <endsAt> · đang hiện X trên Y tin" (thêm "đã trả đến <paidUntil>" khi `paidUntil` khác `endsAt`); `state` là `expired` thì đổi thành lời mời mua gói. `overLimitCount` lớn hơn 0 thì hiện cảnh báo có tin đang bị ẩn khỏi khách. Gọi lại sau mỗi lần đăng, ẩn, hiện, xóa.
+1. **Trang quản lý tin**: `GET /me/listings` (lọc theo `status` nếu muốn), mỗi dòng hiện ảnh bìa, tiêu đề, giá, `fullAddress`, `viewCount` và nhãn trạng thái. Với tin `visible` mà `isPublic` là `false`, thêm nhãn "Đang bị ẩn bớt vì vượt hạn mức" (hoặc "Hết dùng thử và chưa có gói"), đừng hiện như một tin đang chạy bình thường. Nút theo trạng thái: `visible` có "Ẩn"; `hidden_by_owner` có "Hiện"; `hidden_by_admin` **không có nút Hiện**, thay bằng nhãn "Bị quản trị viên ẩn" kèm `moderationReason`.
 2. **Đăng tin** từ trang một nhà trọ (hoặc chọn nhà trọ trước): biểu mẫu tiêu đề, mô tả, giá, diện tích, tiền cọc và ngày vào ở (không bắt buộc). Gọi `POST /properties/:propertyId/listings`. **Tin hiện ngay**, nên sau khi thành công có thể mở luôn trang công khai `/<slug>-<code>` cho chủ trọ xem. Chưa có nhà trọ thì dẫn đi tạo nhà trọ trước.
 3. **Sửa tin**: mở biểu mẫu bằng `GET /me/listings/:id`, gửi `PATCH` các trường đã đổi (cho phép sửa cả khi tin đang ẩn, kể cả bị admin ẩn). Muốn bỏ tiền cọc hoặc ngày vào ở thì gửi `null`.
 4. **Xóa tin**: hỏi xác nhận, `DELETE`. Muốn xóa nhà trọ thì phải xóa hết tin của nó trước.
 5. Gặp 409 `LISTING_STATE_INVALID` hoặc 403 `LISTING_HIDDEN_BY_ADMIN` ở nút ẩn, hiện: tải lại tin để lấy trạng thái thật (có thể admin vừa ẩn).
-6. **Hạn mức** (đăng tin và nút "Hiện"): gặp 403 `LISTING_QUOTA_REACHED` thì báo "bạn đã dùng hết số tin được hiện, hãy ẩn hoặc xóa bớt một tin" và giữ nguyên biểu mẫu để người dùng không mất chữ đã nhập; gặp 403 `MEMBERSHIP_REQUIRED` thì báo kỳ dùng thử đã hết kèm nút "Mua gói" (trang mua gói chưa có). **Không** coi hai lỗi này là lỗi hệ thống, và **không** thử lại tự động. Khi hết dùng thử vẫn cho ẩn, sửa, xóa tin và quản lý nhà trọ bình thường.
+6. **Hạn mức** (đăng tin và nút "Hiện"): gặp 403 `LISTING_QUOTA_REACHED` thì báo "bạn đã dùng hết số tin được hiện, hãy ẩn hoặc xóa bớt một tin" và giữ nguyên biểu mẫu để người dùng không mất chữ đã nhập; gặp 403 `MEMBERSHIP_REQUIRED` thì báo kỳ dùng thử đã hết kèm nút "Mua gói" dẫn tới trang bảng giá (mục "Bảng giá gói" bên dưới); mua xong đăng được ngay. **Không** coi hai lỗi này là lỗi hệ thống, và **không** thử lại tự động. Khi hết dùng thử vẫn cho ẩn, sửa, xóa tin và quản lý nhà trọ bình thường.
 
-7. Tin `visible` vẫn có thể không hiện công khai: chủ trọ hết dùng thử, hoặc tin đăng sau bị ẩn bớt vì vượt hạn mức (6.19). **Đừng suy ra từ `status` rằng tin đang hiện với khách; đọc `isPublic`** (6.18), có ở mọi phản hồi tin của chủ trọ.
+7. Tin `visible` vẫn có thể không hiện công khai: chủ trọ hết dùng thử và hết gói, hoặc tin đăng sau bị ẩn bớt vì vượt hạn mức (6.19). **Đừng suy ra từ `status` rằng tin đang hiện với khách; đọc `isPublic`** (6.18), có ở mọi phản hồi tin của chủ trọ.
 
 ### Tìm trọ (khách và người tìm trọ)
 
@@ -996,8 +1110,11 @@ Hai ô: mật khẩu hiện tại, mật khẩu mới. Gọi `POST /auth/change-
 ### Bảng giá gói (khách và chủ trọ)
 
 1. **Trang bảng giá**: gọi `GET /plans` (công khai, không cần token), vẽ mỗi gói một thẻ: tên, giá (định dạng đồng), "tối đa N tin", "N ngày". Đã xếp giá tăng dần.
-2. Nút "Mua" **chưa làm việc được** (chưa có API đơn, mục 10). Có thể dựng sẵn giao diện nhưng đừng gọi API nào khi bấm, và đừng hứa gói sẽ đổi hạn mức ngay.
-3. Chỗ dẫn tới trang này: nút "Mua gói" ở lỗi `MEMBERSHIP_REQUIRED` (6.18) và dải trạng thái dùng thử khi `state` là `expired` (6.25).
+2. Nút "Mua" (chỉ với chủ trọ đã đăng nhập) gọi `POST /orders` với `planId` của thẻ, rồi chuyển sang bước xác nhận đơn. Khách chưa đăng nhập thì dẫn đi đăng nhập; người tìm trọ và admin không có nút "Mua" (sẽ nhận 403). Thanh toán xong thì gọi lại `GET /me/membership` (6.25): có `state = plan`, chủ trọ đăng được ngay và tin hiện lại với khách ngay.
+3. **Bước xác nhận đơn**: hiện `planName`, `price`, `maxListings`, `durationDays` của đơn (bản chốt) và nút "Thanh toán thử" gọi `POST /orders/:id/pay`; nút "Hủy đơn" gọi `POST /orders/:id/cancel`. Khóa nút khi đang gửi. Thanh toán xong hiện `endsAt` ("gói đến hết ngày ..."). Gặp 409 `PLAN_INACTIVE` thì báo "gói đã ngừng bán" và cho chọn lại.
+4. **Lịch sử đơn**: `GET /orders` (phân trang, mới nhất trước), mỗi dòng hiện `code`, `planName`, `price`, `status`, và `startsAt`, `endsAt` khi đã trả. Đơn `pending` có nút "Tiếp tục thanh toán" và "Hủy".
+5. Chỗ dẫn tới trang này: nút "Mua gói" ở lỗi `MEMBERSHIP_REQUIRED` (6.18) và dải trạng thái khi `state` là `expired` (6.25). Chủ trọ đang có gói cũng có thể vào để gia hạn: kỳ mới nối vào cuối, nên bước xác nhận đơn hiện "gói mới bắt đầu sau khi gói hiện tại hết, vào <`paidUntil`>".
+6. **Gói đang chạy** (trang tài khoản hoặc dải trạng thái): đọc `subscription` của `GET /me/membership` (6.25), hiện `planName`, "còn `daysLeft` ngày", "đã trả đến `paidUntil`" và hạn mức `listingLimit`.
 
 ### Màn hình admin
 
@@ -1019,10 +1136,10 @@ Hai ô: mật khẩu hiện tại, mật khẩu mới. Gọi `POST /auth/change-
 - **Loại tài khoản không đổi.** Không có API đổi loại.
 - **Địa chỉ hai cấp.** Mọi địa chỉ trong hệ thống theo đơn vị hành chính mới sau sáp nhập: số nhà và đường, phường hoặc xã (`GET /wards`), tỉnh hoặc thành phố. Không có quận huyện. Xem mục 6.15.
 - **Nhà trọ** thuộc đúng một chủ trọ (không đổi chủ). Mỗi nhà trọ có tối đa một khoản phí cho mỗi loại trong 6 loại, tiện ích chọn từ danh mục. Xóa nhà trọ là xóa mềm và chỉ được khi không còn tin chưa xóa. Mọi thao tác chỉ trên nhà trọ của chính mình (403 `NOT_RESOURCE_OWNER` nếu khác), kể cả admin.
-- **Dùng thử và hạn mức tin** (từ 2026-10-19). Chủ trọ có kỳ dùng thử từ lúc đăng ký (mặc định 30 ngày) và trong kỳ được hiện tối đa 2 tin (admin đổi cả hai con số). Hạn mức hiện hành là `trial_listing_limit` khi còn trong kỳ (so sánh chặt: đúng lúc hết hạn là hết), ngược lại là 0. Chỉ tin `visible` chưa xóa tính vào "đang hiện". Cửa hạn mức chỉ ở **đăng tin** và **hiện lại tin**; ẩn, sửa, xóa tin và mọi thao tác nhà trọ không bị chặn. Hạn mức tính lại mỗi lần gọi, không lưu: đổi tham số hay hết hạn có hiệu lực ngay. Chủ trọ đọc trạng thái ở `GET /me/membership` (6.25) và cờ `isPublic` của từng tin (6.18).
+- **Dùng thử và hạn mức tin** (từ 2026-10-19). Chủ trọ có kỳ dùng thử từ lúc đăng ký (mặc định 30 ngày) và trong kỳ được hiện tối đa 2 tin (admin đổi cả hai con số). Hạn mức hiện hành theo thứ tự: số tin của gói đang chạy nếu có (mục Gói bên dưới), không thì `trial_listing_limit` khi còn trong kỳ dùng thử (so sánh chặt: đúng lúc hết hạn là hết), không thì 0. Chỉ tin `visible` chưa xóa tính vào "đang hiện". Cửa hạn mức chỉ ở **đăng tin** và **hiện lại tin**; ẩn, sửa, xóa tin và mọi thao tác nhà trọ không bị chặn. Hạn mức tính lại mỗi lần gọi, không lưu: đổi tham số hay hết hạn có hiệu lực ngay. Chủ trọ đọc trạng thái ở `GET /me/membership` (6.25) và cờ `isPublic` của từng tin (6.18).
 - **Tin đăng** thuộc một nhà trọ, nên chủ tin là chủ nhà trọ (không đổi). Tin **hiện ngay khi đăng**, không nháp, không duyệt. Ba trạng thái: `visible`, `hidden_by_owner`, `hidden_by_admin`. Chủ trọ tự chuyển giữa `visible` và `hidden_by_owner`; tin `hidden_by_admin` chủ trọ không tự hiện lại được nhưng vẫn sửa và xóa được.
-- **Một tin hiện ra công khai khi và chỉ khi** tin `visible` và chưa xóa, nhà trọ chưa xóa, và chủ trọ đang hoạt động (không bị khóa, chưa xóa), **chủ trọ còn trong kỳ dùng thử, và tin nằm trong N tin `visible` đăng sớm nhất của chủ trọ** (N là `trial_listing_limit`, mục 6.19). Tính lúc đọc nên khóa tài khoản, hết dùng thử hay hạ hạn mức làm tin biến khỏi danh sách ngay, còn mở khóa, nâng hạn mức hay có gói thì tin hiện lại. (Về sau thêm điều kiện có gói còn hiệu lực, hàng 10.)
-- **Gói** (từ 2026-10-19). Bảng giá công khai chỉ có gói đang bán. Admin tạo, sửa, tắt, xóa gói; xóa chỉ khi chưa có đơn nào đặt gói đó. Giá, số tin và số ngày của một lần mua sẽ được chốt vào đơn lúc tạo đơn (mốc sau), nên sửa gói không đổi đơn đã đặt. **Gói chưa có tác dụng lên hạn mức tin** cho tới khi có thanh toán thử (mục 10).
+- **Một tin hiện ra công khai khi và chỉ khi** tin `visible` và chưa xóa, nhà trọ chưa xóa, và chủ trọ đang hoạt động (không bị khóa, chưa xóa), **tin nằm trong N tin `visible` đăng sớm nhất của chủ trọ**, N là hạn mức hiện hành của chủ trọ (số tin của gói đang chạy, hoặc `trial_listing_limit` khi còn dùng thử, hoặc 0; mục 6.19). Tính lúc đọc nên khóa tài khoản, hết gói và hết dùng thử, hay hạ hạn mức làm tin biến khỏi danh sách ngay, còn mở khóa, nâng hạn mức hay mua gói thì tin hiện lại.
+- **Gói** (từ 2026-10-19). Bảng giá công khai chỉ có gói đang bán. Admin tạo, sửa, tắt, xóa gói; xóa chỉ khi chưa có đơn nào đặt gói đó. Giá, số tin và số ngày của một lần mua được chốt vào đơn lúc tạo đơn, nên sửa gói không đổi đơn đã đặt. Mua gói là tạo đơn rồi thanh toán thử (6.27), ra một kỳ 30 ngày; các kỳ nối tiếp nhau. **Gói đang chạy thay hạn mức dùng thử**, kể cả khi nhỏ hơn. Gói hết đúng lúc `endsAt` (so chặt): hạn mức quay về dùng thử nếu còn, không thì 0 và mọi tin biến ngay. Mua gói không đổi hạn dùng thử. Mua thêm khi đang có gói thì kỳ mới nối vào cuối, kể cả gói khác: gói lớn hơn chỉ có hiệu lực từ khi kỳ trước hết.
 - **Số điện thoại chủ trọ** chỉ trả ở chi tiết tin và chỉ cho người gọi có access token hợp lệ; không có ở danh sách và không bao giờ có cho khách.
 - **Lượt xem** tính một lần cho mỗi người xem trong 30 phút, chủ tin không tính (6.20).
 - **Khóa tài khoản**: tài khoản bị khóa không đăng nhập, không refresh được và mọi phiên bị hủy lúc khóa. Đăng nhập sai mật khẩu vẫn báo `INVALID_CREDENTIALS` (không lộ tài khoản có bị khóa hay không); chỉ khi đúng mật khẩu mới báo `ACCOUNT_LOCKED`. Admin không tự khóa mình được.
@@ -1043,7 +1160,8 @@ Hai ô: mật khẩu hiện tại, mật khẩu mới. Gọi `POST /auth/change-
 - **Chưa có API danh sách người dùng** nên màn hình admin chưa tìm được người để khóa ngoài việc biết sẵn id.
 - **Lượt xem tính trong bộ nhớ** của backend: khởi động lại thì mọi người xem được tính lại từ đầu (cộng dư vài lượt), và nếu sau này chạy nhiều bản backend thì mỗi bản tính riêng. Nhiều người không đăng nhập dùng chung một IP chỉ tính một lượt mỗi 30 phút.
 - **Số điện thoại với tài khoản vừa bị khóa**: access token còn hạn (tối đa 15 phút) vẫn được coi là đã đăng nhập ở trang chi tiết tin, nên tài khoản vừa bị khóa còn thấy số điện thoại đến khi token hết hạn. Mọi phiên của tài khoản đã bị hủy nên không refresh được.
-- **Chưa mua được gói** (hàng 10 mới làm bảng giá và phần quản lý gói, chưa có đơn và thanh toán thử): hết kỳ dùng thử thì chủ trọ chưa có cách nào đăng tiếp. Tin không tự hết hạn: phòng đã cho thuê mà chủ trọ quên ẩn thì tin vẫn nằm đó.
+- **Thanh toán là thanh toán thử**: `paid` chỉ nghĩa là chủ trọ tự bấm, không thu tiền, không biên lai, không hoàn tiền và không đổi gói giữa kỳ (mua gói mới luôn nối vào cuối). Admin chưa xem được đơn của mọi người. Đơn chờ không tự hết hạn. Tin không tự hết hạn: phòng đã cho thuê mà chủ trọ quên ẩn thì tin vẫn nằm đó.
+- **Phép nối kỳ gói ở đọc công khai chưa đo riêng** ở hàng chục nghìn tin; nó cộng thêm vào chi phí đã nói ở trên. Chấp nhận ở bản demo.
 - **`isPublic` và `GET /me/membership` chỉ nhìn tin và hạn mức**, không nhìn tài khoản đã bị khóa hay nhà trọ đã xóa: `isPublic` là `true` nghĩa là tin nằm trong hạn mức, còn khóa tài khoản chặn tin ở API công khai theo luật ở mục 8. Chủ trọ vừa bị khóa chỉ còn gọi được trong tối đa 15 phút (token còn hạn). Đừng tự tính hạn dùng thử hay hạn mức ở FE, luôn lấy từ `GET /me/membership`.
 - **Chủ trọ đăng ký trước 2026-10-16** nhận hạn dùng thử bằng thời điểm chạy migration cộng 30 ngày (không phải thời điểm họ đăng ký).
 - **Chưa có ảnh tin** và **chưa có kháng nghị** khi bị ẩn tin: chủ trọ sửa tin xong vẫn phải liên hệ admin ngoài hệ thống.
@@ -1061,7 +1179,7 @@ Backend sẽ làm theo thứ tự dưới đây. Mỗi mục khi xong sẽ vào 
 |---|---|---|
 | 8 | **Phần còn lại của nhà trọ và tin** (đã có: danh sách phường, xã và tiện ích, nhà trọ, đăng tin, xem tin, ẩn và hiện tin, mục 6.15 đến 6.23): **ảnh tin** (tải lên từng ảnh, tối đa 5 ảnh mỗi tin, xem ảnh), **admin ẩn và gỡ ẩn tin kèm lý do** cùng danh sách tin để kiểm duyệt, **admin quản lý danh mục phường và tiện ích** | Nút tải ảnh trong biểu mẫu tin; màn hình kiểm duyệt cho admin; `moderationReason` đã có sẵn trong API tin của chủ trọ. **Không cần hàng chờ duyệt** |
 | 9 | **Dùng thử miễn phí và hạn mức tin** cho chủ trọ: dùng thử 30 ngày, tối đa 2 tin đang hiện (admin đổi được hai con số này). Hết kỳ dùng thử mà chưa mua gói thì tin của chủ trọ tự biến khỏi danh sách công khai. **Đã có**: API admin xem và đổi hai tham số (mục 6.24); hạn dùng thử đặt lúc đăng ký (6.1); chặn đăng và hiện lại tin khi hết dùng thử hoặc đủ hạn mức (6.18, 6.23, mã lỗi `MEMBERSHIP_REQUIRED` và `LISTING_QUOTA_REACHED`); tin biến khỏi danh sách và chi tiết công khai khi hết kỳ hoặc vượt hạn mức, ẩn bớt theo thứ tự đăng (6.19, 6.20); `GET /me/membership` và cờ `isPublic` (6.25, 6.18). **Còn lại**: đo tốc độ ở hàng chục nghìn tin | Lỗi chặn đăng hoặc hiện thêm tin kèm gợi ý mua gói; hiện ngày hết hạn dùng thử và số tin còn lại |
-| 10 | **Mua gói và gia hạn theo tháng**, **thanh toán thử** (bấm xác nhận là có gói, không có tiền thật, không chuyển sang cổng thanh toán nào, nên **không có trang VNPay**). **Đã có**: bảng giá công khai và API admin tạo, sửa, tắt, xóa gói (mục 6.26). **Còn lại**: tạo, xem, hủy đơn; thanh toán thử; kỳ gói nối tiếp; gói đổi hạn mức tin và hiển thị công khai; `subscription` trong `GET /me/membership` | Trang chọn gói, nút thanh toán thử, lịch sử đơn |
+| 10 | **Mua gói và gia hạn theo tháng**, **thanh toán thử** (bấm xác nhận là có gói, không có tiền thật, không chuyển sang cổng thanh toán nào, nên **không có trang VNPay**). **Đã có**: bảng giá công khai và API admin tạo, sửa, tắt, xóa gói (mục 6.26); tạo, xem, hủy đơn, thanh toán thử và kỳ gói nối tiếp (mục 6.27). Gói đổi hạn mức tin và hiển thị công khai, `state = plan` và `subscription` trong `GET /me/membership` (mục 6.25). **Còn lại**: không còn gì ở backend cho mục này | Trang chọn gói, nút thanh toán thử, lịch sử đơn, dải trạng thái gói đang chạy (đều dựng được) |
 | 11 | **Theo dõi chủ trọ** và hiển thị số người theo dõi, tổng lượt xem tin | Nút theo dõi, số liệu trên hồ sơ chủ trọ |
 | 12 | **Lưu phòng yêu thích** cho người tìm trọ | Nút lưu trên tin, trang danh sách tin đã lưu |
 | sau | API **danh sách người dùng** cho admin, API hồ sơ cá nhân | Màn hình quản lý người dùng, trang hồ sơ |
@@ -1076,12 +1194,32 @@ Backend sẽ làm theo thứ tự dưới đây. Mỗi mục khi xong sẽ vào 
 
 Mới nhất ở trên cùng. Mục nào **phá vỡ** cách FE đang gọi sẽ ghi rõ "ĐỔI KHÁC VỚI TRƯỚC".
 
+### 2026-10-19 · Gói đổi hạn mức tin và hiển thị công khai (mốc 3 của mua gói)
+
+- **ĐỔI KHÁC VỚI TRƯỚC**: chủ trọ có gói đang chạy giờ dùng hạn mức của gói **thay** hạn mức dùng thử. Hệ quả: chủ trọ hết dùng thử mua gói xong **đăng được tin ngay** (hết nhận 403 `MEMBERSHIP_REQUIRED`); tin `visible` của họ **hiện lại ngay** trong `GET /listings` và `GET /listings/:slugCode`; gói hết hạn (đúng lúc `endsAt`) mà dùng thử đã hết thì mọi tin biến ngay, không cần việc nền.
+- `GET /me/membership` (mục 6.25): `state` có thêm giá trị `plan`; **thêm trường `subscription`** (`null` khi không có gói đang chạy, ngược lại `orderCode`, `planName`, `startsAt`, `endsAt`, `daysLeft`, `paidUntil`). Hợp đồng từ **bảy lên tám trường**. Chỉ thêm trường, FE cũ đọc theo tên không vỡ; FE kiểm `state` bằng `switch` đầy đủ cần xử lý thêm `plan`.
+- **ĐỔI KHÁC VỚI TRƯỚC**: `trialDaysLeft` giờ **chỉ phụ thuộc `trialEndsAt`**, không phụ thuộc `state`. Chủ trọ đang có gói mà dùng thử còn vẫn thấy số ngày dùng thử còn lại. Hết dùng thử vẫn là 0, không có `trialEndsAt` vẫn là `null`.
+- `listingLimit`, `remaining`, `overLimitCount` và cờ `isPublic` tính theo hạn mức của gói khi `state = plan`. Gói nhỏ hơn hạn mức dùng thử vẫn thay nó (gói 1 tin trong lúc dùng thử 2 tin thì hạn mức là 1). Gói hết mà dùng thử còn thì `state` về `trial` và `subscription` về `null`.
+- Phản hồi của các API khác **không đổi hình dạng**. Không migration, không biến môi trường mới.
+- **FE cần làm**: thêm nhánh `plan` vào dải trạng thái (mục 7, bước 0 và mục Bảng giá gói); sau khi thanh toán thử thành công thì gọi lại `GET /me/membership` rồi báo "gói đã có hiệu lực"; bỏ lời dặn "đừng hứa tin hiện lại ngay" của mốc 2 (đã lỗi thời); ở bước xác nhận đơn, nếu đã có gói thì báo "gói mới bắt đầu sau khi gói hiện tại hết".
+
+### 2026-10-19 · Đơn mua gói, thanh toán thử và kỳ gói nối tiếp (mốc 2 của mua gói)
+
+- **API mới** (mục 6.27): `POST /orders`, `GET /orders`, `GET /orders/:id`, `POST /orders/:id/pay`, `POST /orders/:id/cancel`. Chỉ thêm, không đổi API đang chạy: không phá FE cũ.
+- Chỉ chủ trọ tạo được đơn (admin và người tìm trọ nhận 403 `PERMISSION_DENIED`). Mỗi chủ trọ tối đa một đơn chờ: tạo đơn mới thì đơn chờ cũ tự thành `cancelled`. Đơn chốt tên, giá, số tin và số ngày của gói lúc tạo.
+- **Thanh toán thử** biến đơn thành `paid` và tạo một kỳ gói; các kỳ nối tiếp nhau, không chồng. Bấm hai lần hoặc bấm đồng thời an toàn (200, cùng kết quả, một kỳ).
+- **Ba mã lỗi từng chưa có API nào trả nay đã trả được**: `PLAN_INACTIVE`, `ORDER_NOT_FOUND`, `ORDER_STATE_INVALID`; `PLAN_NOT_FOUND` giờ còn gặp khi đặt đơn và `PLAN_IN_USE` gặp được khi gói đã có đơn (mục 3).
+- **Giới hạn tần suất**: nhóm `orderWrite` đã áp thật, 30 lần mỗi giờ cho mỗi API trong ba API ghi đơn (mục 3).
+- **Chưa có**: gói **chưa đổi hạn mức tin**. `GET /me/membership` chưa có `state = plan` hay `subscription`; chủ trọ đã hết dùng thử mua gói xong vẫn nhận 403 `MEMBERSHIP_REQUIRED` khi đăng tin. Phần này thuộc mốc 3.
+- Không có migration hay biến môi trường mới (ba bảng đã có từ mốc 1). Cần `npm run migration:deploy` và `npm run seed` nếu chưa chạy.
+- **FE cần làm** (tùy chọn): nút "Mua" ở bảng giá, bước xác nhận đơn kèm thanh toán thử, trang lịch sử đơn (mục 7).
+
 ### 2026-10-19 · Bảng giá gói và quản lý gói (mốc 1 của mua gói)
 
 - **API mới** (mục 6.26): `GET /plans` công khai (bảng giá: chỉ gói đang bán, giá tăng dần, phân trang, năm trường mỗi gói) và API admin `GET /plans/all`, `POST /plans`, `PATCH /plans/:id`, `DELETE /plans/:id` (quyền `plan:*`; ba lệnh ghi đọc lại quyền từ cơ sở dữ liệu). Chỉ thêm, không đổi API đang chạy: không phá FE cũ.
 - `npm run seed` thêm ba gói mẫu còn thiếu: Cơ bản 5 tin 99.000 đ, Nâng cao 15 tin 199.000 đ, Chuyên nghiệp 50 tin 399.000 đ, mỗi gói 30 ngày. Chạy lại không ghi đè gói admin đã sửa; gói mẫu admin đã xóa sẽ quay lại ở lần seed sau.
 - **Sáu mã lỗi mới** vào bảng mã lỗi (mục 3): `PLAN_NOT_FOUND`, `PLAN_NAME_TAKEN`, `PLAN_IN_USE` dùng được ngay; `PLAN_INACTIVE`, `ORDER_NOT_FOUND`, `ORDER_STATE_INVALID` chưa API nào trả (dành cho đơn, mốc sau).
-- **Giới hạn tần suất**: `GET /plans` 300 lần mỗi phút theo IP (mục 3). Nhóm `orderWrite` (30 lần mỗi giờ cho tạo, thanh toán, hủy đơn) đã có trong code nhưng chưa route nào dùng.
+- **Giới hạn tần suất**: `GET /plans` 300 lần mỗi phút theo IP (mục 3). Nhóm `orderWrite` (30 lần mỗi giờ cho tạo, thanh toán, hủy đơn) có trong code từ mốc này và được áp thật ở mốc 2.
 - **Chưa có**: tạo đơn, thanh toán thử, kỳ gói. Gói **chưa đổi hạn mức tin**; `GET /me/membership` chưa có `state = plan` hay `subscription`. Chủ trọ hết dùng thử vẫn chưa có cách đăng tiếp.
 - Cần chạy `npm run migration:deploy` (migration tạo ba bảng `plans`, `orders`, `subscriptions` và phần mở rộng `btree_gist`) rồi `npm run seed`.
 - **FE cần làm** (tùy chọn): trang bảng giá (nút "Mua" chưa làm việc được) và màn hình admin quản lý gói (mục 7).

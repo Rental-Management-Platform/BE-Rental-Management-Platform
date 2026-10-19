@@ -41,6 +41,14 @@ function isPrismaError(error: unknown, code: string): boolean {
 export class PlansRepository {
 	constructor(private readonly prisma: PrismaService) {}
 
+	/**
+	 * Một gói theo id, hoặc `null` khi không có. Có `tx` thì đọc trong giao dịch đó (tạo đơn và thanh toán đọc
+	 * gói trong chính giao dịch của mình, spec 0004 "Value sourcing").
+	 */
+	findById(id: string, tx?: Prisma.TransactionClient): Promise<Plan | null> {
+		return (tx ?? this.prisma).plan.findUnique({ where: { id } });
+	}
+
 	/** Gói đang bán, kèm tổng số. Hai câu chạy song song nên dùng kết nối thường (mỗi câu một kết nối). */
 	findActivePage(
 		skip: number,

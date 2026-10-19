@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Rental Management Platform API",
-    "description": "Bộ request để thử API backend. Cập nhật cùng mỗi thay đổi API (xem docs/api/api-for-frontend.md, mục Nhật ký thay đổi).\n\nCách dùng:\n1. Import file này vào Postman.\n2. Mở tab Variables của collection, điền `adminEmail` và `adminPassword` theo ADMIN_SEED_* trong .env (không commit mật khẩu thật).\n3. Chạy API (`npm run start:dev`), rồi chạy lần lượt folder 00, 01, 02, 03, 04, 05, 07, 08, 09, 10, 11, 12. Folder 06 (giới hạn tần suất, lỗi 429) chạy riêng, đừng chạy cả bộ nhiều lần liên tiếp: bộ đếm nằm trong bộ nhớ backend, muốn chạy lại ngay thì khởi động lại backend.\n4. Các request tự lưu token vào biến `userToken` và `adminToken`.\n\nCookie refresh (`rt`) có Path `/api/v1/auth`, Postman tự giữ và tự gửi cho các request dưới đường dẫn đó.",
+    "description": "Bộ request để thử API backend. Cập nhật cùng mỗi thay đổi API (xem docs/api/api-for-frontend.md, mục Nhật ký thay đổi).\n\nCách dùng:\n1. Import file này vào Postman.\n2. Mở tab Variables của collection, điền `adminEmail` và `adminPassword` theo ADMIN_SEED_* trong .env (không commit mật khẩu thật).\n3. Chạy API (`npm run start:dev`), rồi chạy lần lượt folder 00, 01, 02, 03, 04, 05, 07, 08, 09, 10, 11, 12, 13. Folder 06 (giới hạn tần suất, lỗi 429) chạy riêng, đừng chạy cả bộ nhiều lần liên tiếp: bộ đếm nằm trong bộ nhớ backend, muốn chạy lại ngay thì khởi động lại backend.\n4. Các request tự lưu token vào biến `userToken` và `adminToken`.\n\nCookie refresh (`rt`) có Path `/api/v1/auth`, Postman tự giữ và tự gửi cho các request dưới đường dẫn đó.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -179,6 +179,136 @@
       "key": "planName",
       "value": "",
       "description": "Tên gói Postman tạo ở folder 12, tự sinh mỗi lần chạy."
+    },
+    {
+      "key": "orderPlanId",
+      "value": "",
+      "description": "Id gói rẻ nhất của bảng giá, chọn ở folder 13."
+    },
+    {
+      "key": "orderPlanName",
+      "value": "",
+      "description": "Tên gói chọn ở folder 13."
+    },
+    {
+      "key": "orderPlanPrice",
+      "value": "",
+      "description": "Giá gói chọn ở folder 13 (đồng, dạng chuỗi)."
+    },
+    {
+      "key": "orderPlanMaxListings",
+      "value": "",
+      "description": "Số tin tối đa của gói chọn ở folder 13 (dạng chuỗi)."
+    },
+    {
+      "key": "orderPlanDurationDays",
+      "value": "",
+      "description": "Số ngày một kỳ của gói chọn ở folder 13 (dạng chuỗi)."
+    },
+    {
+      "key": "orderId",
+      "value": "",
+      "description": "Đơn thứ nhất của folder 13, bị hủy khi tạo đơn thứ hai."
+    },
+    {
+      "key": "orderId2",
+      "value": "",
+      "description": "Đơn thứ hai của folder 13, được thanh toán thử."
+    },
+    {
+      "key": "orderId3",
+      "value": "",
+      "description": "Đơn thứ ba của folder 13, nối tiếp kỳ gói."
+    },
+    {
+      "key": "orderId4",
+      "value": "",
+      "description": "Đơn thứ tư của folder 13, dùng để thử hủy."
+    },
+    {
+      "key": "orderId5",
+      "value": "",
+      "description": "Đơn của gói thử bị tắt ở folder 13."
+    },
+    {
+      "key": "orderPaidJson",
+      "value": "",
+      "description": "Kết quả thanh toán lần đầu (JSON), để so với lần bấm thứ hai."
+    },
+    {
+      "key": "orderPaidEndsAt",
+      "value": "",
+      "description": "endsAt của kỳ gói đầu tiên, để thử kỳ nối tiếp."
+    },
+    {
+      "key": "orderCancelledJson",
+      "value": "",
+      "description": "Kết quả hủy đơn lần đầu (JSON), để so với lần hủy thứ hai."
+    },
+    {
+      "key": "orderTestPlanId",
+      "value": "",
+      "description": "Id gói thử tạo ở folder 13."
+    },
+    {
+      "key": "orderTestPlanName",
+      "value": "",
+      "description": "Tên gói thử ở folder 13, tự sinh mỗi lần chạy."
+    },
+    {
+      "key": "planFlowPlanId",
+      "value": "",
+      "description": "Id gói Cơ bản chọn ở folder 14."
+    },
+    {
+      "key": "planFlowPlanName",
+      "value": "",
+      "description": "Tên gói chọn ở folder 14."
+    },
+    {
+      "key": "planFlowMax",
+      "value": "",
+      "description": "Số tin tối đa của gói chọn ở folder 14 (chuỗi)."
+    },
+    {
+      "key": "planFlowPropertyId",
+      "value": "",
+      "description": "Id nhà trọ của chủ trọ hết dùng thử ở folder 14."
+    },
+    {
+      "key": "planFlowOrderId",
+      "value": "",
+      "description": "Id đơn mua gói thứ nhất ở folder 14."
+    },
+    {
+      "key": "planFlowOrderId2",
+      "value": "",
+      "description": "Id đơn mua nối tiếp ở folder 14."
+    },
+    {
+      "key": "planFlowOrderCode",
+      "value": "",
+      "description": "Mã đơn thứ nhất ở folder 14, để so với subscription.orderCode."
+    },
+    {
+      "key": "planFlowEndsAt",
+      "value": "",
+      "description": "endsAt của kỳ gói thứ nhất ở folder 14."
+    },
+    {
+      "key": "planFlowPaidUntil",
+      "value": "",
+      "description": "endsAt của kỳ gói thứ hai ở folder 14 (paidUntil sau khi mua nối tiếp)."
+    },
+    {
+      "key": "planFlowListingId",
+      "value": "",
+      "description": "Id tin đăng sau khi mua gói ở folder 14."
+    },
+    {
+      "key": "planFlowListingCode",
+      "value": "",
+      "description": "Mã tin đăng sau khi mua gói ở folder 14."
     }
   ],
   "auth": {
@@ -4910,7 +5040,7 @@
                 "exec": [
                   "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
                   "const body = pm.response.json();",
-                  "pm.test('đúng bảy trường của hợp đồng', () => pm.expect(Object.keys(body).sort()).to.eql(['listingLimit', 'overLimitCount', 'remaining', 'state', 'trialDaysLeft', 'trialEndsAt', 'visibleCount']));",
+                  "pm.test('đúng tám trường của hợp đồng', () => pm.expect(Object.keys(body).sort()).to.eql(['listingLimit', 'overLimitCount', 'remaining', 'state', 'subscription', 'trialDaysLeft', 'trialEndsAt', 'visibleCount']));",
                   "pm.test('đang dùng thử, chưa có tin nào', () => {",
                   "    pm.expect(body.state).to.eql('trial');",
                   "    pm.expect(body.visibleCount).to.eql(0);",
@@ -6820,7 +6950,7 @@
     },
     {
       "name": "12 Bảng giá và quản lý gói (admin)",
-      "description": "Bảng giá công khai và API admin quản lý gói (spec 0004, mốc 1). **Chạy sau folder 09** (dùng `otherLandlordToken` của folder 08 và `tenantToken` của folder 09) **và từ trên xuống**; cần đã `npm run seed` (ba gói mẫu Cơ bản, Nâng cao, Chuyên nghiệp) và điền `adminEmail`, `adminPassword`. Folder tự đăng nhập admin, **không đăng ký tài khoản mới**, tạo một gói tên `Gói Postman <số>` rồi xóa nó ở cuối, nên chạy lại được; nếu chạy dở thì gói còn lại ở `GET /plans/all`, xóa bằng `DELETE /plans/:id`. Chưa thử được ở đây: 409 `PLAN_IN_USE` (cần đơn, mốc 2) và giới hạn 300 lần mỗi phút của `GET /plans` (thử bằng folder 06 hoặc script).",
+      "description": "Bảng giá công khai và API admin quản lý gói (spec 0004, mốc 1). **Chạy sau folder 09** (dùng `otherLandlordToken` của folder 08 và `tenantToken` của folder 09) **và từ trên xuống**; cần đã `npm run seed` (ba gói mẫu Cơ bản, Nâng cao, Chuyên nghiệp) và điền `adminEmail`, `adminPassword`. Folder tự đăng nhập admin, **không đăng ký tài khoản mới**, tạo một gói tên `Gói Postman <số>` rồi xóa nó ở cuối, nên chạy lại được; nếu chạy dở thì gói còn lại ở `GET /plans/all`, xóa bằng `DELETE /plans/:id`. 409 `PLAN_IN_USE` thử ở folder 13 (cần đơn). Chưa thử được ở đây: giới hạn 300 lần mỗi phút của `GET /plans` (thử bằng folder 06 hoặc script).",
       "auth": {
         "type": "bearer",
         "bearer": [
@@ -7712,6 +7842,2800 @@
               ]
             },
             "description": "Gói đã xóa thật: 404 `PLAN_NOT_FOUND`."
+          }
+        }
+      ]
+    },
+    {
+      "name": "13 Đơn mua gói và thanh toán thử",
+      "description": "Tạo, xem, hủy đơn, thanh toán thử và kỳ gói nối tiếp (spec 0004, mốc 2 và 3). **Chạy sau folder 09** (dùng `userToken` và `otherLandlordToken` của folder 08, `tenantToken` của folder 09) **và từ trên xuống**; cần đã `npm run seed` (ba gói mẫu) và điền `adminEmail`, `adminPassword`. Folder tự đăng nhập admin và **không đăng ký tài khoản mới**. Mua gói bằng `userToken` (chủ trọ mới đăng ký ở folder 08 nên đang có đúng 0 đơn): thanh toán xong chủ trọ đó có hai kỳ gói liền nhau và hạn mức tin của họ là của gói (luồng mua rồi tin hiện lại ở folder 14). Folder tạo một gói tên `Gói đơn Postman <số>` để thử gói bị tắt; gói đã có đơn nên không xóa được (409 `PLAN_IN_USE` chính là một phép thử), mỗi lần chạy để lại một gói đã tắt ở `GET /plans/all`, bỏ qua được. Chưa thử được ở đây: giới hạn 30 lần mỗi giờ của `orderWrite` (thử bằng script) và tranh chấp bấm đồng thời (thử bằng script).",
+      "item": [
+        {
+          "name": "Đăng nhập admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.collectionVariables.set('adminToken', pm.response.json().accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Công khai. Đăng nhập admin do `npm run seed` tạo (điền `adminEmail`, `adminPassword` ở biến của collection). Lưu token vào `adminToken`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Chọn gói: lấy gói rẻ nhất từ bảng giá (GET /plans)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "const plans = pm.response.json().items;",
+                  "pm.test('có ít nhất một gói đang bán sau npm run seed', () => pm.expect(plans.length).to.be.at.least(1));",
+                  "const plan = plans[0];",
+                  "pm.collectionVariables.set('orderPlanId', plan.id);",
+                  "pm.collectionVariables.set('orderPlanName', plan.name);",
+                  "pm.collectionVariables.set('orderPlanPrice', String(plan.price));",
+                  "pm.collectionVariables.set('orderPlanMaxListings', String(plan.maxListings));",
+                  "pm.collectionVariables.set('orderPlanDurationDays', String(plan.durationDays));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/plans",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "plans"
+              ]
+            },
+            "description": "Công khai. Lấy gói đầu tiên của bảng giá (rẻ nhất) làm gói để mua ở các request sau và lưu `orderPlanId`, `orderPlanName`, `orderPlanPrice`, `orderPlanMaxListings`, `orderPlanDurationDays`.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Tạo đơn mua gói (POST /orders)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "const order = pm.response.json();",
+                  "pm.collectionVariables.set('orderId', order.id);",
+                  "pm.test('đơn có đúng 13 trường, không lộ user_id', () => pm.expect(Object.keys(order).sort()).to.eql(['cancelledAt', 'code', 'createdAt', 'durationDays', 'endsAt', 'id', 'maxListings', 'paidAt', 'planId', 'planName', 'price', 'startsAt', 'status']));",
+                  "pm.test('đơn đang chờ, mã 8 ký tự', () => { pm.expect(order.status).to.eql('pending'); pm.expect(order.code).to.match(/^[a-z0-9]{8}$/); });",
+                  "pm.test('chốt đúng gói đã chọn', () => { pm.expect(order.planId).to.eql(pm.collectionVariables.get('orderPlanId')); pm.expect(order.planName).to.eql(pm.collectionVariables.get('orderPlanName')); pm.expect(String(order.price)).to.eql(pm.collectionVariables.get('orderPlanPrice')); pm.expect(String(order.maxListings)).to.eql(pm.collectionVariables.get('orderPlanMaxListings')); pm.expect(String(order.durationDays)).to.eql(pm.collectionVariables.get('orderPlanDurationDays')); });",
+                  "pm.test('chưa trả, chưa hủy, chưa có kỳ gói', () => { pm.expect(order.paidAt).to.eql(null); pm.expect(order.cancelledAt).to.eql(null); pm.expect(order.startsAt).to.eql(null); pm.expect(order.endsAt).to.eql(null); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            },
+            "description": "Dùng `userToken` (chủ trọ thứ nhất của folder 08). Chỉ gửi `planId`: giá, số tin và số ngày được **chốt từ gói tại lúc tạo**. 201 trả đơn `pending` có `code` 8 ký tự, chưa có `paidAt` hay kỳ gói.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"planId\": \"{{orderPlanId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: tạo đơn thiếu planId",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('code là VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));",
+                  "pm.test('lỗi ở trường planId', () => pm.expect(pm.response.json().errors.map((e) => e.field)).to.include('planId'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            },
+            "description": "`planId` là bắt buộc: 400 `VALIDATION_FAILED`, `errors[].field` là `planId`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: tạo đơn với gói không có",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 404', () => pm.response.to.have.status(404));",
+                  "pm.test('code là PLAN_NOT_FOUND', () => pm.expect(pm.response.json().code).to.eql('PLAN_NOT_FOUND'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            },
+            "description": "UUID đúng dạng nhưng không có gói: 404 `PLAN_NOT_FOUND`. Đơn chờ cũ (nếu có) không bị hủy vì giao dịch bị hoàn lại.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"planId\": \"0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8d99\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: tạo đơn kèm giá do client gửi",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('code là VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));",
+                  "pm.test('lỗi ở trường price', () => pm.expect(pm.response.json().errors.map((e) => e.field)).to.include('price'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            },
+            "description": "Giá không nhận từ client: trường lạ bị từ chối 400 `VALIDATION_FAILED` (`errors[].field` là `price`).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"planId\": \"{{orderPlanId}}\",\n  \"price\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: admin tạo đơn",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 403', () => pm.response.to.have.status(403));",
+                  "pm.test('code là PERMISSION_DENIED', () => pm.expect(pm.response.json().code).to.eql('PERMISSION_DENIED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            },
+            "description": "Admin có mọi quyền trong code nên qua được kiểm quyền, nhưng chỉ tài khoản `landlord` mua được gói: 403 `PERMISSION_DENIED`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"planId\": \"{{orderPlanId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: người tìm trọ tạo đơn",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 403', () => pm.response.to.have.status(403));",
+                  "pm.test('code là PERMISSION_DENIED', () => pm.expect(pm.response.json().code).to.eql('PERMISSION_DENIED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            },
+            "description": "Dùng `tenantToken` do folder 09 lưu. Người tìm trọ không có quyền `order:*`: 403 `PERMISSION_DENIED`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"planId\": \"{{orderPlanId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: chưa đăng nhập tạo đơn",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 401', () => pm.response.to.have.status(401));",
+                  "pm.test('code là TOKEN_MISSING', () => pm.expect(pm.response.json().code).to.eql('TOKEN_MISSING'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            },
+            "description": "Không có access token: 401 `TOKEN_MISSING`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"planId\": \"{{orderPlanId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Xem đơn của tôi (GET /orders/:id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('đúng đơn, đang chờ', () => { const order = pm.response.json(); pm.expect(order.id).to.eql(pm.collectionVariables.get('orderId')); pm.expect(order.status).to.eql('pending'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId}}"
+              ]
+            },
+            "description": "Chủ đơn xem đơn của mình.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: chủ trọ khác xem đơn của tôi",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 403', () => pm.response.to.have.status(403));",
+                  "pm.test('code là NOT_RESOURCE_OWNER', () => pm.expect(pm.response.json().code).to.eql('NOT_RESOURCE_OWNER'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId}}"
+              ]
+            },
+            "description": "Dùng `otherLandlordToken` của folder 08. Đơn của người khác: 403 `NOT_RESOURCE_OWNER`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{otherLandlordToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: admin xem đơn của người khác",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 403', () => pm.response.to.have.status(403));",
+                  "pm.test('code là NOT_RESOURCE_OWNER', () => pm.expect(pm.response.json().code).to.eql('NOT_RESOURCE_OWNER'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId}}"
+              ]
+            },
+            "description": "Quy tắc chủ sở hữu áp cả cho admin: 403 `NOT_RESOURCE_OWNER`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: xem đơn không có",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 404', () => pm.response.to.have.status(404));",
+                  "pm.test('code là ORDER_NOT_FOUND', () => pm.expect(pm.response.json().code).to.eql('ORDER_NOT_FOUND'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8d99",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8d99"
+              ]
+            },
+            "description": "UUID đúng dạng nhưng không có đơn: 404 `ORDER_NOT_FOUND`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: id đơn không phải UUID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('code là INVALID_ID', () => pm.expect(pm.response.json().code).to.eql('INVALID_ID'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/abc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "abc"
+              ]
+            },
+            "description": "Id sai dạng là 400 `INVALID_ID` (không phải 404).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Tạo đơn thứ hai: đơn chờ cũ tự hủy (POST /orders)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('orderId2', pm.response.json().id);",
+                  "pm.test('đơn mới đang chờ và khác đơn cũ', () => { const order = pm.response.json(); pm.expect(order.status).to.eql('pending'); pm.expect(order.id).to.not.eql(pm.collectionVariables.get('orderId')); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            },
+            "description": "Mỗi chủ trọ chỉ có tối đa **một đơn chờ**: tạo đơn mới thì đơn chờ cũ thành `cancelled` trong cùng giao dịch.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"planId\": \"{{orderPlanId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Đơn cũ đã thành cancelled (GET /orders/:id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('đơn cũ đã hủy', () => { const order = pm.response.json(); pm.expect(order.status).to.eql('cancelled'); pm.expect(order.cancelledAt).to.be.a('string'); pm.expect(order.startsAt).to.eql(null); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId}}"
+              ]
+            },
+            "description": "Đơn chờ đầu tiên bị hủy khi tạo đơn thứ hai: có `cancelledAt`, vẫn không có kỳ gói.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: thanh toán đơn đã hủy",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 409', () => pm.response.to.have.status(409));",
+                  "pm.test('code là ORDER_STATE_INVALID', () => pm.expect(pm.response.json().code).to.eql('ORDER_STATE_INVALID'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId}}/pay",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId}}",
+                "pay"
+              ]
+            },
+            "description": "Đơn đã `cancelled` là trạng thái cuối: 409 `ORDER_STATE_INVALID`, không tạo kỳ gói.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Danh sách đơn của tôi (GET /orders)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "const page = pm.response.json();",
+                  "pm.test('có đủ items, total, page, pageSize', () => pm.expect(Object.keys(page).sort()).to.eql(['items', 'page', 'pageSize', 'total']));",
+                  "pm.test('hai đơn, mới nhất trước', () => { pm.expect(page.total).to.eql(2); pm.expect(page.items[0].id).to.eql(pm.collectionVariables.get('orderId2')); pm.expect(page.items[1].id).to.eql(pm.collectionVariables.get('orderId')); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            },
+            "description": "Đơn của chính người gọi, **mới nhất trước**, có phân trang `{ items, total, page, pageSize }`. Chủ trọ mới đăng ký ở folder 08 nên có đúng hai đơn.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Lọc đơn theo trạng thái (GET /orders?status=pending)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('chỉ đơn đang chờ', () => { const page = pm.response.json(); pm.expect(page.total).to.eql(1); pm.expect(page.items[0].id).to.eql(pm.collectionVariables.get('orderId2')); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders?status=pending",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "pending"
+                }
+              ]
+            },
+            "description": "Lọc `status` là `pending`, `paid` hoặc `cancelled`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Phân trang đơn (GET /orders?page=2&pageSize=1)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('trang 2 là đơn cũ', () => { const page = pm.response.json(); pm.expect(page.items.length).to.eql(1); pm.expect(page.items[0].id).to.eql(pm.collectionVariables.get('orderId')); pm.expect(page.total).to.eql(2); pm.expect(page.page).to.eql(2); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders?page=2&pageSize=1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "2"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "Trang 2 với 1 đơn mỗi trang là đơn cũ hơn.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: lọc đơn với trạng thái lạ",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('code là VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders?status=refunded",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "refunded"
+                }
+              ]
+            },
+            "description": "`status` ngoài ba giá trị cho phép: 400 `VALIDATION_FAILED`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: người tìm trọ xem danh sách đơn",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 403', () => pm.response.to.have.status(403));",
+                  "pm.test('code là PERMISSION_DENIED', () => pm.expect(pm.response.json().code).to.eql('PERMISSION_DENIED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            },
+            "description": "Người tìm trọ không có quyền `order:read`: 403 `PERMISSION_DENIED`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin không có đơn nào (GET /orders)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('trang rỗng', () => { const page = pm.response.json(); pm.expect(page.total).to.eql(0); pm.expect(page.items).to.eql([]); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            },
+            "description": "Danh sách chỉ gồm đơn của chính người gọi nên admin thấy trang rỗng, không thấy đơn của chủ trọ.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: chủ trọ khác thanh toán đơn của tôi",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 403', () => pm.response.to.have.status(403));",
+                  "pm.test('code là NOT_RESOURCE_OWNER', () => pm.expect(pm.response.json().code).to.eql('NOT_RESOURCE_OWNER'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId2}}/pay",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId2}}",
+                "pay"
+              ]
+            },
+            "description": "Chỉ chủ đơn thanh toán được: 403 `NOT_RESOURCE_OWNER`. Đơn vẫn `pending`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{otherLandlordToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: admin thanh toán đơn của người khác",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 403', () => pm.response.to.have.status(403));",
+                  "pm.test('code là NOT_RESOURCE_OWNER', () => pm.expect(pm.response.json().code).to.eql('NOT_RESOURCE_OWNER'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId2}}/pay",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId2}}",
+                "pay"
+              ]
+            },
+            "description": "Admin không xác nhận thay: 403 `NOT_RESOURCE_OWNER`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thanh toán thử (POST /orders/:id/pay)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "const order = pm.response.json();",
+                  "pm.collectionVariables.set('orderPaidJson', JSON.stringify(order));",
+                  "pm.collectionVariables.set('orderPaidEndsAt', order.endsAt);",
+                  "pm.test('đơn đã trả, có paidAt', () => { pm.expect(order.status).to.eql('paid'); pm.expect(order.paidAt).to.be.a('string'); });",
+                  "pm.test('chưa có gói: kỳ bắt đầu đúng lúc trả', () => pm.expect(order.startsAt).to.eql(order.paidAt));",
+                  "pm.test('kỳ dài đúng durationDays ngày', () => pm.expect(Date.parse(order.endsAt) - Date.parse(order.startsAt)).to.eql(order.durationDays * 86400000));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId2}}/pay",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId2}}",
+                "pay"
+              ]
+            },
+            "description": "Không có tiền thật, không có cổng thanh toán: bấm là đơn thành `paid` và có kỳ gói. Chưa có gói nào nên kỳ bắt đầu đúng lúc trả (`startsAt` bằng `paidAt`) và dài đúng `durationDays` ngày.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Bấm thanh toán lần hai: đúng kết quả lần trước",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('giống hệt kết quả lần trước', () => pm.expect(JSON.stringify(pm.response.json())).to.eql(pm.collectionVariables.get('orderPaidJson')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId2}}/pay",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId2}}",
+                "pay"
+              ]
+            },
+            "description": "Thanh toán đơn đã `paid` là an toàn: 200 trả đúng kết quả lần trước, **không tạo kỳ mới** (bấm đúp, mạng chậm).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: hủy đơn đã trả",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 409', () => pm.response.to.have.status(409));",
+                  "pm.test('code là ORDER_STATE_INVALID', () => pm.expect(pm.response.json().code).to.eql('ORDER_STATE_INVALID'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId2}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId2}}",
+                "cancel"
+              ]
+            },
+            "description": "Hoàn tiền đã hoãn khỏi MVP: hủy đơn `paid` là 409 `ORDER_STATE_INVALID`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Mua tiếp cùng gói: tạo đơn thứ ba (POST /orders)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('orderId3', pm.response.json().id);",
+                  "pm.test('đơn đang chờ', () => pm.expect(pm.response.json().status).to.eql('pending'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            },
+            "description": "Gia hạn là mua thêm: tạo một đơn mới như bình thường.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"planId\": \"{{orderPlanId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thanh toán đơn thứ ba: kỳ nối vào cuối kỳ trước",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "const order = pm.response.json();",
+                  "pm.test('startsAt đúng bằng endsAt của kỳ trước', () => pm.expect(order.startsAt).to.eql(pm.collectionVariables.get('orderPaidEndsAt')));",
+                  "pm.test('kỳ dài đúng durationDays ngày', () => pm.expect(Date.parse(order.endsAt) - Date.parse(order.startsAt)).to.eql(order.durationDays * 86400000));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId3}}/pay",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId3}}",
+                "pay"
+              ]
+            },
+            "description": "Đang có gói thì kỳ mới **bắt đầu đúng lúc kỳ trước kết thúc** (kể cả khi là gói khác), không chồng, không hở.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Tạo đơn thứ tư để thử hủy (POST /orders)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('orderId4', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            },
+            "description": "Một đơn chờ mới để thử hủy.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"planId\": \"{{orderPlanId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Hủy đơn chờ (POST /orders/:id/cancel)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "const order = pm.response.json();",
+                  "pm.collectionVariables.set('orderCancelledJson', JSON.stringify(order));",
+                  "pm.test('đơn đã hủy, không có kỳ', () => { pm.expect(order.status).to.eql('cancelled'); pm.expect(order.cancelledAt).to.be.a('string'); pm.expect(order.startsAt).to.eql(null); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId4}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId4}}",
+                "cancel"
+              ]
+            },
+            "description": "Đơn `pending` của mình thành `cancelled` với `cancelledAt`; không tạo kỳ gói.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Hủy lần hai: đúng kết quả lần trước",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('giống hệt kết quả lần trước', () => pm.expect(JSON.stringify(pm.response.json())).to.eql(pm.collectionVariables.get('orderCancelledJson')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId4}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId4}}",
+                "cancel"
+              ]
+            },
+            "description": "Hủy đơn đã `cancelled` là an toàn: 200 trả đúng kết quả cũ.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: chủ trọ khác hủy đơn của tôi",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 403', () => pm.response.to.have.status(403));",
+                  "pm.test('code là NOT_RESOURCE_OWNER', () => pm.expect(pm.response.json().code).to.eql('NOT_RESOURCE_OWNER'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId4}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId4}}",
+                "cancel"
+              ]
+            },
+            "description": "Kiểm chủ sở hữu đứng trước kiểm trạng thái: 403 `NOT_RESOURCE_OWNER`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{otherLandlordToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: người tìm trọ hủy đơn",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 403', () => pm.response.to.have.status(403));",
+                  "pm.test('code là PERMISSION_DENIED', () => pm.expect(pm.response.json().code).to.eql('PERMISSION_DENIED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId4}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId4}}",
+                "cancel"
+              ]
+            },
+            "description": "Người tìm trọ không có quyền `order:cancel`: 403 `PERMISSION_DENIED`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin tạo gói thử cho đơn (POST /plans)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('orderTestPlanName', 'Gói đơn Postman ' + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('orderTestPlanId', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/plans",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "plans"
+              ]
+            },
+            "description": "Gói riêng để thử đơn của gói bị tắt, tên có số để chạy lại được. Gói này đã có đơn nên **không xóa được** và được để ở trạng thái tắt khi xong (xem mô tả folder).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{orderTestPlanName}}\",\n  \"price\": 1000,\n  \"maxListings\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Tạo đơn bằng gói thử (POST /orders)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('orderId5', pm.response.json().id);",
+                  "pm.test('chốt giá và số tin của gói', () => { const order = pm.response.json(); pm.expect(order.price).to.eql(1000); pm.expect(order.maxListings).to.eql(2); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            },
+            "description": "Đơn chờ chốt giá 1.000 đ và 2 tin.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"planId\": \"{{orderTestPlanId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin sửa giá và số tin của gói thử (PATCH /plans/:id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('gói đã đổi', () => { const plan = pm.response.json(); pm.expect(plan.price).to.eql(5000); pm.expect(plan.maxListings).to.eql(9); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/plans/{{orderTestPlanId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "plans",
+                "{{orderTestPlanId}}"
+              ]
+            },
+            "description": "Sửa gói chỉ ảnh hưởng đơn tạo **sau đó**.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"price\": 5000,\n  \"maxListings\": 9\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Đơn giữ giá và số tin đã chốt (GET /orders/:id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('bản chốt không đổi', () => { const order = pm.response.json(); pm.expect(order.price).to.eql(1000); pm.expect(order.maxListings).to.eql(2); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId5}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId5}}"
+              ]
+            },
+            "description": "Đơn tạo trước khi admin sửa gói vẫn giữ 1.000 đ và 2 tin.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin tắt gói thử (PATCH /plans/:id với isActive false)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('gói đã tắt', () => pm.expect(pm.response.json().isActive).to.eql(false));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/plans/{{orderTestPlanId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "plans",
+                "{{orderTestPlanId}}"
+              ]
+            },
+            "description": "Ngừng bán gói.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isActive\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: đặt đơn mới bằng gói đã tắt",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 409', () => pm.response.to.have.status(409));",
+                  "pm.test('code là PLAN_INACTIVE', () => pm.expect(pm.response.json().code).to.eql('PLAN_INACTIVE'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            },
+            "description": "Gói đã tắt không đặt được: 409 `PLAN_INACTIVE`. Đơn chờ cũ không bị hủy vì giao dịch bị hoàn lại.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"planId\": \"{{orderTestPlanId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: thanh toán đơn của gói đã tắt",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 409', () => pm.response.to.have.status(409));",
+                  "pm.test('code là PLAN_INACTIVE', () => pm.expect(pm.response.json().code).to.eql('PLAN_INACTIVE'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId5}}/pay",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId5}}",
+                "pay"
+              ]
+            },
+            "description": "Gói của đơn đã tắt sau khi đặt: 409 `PLAN_INACTIVE`, đơn vẫn `pending`, không tạo kỳ.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Đơn vẫn pending sau lần thanh toán thất bại",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('vẫn đang chờ, chưa có kỳ', () => { const order = pm.response.json(); pm.expect(order.status).to.eql('pending'); pm.expect(order.startsAt).to.eql(null); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId5}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId5}}"
+              ]
+            },
+            "description": "Lỗi không để lại gì: đơn còn `pending`, chưa có kỳ.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: admin xóa gói thử đã có đơn",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 409', () => pm.response.to.have.status(409));",
+                  "pm.test('code là PLAN_IN_USE', () => pm.expect(pm.response.json().code).to.eql('PLAN_IN_USE'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/plans/{{orderTestPlanId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "plans",
+                "{{orderTestPlanId}}"
+              ]
+            },
+            "description": "Gói đã có đơn tham chiếu thì không xóa được: 409 `PLAN_IN_USE` (đã tắt thì ngừng bán là đủ).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Hủy đơn của gói thử để dọn (POST /orders/:id/cancel)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('đã hủy', () => pm.expect(pm.response.json().status).to.eql('cancelled'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId5}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId5}}",
+                "cancel"
+              ]
+            },
+            "description": "Đơn hủy được dù gói đã tắt.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "14 Gói thành hạn mức tin",
+      "description": "Mua gói rồi tin hiện lại (spec 0004, mốc 3). **Chạy sau folder 11** (dùng `expiredToken`, chủ trọ đăng ký lúc `trial_days` = 0 nên hết dùng thử ngay) **và từ trên xuống**; cần đã `npm run seed` (ba gói mẫu) và đã chạy folder 07 (`wardCode`). Không đăng ký tài khoản mới và không cần admin. Luồng: hết dùng thử, đăng bị 403 `MEMBERSHIP_REQUIRED`; tạo đơn và thanh toán thử; `GET /me/membership` ra `state = plan` với `subscription`; đăng được ngay; tin hiện lại ở danh sách và chi tiết công khai, `isPublic` true; mua nối tiếp thì `paidUntil` dời ra còn `endsAt` giữ nguyên. Để lại hai kỳ gói cho chủ trọ đó (không có API xóa kỳ), bỏ qua được.",
+      "item": [
+        {
+          "name": "Chọn gói: lấy gói Cơ bản từ bảng giá (GET /plans)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "const items = pm.response.json().items;",
+                  "pm.test('bảng giá không rỗng', () => pm.expect(items.length).to.be.above(0));",
+                  "const plan = items.find((p) => p.name === 'Cơ bản') || items[0];",
+                  "pm.collectionVariables.set('planFlowPlanId', plan.id);",
+                  "pm.collectionVariables.set('planFlowPlanName', plan.name);",
+                  "pm.collectionVariables.set('planFlowMax', String(plan.maxListings));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/plans",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "plans"
+              ]
+            },
+            "description": "Công khai. Lấy gói tên `Cơ bản` (5 tin) của `npm run seed`; không có thì lấy gói đầu bảng giá.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Hết dùng thử, chưa có gói: xem trạng thái (GET /me/membership)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('đúng tám trường của hợp đồng', () => pm.expect(Object.keys(body).sort()).to.eql(['listingLimit', 'overLimitCount', 'remaining', 'state', 'subscription', 'trialDaysLeft', 'trialEndsAt', 'visibleCount']));",
+                  "pm.test('expired, không có gói, hạn mức 0', () => {",
+                  "    pm.expect(body.state).to.eql('expired');",
+                  "    pm.expect(body.subscription).to.eql(null);",
+                  "    pm.expect(body.listingLimit).to.eql(0);",
+                  "    pm.expect(body.trialDaysLeft).to.eql(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me/membership",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "membership"
+              ]
+            },
+            "description": "Dùng `expiredToken` (chủ trọ đăng ký lúc `trial_days` = 0 ở folder 11). Chưa có gói: `expired`, `subscription` là `null`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{expiredToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Tạo nhà trọ (POST /properties)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('planFlowPropertyId', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/properties",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties"
+              ]
+            },
+            "description": "Hết dùng thử vẫn tạo được nhà trọ. Lưu `planFlowPropertyId`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Nhà trọ mua gói\",\n  \"addressText\": \"12 Lê Lợi\",\n  \"wardCode\": \"{{wardCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{expiredToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: hết dùng thử, chưa mua gói, đăng tin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 403', () => pm.response.to.have.status(403));",
+                  "pm.test('Lỗi MEMBERSHIP_REQUIRED', () => pm.expect(pm.response.json().code).to.eql('MEMBERSHIP_REQUIRED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/properties/{{planFlowPropertyId}}/listings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "{{planFlowPropertyId}}",
+                "listings"
+              ]
+            },
+            "description": "Mong đợi 403 `MEMBERSHIP_REQUIRED`. Sau khi mua gói ở các bước dưới, đúng yêu cầu này thành công.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Phòng mua gói Postman gần chợ\",\n  \"description\": \"Phòng sạch sẽ thoáng mát, giờ giấc tự do, gần chợ và trạm xe buýt.\",\n  \"price\": 3200000,\n  \"areaM2\": 24\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{expiredToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Tạo đơn mua gói (POST /orders)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "const order = pm.response.json();",
+                  "pm.collectionVariables.set('planFlowOrderId', order.id);",
+                  "pm.test('đơn chờ, chốt đúng gói', () => { pm.expect(order.status).to.eql('pending'); pm.expect(order.planName).to.eql(pm.collectionVariables.get('planFlowPlanName')); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            },
+            "description": "Đơn `pending` của gói đã chọn. Lưu `planFlowOrderId`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"planId\": \"{{planFlowPlanId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{expiredToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thanh toán thử (POST /orders/:id/pay)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "const order = pm.response.json();",
+                  "pm.test('đơn đã trả có kỳ gói', () => { pm.expect(order.status).to.eql('paid'); pm.expect(order.startsAt).to.be.a('string'); pm.expect(order.endsAt).to.be.a('string'); });",
+                  "pm.collectionVariables.set('planFlowOrderCode', order.code);",
+                  "pm.collectionVariables.set('planFlowEndsAt', order.endsAt);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{planFlowOrderId}}/pay",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{planFlowOrderId}}",
+                "pay"
+              ]
+            },
+            "description": "Đơn thành `paid`, có `startsAt` và `endsAt`. Lưu mã đơn và `endsAt` để so ở các bước sau.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{expiredToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Sau khi trả: state plan, hạn mức của gói (GET /me/membership)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('đúng tám trường của hợp đồng', () => pm.expect(Object.keys(body).sort()).to.eql(['listingLimit', 'overLimitCount', 'remaining', 'state', 'subscription', 'trialDaysLeft', 'trialEndsAt', 'visibleCount']));",
+                  "pm.test('state plan, hạn mức bằng số tin của gói', () => { pm.expect(body.state).to.eql('plan'); pm.expect(String(body.listingLimit)).to.eql(pm.collectionVariables.get('planFlowMax')); pm.expect(body.visibleCount).to.eql(0); pm.expect(String(body.remaining)).to.eql(pm.collectionVariables.get('planFlowMax')); pm.expect(body.overLimitCount).to.eql(0); });",
+                  "pm.test('trialDaysLeft vẫn 0: mua gói không đổi hạn dùng thử', () => pm.expect(body.trialDaysLeft).to.eql(0));",
+                  "pm.test('subscription đủ sáu trường, đúng đơn và tên gói', () => { pm.expect(Object.keys(body.subscription).sort()).to.eql(['daysLeft', 'endsAt', 'orderCode', 'paidUntil', 'planName', 'startsAt']); pm.expect(body.subscription.orderCode).to.eql(pm.collectionVariables.get('planFlowOrderCode')); pm.expect(body.subscription.planName).to.eql(pm.collectionVariables.get('planFlowPlanName')); });",
+                  "pm.test('endsAt khớp đơn, paidUntil bằng endsAt, còn khoảng 30 ngày', () => { pm.expect(body.subscription.endsAt).to.eql(pm.collectionVariables.get('planFlowEndsAt')); pm.expect(body.subscription.paidUntil).to.eql(body.subscription.endsAt); pm.expect(body.subscription.daysLeft).to.be.within(29, 30); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me/membership",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "membership"
+              ]
+            },
+            "description": "Gói thay hạn mức dùng thử: `state` là `plan`, `listingLimit` là số tin của gói, `subscription` đủ sáu trường. Dùng thử vẫn đã hết nên `trialDaysLeft` là 0 (mua gói không đổi `trialEndsAt`).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{expiredToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Đăng tin ngay sau khi mua: được (POST /properties/:propertyId/listings)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "const listing = pm.response.json();",
+                  "pm.collectionVariables.set('planFlowListingId', listing.id);",
+                  "pm.collectionVariables.set('planFlowListingCode', listing.code);",
+                  "pm.test('tin visible và isPublic true', () => { pm.expect(listing.status).to.eql('visible'); pm.expect(listing.isPublic).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/properties/{{planFlowPropertyId}}/listings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "{{planFlowPropertyId}}",
+                "listings"
+              ]
+            },
+            "description": "Cùng yêu cầu đã bị 403 `MEMBERSHIP_REQUIRED` lúc chưa có gói, nay 201. Lưu `planFlowListingId` và `planFlowListingCode`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Phòng mua gói Postman gần chợ\",\n  \"description\": \"Phòng sạch sẽ thoáng mát, giờ giấc tự do, gần chợ và trạm xe buýt.\",\n  \"price\": 3200000,\n  \"areaM2\": 24\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{expiredToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Tin hiện trong danh sách công khai (GET /listings)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('có tin vừa đăng', () => pm.expect(pm.response.json().items.map((x) => x.code)).to.include(pm.collectionVariables.get('planFlowListingCode')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings?q=mua goi postman&pageSize=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "mua goi postman"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Công khai. Chủ trọ đã hết dùng thử nhưng có gói đang chạy nên tin hiện ngay.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Chi tiết tin mở được (GET /listings/:slugCode)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('đúng tin', () => pm.expect(pm.response.json().code).to.eql(pm.collectionVariables.get('planFlowListingCode')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/mua-goi-postman-{{planFlowListingCode}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "mua-goi-postman-{{planFlowListingCode}}"
+              ]
+            },
+            "description": "Công khai. Chỉ phần mã sau dấu gạch cuối được dùng để tra.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "isPublic của tin là true (GET /me/listings/:id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('isPublic true', () => pm.expect(pm.response.json().isPublic).to.eql(true));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me/listings/{{planFlowListingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "listings",
+                "{{planFlowListingId}}"
+              ]
+            },
+            "description": "Tin nằm trong hạn mức của gói nên `isPublic` là `true`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{expiredToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Mua nối tiếp: tạo đơn thứ hai (POST /orders)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('planFlowOrderId2', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            },
+            "description": "Mua thêm cùng gói khi đang có gói. Lưu `planFlowOrderId2`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"planId\": \"{{planFlowPlanId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{expiredToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thanh toán đơn thứ hai: kỳ nối vào cuối (POST /orders/:id/pay)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "const order = pm.response.json();",
+                  "pm.test('kỳ mới nối đúng vào cuối kỳ trước', () => { pm.expect(order.status).to.eql('paid'); pm.expect(order.startsAt).to.eql(pm.collectionVariables.get('planFlowEndsAt')); });",
+                  "pm.collectionVariables.set('planFlowPaidUntil', order.endsAt);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{planFlowOrderId2}}/pay",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{planFlowOrderId2}}",
+                "pay"
+              ]
+            },
+            "description": "Kỳ mới bắt đầu đúng `endsAt` của kỳ đang chạy. Lưu `endsAt` mới vào `planFlowPaidUntil`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{expiredToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Sau khi mua nối tiếp: endsAt không đổi, paidUntil dời ra (GET /me/membership)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('state plan, hạn mức không đổi', () => { pm.expect(body.state).to.eql('plan'); pm.expect(String(body.listingLimit)).to.eql(pm.collectionVariables.get('planFlowMax')); pm.expect(body.visibleCount).to.eql(1); });",
+                  "pm.test('endsAt vẫn của kỳ đầu, paidUntil là cuối kỳ thứ hai', () => { pm.expect(body.subscription.endsAt).to.eql(pm.collectionVariables.get('planFlowEndsAt')); pm.expect(body.subscription.paidUntil).to.eql(pm.collectionVariables.get('planFlowPaidUntil')); pm.expect(new Date(body.subscription.paidUntil).getTime()).to.be.above(new Date(body.subscription.endsAt).getTime()); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me/membership",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "membership"
+              ]
+            },
+            "description": "Kỳ đang chạy vẫn là kỳ đầu: `subscription.endsAt` giữ nguyên, chỉ `paidUntil` dời tới cuối kỳ thứ hai. Hạn mức vẫn của gói đang chạy.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{expiredToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Dọn dẹp: xóa tin (DELETE /listings/:id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{planFlowListingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{planFlowListingId}}"
+              ]
+            },
+            "description": "Xóa mềm tin vừa đăng. Hai kỳ gói của chủ trọ này vẫn còn (không có API xóa).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{expiredToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Dọn dẹp: xóa nhà trọ (DELETE /properties/:id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/properties/{{planFlowPropertyId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "{{planFlowPropertyId}}"
+              ]
+            },
+            "description": "Xóa mềm nhà trọ.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{expiredToken}}",
+                  "type": "string"
+                }
+              ]
+            }
           }
         }
       ]

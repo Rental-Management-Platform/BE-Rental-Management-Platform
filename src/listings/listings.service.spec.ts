@@ -48,11 +48,24 @@ const TRIAL: Membership = {
 	state: 'trial',
 	limit: 2,
 	trialEndsAt: new Date('2026-11-18T03:00:00.000Z'),
+	subscription: null,
 };
 const EXPIRED: Membership = {
 	state: 'expired',
 	limit: 0,
 	trialEndsAt: new Date('2026-10-18T03:00:00.000Z'),
+	subscription: null,
+};
+/** Chủ trọ hết dùng thử nhưng có gói 5 tin đang chạy (spec 0004 AC-8). */
+const PLAN: Membership = {
+	state: 'plan',
+	limit: 5,
+	trialEndsAt: new Date('2026-10-18T03:00:00.000Z'),
+	subscription: {
+		startsAt: new Date('2026-10-19T02:00:00.000Z'),
+		endsAt: new Date('2026-11-18T02:00:00.000Z'),
+		order: { code: 'k7m2xq9p', planName: 'Cơ bản', maxListings: 5 },
+	},
 };
 
 /** Tin đang `hidden_by_owner` của chủ trọ mặc định: điểm xuất phát hợp lệ của `show`. */
@@ -1074,6 +1087,26 @@ describe('ListingsService.create: cửa hạn mức (spec 0003 AC-4, AC-6, AC-7)
 		).rejects.toMatchObject({ code: ErrorCode.LISTING_QUOTA_REACHED });
 	});
 
+	it('có gói đang chạy thì hạn mức là của gói: 4 tin trên hạn mức 5 thì chèn, không đòi MEMBERSHIP_REQUIRED dù hết dùng thử', async () => {
+		const { service, repository } = build({
+			membership: PLAN,
+			visibleCount: 4,
+		});
+		await service.create(owner, PROPERTY_ID, createDto(), NOW);
+		expect(repository.create).toHaveBeenCalledTimes(1);
+	});
+
+	it('có gói đang chạy mà đủ số tin của gói thì 403 LISTING_QUOTA_REACHED (không phải MEMBERSHIP_REQUIRED), không chèn', async () => {
+		const { service, repository } = build({
+			membership: PLAN,
+			visibleCount: 5,
+		});
+		await expect(
+			service.create(owner, PROPERTY_ID, createDto(), NOW),
+		).rejects.toMatchObject({ code: ErrorCode.LISTING_QUOTA_REACHED });
+		expect(repository.create).not.toHaveBeenCalled();
+	});
+
 	it('hết dùng thử thì 403 MEMBERSHIP_REQUIRED, không đếm tin và không chèn', async () => {
 		const { service, repository } = build({
 			membership: EXPIRED,
@@ -1156,6 +1189,16 @@ describe('ListingsService.show: cửa hạn mức (spec 0003 AC-5, AC-7)', () =>
 			service.show(owner, LISTING_ID, NOW),
 		).rejects.toMatchObject({ code: ErrorCode.LISTING_QUOTA_REACHED });
 		expect(repository.transition).not.toHaveBeenCalled();
+	});
+
+	it('có gói đang chạy thì hiện lại được tới hạn mức của gói: 4 tin trên hạn mức 5 thì chuyển, hết dùng thử cũng vậy', async () => {
+		const { service, repository } = build({
+			ownership: HIDDEN_BY_OWNER,
+			membership: PLAN,
+			visibleCount: 4,
+		});
+		await service.show(owner, LISTING_ID, NOW);
+		expect(repository.transition).toHaveBeenCalledTimes(1);
 	});
 
 	it('hết dùng thử thì 403 MEMBERSHIP_REQUIRED, báo trước LISTING_QUOTA_REACHED, không chuyển', async () => {
