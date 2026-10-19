@@ -57,7 +57,7 @@ export interface ListingDetailResponse extends Omit<
 	};
 }
 
-/** Dòng của `GET /me/listings`: tin tóm tắt bỏ `landlord`, cộng trạng thái, lý do bị admin ẩn và lượt xem. */
+/** Dòng của `GET /me/listings`: tin tóm tắt bỏ `landlord`, cộng trạng thái, lý do bị admin ẩn, lượt xem và `isPublic`. */
 export interface OwnerListingSummaryResponse extends Omit<
 	ListingSummaryResponse,
 	'landlord'
@@ -66,13 +66,17 @@ export interface OwnerListingSummaryResponse extends Omit<
 	/** Có giá trị khi `status` là `hidden_by_admin`: lý do ẩn gần nhất; ngược lại `null`. */
 	readonly moderationReason: string | null;
 	readonly viewCount: number;
+	/** `true` khi `status` là `visible` và tin nằm trong hạn mức hiện hành (spec 0003 AC-11). */
+	readonly isPublic: boolean;
 }
 
-/** Tin của chủ trọ (`/me/listings/:id` và kết quả mọi route ghi): chi tiết bỏ `landlord`, cộng `status` và `moderationReason`. */
+/** Tin của chủ trọ (`/me/listings/:id` và kết quả mọi route ghi): chi tiết bỏ `landlord`, cộng `status`, `moderationReason` và `isPublic`. */
 export interface OwnerListingDetailResponse extends Omit<
 	ListingDetailResponse,
 	'landlord'
 > {
 	readonly status: ListingStatus;
 	readonly moderationReason: string | null;
+	/** `true` khi `status` là `visible` và tin nằm trong hạn mức hiện hành (spec 0003 AC-11). */
+	readonly isPublic: boolean;
 }

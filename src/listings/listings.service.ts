@@ -38,7 +38,11 @@ import {
 	toOwnerSummary,
 } from './listings.mapper';
 import { ListingsRepository } from './listings.repository';
-import type { ListingChanges, PublicVisibility } from './listings.repository';
+import type {
+	ListingChanges,
+	OwnerDetailRow,
+	PublicVisibility,
+} from './listings.repository';
 import { toSearchWords } from './search-words';
 import { ViewDeduplicator } from './view-deduplicator';
 
@@ -97,7 +101,7 @@ export class ListingsService {
 		for (let attempt = 1; attempt <= LISTING_CODE_ATTEMPTS; attempt += 1) {
 			try {
 				const id = await this.insertOnce(user, propertyId, dto, now);
-				return await this.readOwner(id);
+				return await this.readOwner(id, now);
 			} catch (error: unknown) {
 				if (!(error instanceof ListingCodeTakenError)) throw error;
 				collision = error;
@@ -160,6 +164,7 @@ export class ListingsService {
 		user: RequestUser,
 		id: string,
 		dto: UpdateListingDto,
+		now: Date,
 	): Promise<OwnerListingDetailResponse> {
 		const owned = await this.requireOwned(user, id);
 		await this.transactions.run(async (tx) => {
@@ -196,7 +201,7 @@ export class ListingsService {
 				throw new AppException(ErrorCode.LISTING_NOT_FOUND);
 			}
 		});
-		return this.readOwner(id);
+		return this.readOwner(id, now);
 	}
 
 	/** Xóa mềm tin của mình ở mọi trạng thái. */
@@ -211,6 +216,7 @@ export class ListingsService {
 	async hide(
 		user: RequestUser,
 		id: string,
+		now: Date,
 	): Promise<OwnerListingDetailResponse> {
 		await this.requireOwned(user, id);
 		const moved = await this.repository.transition(
@@ -221,7 +227,7 @@ export class ListingsService {
 		if (!moved) {
 			await this.explainRefusal(id, 'hide');
 		}
-		return this.readOwner(id);
+		return this.readOwner(id, now);
 	}
 
 	/**
@@ -257,7 +263,7 @@ export class ListingsService {
 		if (!moved) {
 			await this.explainRefusal(id, 'show');
 		}
-		return this.readOwner(id);
+		return this.readOwner(id, now);
 	}
 
 	/**
@@ -303,10 +309,15 @@ export class ListingsService {
 
 	// ----- đọc của chủ trọ -----
 
-	/** Tin của chính người gọi, mọi trạng thái, mới nhất trước; `status` lọc nếu có. */
+	/**
+	 * Tin của chính người gọi, mọi trạng thái, mới nhất trước; `status` lọc nếu có. Mỗi dòng có `isPublic`
+	 * (spec 0003 AC-11): hạn mức và tập tin trong hạn mức chỉ tra một lần cho cả trang, và bỏ qua khi trang
+	 * không có tin `visible` nào.
+	 */
 	async listOwn(
 		user: RequestUser,
 		query: MyListingsQueryDto,
+		now: Date,
 	): Promise<Page<OwnerListingSummaryResponse>> {
 		const { rows, total } = await this.repository.findOwnedPage(
 			user.userId,
@@ -314,13 +325,24 @@ export class ListingsService {
 			skipOf(query),
 			query.pageSize,
 		);
-		const reasons = await this.moderationLogs.findLatestListingHideReasons(
-			rows
-				.filter((row) => row.status === 'hidden_by_admin')
-				.map((row) => row.id),
-		);
+		const [reasons, withinQuota] = await Promise.all([
+			this.moderationLogs.findLatestListingHideReasons(
+				rows
+					.filter((row) => row.status === 'hidden_by_admin')
+					.map((row) => row.id),
+			),
+			rows.some((row) => row.status === 'visible')
+				? this.withinQuotaIds(user.userId, now)
+				: Promise.resolve<ReadonlySet<string>>(new Set()),
+		]);
 		return toPage(
-			rows.map((row) => toOwnerSummary(row, reasons.get(row.id) ?? null)),
+			rows.map((row) =>
+				toOwnerSummary(
+					row,
+					reasons.get(row.id) ?? null,
+					row.status === 'visible' && withinQuota.has(row.id),
+				),
+			),
 			total,
 			query,
 		);
@@ -329,11 +351,12 @@ export class ListingsService {
 	async getOwn(
 		user: RequestUser,
 		id: string,
+		now: Date,
 	): Promise<OwnerListingDetailResponse> {
 		const row = await this.repository.findOwnerDetail(id);
 		if (row === null) throw new AppException(ErrorCode.LISTING_NOT_FOUND);
 		assertOwner(user, row.property.landlordId);
-		return this.withReason(row);
+		return this.toOwnerResponse(row, now);
 	}
 
 	// ----- đọc công khai -----
@@ -432,19 +455,49 @@ export class ListingsService {
 	 * Đọc tin vừa ghi để trả về, SAU khi giao dịch đã xong (đọc nhiều quan hệ trong giao dịch đang mở làm Prisma
 	 * chạy song song trên một kết nối, xem `PropertiesRepository.create`).
 	 */
-	private async readOwner(id: string): Promise<OwnerListingDetailResponse> {
+	private async readOwner(
+		id: string,
+		now: Date,
+	): Promise<OwnerListingDetailResponse> {
 		const row = await this.repository.findOwnerDetail(id);
 		if (row === null) throw new AppException(ErrorCode.LISTING_NOT_FOUND);
-		return this.withReason(row);
+		return this.toOwnerResponse(row, now);
 	}
 
-	private async withReason(
-		row: Parameters<typeof toOwnerDetail>[0],
+	/** Thêm lý do ẩn của admin (chỉ khi `hidden_by_admin`) và `isPublic` (chỉ tra hạn mức khi tin đang `visible`). */
+	private async toOwnerResponse(
+		row: OwnerDetailRow,
+		now: Date,
 	): Promise<OwnerListingDetailResponse> {
-		if (row.status !== 'hidden_by_admin') return toOwnerDetail(row, null);
-		const reasons = await this.moderationLogs.findLatestListingHideReasons([
-			row.id,
+		const [reasons, withinQuota] = await Promise.all([
+			row.status === 'hidden_by_admin'
+				? this.moderationLogs.findLatestListingHideReasons([row.id])
+				: Promise.resolve(new Map<string, string>()),
+			row.status === 'visible'
+				? this.withinQuotaIds(row.property.landlordId, now)
+				: Promise.resolve<ReadonlySet<string>>(new Set()),
 		]);
-		return toOwnerDetail(row, reasons.get(row.id) ?? null);
+		return toOwnerDetail(
+			row,
+			reasons.get(row.id) ?? null,
+			withinQuota.has(row.id),
+		);
+	}
+
+	/**
+	 * Id các tin của chủ trọ đang nằm trong hạn mức hiện hành (spec 0003 AC-11): N tin `visible` đăng sớm nhất với
+	 * N là hạn mức của `MembershipsService.resolve`, cùng luật xếp hạng với mảnh SQL hiển thị công khai. Hạn mức 0
+	 * (hết dùng thử, hoặc admin đặt 0) thì rỗng và không tra thêm. Theo AC-11, `isPublic` chỉ xét trạng thái tin
+	 * và hạn mức, không xét tài khoản đã bị khóa hay nhà trọ đã xóa mềm như mảnh SQL công khai.
+	 */
+	private async withinQuotaIds(
+		landlordId: string,
+		now: Date,
+	): Promise<ReadonlySet<string>> {
+		const { limit } = await this.memberships.resolve(landlordId, now);
+		if (limit <= 0) return new Set();
+		return new Set(
+			await this.repository.findEarliestVisibleIds(landlordId, limit),
+		);
 	}
 }

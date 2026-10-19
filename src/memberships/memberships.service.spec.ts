@@ -1,4 +1,5 @@
 import type { Prisma } from '../generated/prisma/client';
+import type { ListingsRepository } from '../listings/listings.repository';
 import type { SettingsService } from '../settings/settings.service';
 import type { UsersService } from '../users/users.service';
 import type { UserWithoutPassword } from '../users/users.repository';
@@ -17,6 +18,7 @@ function build(options: {
 	user?: UserWithoutPassword | null;
 	trialDays?: number;
 	trialListingLimit?: number;
+	visibleCount?: number;
 }) {
 	const users = {
 		findById: jest.fn(() =>
@@ -32,13 +34,20 @@ function build(options: {
 			),
 		),
 	};
+	const listings = {
+		countVisibleByLandlord: jest.fn(() =>
+			Promise.resolve(options.visibleCount ?? 0),
+		),
+	};
 	return {
 		service: new MembershipsService(
 			users as unknown as UsersService,
 			settings as unknown as SettingsService,
+			listings as unknown as ListingsRepository,
 		),
 		users,
 		settings,
+		listings,
 	};
 }
 
@@ -143,6 +152,83 @@ describe('MembershipsService.resolve (spec 0003 AC-3)', () => {
 		await expect(service.resolve(USER_ID, after)).resolves.toMatchObject({
 			state: 'expired',
 		});
+	});
+});
+
+describe('MembershipsService.getStatus (spec 0003 AC-10)', () => {
+	it('đang dùng thử: ghép hạn mức của resolve với số tin đang hiện của chính người gọi', async () => {
+		const trialEndsAt = new Date(NOW.getTime() + 29 * DAY_MS + 1);
+		const { service, listings } = build({
+			user: userWith(trialEndsAt),
+			trialListingLimit: 2,
+			visibleCount: 1,
+		});
+		await expect(service.getStatus(USER_ID, NOW)).resolves.toEqual({
+			state: 'trial',
+			trialEndsAt,
+			trialDaysLeft: 30,
+			listingLimit: 2,
+			visibleCount: 1,
+			remaining: 1,
+			overLimitCount: 0,
+		});
+		expect(listings.countVisibleByLandlord).toHaveBeenCalledWith(USER_ID);
+	});
+
+	it('số tin đang hiện vượt hạn mức (admin hạ hạn mức): remaining 0, overLimitCount là phần vượt', async () => {
+		const { service } = build({
+			user: userWith(new Date(NOW.getTime() + DAY_MS)),
+			trialListingLimit: 1,
+			visibleCount: 3,
+		});
+		await expect(service.getStatus(USER_ID, NOW)).resolves.toMatchObject({
+			state: 'trial',
+			listingLimit: 1,
+			visibleCount: 3,
+			remaining: 0,
+			overLimitCount: 2,
+		});
+	});
+
+	it('hết dùng thử: state expired, hạn mức 0, mọi tin đang hiện đều là phần vượt', async () => {
+		const trialEndsAt = new Date(NOW.getTime() - DAY_MS);
+		const { service } = build({
+			user: userWith(trialEndsAt),
+			visibleCount: 2,
+		});
+		await expect(service.getStatus(USER_ID, NOW)).resolves.toEqual({
+			state: 'expired',
+			trialEndsAt,
+			trialDaysLeft: 0,
+			listingLimit: 0,
+			visibleCount: 2,
+			remaining: 0,
+			overLimitCount: 2,
+		});
+	});
+
+	it('tài khoản không có hạn dùng thử (admin): expired, trialEndsAt và trialDaysLeft null', async () => {
+		const { service } = build({ user: userWith(null) });
+		await expect(service.getStatus(USER_ID, NOW)).resolves.toEqual({
+			state: 'expired',
+			trialEndsAt: null,
+			trialDaysLeft: null,
+			listingLimit: 0,
+			visibleCount: 0,
+			remaining: 0,
+			overLimitCount: 0,
+		});
+	});
+
+	it('dùng đúng `now` truyền vào cho ranh giới hết hạn', async () => {
+		const trialEndsAt = new Date('2026-10-19T03:00:00.500Z');
+		const { service } = build({ user: userWith(trialEndsAt) });
+		await expect(
+			service.getStatus(USER_ID, new Date('2026-10-19T03:00:00.499Z')),
+		).resolves.toMatchObject({ state: 'trial', trialDaysLeft: 1 });
+		await expect(
+			service.getStatus(USER_ID, new Date('2026-10-19T03:00:00.500Z')),
+		).resolves.toMatchObject({ state: 'expired', trialDaysLeft: 0 });
 	});
 });
 

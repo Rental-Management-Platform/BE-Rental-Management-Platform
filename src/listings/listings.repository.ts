@@ -417,6 +417,28 @@ export class ListingsRepository {
 		});
 	}
 
+	/**
+	 * Id của N tin `visible` chưa xóa mềm đăng sớm nhất của một chủ trọ, xếp theo `(created_at, id)` tăng dần:
+	 * đúng tập mà luật hạng của `publicListingCondition` cho qua khi hạn mức là N (spec 0003 AC-9, AC-11). Một
+	 * truy vấn `LIMIT N` cho cả trang `/me/listings`, không phải một truy vấn cho mỗi tin.
+	 */
+	async findEarliestVisibleIds(
+		landlordId: string,
+		limit: number,
+	): Promise<string[]> {
+		const rows = await this.prisma.listing.findMany({
+			where: {
+				status: 'visible',
+				...notDeleted,
+				property: { landlordId },
+			},
+			orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+			take: limit,
+			select: { id: true },
+		});
+		return rows.map((row) => row.id);
+	}
+
 	// ----- dùng bởi module nhà trọ (mốc 2) -----
 
 	/** Số tin chưa xóa mềm của một nhà trọ, mọi trạng thái (kể cả đang ẩn). */

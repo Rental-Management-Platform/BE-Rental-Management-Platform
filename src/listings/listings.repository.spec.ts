@@ -1,5 +1,9 @@
+import type { PrismaService } from '../database/prisma.service';
 import type { Prisma } from '../generated/prisma/client';
-import { publicListingCondition } from './listings.repository';
+import {
+	ListingsRepository,
+	publicListingCondition,
+} from './listings.repository';
 
 const NOW = new Date('2026-10-19T03:00:00.000Z');
 
@@ -50,5 +54,30 @@ describe('publicListingCondition (spec 0003 AC-8, AC-9)', () => {
 		const sql = flat(publicListingCondition(NOW, 2)).trim();
 		expect(sql.startsWith('(')).toBe(true);
 		expect(sql.endsWith(')')).toBe(true);
+	});
+});
+
+describe('ListingsRepository.findEarliestVisibleIds (spec 0003 AC-9, AC-11)', () => {
+	it('hỏi N tin visible chưa xóa của chủ trọ, đăng sớm nhất trước, khóa phụ id (cùng thứ tự với luật hạng)', async () => {
+		const findMany = jest.fn(() =>
+			Promise.resolve([{ id: 'tin-a' }, { id: 'tin-b' }]),
+		);
+		const repository = new ListingsRepository({
+			listing: { findMany },
+		} as unknown as PrismaService);
+		await expect(
+			repository.findEarliestVisibleIds('chu-tro-1', 2),
+		).resolves.toEqual(['tin-a', 'tin-b']);
+		expect(findMany).toHaveBeenCalledTimes(1);
+		expect(findMany).toHaveBeenCalledWith({
+			where: {
+				status: 'visible',
+				deletedAt: null,
+				property: { landlordId: 'chu-tro-1' },
+			},
+			orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+			take: 2,
+			select: { id: true },
+		});
 	});
 });

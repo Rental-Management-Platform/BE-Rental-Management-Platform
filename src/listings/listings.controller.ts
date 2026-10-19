@@ -100,7 +100,7 @@ export class ListingsController {
 		@Param('id', uuidParam()) id: string,
 		@Body() dto: UpdateListingDto,
 	): Promise<OwnerListingDetailResponse> {
-		return this.listings.update(user, id, dto);
+		return this.listings.update(user, id, dto, new Date());
 	}
 
 	@Delete(':id')
@@ -122,7 +122,7 @@ export class ListingsController {
 		@CurrentUser() user: RequestUser,
 		@Param('id', uuidParam()) id: string,
 	): Promise<OwnerListingDetailResponse> {
-		return this.listings.hide(user, id);
+		return this.listings.hide(user, id, new Date());
 	}
 
 	@Post(':id/show')
@@ -148,7 +148,7 @@ export class MyListingsController {
 		@CurrentUser() user: RequestUser,
 		@Query() query: MyListingsQueryDto,
 	): Promise<Page<OwnerListingSummaryResponse>> {
-		return this.listings.listOwn(user, query);
+		return this.listings.listOwn(user, query, new Date());
 	}
 
 	@Get(':id')
@@ -157,6 +157,6 @@ export class MyListingsController {
 		@CurrentUser() user: RequestUser,
 		@Param('id', uuidParam()) id: string,
 	): Promise<OwnerListingDetailResponse> {
-		return this.listings.getOwn(user, id);
+		return this.listings.getOwn(user, id, new Date());
 	}
 }

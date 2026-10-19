@@ -140,10 +140,11 @@ export function toListingDetail(
 	};
 }
 
-/** Dòng của `GET /me/listings`: không có `landlord`, thêm trạng thái, lý do ẩn của admin và lượt xem. */
+/** Dòng của `GET /me/listings`: không có `landlord`, thêm trạng thái, lý do ẩn của admin, lượt xem và `isPublic`. */
 export function toOwnerSummary(
 	row: OwnerSummaryRow,
 	moderationReason: string | null,
+	isPublic: boolean,
 ): OwnerListingSummaryResponse {
 	return {
 		...toSummaryFields(row),
@@ -151,18 +152,21 @@ export function toOwnerSummary(
 		moderationReason:
 			row.status === 'hidden_by_admin' ? moderationReason : null,
 		viewCount: row.viewCount,
+		isPublic,
 	};
 }
 
-/** Tin của chủ trọ: chi tiết không có `landlord`, thêm `status` và `moderationReason` (chỉ khi `hidden_by_admin`). */
+/** Tin của chủ trọ: chi tiết không có `landlord`, thêm `status`, `moderationReason` (chỉ khi `hidden_by_admin`) và `isPublic`. */
 export function toOwnerDetail(
 	row: OwnerDetailRow,
 	moderationReason: string | null,
+	isPublic: boolean,
 ): OwnerListingDetailResponse {
 	return {
 		...toDetailFields(row, row.viewCount),
 		status: row.status as ListingStatus,
 		moderationReason:
 			row.status === 'hidden_by_admin' ? moderationReason : null,
+		isPublic,
 	};
 }

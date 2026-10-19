@@ -4776,7 +4776,7 @@
     },
     {
       "name": "11 Dùng thử và hạn mức tin",
-      "description": "Kỳ dùng thử lúc đăng ký và chặn đăng, hiện lại tin theo hạn mức (spec 0003 dùng thử, mốc 2 và 3). **Chạy sau folder 07** (cần `wardCode`) **và từ trên xuống**; cần đã `npm run seed` (hai tham số mặc định 30 ngày và 2 tin) và điền `adminEmail`, `adminPassword`. Folder tự đăng nhập admin, đăng ký **hai** chủ trọ (tốn 2 trong 10 lần đăng ký mỗi giờ theo IP) và tự trả `trial_days` về 30, `trial_listing_limit` về 2 sau khi đổi; nếu chạy dở thì chạy lại hai request \"đặt lại\". Mốc 3 thử được ở đây phần hạ hạn mức: chỉ các tin đăng sớm nhất còn hiện công khai, tin bị ẩn bớt trả 404 ở chi tiết, `status` vẫn `visible`. Chưa thử được bằng Postman: tin biến khỏi công khai khi hết dùng thử, vì chủ trọ hết dùng thử không còn đăng được tin và cần sửa `users.trial_ends_at` trực tiếp trong DB (các bước ở `verify.md` của spec 0003); và `GET /me/membership` (mốc 4).",
+      "description": "Kỳ dùng thử lúc đăng ký và chặn đăng, hiện lại tin theo hạn mức (spec 0003 dùng thử, mốc 2 đến 4). **Chạy sau folder 07** (cần `wardCode`) **và từ trên xuống**; cần đã `npm run seed` (hai tham số mặc định 30 ngày và 2 tin) và điền `adminEmail`, `adminPassword`. Folder tự đăng nhập admin, đăng ký **hai** chủ trọ (tốn 2 trong 10 lần đăng ký mỗi giờ theo IP) và tự trả `trial_days` về 30, `trial_listing_limit` về 2 sau khi đổi; nếu chạy dở thì chạy lại hai request \"đặt lại\". Mốc 3 thử được ở đây phần hạ hạn mức: chỉ các tin đăng sớm nhất còn hiện công khai, tin bị ẩn bớt trả 404 ở chi tiết, `status` vẫn `visible`. Mốc 4 thử được ở đây: `GET /me/membership` ở bốn trạng thái (mới đăng ký, đủ hạn mức, hạ hạn mức, hết dùng thử) và cờ `isPublic` ở tin của chủ trọ; hai request lỗi (người tìm trọ, chưa đăng nhập) dùng `tenantToken` do folder 09 lưu nên chạy folder 09 trước. Chưa thử được bằng Postman: tin biến khỏi công khai khi hết dùng thử, vì chủ trọ hết dùng thử không còn đăng được tin và cần sửa `users.trial_ends_at` trực tiếp trong DB (các bước ở `verify.md` của spec 0003).",
       "item": [
         {
           "name": "Đăng nhập admin",
@@ -4891,6 +4891,57 @@
           }
         },
         {
+          "name": "Xem kỳ dùng thử của tôi: mới đăng ký (GET /me/membership)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('đúng bảy trường của hợp đồng', () => pm.expect(Object.keys(body).sort()).to.eql(['listingLimit', 'overLimitCount', 'remaining', 'state', 'trialDaysLeft', 'trialEndsAt', 'visibleCount']));",
+                  "pm.test('đang dùng thử, chưa có tin nào', () => {",
+                  "    pm.expect(body.state).to.eql('trial');",
+                  "    pm.expect(body.visibleCount).to.eql(0);",
+                  "    pm.expect(body.overLimitCount).to.eql(0);",
+                  "    pm.expect(body.remaining).to.eql(body.listingLimit);",
+                  "});",
+                  "pm.test('còn ngày dùng thử, hạn ở tương lai', () => {",
+                  "    pm.expect(body.trialDaysLeft).to.be.within(1, 365);",
+                  "    pm.expect(new Date(body.trialEndsAt).getTime()).to.be.above(Date.now());",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me/membership",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "membership"
+              ]
+            },
+            "description": "Quyền `subscription:read`. Chủ trọ mới đăng ký: `state` là `trial`, chưa có tin nào nên `remaining` bằng `listingLimit`, `trialEndsAt` ở tương lai và `trialDaysLeft` làm tròn lên.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{quotaToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
           "name": "Tạo nhà trọ (POST /properties)",
           "event": [
             {
@@ -4954,7 +5005,8 @@
                   "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
                   "",
                   "pm.collectionVariables.set('quotaListingA', pm.response.json().id);",
-                  "pm.test('tin hiện ngay', () => pm.expect(pm.response.json().status).to.eql('visible'));"
+                  "pm.test('tin hiện ngay', () => pm.expect(pm.response.json().status).to.eql('visible'));",
+                  "pm.test('isPublic true: tin nằm trong hạn mức', () => pm.expect(pm.response.json().isPublic).to.eql(true));"
                 ]
               }
             }
@@ -5010,7 +5062,8 @@
                 "exec": [
                   "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
                   "pm.collectionVariables.set('quotaListingB', pm.response.json().id);",
-                  "pm.collectionVariables.set('quotaListingBCode', pm.response.json().code);"
+                  "pm.collectionVariables.set('quotaListingBCode', pm.response.json().code);",
+                  "pm.test('isPublic true: tin nằm trong hạn mức', () => pm.expect(pm.response.json().isPublic).to.eql(true));"
                 ]
               }
             }
@@ -5044,6 +5097,53 @@
                 }
               }
             },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{quotaToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Đủ hạn mức: xem hạn mức của tôi (GET /me/membership)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('hai tin đang hiện, hết chỗ, không tin nào vượt', () => {",
+                  "    pm.expect(body.state).to.eql('trial');",
+                  "    pm.expect(body.listingLimit).to.eql(2);",
+                  "    pm.expect(body.visibleCount).to.eql(2);",
+                  "    pm.expect(body.remaining).to.eql(0);",
+                  "    pm.expect(body.overLimitCount).to.eql(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me/membership",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "membership"
+              ]
+            },
+            "description": "Hai tin đang hiện trên hạn mức 2: `remaining` bằng 0 và không có tin nào bị ẩn bớt.",
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -5122,7 +5222,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
-                  "pm.test('tin về hidden_by_owner', () => pm.expect(pm.response.json().status).to.eql('hidden_by_owner'));"
+                  "pm.test('tin về hidden_by_owner', () => pm.expect(pm.response.json().status).to.eql('hidden_by_owner'));",
+                  "pm.test('isPublic false sau khi ẩn', () => pm.expect(pm.response.json().isPublic).to.eql(false));"
                 ]
               }
             }
@@ -5163,7 +5264,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
-                  "pm.collectionVariables.set('quotaListingC', pm.response.json().id);"
+                  "pm.collectionVariables.set('quotaListingC', pm.response.json().id);",
+                  "pm.test('isPublic true: tin nằm trong hạn mức', () => pm.expect(pm.response.json().isPublic).to.eql(true));"
                 ]
               }
             }
@@ -5300,7 +5402,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
-                  "pm.test('tin về visible', () => pm.expect(pm.response.json().status).to.eql('visible'));"
+                  "pm.test('tin về visible', () => pm.expect(pm.response.json().status).to.eql('visible'));",
+                  "pm.test('isPublic true: tin nằm trong hạn mức', () => pm.expect(pm.response.json().isPublic).to.eql(true));"
                 ]
               }
             }
@@ -5472,7 +5575,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
-                  "pm.test('status vẫn visible dù đã bị ẩn bớt khỏi công khai', () => pm.expect(pm.response.json().status).to.eql('visible'));"
+                  "pm.test('status vẫn visible dù đã bị ẩn bớt khỏi công khai', () => pm.expect(pm.response.json().status).to.eql('visible'));",
+                  "pm.test('isPublic false: tin bị ẩn bớt khỏi công khai dù status vẫn visible', () => pm.expect(pm.response.json().isPublic).to.eql(false));"
                 ]
               }
             }
@@ -5492,6 +5596,109 @@
               ]
             },
             "description": "Chủ trọ luôn xem được tin của mình ở mọi trạng thái. Tin này vẫn `visible` và vẫn tính vào số tin đang hiện, chỉ là không còn hiện công khai.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{quotaToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Hạ hạn mức: xem hạn mức của tôi, có một tin bị ẩn bớt (GET /me/membership)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('hạn mức 1, đang hiện 2, vượt 1', () => {",
+                  "    pm.expect(body.listingLimit).to.eql(1);",
+                  "    pm.expect(body.visibleCount).to.eql(2);",
+                  "    pm.expect(body.remaining).to.eql(0);",
+                  "    pm.expect(body.overLimitCount).to.eql(1);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me/membership",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "membership"
+              ]
+            },
+            "description": "Hạn mức hạ xuống 1 trong khi chủ trọ có 2 tin `visible`: `visibleCount` vẫn là 2 (tin bị ẩn bớt vẫn tính), `remaining` là 0 và `overLimitCount` là 1.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{quotaToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Hạ hạn mức: chỉ tin đăng sớm nhất có isPublic true (GET /me/listings)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "const byId = {};",
+                  "pm.response.json().items.forEach((i) => { byId[i.id] = i; });",
+                  "pm.test('tin thứ nhất (đăng sớm) isPublic true', () => pm.expect(byId[pm.collectionVariables.get('quotaListingA')].isPublic).to.eql(true));",
+                  "pm.test('tin thứ hai (đăng sau) isPublic false, status vẫn visible', () => {",
+                  "    const b = byId[pm.collectionVariables.get('quotaListingB')];",
+                  "    pm.expect(b.isPublic).to.eql(false);",
+                  "    pm.expect(b.status).to.eql('visible');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me/listings?status=visible&pageSize=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "listings"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "visible"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Cả hai tin còn `visible`, nhưng chỉ tin đăng sớm nhất nằm trong hạn mức 1 nên chỉ tin đó có `isPublic` true. Khớp với kết quả của `GET /listings` ở trên.",
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -5690,6 +5897,47 @@
             "description": "Cùng tin ở request hạ hạn mức đã trả 404; nay trả 200.",
             "auth": {
               "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Đặt lại hạn mức 2: isPublic của tin thứ hai về true (GET /me/listings/:id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('isPublic true', () => pm.expect(pm.response.json().isPublic).to.eql(true));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me/listings/{{quotaListingB}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "listings",
+                "{{quotaListingB}}"
+              ]
+            },
+            "description": "Nâng hạn mức lại 2: tin bị ẩn bớt hiện lại, `isPublic` về true.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{quotaToken}}",
+                  "type": "string"
+                }
+              ]
             }
           }
         },
@@ -5901,6 +6149,55 @@
                 }
               }
             },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{expiredToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Hết dùng thử: xem trạng thái (GET /me/membership)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('expired, hạn mức 0, 0 ngày', () => {",
+                  "    pm.expect(body.state).to.eql('expired');",
+                  "    pm.expect(body.trialDaysLeft).to.eql(0);",
+                  "    pm.expect(body.listingLimit).to.eql(0);",
+                  "    pm.expect(body.visibleCount).to.eql(0);",
+                  "    pm.expect(body.remaining).to.eql(0);",
+                  "    pm.expect(body.overLimitCount).to.eql(0);",
+                  "});",
+                  "pm.test('trialEndsAt đã qua', () => pm.expect(new Date(body.trialEndsAt).getTime()).to.be.at.most(Date.now()));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me/membership",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "membership"
+              ]
+            },
+            "description": "Chủ trọ đăng ký lúc `trial_days` = 0: `state` là `expired`, hạn mức 0, `trialDaysLeft` 0. Vẫn có `trialEndsAt` (đã qua).",
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -6191,6 +6488,126 @@
                   "type": "string"
                 }
               ]
+            }
+          }
+        },
+        {
+          "name": "Admin xem trạng thái: không có kỳ dùng thử (GET /me/membership)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('expired, không có hạn dùng thử', () => {",
+                  "    pm.expect(body.state).to.eql('expired');",
+                  "    pm.expect(body.trialEndsAt).to.eql(null);",
+                  "    pm.expect(body.trialDaysLeft).to.eql(null);",
+                  "    pm.expect(body.listingLimit).to.eql(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me/membership",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "membership"
+              ]
+            },
+            "description": "Admin có quyền `subscription:read` nhưng không có kỳ dùng thử: `expired`, `trialEndsAt` và `trialDaysLeft` là null.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: người tìm trọ xem hạn mức (GET /me/membership)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 403 PERMISSION_DENIED', () => {",
+                  "    pm.response.to.have.status(403);",
+                  "    pm.expect(pm.response.json().code).to.eql('PERMISSION_DENIED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me/membership",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "membership"
+              ]
+            },
+            "description": "Người tìm trọ không có quyền `subscription:read`. Dùng `tenantToken` do folder 09 lưu, nên chạy folder 09 trước.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: chưa đăng nhập xem hạn mức (GET /me/membership)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me/membership",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "membership"
+              ]
+            },
+            "description": "Không gửi token: 401.",
+            "auth": {
+              "type": "noauth"
             }
           }
         },

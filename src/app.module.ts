@@ -10,6 +10,7 @@ import { ListingsModule } from './listings/listings.module';
 import { PersistenceModule } from './common/persistence/persistence.module';
 import { AppConfigModule } from './config/app-config.module';
 import { PrismaModule } from './database/prisma.module';
+import { MembershipsModule } from './memberships/memberships.module';
 import { ModerationModule } from './moderation/moderation.module';
 import { PropertiesModule } from './properties/properties.module';
 import { SettingsModule } from './settings/settings.module';
@@ -28,6 +29,7 @@ import { UsersModule } from './users/users.module';
 		PropertiesModule,
 		ListingsModule,
 		SettingsModule,
+		MembershipsModule,
 	],
 	controllers: [AppController],
 	providers: [

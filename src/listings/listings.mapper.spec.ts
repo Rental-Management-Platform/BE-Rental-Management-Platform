@@ -229,12 +229,13 @@ describe('toListingDetail (spec 0002 AC-11, AC-12)', () => {
 });
 
 describe('toOwnerSummary và toOwnerDetail (spec 0002 AC-14)', () => {
-	it('dòng danh sách có status, moderationReason và viewCount, không có landlord', () => {
-		const summary = toOwnerSummary(ownerSummaryRow(), null);
+	it('dòng danh sách có status, moderationReason, viewCount và isPublic, không có landlord', () => {
+		const summary = toOwnerSummary(ownerSummaryRow(), null, true);
 		expect(summary).toMatchObject({
 			status: 'visible',
 			moderationReason: null,
 			viewCount: 7,
+			isPublic: true,
 		});
 		expect(summary).not.toHaveProperty('landlord');
 		expect(summary.fullAddress).toBe(
@@ -245,27 +246,29 @@ describe('toOwnerSummary và toOwnerDetail (spec 0002 AC-14)', () => {
 	it('moderationReason chỉ có giá trị khi tin đang hidden_by_admin', () => {
 		const hiddenByAdmin = ownerSummaryRow({ status: 'hidden_by_admin' });
 		expect(
-			toOwnerSummary(hiddenByAdmin, 'Nội dung sai sự thật')
+			toOwnerSummary(hiddenByAdmin, 'Nội dung sai sự thật', false)
 				.moderationReason,
 		).toBe('Nội dung sai sự thật');
 		for (const status of ['visible', 'hidden_by_owner']) {
 			expect(
-				toOwnerSummary(ownerSummaryRow({ status }), 'lý do cũ')
+				toOwnerSummary(ownerSummaryRow({ status }), 'lý do cũ', false)
 					.moderationReason,
 			).toBeNull();
 		}
 	});
 
-	it('chi tiết của chủ trọ không có landlord, có status, moderationReason và viewCount', () => {
+	it('chi tiết của chủ trọ không có landlord, có status, moderationReason, viewCount và isPublic', () => {
 		const detail = toOwnerDetail(
 			ownerDetailRow({ status: 'hidden_by_admin', viewCount: 12 }),
 			'Ảnh không đúng thực tế',
+			false,
 		);
 		expect(detail).not.toHaveProperty('landlord');
 		expect(detail).toMatchObject({
 			status: 'hidden_by_admin',
 			moderationReason: 'Ảnh không đúng thực tế',
 			viewCount: 12,
+			isPublic: false,
 		});
 		expect(detail.property.fullAddress).toBe(
 			'12 Lê Lợi, Phường Bến Thành, Thành phố Hồ Chí Minh',
@@ -277,7 +280,29 @@ describe('toOwnerSummary và toOwnerDetail (spec 0002 AC-14)', () => {
 			toOwnerDetail(
 				ownerDetailRow({ status: 'hidden_by_owner' }),
 				'lý do cũ',
+				false,
 			).moderationReason,
 		).toBeNull();
+	});
+
+	it('isPublic đi nguyên từ nơi gọi, không tự suy ra từ status (hạn mức do Service tính)', () => {
+		const row = ownerDetailRow({ status: 'visible' });
+		expect(toOwnerDetail(row, null, true).isPublic).toBe(true);
+		expect(toOwnerDetail(row, null, false).isPublic).toBe(false);
+		const summary = ownerSummaryRow({ status: 'visible' });
+		expect(toOwnerSummary(summary, null, true).isPublic).toBe(true);
+		expect(toOwnerSummary(summary, null, false).isPublic).toBe(false);
+	});
+
+	it('tin công khai không có trường isPublic', () => {
+		expect(toListingSummary(publicSummaryRow())).not.toHaveProperty(
+			'isPublic',
+		);
+		expect(
+			toListingDetail(publicDetailRow(), {
+				viewCount: 1,
+				includePhone: false,
+			}),
+		).not.toHaveProperty('isPublic');
 	});
 });

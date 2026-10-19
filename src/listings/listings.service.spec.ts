@@ -73,6 +73,11 @@ const stranger = {
 	userId: '0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8d99',
 } as RequestUser;
 
+/** Các lần `resolve` chạy trong giao dịch (cửa hạn mức); lần đọc `isPublic` sau khi ghi không có `tx`. */
+function gateCallsOf(resolve: jest.Mock): unknown[][] {
+	return argsOf(resolve).filter((call) => call[2] === tx);
+}
+
 type Mocks<T extends string> = Record<T, jest.Mock>;
 
 interface Harness {
@@ -90,6 +95,7 @@ interface Harness {
 		| 'softDelete'
 		| 'transition'
 		| 'countVisibleByLandlord'
+		| 'findEarliestVisibleIds'
 	>;
 	properties: Mocks<'lockLiveById' | 'findAddressSource'>;
 	moderation: Mocks<'findLatestListingHideReasons'>;
@@ -108,6 +114,8 @@ function build(
 		membership?: Membership;
 		visibleCount?: number;
 		trialListingLimit?: number;
+		/** Id các tin nằm trong hạn mức (N tin `visible` đăng sớm nhất); mặc định là tin của fixture. */
+		quotaIds?: string[];
 	} = {},
 ): Harness {
 	const repository = {
@@ -139,6 +147,9 @@ function build(
 		transition: jest.fn(() => Promise.resolve(true)),
 		countVisibleByLandlord: jest.fn(() =>
 			Promise.resolve(options.visibleCount ?? 0),
+		),
+		findEarliestVisibleIds: jest.fn(() =>
+			Promise.resolve(options.quotaIds ?? [LISTING_ID]),
 		),
 	};
 	const users = { lockById: jest.fn(() => Promise.resolve()) };
@@ -594,6 +605,7 @@ describe('ListingsService.listOwn và getOwn (AC-14)', () => {
 		await service.listOwn(
 			owner,
 			query({ status: 'hidden_by_owner', page: 2, pageSize: 5 }),
+			NOW,
 		);
 		expect(repository.findOwnedPage).toHaveBeenCalledWith(
 			LANDLORD_ID,
@@ -616,7 +628,7 @@ describe('ListingsService.listOwn và getOwn (AC-14)', () => {
 			rows: [visible, hidden],
 			total: 2,
 		});
-		const page = await service.listOwn(owner, query());
+		const page = await service.listOwn(owner, query(), NOW);
 		expect(moderation.findLatestListingHideReasons).toHaveBeenCalledWith([
 			'tin-bi-an',
 		]);
@@ -628,7 +640,7 @@ describe('ListingsService.listOwn và getOwn (AC-14)', () => {
 
 	it('trang không có tin bị admin ẩn thì không tra nhật ký kiểm duyệt cho ai', async () => {
 		const { service, moderation } = build();
-		await service.listOwn(owner, query());
+		await service.listOwn(owner, query(), NOW);
 		expect(moderation.findLatestListingHideReasons).toHaveBeenCalledWith(
 			[],
 		);
@@ -641,7 +653,7 @@ describe('ListingsService.listOwn và getOwn (AC-14)', () => {
 		repository.findOwnerDetail.mockResolvedValueOnce(
 			ownerDetailRow({ status: 'hidden_by_admin' }),
 		);
-		const detail = await service.getOwn(owner, LISTING_ID);
+		const detail = await service.getOwn(owner, LISTING_ID, NOW);
 		expect(detail).toMatchObject({
 			status: 'hidden_by_admin',
 			moderationReason: 'Ảnh không đúng thực tế',
@@ -651,7 +663,9 @@ describe('ListingsService.listOwn và getOwn (AC-14)', () => {
 	it('getOwn: không có hoặc đã xóa mềm thì 404 LISTING_NOT_FOUND', async () => {
 		const { service, repository } = build();
 		repository.findOwnerDetail.mockResolvedValueOnce(null);
-		await expect(service.getOwn(owner, LISTING_ID)).rejects.toMatchObject({
+		await expect(
+			service.getOwn(owner, LISTING_ID, NOW),
+		).rejects.toMatchObject({
 			code: ErrorCode.LISTING_NOT_FOUND,
 		});
 	});
@@ -659,7 +673,7 @@ describe('ListingsService.listOwn và getOwn (AC-14)', () => {
 	it('getOwn: tin của chủ trọ khác thì 403 NOT_RESOURCE_OWNER', async () => {
 		const { service } = build();
 		await expect(
-			service.getOwn(stranger, LISTING_ID),
+			service.getOwn(stranger, LISTING_ID, NOW),
 		).rejects.toMatchObject({
 			code: ErrorCode.NOT_RESOURCE_OWNER,
 		});
@@ -674,6 +688,7 @@ describe('ListingsService.update (AC-7)', () => {
 				owner,
 				LISTING_ID,
 				updateDto({ price: 4_000_000 }),
+				NOW,
 			),
 		).rejects.toMatchObject({ code: ErrorCode.LISTING_NOT_FOUND });
 		expect(missing.repository.update).not.toHaveBeenCalled();
@@ -684,6 +699,7 @@ describe('ListingsService.update (AC-7)', () => {
 				stranger,
 				LISTING_ID,
 				updateDto({ price: 4_000_000 }),
+				NOW,
 			),
 		).rejects.toMatchObject({ code: ErrorCode.NOT_RESOURCE_OWNER });
 		expect(other.repository.update).not.toHaveBeenCalled();
@@ -695,6 +711,7 @@ describe('ListingsService.update (AC-7)', () => {
 			owner,
 			LISTING_ID,
 			updateDto({ price: 4_000_000 }),
+			NOW,
 		);
 		expect(properties.lockLiveById).toHaveBeenCalledWith(PROPERTY_ID, tx);
 		expect(
@@ -708,6 +725,7 @@ describe('ListingsService.update (AC-7)', () => {
 			owner,
 			LISTING_ID,
 			updateDto({ title: 'Tiêu đề mới đủ dài' }),
+			NOW,
 		);
 		expect(repository.update).toHaveBeenCalledWith(
 			LISTING_ID,
@@ -726,6 +744,7 @@ describe('ListingsService.update (AC-7)', () => {
 			owner,
 			LISTING_ID,
 			updateDto({ price: 4_000_000 }),
+			NOW,
 		);
 		expect(repository.update).toHaveBeenCalledWith(
 			LISTING_ID,
@@ -741,6 +760,7 @@ describe('ListingsService.update (AC-7)', () => {
 			owner,
 			LISTING_ID,
 			updateDto({ deposit: null, availableFrom: null }),
+			NOW,
 		);
 		expect(repository.update).toHaveBeenLastCalledWith(
 			LISTING_ID,
@@ -755,6 +775,7 @@ describe('ListingsService.update (AC-7)', () => {
 				areaM2: 30,
 				description: 'Mô tả mới.',
 			}),
+			NOW,
 		);
 		expect(repository.update).toHaveBeenLastCalledWith(
 			LISTING_ID,
@@ -769,7 +790,7 @@ describe('ListingsService.update (AC-7)', () => {
 
 	it('thân rỗng vẫn gọi update (đặt lại updated_at) và giữ nguyên dữ liệu', async () => {
 		const { service, repository } = build();
-		await service.update(owner, LISTING_ID, updateDto({}));
+		await service.update(owner, LISTING_ID, updateDto({}), NOW);
 		expect(repository.update).toHaveBeenCalledWith(LISTING_ID, {}, tx);
 	});
 
@@ -786,6 +807,7 @@ describe('ListingsService.update (AC-7)', () => {
 			owner,
 			LISTING_ID,
 			updateDto({ price: 3_000_000 }),
+			NOW,
 		);
 		expect(repository.update).toHaveBeenCalled();
 	});
@@ -794,14 +816,24 @@ describe('ListingsService.update (AC-7)', () => {
 		const { service, repository } = build();
 		repository.update.mockResolvedValueOnce(false);
 		await expect(
-			service.update(owner, LISTING_ID, updateDto({ price: 3_000_000 })),
+			service.update(
+				owner,
+				LISTING_ID,
+				updateDto({ price: 3_000_000 }),
+				NOW,
+			),
 		).rejects.toMatchObject({ code: ErrorCode.LISTING_NOT_FOUND });
 	});
 
 	it('nhà trọ biến mất (khóa trả null) thì 404 LISTING_NOT_FOUND, không ghi', async () => {
 		const { service, repository } = build({ locked: null });
 		await expect(
-			service.update(owner, LISTING_ID, updateDto({ price: 3_000_000 })),
+			service.update(
+				owner,
+				LISTING_ID,
+				updateDto({ price: 3_000_000 }),
+				NOW,
+			),
 		).rejects.toMatchObject({ code: ErrorCode.LISTING_NOT_FOUND });
 		expect(repository.update).not.toHaveBeenCalled();
 	});
@@ -815,6 +847,7 @@ describe('ListingsService.update (AC-7)', () => {
 			owner,
 			LISTING_ID,
 			updateDto({ price: 4_000_000 }),
+			NOW,
 		);
 		expect(response.price).toBe(4_000_000);
 	});
@@ -857,7 +890,7 @@ describe('ListingsService.hide và show (AC-6)', () => {
 	describe('hide', () => {
 		it('chuyển visible sang hidden_by_owner bằng một câu có điều kiện trạng thái nguồn', async () => {
 			const { service, repository } = build();
-			await service.hide(owner, LISTING_ID);
+			await service.hide(owner, LISTING_ID, NOW);
 			expect(repository.transition).toHaveBeenCalledWith(
 				LISTING_ID,
 				['visible'],
@@ -872,7 +905,7 @@ describe('ListingsService.hide và show (AC-6)', () => {
 				repository.transition.mockResolvedValueOnce(false);
 				repository.findStatus.mockResolvedValueOnce(status);
 				await expect(
-					service.hide(owner, LISTING_ID),
+					service.hide(owner, LISTING_ID, NOW),
 				).rejects.toMatchObject({
 					code: ErrorCode.LISTING_STATE_INVALID,
 				});
@@ -883,17 +916,17 @@ describe('ListingsService.hide và show (AC-6)', () => {
 			const { service, repository } = build();
 			repository.transition.mockResolvedValueOnce(false);
 			repository.findStatus.mockResolvedValueOnce(null);
-			await expect(service.hide(owner, LISTING_ID)).rejects.toMatchObject(
-				{
-					code: ErrorCode.LISTING_NOT_FOUND,
-				},
-			);
+			await expect(
+				service.hide(owner, LISTING_ID, NOW),
+			).rejects.toMatchObject({
+				code: ErrorCode.LISTING_NOT_FOUND,
+			});
 		});
 
 		it('của chủ trọ khác thì 403 và không chuyển', async () => {
 			const { service, repository } = build();
 			await expect(
-				service.hide(stranger, LISTING_ID),
+				service.hide(stranger, LISTING_ID, NOW),
 			).rejects.toMatchObject({
 				code: ErrorCode.NOT_RESOURCE_OWNER,
 			});
@@ -905,7 +938,7 @@ describe('ListingsService.hide và show (AC-6)', () => {
 			repository.findOwnerDetail.mockResolvedValueOnce(
 				ownerDetailRow({ status: 'hidden_by_owner' }),
 			);
-			expect(await service.hide(owner, LISTING_ID)).toMatchObject({
+			expect(await service.hide(owner, LISTING_ID, NOW)).toMatchObject({
 				status: 'hidden_by_owner',
 				moderationReason: null,
 			});
@@ -1080,7 +1113,8 @@ describe('ListingsService.create: cửa hạn mức (spec 0003 AC-4, AC-6, AC-7)
 		repository.create.mockRejectedValueOnce(new ListingCodeTakenError());
 		await service.create(owner, PROPERTY_ID, createDto(), NOW);
 		expect(users.lockById).toHaveBeenCalledTimes(2);
-		expect(memberships.resolve).toHaveBeenCalledTimes(2);
+		// hai lần kiểm trong hai giao dịch; lần thứ ba (không có tx) là lần đọc `isPublic` sau khi chèn xong
+		expect(gateCallsOf(memberships.resolve)).toHaveLength(2);
 	});
 });
 
@@ -1144,18 +1178,193 @@ describe('hết dùng thử không chặn hide, sửa, xóa tin (spec 0003 AC-6)
 			membership: EXPIRED,
 			visibleCount: 99,
 		});
-		await service.hide(owner, LISTING_ID);
+		await service.hide(owner, LISTING_ID, NOW);
 		await service.update(
 			owner,
 			LISTING_ID,
 			updateDto({ price: 4_000_000 }),
+			NOW,
 		);
 		await service.remove(owner, LISTING_ID);
 		expect(repository.transition).toHaveBeenCalledTimes(1);
 		expect(repository.update).toHaveBeenCalledTimes(1);
 		expect(repository.softDelete).toHaveBeenCalledTimes(1);
-		expect(memberships.resolve).not.toHaveBeenCalled();
+		// không có cửa hạn mức: không giao dịch kiểm hạn mức. Lần đọc `isPublic` sau khi ghi thì có, nhưng ngoài giao dịch.
+		expect(gateCallsOf(memberships.resolve)).toHaveLength(0);
+		expect(repository.findEarliestVisibleIds).not.toHaveBeenCalled();
 		expect(users.lockById).not.toHaveBeenCalled();
 		expect(repository.countVisibleByLandlord).not.toHaveBeenCalled();
+	});
+});
+
+describe('isPublic của tin chủ trọ (spec 0003 AC-11)', () => {
+	const pageQuery = { page: 1, pageSize: 20 };
+	const early = ownerSummaryRow({ id: 'tin-som', status: 'visible' });
+	const late = ownerSummaryRow({ id: 'tin-muon', status: 'visible' });
+	const hiddenByOwner = ownerSummaryRow({
+		id: 'tin-an',
+		status: 'hidden_by_owner',
+	});
+	const hiddenByAdmin = ownerSummaryRow({
+		id: 'tin-admin',
+		status: 'hidden_by_admin',
+	});
+
+	describe('listOwn', () => {
+		it('chỉ tin visible nằm trong N tin sớm nhất mới isPublic; tin ẩn thì không', async () => {
+			const { service, repository } = build({ quotaIds: ['tin-som'] });
+			repository.findOwnedPage.mockResolvedValueOnce({
+				rows: [early, late, hiddenByOwner, hiddenByAdmin],
+				total: 4,
+			});
+			const page = await service.listOwn(owner, pageQuery, NOW);
+			expect(page.items.map((item) => item.isPublic)).toEqual([
+				true,
+				false,
+				false,
+				false,
+			]);
+		});
+
+		it('hỏi hạn mức và tập tin sớm nhất đúng một lần cho cả trang, theo hạn mức của resolve', async () => {
+			const { service, repository, memberships } = build({
+				membership: { ...TRIAL, limit: 5 },
+			});
+			repository.findOwnedPage.mockResolvedValueOnce({
+				rows: [early, late],
+				total: 2,
+			});
+			await service.listOwn(owner, pageQuery, NOW);
+			expect(memberships.resolve).toHaveBeenCalledTimes(1);
+			expect(memberships.resolve).toHaveBeenCalledWith(LANDLORD_ID, NOW);
+			expect(repository.findEarliestVisibleIds).toHaveBeenCalledTimes(1);
+			expect(repository.findEarliestVisibleIds).toHaveBeenCalledWith(
+				LANDLORD_ID,
+				5,
+			);
+		});
+
+		it.each([
+			['hết dùng thử', EXPIRED],
+			['còn dùng thử nhưng hạn mức bị đặt 0', { ...TRIAL, limit: 0 }],
+		])(
+			'%s thì mọi tin isPublic false và không truy vấn tập tin sớm nhất',
+			async (_label, membership) => {
+				const { service, repository } = build({ membership });
+				repository.findOwnedPage.mockResolvedValueOnce({
+					rows: [early, late],
+					total: 2,
+				});
+				const page = await service.listOwn(owner, pageQuery, NOW);
+				expect(page.items.map((item) => item.isPublic)).toEqual([
+					false,
+					false,
+				]);
+				expect(
+					repository.findEarliestVisibleIds,
+				).not.toHaveBeenCalled();
+			},
+		);
+
+		it('trang không có tin visible nào thì không tra hạn mức', async () => {
+			const { service, repository, memberships } = build();
+			repository.findOwnedPage.mockResolvedValueOnce({
+				rows: [hiddenByOwner, hiddenByAdmin],
+				total: 2,
+			});
+			const page = await service.listOwn(owner, pageQuery, NOW);
+			expect(page.items.map((item) => item.isPublic)).toEqual([
+				false,
+				false,
+			]);
+			expect(memberships.resolve).not.toHaveBeenCalled();
+			expect(repository.findEarliestVisibleIds).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('chi tiết của chủ trọ', () => {
+		it('getOwn: tin visible nằm trong hạn mức thì true, tra theo chủ của dòng tin', async () => {
+			const { service, memberships, repository } = build();
+			const detail = await service.getOwn(owner, LISTING_ID, NOW);
+			expect(detail.isPublic).toBe(true);
+			expect(memberships.resolve).toHaveBeenCalledWith(LANDLORD_ID, NOW);
+			expect(repository.findEarliestVisibleIds).toHaveBeenCalledWith(
+				LANDLORD_ID,
+				2,
+			);
+		});
+
+		it('getOwn: tin visible nhưng bị ẩn bớt vì vượt hạn mức thì false, status vẫn visible', async () => {
+			const { service } = build({ quotaIds: ['tin-khac'] });
+			expect(await service.getOwn(owner, LISTING_ID, NOW)).toMatchObject({
+				status: 'visible',
+				isPublic: false,
+			});
+		});
+
+		it.each(['hidden_by_owner', 'hidden_by_admin'])(
+			'getOwn: tin %s thì false và không tra hạn mức',
+			async (status) => {
+				const { service, repository, memberships } = build();
+				repository.findOwnerDetail.mockResolvedValueOnce(
+					ownerDetailRow({ status }),
+				);
+				const detail = await service.getOwn(owner, LISTING_ID, NOW);
+				expect(detail.isPublic).toBe(false);
+				expect(memberships.resolve).not.toHaveBeenCalled();
+				expect(
+					repository.findEarliestVisibleIds,
+				).not.toHaveBeenCalled();
+			},
+		);
+
+		it('getOwn: hết dùng thử thì tin visible cũng false', async () => {
+			const { service } = build({ membership: EXPIRED });
+			expect(
+				(await service.getOwn(owner, LISTING_ID, NOW)).isPublic,
+			).toBe(false);
+		});
+
+		it('kết quả của create, update và show cũng có isPublic', async () => {
+			const created = build();
+			expect(
+				(
+					await created.service.create(
+						owner,
+						PROPERTY_ID,
+						createDto(),
+						NOW,
+					)
+				).isPublic,
+			).toBe(true);
+
+			const updated = build({ quotaIds: [] });
+			expect(
+				(
+					await updated.service.update(
+						owner,
+						LISTING_ID,
+						updateDto({ price: 4_000_000 }),
+						NOW,
+					)
+				).isPublic,
+			).toBe(false);
+
+			const shown = build({ ownership: HIDDEN_BY_OWNER });
+			expect(
+				(await shown.service.show(owner, LISTING_ID, NOW)).isPublic,
+			).toBe(true);
+		});
+
+		it('kết quả của hide là false và không tra hạn mức', async () => {
+			const { service, repository, memberships } = build();
+			repository.findOwnerDetail.mockResolvedValueOnce(
+				ownerDetailRow({ status: 'hidden_by_owner' }),
+			);
+			expect((await service.hide(owner, LISTING_ID, NOW)).isPublic).toBe(
+				false,
+			);
+			expect(memberships.resolve).not.toHaveBeenCalled();
+		});
 	});
 });

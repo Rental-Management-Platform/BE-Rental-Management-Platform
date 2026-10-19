@@ -102,7 +102,7 @@ Chạy trên một database thử, API chạy bằng `DATABASE_NAME=<tên> PORT=
 - [ ] Đặt `settings.value` của `trial_listing_limit` thành `chu`, rồi xóa hẳn dòng → `GET /listings` vẫn 200 với kết quả của hạn mức mặc định 2, log đúng một cảnh báo cho khóa này, không 500 → AC-8, AC-12
 - [ ] Ranh giới: `now` đúng bằng `trial_ends_at` thì tin ẩn (so chặt), `now` sớm hơn 1 mili giây thì hiện; kết quả như nhau khi phiên DB có múi giờ UTC, `Asia/Ho_Chi_Minh` hay `America/Los_Angeles` (`listings.repository.spec.ts` kiểm `now` đi vào SQL là chuỗi ISO có `Z`, không phải `Date`) → AC-8
 - [ ] Đối chứng: bỏ vế hạng khỏi bản build rồi chạy lại các bước hạ hạn mức → hỏng; bỏ vế `trial_ends_at` rồi chạy lại các bước hết dùng thử → hỏng; khôi phục bản build → qua → AC-8, AC-9
-- [ ] Bước 7 của Build plan (đo `EXPLAIN ANALYZE` ở 60 nghìn tin) vẫn chưa làm; câu đếm tổng đã nối bằng `count(*)` với cùng mảnh điều kiện → AC-13
+- [ ] Bước 7 của Build plan (đo `EXPLAIN ANALYZE` ở 60 nghìn tin) làm ở mốc 4, xem mục "Mốc 4" bên dưới; câu đếm tổng đã nối bằng `count(*)` với cùng mảnh điều kiện → AC-13
 
 ## Value sourcing (mốc 3)
 - [ ] `now`: một giá trị mỗi request, controller lấy `new Date()` rồi truyền xuống Service, Repository và SQL (chuỗi ISO có `Z`) → `listings.service.spec.ts` kiểm `now` truyền xuống nguyên vẹn; không trộn với `now()` của DB trong cùng một quyết định → AC-8
@@ -110,8 +110,62 @@ Chạy trên một database thử, API chạy bằng `DATABASE_NAME=<tên> PORT=
 - [ ] Hạng của tin: `(created_at, id)` của các tin `visible` chưa xóa cùng chủ trọ, nhỏ hơn thì xếp trước → thử tin `hidden_by_owner`, `hidden_by_admin` và đã xóa mềm, không loại nào tính vào hạng → AC-9
 - [ ] Còn dùng thử: `users.trial_ends_at` lớn hơn `now` (so chặt); tài khoản không có `trial_ends_at` thì không qua → AC-8
 
+## Mốc 4: `GET /me/membership`, cờ `isPublic`, đo `EXPLAIN` (AC-10, AC-11, AC-13)
+
+Chạy trên một database thử, API chạy bằng `DATABASE_NAME=<tên> PORT=<cổng> node dist/main` sau `npm run build`. Mỗi lần khởi động lại API thì bộ đếm giới hạn tần suất về 0 (đăng ký chỉ 10 lần mỗi giờ theo IP, đăng nhập 10 lần mỗi 15 phút theo email). Các ô "đặt `trial_ends_at`" làm thẳng trong DB: `UPDATE users SET trial_ends_at = ... WHERE id = ...`. Admin đổi hạn mức bằng `PATCH /settings/trial_listing_limit`. Mỗi lần chạy lại phải dùng từ khóa `q` riêng cho tin mới, để tin của lần chạy trước không lẫn vào.
+
+### Commands
+- [ ] `npm test` → toàn bộ qua (665 test), gồm `memberships.mapper.spec.ts`, `memberships.service.spec.ts`, `listings.service.spec.ts`, `listings.mapper.spec.ts`, `listings.repository.spec.ts` → AC-10, AC-11
+- [ ] `npx tsc --noEmit` và `npx eslint "src/**/*.ts"` → không lỗi → AC-10, AC-11
+- [ ] Newman folder 07, 08, 09, 11 chạy liền trên DB thử đã `migration:deploy` và `seed` → 95 request, 181 assertion, 0 lỗi; folder 11 nay có 42 request, gồm chín request `GET /me/membership` và `isPublic` mới → AC-10, AC-11
+- [ ] Newman các folder 00 đến 05 và 07 đến 11 chạy liền → 143 request, 248 assertion, chỉ hai lỗi cũ ở folder 02 (đặt lại mật khẩu cần token dán tay từ email thật, đổi mật khẩu hỏng theo) → AC-10, AC-11
+- [ ] Đo `EXPLAIN (ANALYZE, BUFFERS)` bằng mảnh `publicListingCondition` lấy từ bản build, trên 60.030 tin giả lập, ba lần mỗi câu lấy lần nhanh nhất (kết quả ở mục "Kết quả đo AC-13" bên dưới) → AC-13
+
+### UI / manual (gọi API)
+- [ ] Không token `GET /me/membership` → 401; người tìm trọ → 403 `PERMISSION_DENIED`; admin → 200 với `state` = `expired`, `trialEndsAt` và `trialDaysLeft` = `null`, `listingLimit` 0 → AC-10
+- [ ] Chủ trọ vừa đăng ký → 200, đúng bảy trường `state, trialEndsAt, trialDaysLeft, listingLimit, visibleCount, remaining, overLimitCount`; `state` = `trial`, `trialDaysLeft` = 30, `listingLimit` 2, `visibleCount` 0, `remaining` 2, `overLimitCount` 0; `trialEndsAt` bằng cột `users.trial_ends_at` đến mili giây → AC-10
+- [ ] Đăng tin A rồi tin B → mỗi lần 201 và `isPublic` = `true`; membership sau A: `visibleCount` 1, `remaining` 1; sau B: `visibleCount` 2, `remaining` 0; đăng tin C → 403 `LISTING_QUOTA_REACHED` → AC-10, AC-11
+- [ ] `GET /me/listings` và `GET /me/listings/:id` → cả hai tin `isPublic` = `true` → AC-11
+- [ ] Admin hạ `trial_listing_limit` xuống 1 khi chủ trọ có A (sớm) và B → `GET /me/listings`: A `isPublic` = `true`, B `isPublic` = `false` mà `status` vẫn `visible`; membership: `listingLimit` 1, `visibleCount` 2, `remaining` 0, `overLimitCount` 1; `GET /listings` chỉ có A (khớp `isPublic`) → AC-10, AC-11, AC-9
+- [ ] Cùng lúc đó `PATCH /listings/:idB` → 200, `isPublic` = `false`, `status` = `visible`; `hide` B → `isPublic` = `false`, `hidden_by_owner`; membership: `visibleCount` 1, `overLimitCount` 0 → AC-11
+- [ ] `show` B khi đang hiện đủ hạn mức 1 → 403 `LISTING_QUOTA_REACHED`; nâng hạn mức lên 2 rồi `show` B → 200, `isPublic` = `true`; `GET /listings` có cả A và B → AC-11, AC-5
+- [ ] Đặt tay `status` = `hidden_by_admin` cho A → `GET /me/listings`: A `isPublic` = `false`, B `isPublic` = `true` → AC-11
+- [ ] Đặt `trial_ends_at` về quá khứ → membership: `state` = `expired`, `trialDaysLeft` 0, `listingLimit` 0, `visibleCount` 2, `remaining` 0, `overLimitCount` 2, `trialEndsAt` vẫn có; `GET /me/listings` và `GET /me/listings/:id`: mọi tin `isPublic` = `false`, `status` vẫn `visible`; `GET /listings` không còn tin nào của chủ trọ → AC-10, AC-11, AC-8
+- [ ] Làm tròn số ngày: `trial_ends_at` = now + 1 giờ → `trialDaysLeft` 1; now + 25 giờ → 2; now + 29 ngày 1 giây → 30; now + 30 ngày → 30 → AC-10
+- [ ] Đối chiếu độc lập: chủ trọ có hai nhà trọ, 6 tin `visible` đăng xen kẽ, 1 tin `hidden_by_owner`, 1 tin xóa mềm; ở hạn mức 0, 1, 2, 3, 5, 6, 7, 100: tập id có `isPublic` = `true` ở `GET /me/listings` bằng tập id của `GET /listings` (đúng chủ trọ đó) và bằng một truy vấn tay độc lập (tin `visible` chưa xóa của chủ trọ xếp `created_at, id` lấy N đầu), đúng `min(hạn mức, 6)` tin, không có tin ẩn hay tin xóa; membership khớp (`remaining`, `overLimitCount`) → AC-9, AC-10, AC-11
+- [ ] Như bước trên sau khi đặt cùng một `created_at` cho mọi tin của chủ trọ (hạn mức 0, 1, 2, 3, 4, 6, 7) → ba tập vẫn khớp nhau, tin có `id` nhỏ hơn được xếp trước → AC-9, AC-11
+- [ ] Đối chứng: đổi `orderBy` của `findEarliestVisibleIds` trong bản build từ `createdAt: 'asc'` sang `'desc'` rồi chạy lại các bước hạ hạn mức và đối chiếu → hỏng đúng chỗ: bước hạ hạn mức đảo A và B (`isPublic` của B thành `true`, của A thành `false`) và đối chiếu lệch truy vấn tay ở các hạn mức nhỏ (22 kiểm tra hỏng); khôi phục bản build → qua hết (108 kiểm tra) → AC-11
+- [ ] Hide, update, delete khi hết dùng thử vẫn chạy (test đơn vị): các thao tác này không đi qua cửa hạn mức (không giao dịch `resolve`), chỉ phần đọc `isPublic` sau khi ghi gọi `resolve` ngoài giao dịch → AC-6, AC-11
+
+### Kết quả đo AC-13 (60.030 tin, hạn mức 2, trang 20 tin, lần nhanh nhất trong ba lần)
+
+Máy dev, PostgreSQL 18, mỗi dạng dữ liệu nạp lại từ đầu rồi `ANALYZE`. Một lần đo lại cùng câu có thể lệch đến 2,5 lần. Ngân sách của AC-13: trang dưới 100 ms, đếm tổng dưới 300 ms.
+
+| Dạng dữ liệu | Trang 1 | Trang 50 | Đếm tổng |
+|---|---|---|---|
+| R: mỗi chủ trọ có 2 tin hiện và 1 tin ẩn (đúng điều cổng ghi cho phép) | 0,2 ms | 230 đến 440 ms | 210 đến 520 ms |
+| A: 3.000 chủ trọ, 20 tin hiện mỗi người | 210 đến 850 ms | 1,1 s | 1,1 s |
+| B: 12.000 chủ trọ, 5 tin hiện mỗi người | 10 ms | 690 ms | 690 ms |
+| C: 300 chủ trọ, 200 tin hiện mỗi người | 6,0 đến 6,7 s | 6,0 s | 6,2 s |
+
+Chi tiết một tin theo mã: 0 ms (đã đo ở dạng R và A). Trang 1 sắp theo giá, lọc phường, lọc giá: từ 0,2 ms đến 1,3 s tùy dạng (lọc giá ở dạng C 1,3 s; lọc phường ở dạng B và R khoảng 150 ms).
+
+- Dự phòng (a), chỉ mục một phần `(property_id, created_at, id)`: gần như không đổi (dạng R đếm 488 ms; dạng A trang 1 còn tệ hơn, 939 ms; dạng C đếm 2,8 s). Đã bỏ, không giữ chỉ mục.
+- Dự phòng (b), CTE đếm tin hiện theo chủ trọ một lần rồi chỉ xếp hạng chủ trọ vượt hạn mức: không cứu dạng A và C (mọi chủ trọ đều vượt), dạng B tệ hơn (đếm 799 ms). Đã bỏ.
+- Thử thêm, **không áp dụng**: viết lại vế hạng bằng một hàm cửa sổ `row_number()` tính một lần cho mọi tin. Đếm tổng 40 đến 240 ms ở cả bốn dạng, trang 40 đến 270 ms, nhưng chi tiết một tin chậm hơn (0 ms lên 20 đến 75 ms). Vẫn chưa đạt trọn ngân sách trang.
+- **Quyết định của bạn (2026-10-19): bỏ qua ngân sách này.** Dự án là bản MVP không chạy thật, nên giữ nguyên luật và mảnh SQL đang chạy; AC-13 ghi nhận là **đã đo, chưa đạt ở 60 nghìn tin, bỏ qua có chủ đích**. Ở quy mô demo (vài nghìn tin trở xuống) các câu này vẫn nhanh. Nếu sau này cần chạy thật, hướng đã thử nằm ở dòng "thử thêm" ở trên và bước 7c của Build plan (quay lại `/architect`).
+
+## Value sourcing (mốc 4)
+- [ ] `now`: một giá trị mỗi request, controller lấy `new Date()` rồi truyền xuống Service (`getStatus`, `listOwn`, `getOwn`, `update`, `hide`, `show`) và `resolve` → test đơn vị truyền `now` cố định và kiểm biên mili giây (`memberships.service.spec.ts`, `listings.service.spec.ts`) → AC-10, AC-11
+- [ ] `state`, `listingLimit`, `trialEndsAt` của `/me/membership`: cùng hàm `MembershipsService.resolve` với cổng đăng và hiện tin (không tính lần thứ hai) → đổi `trial_listing_limit` rồi gọi lại: `listingLimit` đổi ngay → AC-10
+- [ ] `visibleCount`: `countVisibleByLandlord` của `sub` trong token, cùng hàm cổng đăng tin dùng (tin `hidden_by_owner`, `hidden_by_admin`, đã xóa mềm và tin của chủ trọ khác không tính; tin bị ẩn bớt vì vượt hạn mức vẫn tính) → AC-10
+- [ ] `trialDaysLeft` = `ceil((trialEndsAt - now) / 86400000)` khi `trial`, 0 khi `expired` có `trialEndsAt`, `null` khi không có `trialEndsAt` → bốn mốc làm tròn ở trên và admin → AC-10
+- [ ] `remaining` = `max(0, listingLimit - visibleCount)`, `overLimitCount` = `max(0, visibleCount - listingLimit)` → ba ca: dưới, bằng, vượt hạn mức → AC-10
+- [ ] `isPublic` = `status` là `visible` và `id` nằm trong N tin `visible` chưa xóa đăng sớm nhất của chủ trọ (`created_at` rồi `id`, N là `listingLimit` của `resolve`); một truy vấn `LIMIT N` cho mỗi request, bỏ qua khi N = 0 hoặc khi không tin nào đang `visible` → `listings.service.spec.ts` kiểm số lần gọi `findEarliestVisibleIds`, đối chiếu độc lập ở trên kiểm kết quả → AC-11
+
 ## Acceptance-criteria coverage
 - Mốc 1: AC-2 … covered by các bước `GET /settings`, `PATCH /settings/:key`, quyền, `@FreshAuth`, Value sourcing · AC-12 … covered by các bước migration, `CHECK`, `prisma migrate diff`, seed, giá trị hỏng hoặc thiếu
 - Mốc 2: AC-1 … covered by các bước đăng ký (landlord, tenant, admin, trùng số, đổi `trial_days`) · AC-3 … covered by hạn mức đổi có hiệu lực ngay, hết dùng thử, admin hạn mức 0 · AC-4 … covered by đăng tin đủ hạn mức, hết dùng thử, thứ tự lỗi · AC-5 … covered by `show` đủ hạn mức, hết dùng thử, thứ tự lỗi · AC-6 … covered by ẩn trả lại chỗ, hết dùng thử không chặn hide, sửa, xóa · AC-7 … covered by ba kịch bản đua và ca đối chứng
 - Mốc 3: AC-8 … covered by các bước hết dùng thử (biến khỏi danh sách và chi tiết, vẫn thấy ở /me/listings, gia hạn hiện lại), chủ trọ khóa, nhà trọ xóa mềm, tin admin, so khớp truy vấn tay, trang vượt cuối, ranh giới mili giây · AC-9 … covered by các bước hạ hạn mức (3, 2, 1, 0, nâng lại), ẩn và xóa tin sớm nhất, cùng `created_at`, chủ trọ khác không bị ảnh hưởng, ca đối chứng
-- Chưa phủ (mốc sau): AC-10, AC-11, AC-13
+- Mốc 4: AC-10 … covered by các bước `GET /me/membership` (quyền, bảy trường, đủ hạn mức, hạ hạn mức, hết dùng thử, admin, làm tròn số ngày) · AC-11 … covered by `isPublic` ở mọi phản hồi tin của chủ trọ, ca bị ẩn bớt, ca hết dùng thử, đối chiếu độc lập ba cách và ca đối chứng · AC-13 … đã đo và ghi ở "Kết quả đo AC-13": **chưa đạt, bỏ qua có chủ đích theo quyết định của bạn ngày 2026-10-19**
+- Còn lại: không (mọi AC của spec đã có bước kiểm; AC-13 là ngoại lệ ghi ở trên)

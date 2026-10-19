@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../generated/prisma/client';
+import { ListingsRepository } from '../listings/listings.repository';
 import { SettingsService } from '../settings/settings.service';
 import { UsersService } from '../users/users.service';
+import type { MembershipResponse } from './dto/membership.response';
+import { toMembershipResponse } from './memberships.mapper';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -27,6 +30,7 @@ export class MembershipsService {
 	constructor(
 		private readonly users: UsersService,
 		private readonly settings: SettingsService,
+		private readonly listings: ListingsRepository,
 	) {}
 
 	/**
@@ -53,6 +57,17 @@ export class MembershipsService {
 			};
 		}
 		return { state: 'expired', limit: 0, trialEndsAt };
+	}
+
+	/**
+	 * Trạng thái dùng thử và hạn mức của chính chủ trọ cho `GET /me/membership` (spec 0003 AC-10): hạn mức từ
+	 * `resolve`, số tin đang hiện đếm như cổng đăng tin (tin bị ẩn bớt vì vượt hạn mức vẫn tính). Đọc, không
+	 * khóa: con số chỉ để hiển thị, cổng đăng và hiện tin mới là nơi giữ hạn mức.
+	 */
+	async getStatus(userId: string, now: Date): Promise<MembershipResponse> {
+		const membership = await this.resolve(userId, now);
+		const visibleCount = await this.listings.countVisibleByLandlord(userId);
+		return toMembershipResponse(membership, visibleCount, now);
 	}
 
 	/**
