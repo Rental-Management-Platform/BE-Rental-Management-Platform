@@ -21,6 +21,7 @@ export const VALIDATION_MESSAGES: Readonly<Record<string, string>> = {
 	arrayMaxSize: 'Danh sách có quá nhiều phần tử.',
 	arrayUnique: 'Danh sách có phần tử bị trùng.',
 	isInt: 'Phải là số nguyên.',
+	isBoolean: 'Phải là true hoặc false.',
 	min: 'Giá trị quá nhỏ.',
 	max: 'Giá trị quá lớn.',
 	isDefined: 'Không được thiếu trường này.',

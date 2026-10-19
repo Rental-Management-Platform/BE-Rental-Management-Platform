@@ -42,6 +42,8 @@ model User {
   passwordResets  PasswordReset[]
   properties      Property[]
   updatedSettings Setting[]
+  orders          Order[]
+  subscriptions   Subscription[]
 
   @@index([accountType], map: "users_account_type_idx")
   @@map("users")
@@ -271,4 +273,73 @@ model Setting {
   updatedByUser User? @relation(fields: [updatedBy], references: [id], onDelete: SetNull, map: "settings_updated_by_fk")
 
   @@map("settings")
+}
+
+/// Gói chủ trọ mua (spec 0004). Admin tạo, sửa, tắt, xóa; giá và số tin của đơn đã tạo không đổi theo gói.
+/// CHECK ở migration: name dài 2 đến 60, price từ 0 đến 100000000, max_listings từ 1 đến 1000, duration_days từ 1 đến 365.
+model Plan {
+  id           String   @id(map: "plans_pkey") @default(dbgenerated("uuidv7()")) @db.Uuid
+  name         String   @unique(map: "plans_name_unique")
+  /// Đồng Việt Nam.
+  price        Int
+  maxListings  Int      @map("max_listings")
+  durationDays Int      @default(30) @map("duration_days")
+  /// Tắt thì ngừng bán (không hiện ở bảng giá, không đặt hay thanh toán được) nhưng đơn đã có vẫn giữ nguyên.
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  orders Order[]
+
+  @@map("plans")
+}
+
+/// Đơn mua gói bằng thanh toán thử (spec 0004). Bốn cột bản chốt (plan_name, price, max_listings, duration_days)
+/// ghi lại gói tại lúc tạo đơn và không bao giờ cập nhật về sau.
+/// CHECK và chỉ mục duy nhất một phần `orders_user_pending_unique` (một đơn pending mỗi chủ trọ) nằm ở migration.
+model Order {
+  id           String    @id(map: "orders_pkey") @default(dbgenerated("uuidv7()")) @db.Uuid
+  /// Mã ngắn 8 ký tự cùng bảng chữ với mã tin.
+  code         String    @unique(map: "orders_code_unique")
+  userId       String    @map("user_id") @db.Uuid
+  planId       String    @map("plan_id") @db.Uuid
+  planName     String    @map("plan_name")
+  price        Int
+  maxListings  Int       @map("max_listings")
+  durationDays Int       @map("duration_days")
+  /// CHECK ở migration: pending, paid, cancelled; paid_at có khi và chỉ khi paid, cancelled_at có khi và chỉ khi cancelled.
+  status       String    @default("pending")
+  paidAt       DateTime? @map("paid_at") @db.Timestamptz(6)
+  cancelledAt  DateTime? @map("cancelled_at") @db.Timestamptz(6)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Restrict, map: "orders_user_id_fk")
+  plan         Plan          @relation(fields: [planId], references: [id], onDelete: Restrict, map: "orders_plan_id_fk")
+  subscription Subscription?
+
+  @@index([userId, createdAt(sort: Desc), id(sort: Desc)], map: "orders_user_id_created_at_idx")
+  @@index([planId], map: "orders_plan_id_idx")
+  @@map("orders")
+}
+
+/// Một kỳ gói của chủ trọ, sinh ra khi đơn được thanh toán (spec 0004). Không lưu trạng thái: "sắp tới", "đang chạy",
+/// "đã hết" suy ra từ starts_at, ends_at và now. Tên gói và số tin đọc từ đơn qua order_id.
+/// CHECK ends_at > starts_at và ràng buộc loại trừ `subscriptions_user_period_excl` (hai kỳ của cùng chủ trọ không
+/// chồng nhau, cần phần mở rộng btree_gist) nằm ở migration; Prisma không diễn đạt được.
+model Subscription {
+  id        String   @id(map: "subscriptions_pkey") @default(dbgenerated("uuidv7()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  /// Một đơn tối đa một kỳ.
+  orderId   String   @unique(map: "subscriptions_order_id_unique") @map("order_id") @db.Uuid
+  startsAt  DateTime @map("starts_at") @db.Timestamptz(6)
+  endsAt    DateTime @map("ends_at") @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Restrict, map: "subscriptions_user_id_fk")
+  order Order @relation(fields: [orderId], references: [id], onDelete: Restrict, map: "subscriptions_order_id_fk")
+
+  @@index([userId, endsAt(sort: Desc)], map: "subscriptions_user_id_ends_at_idx")
+  @@map("subscriptions")
 }

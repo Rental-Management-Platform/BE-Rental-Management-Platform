@@ -25,8 +25,8 @@ _Đây là các khuyến nghị để việc làm gọn gàng, không phải yê
 | 6 | Quên mật khẩu và đổi mật khẩu | Release 6 | done |
 | 7 | Giới hạn tần suất | Release 7 | done |
 | 8 | Nhà trọ, đăng tin và xem tin | Release 8 | in-progress |
-| 9 | Dùng thử miễn phí và hạn mức tin | Release 9 | in-progress |
-| 10 | Mua gói (thanh toán thử) và gia hạn theo tháng | Release 10 | planned |
+| 9 | Dùng thử miễn phí và hạn mức tin | Release 9 | done |
+| 10 | Mua gói (thanh toán thử) và gia hạn theo tháng | Release 10 | in-progress |
 | 11 | Theo dõi chủ trọ và số người biết đến | Release 11 | planned |
 | 12 | Lưu phòng yêu thích | Release 12 | planned |
 | 13 | Dọn danh mục quyền theo MVP | Release 13 | done |
@@ -133,7 +133,7 @@ Spec [0002](../specs/0002-property-listings/index.md) (16 AC, 5 mốc, đã đư
 
 ## Release 9: dùng thử và hạn mức
 
-### 9. Dùng thử miễn phí và hạn mức tin · in-progress
+### 9. Dùng thử miễn phí và hạn mức tin · done
 Chủ trọ dùng thử miễn phí `trial_days` ngày (mặc định 30) với tối đa `trial_listing_limit` tin đang hiện (mặc định 2); cả hai chỉnh bằng bảng `settings`. Một số điện thoại chỉ nhận dùng thử một lần (đã có ở đăng ký, không xác thực bằng mã gửi về). Chỉ tin đang hiện tính vào hạn mức, ẩn một tin là trả lại một chỗ. Hết kỳ dùng thử mà không có gói đang hiệu lực thì mọi tin của chủ trọ tự biến khỏi công khai (suy ra lúc đọc, không cần cron), chủ trọ vẫn xem và sửa được tin của mình; có gói thì tin hiện lại. Người tìm trọ không bị giới hạn. Đã thiết kế đầy đủ ở spec 0003 (13 AC, 4 mốc), bạn Accept ngày 2026-10-16: hạn dùng thử lưu thành cột `users.trial_ends_at` lúc đăng ký (đổi `trial_days` chỉ ảnh hưởng người đăng ký sau); hạn mức hiện hành tính ở một hàm (gói thay hạn mức dùng thử khi còn hiệu lực, hàng 10 cắm vào); hai mã lỗi 403 `MEMBERSHIP_REQUIRED` và `LISTING_QUOTA_REACHED`; khi hạn mức bị hạ thấp hơn số tin đang hiện thì chỉ các tin đăng sớm nhất còn hiện công khai; thêm `GET /me/membership`, cờ `isPublic` cho tin của chủ trọ và API admin cho `settings`.
 **Done when:** tài khoản chủ trọ mới có một kỳ dùng thử và một hạn mức tin; đăng hoặc hiện thêm tin khi đã đủ hạn mức bị chặn kèm gợi ý mua gói (hết kỳ thì báo cần mua gói, còn kỳ mà đủ tin thì báo ẩn bớt hoặc nâng gói); ẩn một tin thì đăng thêm được, hai yêu cầu cùng lúc không vượt hạn mức; hết kỳ dùng thử mà chưa có gói thì tin của chủ trọ biến khỏi danh sách công khai ngay mà không cần việc nền; admin hạ hạn mức thì chỉ các tin đăng sớm nhất còn hiện và `isPublic` cho chủ trọ biết tin nào bị ẩn bớt; chủ trọ đọc được kỳ dùng thử và hạn mức ở `GET /me/membership`; một số điện thoại không nhận dùng thử lần hai; số ngày và số tin dùng thử đổi được bằng API `settings` của admin, không viết cứng trong code.
 - [x] Design it (spec): `/architect free trial and listing quota`
@@ -146,10 +146,15 @@ Spec [0003](../specs/0003-free-trial-listing-quota/index.md) (13 AC, 4 mốc, đ
 
 ## Release 10: mua gói
 
-### 10. Mua gói (thanh toán thử) và gia hạn theo tháng · planned · needs a decision
-Chủ trọ xem bảng giá gói (công khai), chọn gói, tạo đơn rồi bấm thanh toán thử; đơn thành `paid` và gói có hiệu lực 30 ngày ngay, hạn mức tin tăng theo gói; gia hạn cộng nối tiếp 30 ngày. Admin quản lý gói (tên, giá, số tin tối đa, bật hay tắt). Không có cổng thanh toán, không có tiền thật, không biến môi trường mới (VNPay đã bỏ ngày 2026-10-11). Đã chốt; còn lại cho `/architect`: cột và mã lỗi, ai được hủy đơn, xử lý khi hạn mức của gói mới thấp hơn số tin đang hiện.
+### 10. Mua gói (thanh toán thử) và gia hạn theo tháng · in-progress
+Chủ trọ xem bảng giá gói (công khai), chọn gói, tạo đơn rồi bấm thanh toán thử; đơn thành `paid` và gói có hiệu lực 30 ngày ngay, hạn mức tin tăng theo gói; gia hạn cộng nối tiếp 30 ngày. Admin quản lý gói (tên, giá, số tin tối đa, bật hay tắt). Không có cổng thanh toán, không có tiền thật, không biến môi trường mới (VNPay đã bỏ ngày 2026-10-11). Đã thiết kế đầy đủ ở spec 0004 (13 AC, 3 mốc), bạn Accept ngày 2026-10-19: ba bảng `plans`, `orders`, `subscriptions`; đơn chốt giá, số tin, số ngày lúc tạo; mọi đơn đã trả nối tiếp thành kỳ không chồng nhau (DB chặn); mỗi chủ trọ tối đa một đơn chờ, tạo đơn mới thì đơn chờ cũ tự hủy; bấm thanh toán lần hai trả lại kết quả cũ; chỉ tài khoản chủ trọ tạo được đơn; gói đang chạy thay hạn mức dùng thử qua hàm hạn mức và mảnh SQL hiển thị của hàng 9.
 **Done when:** xem được bảng giá công khai; tạo đơn mua gói và thấy trạng thái đơn; bấm thanh toán thử thì đơn thành `paid` và gói có hiệu lực ngay, bấm hai lần không tạo hai gói; gia hạn cộng nối tiếp 30 ngày; gói hết hạn thì tài khoản quay về trạng thái cần mua; xem được lịch sử đơn của mình; admin tạo, sửa và tắt gói.
-- [ ] Design it (spec): `/architect membership packages and payment`
+- [x] Design it (spec): `/architect membership packages and payment`
+- [ ] Build it: `/develop membership packages and payment`
+   - [x] Mốc 1: bảng giá và quản lý gói: migration ba bảng kèm ràng buộc, seed ba gói mẫu, sáu mã lỗi, nhóm giới hạn `orderWrite`, `GET /plans` công khai và API admin tạo, sửa, tắt, xóa gói (AC-1, AC-2, AC-12, AC-13); đã chạy thật trên DB thử 2026-10-19, riêng `orderWrite` mới có trong bảng giới hạn, chưa route nào dùng (đơn ở mốc 2)
+   - [ ] Mốc 2: đơn, thanh toán thử và kỳ gói: tạo, xem, hủy đơn, `POST /orders/:id/pay` trong một giao dịch, kỳ nối tiếp không chồng nhau, bấm đúp an toàn (AC-3 đến AC-7, AC-11, AC-13)
+   - [ ] Mốc 3: gói thành hạn mức: nhánh gói trong hàm hạn mức, luật hiển thị công khai theo gói, `GET /me/membership` có `state = plan` và `subscription`, tài liệu và kiểm cuối (AC-8, AC-9, AC-10 và rà lại AC-1 đến AC-13)
+Spec [0004](../specs/0004-membership-packages-payment/index.md) (13 AC, 3 mốc, đã được bạn Accept ngày 2026-10-19; trạng thái spec đi theo tính năng) · code in `src/plans/`, `src/orders/`, `src/memberships/`, `src/listings/`, `src/database/seed-plans.ts`, `src/common/rate-limit/`, `prisma/` · tài liệu in `docs/api/`
 
 ## Release 11: theo dõi chủ trọ
 
@@ -185,6 +190,7 @@ Ngoài phạm vi bản này, giữ lại để kế hoạch trung thực.
 - **Giao dịch nhiều bước và chạy migration trong container**: làm cùng tính năng cần chúng (hàng 5 khi gán vai trò lúc đăng ký, và spec 0006).
 - **Duyệt tin trước khi hiển thị**: đã bỏ hẳn ngày 2026-10-11, thay bằng admin ẩn tin sau khi đăng (hàng 8). Không làm lại trừ khi bạn đổi ý.
 - **Hoãn khỏi MVP (chốt 2026-10-11)**: xác thực chủ trọ và ảnh giấy tờ, báo cáo tin xấu, liên hệ chủ trọ có giới hạn mỗi ngày, đẩy tin và tin nổi bật, kiểm tra tại chỗ, quảng cáo, thu chi và dashboard doanh thu, thống kê cho chủ trọ, tìm quanh địa điểm mốc, lịch sử giá tin, cổng thanh toán thật (VNPay), hoàn tiền và tặng gói, đổi loại tài khoản. Thêm lại bằng `/scope` khi tới lượt · needs a decision
+- **Hoãn từ spec 0004 (2026-10-19)**: admin xem đơn của mọi người và số liệu doanh thu, email biên nhận và email nhắc sắp hết gói (cần việc nền), đổi sang gói khác có hiệu lực ngay (cắt gói cũ), mua nhiều kỳ trong một đơn, mô tả và thứ tự do admin đặt cho gói, tự hủy đơn chờ quá hạn; cổng thanh toán thật, hoàn tiền và tặng gói đã nằm ở mục hoãn khỏi MVP phía trên · needs a decision
 - **Hoãn từ spec 0003 (2026-10-16)**: email nhắc sắp hết dùng thử (cần việc nền), admin gia hạn dùng thử cho một chủ trọ cụ thể, API công khai cho FE hiện "dùng thử N ngày, M tin" trước khi đăng ký · needs a decision
 
 ## Legend

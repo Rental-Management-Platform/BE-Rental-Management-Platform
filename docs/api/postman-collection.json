@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Rental Management Platform API",
-    "description": "Bộ request để thử API backend. Cập nhật cùng mỗi thay đổi API (xem docs/api/api-for-frontend.md, mục Nhật ký thay đổi).\n\nCách dùng:\n1. Import file này vào Postman.\n2. Mở tab Variables của collection, điền `adminEmail` và `adminPassword` theo ADMIN_SEED_* trong .env (không commit mật khẩu thật).\n3. Chạy API (`npm run start:dev`), rồi chạy lần lượt folder 00, 01, 02, 03, 04, 05, 07, 08, 09, 10. Folder 06 (giới hạn tần suất, lỗi 429) chạy riêng, đừng chạy cả bộ nhiều lần liên tiếp: bộ đếm nằm trong bộ nhớ backend, muốn chạy lại ngay thì khởi động lại backend.\n4. Các request tự lưu token vào biến `userToken` và `adminToken`.\n\nCookie refresh (`rt`) có Path `/api/v1/auth`, Postman tự giữ và tự gửi cho các request dưới đường dẫn đó.",
+    "description": "Bộ request để thử API backend. Cập nhật cùng mỗi thay đổi API (xem docs/api/api-for-frontend.md, mục Nhật ký thay đổi).\n\nCách dùng:\n1. Import file này vào Postman.\n2. Mở tab Variables của collection, điền `adminEmail` và `adminPassword` theo ADMIN_SEED_* trong .env (không commit mật khẩu thật).\n3. Chạy API (`npm run start:dev`), rồi chạy lần lượt folder 00, 01, 02, 03, 04, 05, 07, 08, 09, 10, 11, 12. Folder 06 (giới hạn tần suất, lỗi 429) chạy riêng, đừng chạy cả bộ nhiều lần liên tiếp: bộ đếm nằm trong bộ nhớ backend, muốn chạy lại ngay thì khởi động lại backend.\n4. Các request tự lưu token vào biến `userToken` và `adminToken`.\n\nCookie refresh (`rt`) có Path `/api/v1/auth`, Postman tự giữ và tự gửi cho các request dưới đường dẫn đó.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -169,6 +169,16 @@
       "key": "adminPropertyId",
       "value": "",
       "description": "Nhà trọ do admin tạo để thử lỗi hết quyền (folder 11)."
+    },
+    {
+      "key": "planId",
+      "value": "",
+      "description": "Id gói Postman tạo ở folder 12."
+    },
+    {
+      "key": "planName",
+      "value": "",
+      "description": "Tên gói Postman tạo ở folder 12, tự sinh mỗi lần chạy."
     }
   ],
   "auth": {
@@ -6804,6 +6814,904 @@
                 }
               ]
             }
+          }
+        }
+      ]
+    },
+    {
+      "name": "12 Bảng giá và quản lý gói (admin)",
+      "description": "Bảng giá công khai và API admin quản lý gói (spec 0004, mốc 1). **Chạy sau folder 09** (dùng `otherLandlordToken` của folder 08 và `tenantToken` của folder 09) **và từ trên xuống**; cần đã `npm run seed` (ba gói mẫu Cơ bản, Nâng cao, Chuyên nghiệp) và điền `adminEmail`, `adminPassword`. Folder tự đăng nhập admin, **không đăng ký tài khoản mới**, tạo một gói tên `Gói Postman <số>` rồi xóa nó ở cuối, nên chạy lại được; nếu chạy dở thì gói còn lại ở `GET /plans/all`, xóa bằng `DELETE /plans/:id`. Chưa thử được ở đây: 409 `PLAN_IN_USE` (cần đơn, mốc 2) và giới hạn 300 lần mỗi phút của `GET /plans` (thử bằng folder 06 hoặc script).",
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{adminToken}}",
+            "type": "string"
+          }
+        ]
+      },
+      "item": [
+        {
+          "name": "Đăng nhập admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.collectionVariables.set('adminToken', pm.response.json().accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Công khai. Đăng nhập admin do `npm run seed` tạo (điền `adminEmail`, `adminPassword` ở biến của collection). Lưu token vào `adminToken`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Bảng giá công khai (GET /plans)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const page = pm.response.json();",
+                  "pm.test('có đủ items, total, page, pageSize', () => pm.expect(Object.keys(page).sort()).to.eql(['items', 'page', 'pageSize', 'total']));",
+                  "pm.test('có ít nhất ba gói mẫu sau npm run seed', () => pm.expect(page.total).to.be.at.least(3));",
+                  "pm.test('mỗi gói đúng 5 trường, không lộ isActive', () => page.items.forEach((p) => pm.expect(Object.keys(p).sort()).to.eql(['durationDays', 'id', 'maxListings', 'name', 'price'])));",
+                  "pm.test('giá tăng dần', () => { const prices = page.items.map((p) => p.price); pm.expect(prices).to.eql([...prices].sort((a, b) => a - b)); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/plans",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "plans"
+              ]
+            },
+            "description": "Công khai, không cần đăng nhập. Chỉ gói đang bán (`isActive` true), xếp **giá tăng dần rồi theo tên**, có phân trang. Mỗi gói đúng 5 trường: `id`, `name`, `price` (đồng), `maxListings` (số tin được hiện cùng lúc), `durationDays`. Không lộ `isActive` hay mốc thời gian.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Bảng giá: phân trang (GET /plans?page=1&pageSize=1)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('một gói một trang, total vẫn là tổng', () => { const page = pm.response.json(); pm.expect(page.items).to.have.lengthOf(1); pm.expect(page.pageSize).to.eql(1); pm.expect(page.total).to.be.at.least(3); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/plans?page=1&pageSize=1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "plans"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "Cùng quy ước phân trang của mọi danh sách: `pageSize` từ 1 đến 50.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: bảng giá với pageSize vượt 50",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('code là VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/plans?pageSize=51",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "plans"
+              ],
+              "query": [
+                {
+                  "key": "pageSize",
+                  "value": "51"
+                }
+              ]
+            },
+            "description": "`pageSize` lớn hơn 50 là 400 `VALIDATION_FAILED`.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Admin: danh sách mọi gói (GET /plans/all)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('mỗi gói 8 trường', () => pm.response.json().items.forEach((p) => pm.expect(Object.keys(p).sort()).to.eql(['createdAt', 'durationDays', 'id', 'isActive', 'maxListings', 'name', 'price', 'updatedAt'])));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/plans/all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "plans",
+                "all"
+              ]
+            },
+            "description": "Cần quyền `plan:read` (chỉ admin). Gồm cả gói đã tắt, thêm `isActive`, `createdAt`, `updatedAt` (8 trường). Cùng thứ tự với bảng giá: giá tăng dần rồi theo tên."
+          }
+        },
+        {
+          "name": "Admin: tạo gói (POST /plans)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('planName', 'Gói Postman ' + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "",
+                  "const plan = pm.response.json();",
+                  "pm.collectionVariables.set('planId', plan.id);",
+                  "pm.test('đủ 8 trường', () => pm.expect(Object.keys(plan).sort()).to.eql(['createdAt', 'durationDays', 'id', 'isActive', 'maxListings', 'name', 'price', 'updatedAt']));",
+                  "pm.test('mặc định 30 ngày và đang bán', () => { pm.expect(plan.durationDays).to.eql(30); pm.expect(plan.isActive).to.eql(true); });",
+                  "pm.test('giữ đúng giá trị đã gửi', () => { pm.expect(plan.price).to.eql(50000); pm.expect(plan.maxListings).to.eql(3); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/plans",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "plans"
+              ]
+            },
+            "description": "Cần quyền `plan:create` và đọc lại quyền từ DB (`@FreshAuth`). Bắt buộc `name` (2 đến 60 ký tự), `price` (0 đến 100.000.000 đồng), `maxListings` (1 đến 1000); tùy chọn `durationDays` (1 đến 365, mặc định 30) và `isActive` (mặc định true). Trả 201 gói ở dạng 8 trường.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{planName}}\",\n  \"price\": 50000,\n  \"maxListings\": 3\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: tạo gói trùng tên",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 409', () => pm.response.to.have.status(409));",
+                  "pm.test('code là PLAN_NAME_TAKEN', () => pm.expect(pm.response.json().code).to.eql('PLAN_NAME_TAKEN'));",
+                  "pm.test('lỗi nằm ở trường name', () => pm.expect(pm.response.json().errors.map((e) => e.field)).to.eql(['name']));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/plans",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "plans"
+              ]
+            },
+            "description": "Tên gói duy nhất: 409 `PLAN_NAME_TAKEN`, `errors` có một dòng `field: \"name\"`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{planName}}\",\n  \"price\": 1,\n  \"maxListings\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: tạo gói với giá âm",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('code là VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));",
+                  "pm.test('lỗi nằm ở trường price', () => pm.expect(pm.response.json().errors[0].field).to.eql('price'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/plans",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "plans"
+              ]
+            },
+            "description": "`price` ngoài khoảng 0 đến 100.000.000: 400 `VALIDATION_FAILED`, không gói nào được tạo.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Gói giá âm\",\n  \"price\": -1,\n  \"maxListings\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: tạo gói với trường lạ",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('code là VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/plans",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "plans"
+              ]
+            },
+            "description": "Gửi trường không có trong mô tả (ở đây là `id`) bị từ chối 400 `VALIDATION_FAILED`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Gói trường lạ\",\n  \"price\": 1,\n  \"maxListings\": 1,\n  \"id\": \"0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8d99\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Admin: tắt gói (PATCH /plans/:id với isActive false)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('isActive false, các cột khác giữ nguyên', () => { const plan = pm.response.json(); pm.expect(plan.isActive).to.eql(false); pm.expect(plan.price).to.eql(50000); pm.expect(plan.maxListings).to.eql(3); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/plans/{{planId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "plans",
+                "{{planId}}"
+              ]
+            },
+            "description": "Cần quyền `plan:update` và `@FreshAuth`. Chỉ các trường gửi lên mới đổi. Tắt gói là cách ngừng bán thay vì xóa: gói biến khỏi bảng giá nhưng đơn đã đặt vẫn giữ nguyên.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isActive\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Gói đã tắt không còn ở bảng giá công khai",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('gói vừa tắt không có trong bảng giá', () => pm.expect(pm.response.json().items.map((p) => p.id)).to.not.include(pm.collectionVariables.get('planId')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/plans?pageSize=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "plans"
+              ],
+              "query": [
+                {
+                  "key": "pageSize",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Bảng giá công khai chỉ có gói đang bán.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Gói đã tắt vẫn ở danh sách của admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('có gói vừa tắt với isActive false', () => { const plan = pm.response.json().items.find((p) => p.id === pm.collectionVariables.get('planId')); pm.expect(plan).to.be.an('object'); pm.expect(plan.isActive).to.eql(false); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/plans/all?pageSize=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "plans",
+                "all"
+              ],
+              "query": [
+                {
+                  "key": "pageSize",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Admin vẫn thấy gói đã tắt, kèm `isActive` false."
+          }
+        },
+        {
+          "name": "Admin: sửa giá và số tin (PATCH /plans/:id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('giá và số tin mới, vẫn tắt, updatedAt đổi', () => { const plan = pm.response.json(); pm.expect(plan.price).to.eql(77000); pm.expect(plan.maxListings).to.eql(4); pm.expect(plan.isActive).to.eql(false); pm.expect(new Date(plan.updatedAt) >= new Date(plan.createdAt)).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/plans/{{planId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "plans",
+                "{{planId}}"
+              ]
+            },
+            "description": "Đổi giá và số tin của gói chỉ ảnh hưởng đơn tạo SAU đó (đơn đã có giữ bản chốt lúc tạo). Gói vẫn đang tắt.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"price\": 77000,\n  \"maxListings\": 4\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: đổi sang tên đã có",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 409', () => pm.response.to.have.status(409));",
+                  "pm.test('code là PLAN_NAME_TAKEN', () => pm.expect(pm.response.json().code).to.eql('PLAN_NAME_TAKEN'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/plans/{{planId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "plans",
+                "{{planId}}"
+              ]
+            },
+            "description": "Tên trùng gói khác (ở đây gói mẫu `Cơ bản` do seed tạo): 409 `PLAN_NAME_TAKEN`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Cơ bản\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: sửa gói không có",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 404', () => pm.response.to.have.status(404));",
+                  "pm.test('code là PLAN_NOT_FOUND', () => pm.expect(pm.response.json().code).to.eql('PLAN_NOT_FOUND'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/plans/0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8d99",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "plans",
+                "0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8d99"
+              ]
+            },
+            "description": "Id đúng dạng UUID nhưng không có gói: 404 `PLAN_NOT_FOUND`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"price\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: id không phải UUID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('code là INVALID_ID', () => pm.expect(pm.response.json().code).to.eql('INVALID_ID'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/plans/abc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "plans",
+                "abc"
+              ]
+            },
+            "description": "Id sai dạng: 400 `INVALID_ID` (không phải 404).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"price\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: chủ trọ tạo gói",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 403', () => pm.response.to.have.status(403));",
+                  "pm.test('code là PERMISSION_DENIED', () => pm.expect(pm.response.json().code).to.eql('PERMISSION_DENIED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/plans",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "plans"
+              ]
+            },
+            "description": "Dùng `otherLandlordToken` do folder 08 lưu. Chỉ admin giữ quyền `plan:*`: 403 `PERMISSION_DENIED`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Gói của chủ trọ\",\n  \"price\": 1,\n  \"maxListings\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{otherLandlordToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: người tìm trọ xem danh sách admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 403', () => pm.response.to.have.status(403));",
+                  "pm.test('code là PERMISSION_DENIED', () => pm.expect(pm.response.json().code).to.eql('PERMISSION_DENIED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/plans/all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "plans",
+                "all"
+              ]
+            },
+            "description": "Dùng `tenantToken` do folder 09 lưu: 403 `PERMISSION_DENIED`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: chưa đăng nhập tạo gói",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 401', () => pm.response.to.have.status(401));",
+                  "pm.test('code là TOKEN_MISSING', () => pm.expect(pm.response.json().code).to.eql('TOKEN_MISSING'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/plans",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "plans"
+              ]
+            },
+            "description": "Không có token: 401 `TOKEN_MISSING`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Gói khách\",\n  \"price\": 1,\n  \"maxListings\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Admin: xóa gói chưa có đơn (DELETE /plans/:id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 204', () => pm.response.to.have.status(204));",
+                  "pm.test('không có thân', () => pm.expect(pm.response.text()).to.eql(''));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/plans/{{planId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "plans",
+                "{{planId}}"
+              ]
+            },
+            "description": "Cần quyền `plan:delete` và `@FreshAuth`. Chỉ xóa được gói chưa có đơn nào tham chiếu, ngược lại 409 `PLAN_IN_USE` (muốn ngừng bán thì tắt gói). Trả 204 không thân. Lỗi `PLAN_IN_USE` chưa thử được bằng Postman vì chưa có API tạo đơn."
+          }
+        },
+        {
+          "name": "Xóa lần hai: gói không còn",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 404', () => pm.response.to.have.status(404));",
+                  "pm.test('code là PLAN_NOT_FOUND', () => pm.expect(pm.response.json().code).to.eql('PLAN_NOT_FOUND'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/plans/{{planId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "plans",
+                "{{planId}}"
+              ]
+            },
+            "description": "Gói đã xóa thật: 404 `PLAN_NOT_FOUND`."
           }
         }
       ]

@@ -58,6 +58,14 @@ export enum ErrorCode {
 	// Dùng thử và hạn mức tin (spec 0003)
 	MEMBERSHIP_REQUIRED = 'MEMBERSHIP_REQUIRED',
 	LISTING_QUOTA_REACHED = 'LISTING_QUOTA_REACHED',
+
+	// Gói, đơn mua gói và thanh toán thử (spec 0004)
+	PLAN_NOT_FOUND = 'PLAN_NOT_FOUND',
+	PLAN_NAME_TAKEN = 'PLAN_NAME_TAKEN',
+	PLAN_IN_USE = 'PLAN_IN_USE',
+	PLAN_INACTIVE = 'PLAN_INACTIVE',
+	ORDER_NOT_FOUND = 'ORDER_NOT_FOUND',
+	ORDER_STATE_INVALID = 'ORDER_STATE_INVALID',
 }
 
 export interface ErrorDefinition {
@@ -263,6 +271,31 @@ export const ERRORS: Record<ErrorCode, ErrorDefinition> = {
 		status: HttpStatus.FORBIDDEN,
 		message:
 			'Bạn đã dùng hết số tin được hiện theo hạn mức hiện tại. Hãy ẩn hoặc xóa bớt một tin, hoặc nâng gói, để đăng thêm.',
+	},
+	[ErrorCode.PLAN_NOT_FOUND]: {
+		status: HttpStatus.NOT_FOUND,
+		message: 'Không tìm thấy gói.',
+	},
+	[ErrorCode.PLAN_NAME_TAKEN]: {
+		status: HttpStatus.CONFLICT,
+		message: 'Tên gói này đã có. Hãy chọn tên khác.',
+	},
+	[ErrorCode.PLAN_IN_USE]: {
+		status: HttpStatus.CONFLICT,
+		message:
+			'Gói này đã có đơn đặt nên không xóa được. Hãy tắt gói thay vì xóa.',
+	},
+	[ErrorCode.PLAN_INACTIVE]: {
+		status: HttpStatus.CONFLICT,
+		message: 'Gói này đã ngừng bán. Hãy chọn gói khác.',
+	},
+	[ErrorCode.ORDER_NOT_FOUND]: {
+		status: HttpStatus.NOT_FOUND,
+		message: 'Không tìm thấy đơn.',
+	},
+	[ErrorCode.ORDER_STATE_INVALID]: {
+		status: HttpStatus.CONFLICT,
+		message: 'Đơn không còn ở trạng thái phù hợp cho thao tác này.',
 	},
 };
 

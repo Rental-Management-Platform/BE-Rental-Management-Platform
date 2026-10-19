@@ -1,7 +1,7 @@
 # 0003. Dùng thử miễn phí và hạn mức tin của chủ trọ
 
 **Date**: 2026-10-16
-**Status**: In Progress
+**Status**: Accepted
 
 ## Summary
 
