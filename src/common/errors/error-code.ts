@@ -54,6 +54,10 @@ export enum ErrorCode {
 	LISTING_HIDDEN_BY_ADMIN = 'LISTING_HIDDEN_BY_ADMIN',
 	LISTING_IMAGE_LIMIT = 'LISTING_IMAGE_LIMIT',
 	IMAGE_INVALID = 'IMAGE_INVALID',
+
+	// Dùng thử và hạn mức tin (spec 0003)
+	MEMBERSHIP_REQUIRED = 'MEMBERSHIP_REQUIRED',
+	LISTING_QUOTA_REACHED = 'LISTING_QUOTA_REACHED',
 }
 
 export interface ErrorDefinition {
@@ -248,6 +252,17 @@ export const ERRORS: Record<ErrorCode, ErrorDefinition> = {
 	[ErrorCode.IMAGE_INVALID]: {
 		status: HttpStatus.BAD_REQUEST,
 		message: 'Ảnh không hợp lệ. Chỉ nhận tệp JPEG, PNG hoặc WebP.',
+	},
+	// Cả hai đều 403 vì nguyên nhân là quyền của tài khoản, không phải trạng thái của tin (spec 0003).
+	[ErrorCode.MEMBERSHIP_REQUIRED]: {
+		status: HttpStatus.FORBIDDEN,
+		message:
+			'Kỳ dùng thử của bạn đã hết và chưa có gói đang hiệu lực. Hãy mua gói để đăng hoặc hiện tin.',
+	},
+	[ErrorCode.LISTING_QUOTA_REACHED]: {
+		status: HttpStatus.FORBIDDEN,
+		message:
+			'Bạn đã dùng hết số tin được hiện theo hạn mức hiện tại. Hãy ẩn hoặc xóa bớt một tin, hoặc nâng gói, để đăng thêm.',
 	},
 };
 

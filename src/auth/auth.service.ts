@@ -5,6 +5,7 @@ import { AppException } from '../common/errors/app.exception';
 import { ErrorCode } from '../common/errors/error-code';
 import { AppConfigService } from '../config/app-config.service';
 import type { AuthSession } from '../generated/prisma/client';
+import { MembershipsService } from '../memberships/memberships.service';
 import { toUserResponse } from '../users/users.mapper';
 import type { UserResponse } from '../users/users.mapper';
 import { UsersService } from '../users/users.service';
@@ -48,11 +49,14 @@ export class AuthService {
 		private readonly tokens: TokenService,
 		private readonly hasher: PasswordHasher,
 		private readonly config: AppConfigService,
+		private readonly memberships: MembershipsService,
 	) {}
 
+	/** `now` là đồng hồ ứng dụng do controller lấy một lần; chủ trọ nhận kỳ dùng thử tính từ đúng thời điểm này. */
 	async register(
 		dto: RegisterDto,
 		client: ClientInfo,
+		now: Date,
 	): Promise<RegisteredSession> {
 		// Thứ tự kiểm: email trước, số điện thoại sau; cả hai tính cả tài khoản đã xóa mềm và đều
 		// chạy trước khi băm. Lỗi DB không được dịch (spec 0004), nên đây là đường báo lỗi duy nhất.
@@ -68,12 +72,19 @@ export class AuthService {
 			throw new AppException(ErrorCode.PHONE_TAKEN);
 		}
 		const passwordHash = await this.hasher.hash(dto.password);
+		// Chỉ chủ trọ có kỳ dùng thử (CHECK ở DB); đọc `trial_days` sau các kiểm trùng nên lần đăng ký bị từ chối
+		// không tốn thêm một lần tới DB và không tạo kỳ dùng thử nào.
+		const trialEndsAt =
+			dto.accountType === 'landlord'
+				? await this.memberships.trialEndsAtForNewLandlord(now)
+				: null;
 		const user = await this.usersService.create({
 			email: dto.email,
 			passwordHash,
 			name: dto.name ?? null,
 			phone,
 			accountType: dto.accountType,
+			trialEndsAt,
 		});
 		// Hai người đăng ký trùng email hoặc trùng số gần như cùng lúc: người chậm hơn chạm chỉ mục duy
 		// nhất và nhận 500 (bộ lọc không dịch lỗi DB, spec 0004). Chấp nhận được với demo.

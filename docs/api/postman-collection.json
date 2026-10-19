@@ -104,6 +104,66 @@
       "key": "listingSlug",
       "value": "",
       "description": "Slug của tin vừa đăng (đổi khi sửa tiêu đề). Tự lưu."
+    },
+    {
+      "key": "quotaEmail",
+      "value": "",
+      "description": "Tự sinh khi chạy folder 11."
+    },
+    {
+      "key": "quotaPhone",
+      "value": "",
+      "description": "Tự sinh khi chạy folder 11."
+    },
+    {
+      "key": "quotaToken",
+      "value": "",
+      "description": "Access token của chủ trọ thử hạn mức (folder 11)."
+    },
+    {
+      "key": "quotaPropertyId",
+      "value": "",
+      "description": "Nhà trọ của chủ trọ thử hạn mức (folder 11)."
+    },
+    {
+      "key": "quotaListingA",
+      "value": "",
+      "description": "Tin thứ nhất của chủ trọ thử hạn mức (folder 11)."
+    },
+    {
+      "key": "quotaListingB",
+      "value": "",
+      "description": "Tin thứ hai của chủ trọ thử hạn mức (folder 11)."
+    },
+    {
+      "key": "quotaListingC",
+      "value": "",
+      "description": "Tin thứ ba của chủ trọ thử hạn mức (folder 11)."
+    },
+    {
+      "key": "expiredEmail",
+      "value": "",
+      "description": "Tự sinh khi chạy folder 11."
+    },
+    {
+      "key": "expiredPhone",
+      "value": "",
+      "description": "Tự sinh khi chạy folder 11."
+    },
+    {
+      "key": "expiredToken",
+      "value": "",
+      "description": "Access token của chủ trọ đã hết dùng thử (folder 11)."
+    },
+    {
+      "key": "expiredPropertyId",
+      "value": "",
+      "description": "Nhà trọ của chủ trọ đã hết dùng thử (folder 11)."
+    },
+    {
+      "key": "adminPropertyId",
+      "value": "",
+      "description": "Nhà trọ do admin tạo để thử lỗi hết quyền (folder 11)."
     }
   ],
   "auth": {
@@ -3982,7 +4042,7 @@
     },
     {
       "name": "10 Tham số hệ thống (admin)",
-      "description": "Admin xem và đổi hai tham số dùng thử (spec 0003 dùng thử, mốc 1): `trial_days` (mặc định 30, từ 0 đến 365) và `trial_listing_limit` (mặc định 2, từ 0 đến 100). **Chạy sau folder 01** (cần `userToken` cho hai request 403) và sau `npm run seed` (seed thêm hai dòng mặc định). Request đầu đăng nhập admin và lưu `adminToken`; folder tự trả hai tham số về mặc định ở cuối các request đổi. Lưu ý: ở mốc này tham số mới chỉ được lưu và đọc ra, việc áp vào đăng ký và hạn mức tin thuộc mốc 2 và 3.",
+      "description": "Admin xem và đổi hai tham số dùng thử (spec 0003 dùng thử, mốc 1): `trial_days` (mặc định 30, từ 0 đến 365) và `trial_listing_limit` (mặc định 2, từ 0 đến 100). **Chạy sau folder 01** (cần `userToken` cho hai request 403) và sau `npm run seed` (seed thêm hai dòng mặc định). Request đầu đăng nhập admin và lưu `adminToken`; folder tự trả hai tham số về mặc định ở cuối các request đổi. Hai tham số đã được áp vào đăng ký (số ngày) và vào cổng đăng, hiện tin (số tin): xem folder 11.",
       "auth": {
         "type": "bearer",
         "bearer": [
@@ -4704,6 +4764,1426 @@
             "description": "Mong đợi 401 TOKEN_MISSING.",
             "auth": {
               "type": "noauth"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "11 Dùng thử và hạn mức tin",
+      "description": "Kỳ dùng thử lúc đăng ký và chặn đăng, hiện lại tin theo hạn mức (spec 0003 dùng thử, mốc 2). **Chạy sau folder 07** (cần `wardCode`) **và từ trên xuống**; cần đã `npm run seed` (hai tham số mặc định 30 ngày và 2 tin) và điền `adminEmail`, `adminPassword`. Folder tự đăng nhập admin, đăng ký **hai** chủ trọ (tốn 2 trong 10 lần đăng ký mỗi giờ theo IP) và tự trả `trial_days` về 30, `trial_listing_limit` về 2 sau khi đổi; nếu chạy dở thì chạy lại hai request \"đặt lại\". Chưa thử được ở đây: tin biến khỏi công khai khi hết dùng thử (mốc 3) và `GET /me/membership` (mốc 4).",
+      "item": [
+        {
+          "name": "Đăng nhập admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.collectionVariables.set('adminToken', pm.response.json().accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Công khai. Cần `adminEmail` và `adminPassword` ở biến của collection. Lưu `adminToken` để đổi tham số.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Đăng ký chủ trọ: nhận kỳ dùng thử (POST /auth/register)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('quotaEmail', 'hanmuc-' + Date.now() + '@example.com');",
+                  "const tail = String(Math.floor(Math.random() * 1e8)).padStart(8, '0');",
+                  "pm.collectionVariables.set('quotaPhone', '09' + tail);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('quotaToken', body.accessToken);",
+                  "pm.test('user vẫn đúng 6 trường, không lộ hạn dùng thử', () => {",
+                  "    pm.expect(Object.keys(body.user).sort()).to.eql(['accountType', 'email', 'id', 'name', 'phone', 'status']);",
+                  "    pm.expect(body.user).to.not.have.property('trialEndsAt');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Công khai, tốn 1 lần trong giới hạn 10 lần đăng ký mỗi giờ theo IP. Chủ trọ mới có kỳ dùng thử `trial_days` ngày (mặc định 30) và được hiện tối đa `trial_listing_limit` tin (mặc định 2). Hạn dùng thử nằm trong DB, không có trong phản hồi.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{quotaEmail}}\",\n  \"password\": \"MatKhau12345\",\n  \"name\": \"Chủ trọ Hạn Mức\",\n  \"accountType\": \"landlord\",\n  \"phone\": \"{{quotaPhone}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Tạo nhà trọ (POST /properties)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('quotaPropertyId', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/properties",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties"
+              ]
+            },
+            "description": "Nhà trọ để đăng tin. Tạo nhà trọ không bị hạn mức chặn.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Nhà trọ Hạn Mức\",\n  \"addressText\": \"12 Lê Lợi\",\n  \"wardCode\": \"{{wardCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{quotaToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Đăng tin thứ nhất: còn chỗ (POST /properties/:propertyId/listings)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "",
+                  "pm.collectionVariables.set('quotaListingA', pm.response.json().id);",
+                  "pm.test('tin hiện ngay', () => pm.expect(pm.response.json().status).to.eql('visible'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/properties/{{quotaPropertyId}}/listings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "{{quotaPropertyId}}",
+                "listings"
+              ]
+            },
+            "description": "Đang hiện 0 tin trên hạn mức 2: được đăng.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Phòng hạn mức số một gần chợ\",\n  \"description\": \"Phòng sạch sẽ thoáng mát, giờ giấc tự do, gần chợ và trạm xe buýt.\",\n  \"price\": 3500000,\n  \"areaM2\": 22.5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{quotaToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Đăng tin thứ hai: vẫn còn chỗ",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('quotaListingB', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/properties/{{quotaPropertyId}}/listings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "{{quotaPropertyId}}",
+                "listings"
+              ]
+            },
+            "description": "Đang hiện 1 tin trên hạn mức 2: được đăng.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Phòng hạn mức số hai gần chợ\",\n  \"description\": \"Phòng sạch sẽ thoáng mát, giờ giấc tự do, gần chợ và trạm xe buýt.\",\n  \"price\": 3500000,\n  \"areaM2\": 22.5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{quotaToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: đăng tin thứ ba khi đủ hạn mức",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 403 LISTING_QUOTA_REACHED', () => {",
+                  "    pm.response.to.have.status(403);",
+                  "    pm.expect(pm.response.json().code).to.eql('LISTING_QUOTA_REACHED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/properties/{{quotaPropertyId}}/listings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "{{quotaPropertyId}}",
+                "listings"
+              ]
+            },
+            "description": "Đang hiện 2 tin trên hạn mức 2. Mong đợi 403 LISTING_QUOTA_REACHED và không có tin nào được tạo.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Phòng hạn mức số ba gần chợ\",\n  \"description\": \"Phòng sạch sẽ thoáng mát, giờ giấc tự do, gần chợ và trạm xe buýt.\",\n  \"price\": 3500000,\n  \"areaM2\": 22.5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{quotaToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Ẩn tin thứ hai (POST /listings/:id/hide)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('tin về hidden_by_owner', () => pm.expect(pm.response.json().status).to.eql('hidden_by_owner'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{quotaListingB}}/hide",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{quotaListingB}}",
+                "hide"
+              ]
+            },
+            "description": "Ẩn không bao giờ bị hạn mức chặn, và trả lại một chỗ.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{quotaToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Đăng tin thứ ba sau khi ẩn một tin: được ngay",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('quotaListingC', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/properties/{{quotaPropertyId}}/listings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "{{quotaPropertyId}}",
+                "listings"
+              ]
+            },
+            "description": "Đang hiện 1 tin (tin ẩn không tính) trên hạn mức 2: được đăng.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Phòng hạn mức số ba gần chợ\",\n  \"description\": \"Phòng sạch sẽ thoáng mát, giờ giấc tự do, gần chợ và trạm xe buýt.\",\n  \"price\": 3500000,\n  \"areaM2\": 22.5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{quotaToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: hiện lại tin thứ hai khi đủ hạn mức (POST /listings/:id/show)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 403 LISTING_QUOTA_REACHED', () => {",
+                  "    pm.response.to.have.status(403);",
+                  "    pm.expect(pm.response.json().code).to.eql('LISTING_QUOTA_REACHED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{quotaListingB}}/show",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{quotaListingB}}",
+                "show"
+              ]
+            },
+            "description": "Hiện lại là thêm một tin đang hiện: đang hiện 2 trên hạn mức 2. Mong đợi 403 LISTING_QUOTA_REACHED, tin vẫn `hidden_by_owner`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{quotaToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Xóa tin thứ ba để trả lại một chỗ (DELETE /listings/:id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{quotaListingC}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{quotaListingC}}"
+              ]
+            },
+            "description": "Xóa mềm. Xóa tin cũng trả lại một chỗ.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{quotaToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Hiện lại tin thứ hai khi còn chỗ",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('tin về visible', () => pm.expect(pm.response.json().status).to.eql('visible'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{quotaListingB}}/show",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{quotaListingB}}",
+                "show"
+              ]
+            },
+            "description": "Đang hiện 1 tin trên hạn mức 2: hiện lại được.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{quotaToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin hạ số tin dùng thử xuống 1 (PATCH /settings/trial_listing_limit)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('trial_listing_limit đã là 1', () => pm.expect(pm.response.json()).to.include({ key: 'trial_listing_limit', value: 1 }));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/settings/trial_listing_limit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "settings",
+                "trial_listing_limit"
+              ]
+            },
+            "description": "Quyền `setting:update`. Đặt `trial_listing_limit` = 1.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: đăng tin khi số tin đang hiện vượt hạn mức mới",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 403 LISTING_QUOTA_REACHED', () => {",
+                  "    pm.response.to.have.status(403);",
+                  "    pm.expect(pm.response.json().code).to.eql('LISTING_QUOTA_REACHED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/properties/{{quotaPropertyId}}/listings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "{{quotaPropertyId}}",
+                "listings"
+              ]
+            },
+            "description": "Đang hiện 2 tin, hạn mức vừa hạ còn 1: hạn mức có hiệu lực ngay. Mong đợi 403 LISTING_QUOTA_REACHED.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Phòng hạn mức số bốn gần chợ\",\n  \"description\": \"Phòng sạch sẽ thoáng mát, giờ giấc tự do, gần chợ và trạm xe buýt.\",\n  \"price\": 3500000,\n  \"areaM2\": 22.5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{quotaToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin đặt lại số tin dùng thử = 2",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('trial_listing_limit đã là 2', () => pm.expect(pm.response.json()).to.include({ key: 'trial_listing_limit', value: 2 }));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/settings/trial_listing_limit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "settings",
+                "trial_listing_limit"
+              ]
+            },
+            "description": "Quyền `setting:update`. Đặt `trial_listing_limit` = 2.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin đặt số ngày dùng thử = 0 để dựng cảnh hết quyền (PATCH /settings/trial_days)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('trial_days đã là 0', () => pm.expect(pm.response.json()).to.include({ key: 'trial_days', value: 0 }));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/settings/trial_days",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "settings",
+                "trial_days"
+              ]
+            },
+            "description": "Quyền `setting:update`. Đặt `trial_days` = 0.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Đăng ký chủ trọ khi trial_days = 0: hết dùng thử ngay",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('expiredEmail', 'hethan-' + Date.now() + '@example.com');",
+                  "const tail = String(Math.floor(Math.random() * 1e8)).padStart(8, '0');",
+                  "pm.collectionVariables.set('expiredPhone', '09' + tail);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "",
+                  "pm.collectionVariables.set('expiredToken', pm.response.json().accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Tốn 1 lần trong giới hạn 10 lần đăng ký mỗi giờ theo IP. Đăng ký vẫn thành công nhưng kỳ dùng thử kết thúc ngay lúc đăng ký.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{expiredEmail}}\",\n  \"password\": \"MatKhau12345\",\n  \"name\": \"Chủ trọ Hết Dùng Thử\",\n  \"accountType\": \"landlord\",\n  \"phone\": \"{{expiredPhone}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Admin đặt lại số ngày dùng thử = 30",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('trial_days đã là 30', () => pm.expect(pm.response.json()).to.include({ key: 'trial_days', value: 30 }));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/settings/trial_days",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "settings",
+                "trial_days"
+              ]
+            },
+            "description": "Quyền `setting:update`. Đặt `trial_days` = 30.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": 30\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Hết dùng thử: vẫn tạo được nhà trọ",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('expiredPropertyId', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/properties",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties"
+              ]
+            },
+            "description": "Hết dùng thử chỉ chặn đăng và hiện tin. Quản lý nhà trọ vẫn bình thường.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Nhà trọ Hết Dùng Thử\",\n  \"addressText\": \"12 Lê Lợi\",\n  \"wardCode\": \"{{wardCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{expiredToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: hết dùng thử, đăng tin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 403 MEMBERSHIP_REQUIRED', () => {",
+                  "    pm.response.to.have.status(403);",
+                  "    pm.expect(pm.response.json().code).to.eql('MEMBERSHIP_REQUIRED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/properties/{{expiredPropertyId}}/listings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "{{expiredPropertyId}}",
+                "listings"
+              ]
+            },
+            "description": "Mong đợi 403 MEMBERSHIP_REQUIRED (không phải LISTING_QUOTA_REACHED).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Phòng khi hết dùng thử gần chợ\",\n  \"description\": \"Phòng sạch sẽ thoáng mát, giờ giấc tự do, gần chợ và trạm xe buýt.\",\n  \"price\": 3500000,\n  \"areaM2\": 22.5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{expiredToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: hết dùng thử, nhà trọ không có (lỗi nhà trọ đến trước)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 404 PROPERTY_NOT_FOUND', () => {",
+                  "    pm.response.to.have.status(404);",
+                  "    pm.expect(pm.response.json().code).to.eql('PROPERTY_NOT_FOUND');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/properties/0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8d99/listings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8d99",
+                "listings"
+              ]
+            },
+            "description": "Lỗi nhà trọ không có luôn được báo trước lỗi hạn mức. Mong đợi 404 PROPERTY_NOT_FOUND.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Phòng khi hết dùng thử gần chợ\",\n  \"description\": \"Phòng sạch sẽ thoáng mát, giờ giấc tự do, gần chợ và trạm xe buýt.\",\n  \"price\": 3500000,\n  \"areaM2\": 22.5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{expiredToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: hết dùng thử, nhà trọ của người khác (lỗi sở hữu đến trước)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 403 NOT_RESOURCE_OWNER', () => {",
+                  "    pm.response.to.have.status(403);",
+                  "    pm.expect(pm.response.json().code).to.eql('NOT_RESOURCE_OWNER');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/properties/{{quotaPropertyId}}/listings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "{{quotaPropertyId}}",
+                "listings"
+              ]
+            },
+            "description": "Dùng nhà trọ của chủ trọ thứ nhất. Mong đợi 403 NOT_RESOURCE_OWNER, không phải MEMBERSHIP_REQUIRED.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Phòng khi hết dùng thử gần chợ\",\n  \"description\": \"Phòng sạch sẽ thoáng mát, giờ giấc tự do, gần chợ và trạm xe buýt.\",\n  \"price\": 3500000,\n  \"areaM2\": 22.5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{expiredToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin tạo nhà trọ (để thử đăng tin bằng tài khoản không có kỳ dùng thử)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('adminPropertyId', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/properties",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties"
+              ]
+            },
+            "description": "Admin giữ quyền `property:create`. Nhà trọ này được xóa ở cuối folder.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Nhà trọ của admin\",\n  \"addressText\": \"12 Lê Lợi\",\n  \"wardCode\": \"{{wardCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: admin đăng tin (không có kỳ dùng thử, hạn mức 0)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 403 MEMBERSHIP_REQUIRED', () => {",
+                  "    pm.response.to.have.status(403);",
+                  "    pm.expect(pm.response.json().code).to.eql('MEMBERSHIP_REQUIRED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/properties/{{adminPropertyId}}/listings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "{{adminPropertyId}}",
+                "listings"
+              ]
+            },
+            "description": "Tài khoản không có `trial_ends_at` có hạn mức 0. Mong đợi 403 MEMBERSHIP_REQUIRED.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Phòng của admin gần chợ\",\n  \"description\": \"Phòng sạch sẽ thoáng mát, giờ giấc tự do, gần chợ và trạm xe buýt.\",\n  \"price\": 3500000,\n  \"areaM2\": 22.5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Dọn dẹp: xóa tin thứ nhất",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{quotaListingA}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{quotaListingA}}"
+              ]
+            },
+            "description": "Xóa mềm.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{quotaToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Dọn dẹp: xóa tin thứ hai",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{quotaListingB}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{quotaListingB}}"
+              ]
+            },
+            "description": "Xóa mềm.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{quotaToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Dọn dẹp: xóa nhà trọ của chủ trọ thứ nhất",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/properties/{{quotaPropertyId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "{{quotaPropertyId}}"
+              ]
+            },
+            "description": "Được vì mọi tin đã xóa.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{quotaToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Dọn dẹp: xóa nhà trọ của chủ trọ hết dùng thử",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/properties/{{expiredPropertyId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "{{expiredPropertyId}}"
+              ]
+            },
+            "description": "Xóa nhà trọ vẫn được khi hết dùng thử.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{expiredToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Dọn dẹp: xóa nhà trọ của admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/properties/{{adminPropertyId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "{{adminPropertyId}}"
+              ]
+            },
+            "description": "Xóa mềm.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
             }
           }
         }

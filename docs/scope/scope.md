@@ -139,7 +139,7 @@ Chủ trọ dùng thử miễn phí `trial_days` ngày (mặc định 30) với 
 - [x] Design it (spec): `/architect free trial and listing quota`
 - [ ] Build it: `/develop free trial and listing quota`
    - [x] Mốc 1: nền dữ liệu và tham số: migration `users.trial_ends_at` cùng bảng `settings`, seed hai dòng mặc định, API admin `GET /settings` và `PATCH /settings/:key` (AC-2, AC-12)
-   - [ ] Mốc 2: kỳ dùng thử và cổng hạn mức ở phía ghi: `trial_ends_at` lúc đăng ký, hàm hạn mức, hai mã lỗi, khóa dòng `users` khi đăng và hiện tin (AC-1, AC-3, AC-4, AC-5, AC-6, AC-7)
+   - [x] Mốc 2: kỳ dùng thử và cổng hạn mức ở phía ghi: `trial_ends_at` lúc đăng ký, hàm hạn mức, hai mã lỗi, khóa dòng `users` khi đăng và hiện tin (AC-1, AC-3, AC-4, AC-5, AC-6, AC-7)
    - [ ] Mốc 3: luật hiển thị công khai theo hạng, SQL thô hai bước cho danh sách và chi tiết (AC-8, AC-9)
    - [ ] Mốc 4: `GET /me/membership`, cờ `isPublic`, đo `EXPLAIN` ở 60 nghìn tin, tài liệu và kiểm cuối (AC-10, AC-11, AC-13)
 Spec [0003](../specs/0003-free-trial-listing-quota/index.md) (13 AC, 4 mốc, đã được bạn Accept ngày 2026-10-16; trạng thái spec đi theo tính năng) · code in `src/settings/`, `src/memberships/`, `src/listings/`, `src/auth/`, `src/users/`, `prisma/` · tài liệu in `docs/api/`

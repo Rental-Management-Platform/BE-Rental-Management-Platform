@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { AppException } from '../common/errors/app.exception';
 import { ErrorCode } from '../common/errors/error-code';
-import type { Setting } from '../generated/prisma/client';
+import type { Prisma, Setting } from '../generated/prisma/client';
 import type { SettingResponse } from './dto/setting.response';
 import {
 	SETTING_DEFINITIONS,
@@ -29,9 +29,16 @@ export class SettingsService {
 
 	constructor(private readonly repository: SettingsRepository) {}
 
-	/** Giá trị hiện hành của một tham số, cho các module khác dùng (hạn mức, số ngày dùng thử). */
-	async getValue(key: SettingKey): Promise<number> {
-		return this.resolve(key, await this.repository.findByKey(key));
+	/**
+	 * Giá trị hiện hành của một tham số, cho các module khác dùng (hạn mức, số ngày dùng thử). Nơi đang giữ một
+	 * giao dịch phải truyền `tx` để đọc bằng chính kết nối đó: đọc bằng kết nối thứ hai của pool trong lúc giữ
+	 * giao dịch có thể làm cạn pool khi nhiều yêu cầu cùng lúc.
+	 */
+	async getValue(
+		key: SettingKey,
+		tx?: Prisma.TransactionClient,
+	): Promise<number> {
+		return this.resolve(key, await this.repository.findByKey(key, tx));
 	}
 
 	/** Mọi tham số theo thứ tự khai báo, kể cả tham số chưa có dòng (khi đó là giá trị mặc định). */

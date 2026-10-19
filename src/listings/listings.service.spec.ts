@@ -3,8 +3,13 @@ import { ErrorCode } from '../common/errors/error-code';
 import type { RequestUser } from '../common/http/authenticated-request';
 import type { TransactionRunner } from '../common/persistence/transaction-runner';
 import type { Prisma } from '../generated/prisma/client';
+import type {
+	Membership,
+	MembershipsService,
+} from '../memberships/memberships.service';
 import type { ModerationLogsRepository } from '../moderation/moderation-logs.repository';
 import type { PropertiesRepository } from '../properties/properties.repository';
+import type { UsersService } from '../users/users.service';
 import type { CreateListingDto } from './dto/create-listing.dto';
 import type {
 	ListListingsQueryDto,
@@ -34,6 +39,29 @@ jest.mock('./listing-code', () => ({
 
 const tx = { marker: 'tx' } as unknown as Prisma.TransactionClient;
 
+/** Đồng hồ cố định: Service nhận `now` từ controller, không tự lấy giờ. */
+const NOW = new Date('2026-10-19T03:00:00.000Z');
+
+/** Chủ trọ còn trong kỳ dùng thử với hạn mức 2 tin (mặc định của `trial_listing_limit`). */
+const TRIAL: Membership = {
+	state: 'trial',
+	limit: 2,
+	trialEndsAt: new Date('2026-11-18T03:00:00.000Z'),
+};
+const EXPIRED: Membership = {
+	state: 'expired',
+	limit: 0,
+	trialEndsAt: new Date('2026-10-18T03:00:00.000Z'),
+};
+
+/** Tin đang `hidden_by_owner` của chủ trọ mặc định: điểm xuất phát hợp lệ của `show`. */
+const HIDDEN_BY_OWNER = {
+	id: LISTING_ID,
+	propertyId: PROPERTY_ID,
+	status: 'hidden_by_owner',
+	property: { landlordId: LANDLORD_ID },
+};
+
 /** Các lần gọi của một mock dưới dạng mảng đối số có kiểu `unknown` (tránh `any` của jest). */
 function argsOf(mock: jest.Mock): unknown[][] {
 	return mock.mock.calls as unknown[][];
@@ -60,11 +88,14 @@ interface Harness {
 		| 'update'
 		| 'softDelete'
 		| 'transition'
+		| 'countVisibleByLandlord'
 	>;
 	properties: Mocks<'lockLiveById' | 'findAddressSource'>;
 	moderation: Mocks<'findLatestListingHideReasons'>;
 	transactions: { run: jest.Mock };
 	views: ViewDeduplicator;
+	users: Mocks<'lockById'>;
+	memberships: Mocks<'resolve'>;
 }
 
 function build(
@@ -72,6 +103,8 @@ function build(
 		ownership?: Awaited<ReturnType<ListingsRepository['findOwnership']>>;
 		locked?: { landlordId: string } | null;
 		reasons?: Map<string, string>;
+		membership?: Membership;
+		visibleCount?: number;
 	} = {},
 ): Harness {
 	const repository = {
@@ -101,6 +134,13 @@ function build(
 		update: jest.fn(() => Promise.resolve(true)),
 		softDelete: jest.fn(() => Promise.resolve(true)),
 		transition: jest.fn(() => Promise.resolve(true)),
+		countVisibleByLandlord: jest.fn(() =>
+			Promise.resolve(options.visibleCount ?? 0),
+		),
+	};
+	const users = { lockById: jest.fn(() => Promise.resolve()) };
+	const memberships = {
+		resolve: jest.fn(() => Promise.resolve(options.membership ?? TRIAL)),
 	};
 	const properties = {
 		lockLiveById: jest.fn(() =>
@@ -137,12 +177,16 @@ function build(
 			moderation as unknown as ModerationLogsRepository,
 			transactions as unknown as TransactionRunner,
 			views,
+			users as unknown as UsersService,
+			memberships as unknown as MembershipsService,
 		),
 		repository,
 		properties,
 		moderation,
 		transactions,
 		views,
+		users,
+		memberships,
 	};
 }
 
@@ -173,7 +217,7 @@ beforeEach(() => {
 describe('ListingsService.create (AC-5)', () => {
 	it('khóa dòng nhà trọ trước khi chèn, cùng một giao dịch', async () => {
 		const { service, properties, repository } = build();
-		await service.create(owner, PROPERTY_ID, createDto());
+		await service.create(owner, PROPERTY_ID, createDto(), NOW);
 		expect(properties.lockLiveById).toHaveBeenCalledWith(PROPERTY_ID, tx);
 		const lockOrder =
 			properties.lockLiveById.mock.invocationCallOrder[0] ?? 0;
@@ -184,7 +228,7 @@ describe('ListingsService.create (AC-5)', () => {
 
 	it('ghi mã vừa sinh, search_key theo tiêu đề cộng tên nhà trọ, địa chỉ, phường; cọc và ngày mặc định null', async () => {
 		const { service, repository } = build();
-		await service.create(owner, PROPERTY_ID, createDto());
+		await service.create(owner, PROPERTY_ID, createDto(), NOW);
 		expect(repository.create).toHaveBeenCalledWith(
 			{
 				propertyId: PROPERTY_ID,
@@ -208,6 +252,7 @@ describe('ListingsService.create (AC-5)', () => {
 			owner,
 			PROPERTY_ID,
 			createDto({ deposit: 2_000_000, availableFrom: '2026-11-01' }),
+			NOW,
 		);
 		expect(repository.create).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -220,7 +265,7 @@ describe('ListingsService.create (AC-5)', () => {
 
 	it('không nhận trạng thái hay lượt xem từ ai: Service không truyền chúng, cột lấy mặc định visible và 0', async () => {
 		const { service, repository } = build();
-		await service.create(owner, PROPERTY_ID, createDto());
+		await service.create(owner, PROPERTY_ID, createDto(), NOW);
 		const input = argsOf(repository.create)[0]?.[0] as Record<
 			string,
 			unknown
@@ -231,7 +276,12 @@ describe('ListingsService.create (AC-5)', () => {
 
 	it('đọc tin đầy đủ để trả về SAU khi giao dịch xong, không trong giao dịch', async () => {
 		const { service, repository, transactions } = build();
-		const response = await service.create(owner, PROPERTY_ID, createDto());
+		const response = await service.create(
+			owner,
+			PROPERTY_ID,
+			createDto(),
+			NOW,
+		);
 		expect(repository.findOwnerDetail).toHaveBeenCalledWith(LISTING_ID);
 		expect(transactions.run).toHaveBeenCalledTimes(1);
 		expect(response).toMatchObject({
@@ -243,7 +293,7 @@ describe('ListingsService.create (AC-5)', () => {
 	it('nhà trọ không có hoặc đã xóa mềm thì 404 PROPERTY_NOT_FOUND, không chèn', async () => {
 		const { service, repository } = build({ locked: null });
 		await expect(
-			service.create(owner, PROPERTY_ID, createDto()),
+			service.create(owner, PROPERTY_ID, createDto(), NOW),
 		).rejects.toMatchObject({ code: ErrorCode.PROPERTY_NOT_FOUND });
 		expect(repository.create).not.toHaveBeenCalled();
 	});
@@ -251,7 +301,7 @@ describe('ListingsService.create (AC-5)', () => {
 	it('đăng vào nhà trọ của người khác thì 403 NOT_RESOURCE_OWNER, không chèn', async () => {
 		const { service, repository } = build();
 		await expect(
-			service.create(stranger, PROPERTY_ID, createDto()),
+			service.create(stranger, PROPERTY_ID, createDto(), NOW),
 		).rejects.toMatchObject({ code: ErrorCode.NOT_RESOURCE_OWNER });
 		expect(repository.create).not.toHaveBeenCalled();
 	});
@@ -265,7 +315,7 @@ describe('ListingsService.create (AC-5)', () => {
 			repository.create.mockRejectedValueOnce(
 				new ListingCodeTakenError(),
 			);
-			await service.create(owner, PROPERTY_ID, createDto());
+			await service.create(owner, PROPERTY_ID, createDto(), NOW);
 			expect(repository.create).toHaveBeenCalledTimes(2);
 			expect(
 				argsOf(repository.create).map(
@@ -279,7 +329,7 @@ describe('ListingsService.create (AC-5)', () => {
 			const { service, repository } = build();
 			repository.create.mockRejectedValue(new ListingCodeTakenError());
 			await expect(
-				service.create(owner, PROPERTY_ID, createDto()),
+				service.create(owner, PROPERTY_ID, createDto(), NOW),
 			).rejects.toMatchObject({ code: ErrorCode.INTERNAL_ERROR });
 			expect(repository.create).toHaveBeenCalledTimes(5);
 		});
@@ -288,7 +338,7 @@ describe('ListingsService.create (AC-5)', () => {
 			const { service, repository } = build();
 			repository.create.mockRejectedValue(new Error('mất kết nối'));
 			await expect(
-				service.create(owner, PROPERTY_ID, createDto()),
+				service.create(owner, PROPERTY_ID, createDto(), NOW),
 			).rejects.toThrow('mất kết nối');
 			expect(repository.create).toHaveBeenCalledTimes(1);
 		});
@@ -296,7 +346,7 @@ describe('ListingsService.create (AC-5)', () => {
 		it('lỗi sở hữu không bị thử lại', async () => {
 			const { service, transactions } = build();
 			await expect(
-				service.create(stranger, PROPERTY_ID, createDto()),
+				service.create(stranger, PROPERTY_ID, createDto(), NOW),
 			).rejects.toMatchObject({ code: ErrorCode.NOT_RESOURCE_OWNER });
 			expect(transactions.run).toHaveBeenCalledTimes(1);
 		});
@@ -791,56 +841,67 @@ describe('ListingsService.hide và show (AC-6)', () => {
 	});
 
 	describe('show', () => {
-		it('chuyển hidden_by_owner sang visible bằng một câu có điều kiện trạng thái nguồn', async () => {
-			const { service, repository } = build();
-			await service.show(owner, LISTING_ID);
+		it('chuyển hidden_by_owner sang visible bằng một câu có điều kiện trạng thái nguồn, trong giao dịch', async () => {
+			const { service, repository } = build({
+				ownership: HIDDEN_BY_OWNER,
+			});
+			await service.show(owner, LISTING_ID, NOW);
 			expect(repository.transition).toHaveBeenCalledWith(
 				LISTING_ID,
 				['hidden_by_owner'],
 				'visible',
+				tx,
 			);
 		});
 
-		it('tin đang hidden_by_admin thì 403 LISTING_HIDDEN_BY_ADMIN (chủ trọ không tự gỡ lệnh của admin)', async () => {
-			const { service, repository } = build();
-			repository.transition.mockResolvedValueOnce(false);
-			repository.findStatus.mockResolvedValueOnce('hidden_by_admin');
-			await expect(service.show(owner, LISTING_ID)).rejects.toMatchObject(
-				{
-					code: ErrorCode.LISTING_HIDDEN_BY_ADMIN,
-				},
-			);
+		it('tin đang hidden_by_admin thì 403 LISTING_HIDDEN_BY_ADMIN (chủ trọ không tự gỡ lệnh của admin), trước mọi kiểm hạn mức', async () => {
+			const { service, repository, users, memberships } = build({
+				ownership: { ...HIDDEN_BY_OWNER, status: 'hidden_by_admin' },
+				membership: EXPIRED,
+			});
+			await expect(
+				service.show(owner, LISTING_ID, NOW),
+			).rejects.toMatchObject({
+				code: ErrorCode.LISTING_HIDDEN_BY_ADMIN,
+			});
+			expect(users.lockById).not.toHaveBeenCalled();
+			expect(memberships.resolve).not.toHaveBeenCalled();
+			expect(repository.transition).not.toHaveBeenCalled();
 		});
 
-		it('tin đã visible thì 409 LISTING_STATE_INVALID', async () => {
-			const { service, repository } = build();
-			repository.transition.mockResolvedValueOnce(false);
-			repository.findStatus.mockResolvedValueOnce('visible');
-			await expect(service.show(owner, LISTING_ID)).rejects.toMatchObject(
-				{
-					code: ErrorCode.LISTING_STATE_INVALID,
-				},
-			);
+		it('tin đã visible thì 409 LISTING_STATE_INVALID, trước mọi kiểm hạn mức', async () => {
+			const { service, repository, users } = build({
+				membership: EXPIRED,
+			});
+			await expect(
+				service.show(owner, LISTING_ID, NOW),
+			).rejects.toMatchObject({
+				code: ErrorCode.LISTING_STATE_INVALID,
+			});
+			expect(users.lockById).not.toHaveBeenCalled();
+			expect(repository.transition).not.toHaveBeenCalled();
 		});
 
 		it('admin ẩn đúng giữa chừng: câu chuyển trạng thái không khớp, đọc lại thấy hidden_by_admin nên 403', async () => {
 			// chủ trọ bấm hiện, nhưng admin đã đổi trạng thái sau lần kiểm quyền: điều kiện nguồn nằm trong câu UPDATE
 			// nên không ghi đè, và kết quả cuối vẫn là hidden_by_admin
-			const { service, repository } = build();
+			const { service, repository } = build({
+				ownership: HIDDEN_BY_OWNER,
+			});
 			repository.transition.mockResolvedValueOnce(false);
 			repository.findStatus.mockResolvedValueOnce('hidden_by_admin');
-			await expect(service.show(owner, LISTING_ID)).rejects.toMatchObject(
-				{
-					code: ErrorCode.LISTING_HIDDEN_BY_ADMIN,
-				},
-			);
+			await expect(
+				service.show(owner, LISTING_ID, NOW),
+			).rejects.toMatchObject({
+				code: ErrorCode.LISTING_HIDDEN_BY_ADMIN,
+			});
 			expect(repository.transition).toHaveBeenCalledTimes(1);
 		});
 
 		it('của chủ trọ khác thì 403 NOT_RESOURCE_OWNER và không chuyển', async () => {
 			const { service, repository } = build();
 			await expect(
-				service.show(stranger, LISTING_ID),
+				service.show(stranger, LISTING_ID, NOW),
 			).rejects.toMatchObject({
 				code: ErrorCode.NOT_RESOURCE_OWNER,
 			});
@@ -852,8 +913,177 @@ describe('ListingsService.hide và show (AC-6)', () => {
 		const { service, repository } = build();
 		repository.transition.mockResolvedValueOnce(false);
 		repository.findStatus.mockResolvedValueOnce('visible');
-		await expect(service.show(owner, LISTING_ID)).rejects.toBeInstanceOf(
-			AppException,
+		await expect(
+			service.show(owner, LISTING_ID, NOW),
+		).rejects.toBeInstanceOf(AppException);
+	});
+});
+
+describe('ListingsService.create: cửa hạn mức (spec 0003 AC-4, AC-6, AC-7)', () => {
+	it('khóa dòng users TRƯỚC dòng nhà trọ, kiểm hạn mức, rồi mới chèn, cùng một giao dịch', async () => {
+		const { service, users, properties, memberships, repository } = build();
+		await service.create(owner, PROPERTY_ID, createDto(), NOW);
+		expect(users.lockById).toHaveBeenCalledWith(LANDLORD_ID, tx);
+		expect(memberships.resolve).toHaveBeenCalledWith(LANDLORD_ID, NOW, tx);
+		expect(repository.countVisibleByLandlord).toHaveBeenCalledWith(
+			LANDLORD_ID,
+			tx,
 		);
+		const order = (mock: jest.Mock): number =>
+			mock.mock.invocationCallOrder[0] ?? 0;
+		expect(order(users.lockById)).toBeLessThan(
+			order(properties.lockLiveById),
+		);
+		expect(order(properties.lockLiveById)).toBeLessThan(
+			order(memberships.resolve),
+		);
+		expect(order(memberships.resolve)).toBeLessThan(
+			order(repository.countVisibleByLandlord),
+		);
+		expect(order(repository.countVisibleByLandlord)).toBeLessThan(
+			order(repository.create),
+		);
+	});
+
+	it('còn chỗ (1 tin đang hiện, hạn mức 2) thì chèn', async () => {
+		const { service, repository } = build({ visibleCount: 1 });
+		await service.create(owner, PROPERTY_ID, createDto(), NOW);
+		expect(repository.create).toHaveBeenCalledTimes(1);
+	});
+
+	it.each([2, 3])(
+		'đang hiện %i tin trên hạn mức 2 (bằng hoặc vượt) thì 403 LISTING_QUOTA_REACHED, không chèn',
+		async (visibleCount) => {
+			const { service, repository } = build({ visibleCount });
+			await expect(
+				service.create(owner, PROPERTY_ID, createDto(), NOW),
+			).rejects.toMatchObject({ code: ErrorCode.LISTING_QUOTA_REACHED });
+			expect(repository.create).not.toHaveBeenCalled();
+		},
+	);
+
+	it('còn trong kỳ dùng thử nhưng hạn mức bị đặt 0 thì LISTING_QUOTA_REACHED (không phải MEMBERSHIP_REQUIRED)', async () => {
+		const { service } = build({ membership: { ...TRIAL, limit: 0 } });
+		await expect(
+			service.create(owner, PROPERTY_ID, createDto(), NOW),
+		).rejects.toMatchObject({ code: ErrorCode.LISTING_QUOTA_REACHED });
+	});
+
+	it('hết dùng thử thì 403 MEMBERSHIP_REQUIRED, không đếm tin và không chèn', async () => {
+		const { service, repository } = build({
+			membership: EXPIRED,
+			visibleCount: 99,
+		});
+		await expect(
+			service.create(owner, PROPERTY_ID, createDto(), NOW),
+		).rejects.toMatchObject({ code: ErrorCode.MEMBERSHIP_REQUIRED });
+		expect(repository.countVisibleByLandlord).not.toHaveBeenCalled();
+		expect(repository.create).not.toHaveBeenCalled();
+	});
+
+	it('nhà trọ không có (404) và nhà trọ của người khác (403) được báo trước hai lỗi hạn mức', async () => {
+		const missing = build({ locked: null, membership: EXPIRED });
+		await expect(
+			missing.service.create(owner, PROPERTY_ID, createDto(), NOW),
+		).rejects.toMatchObject({ code: ErrorCode.PROPERTY_NOT_FOUND });
+		expect(missing.memberships.resolve).not.toHaveBeenCalled();
+
+		const foreign = build({ membership: EXPIRED, visibleCount: 99 });
+		await expect(
+			foreign.service.create(stranger, PROPERTY_ID, createDto(), NOW),
+		).rejects.toMatchObject({ code: ErrorCode.NOT_RESOURCE_OWNER });
+		expect(foreign.memberships.resolve).not.toHaveBeenCalled();
+	});
+
+	it('lỗi hạn mức không bị thử lại như lỗi trùng mã', async () => {
+		const { service, transactions } = build({ visibleCount: 2 });
+		await expect(
+			service.create(owner, PROPERTY_ID, createDto(), NOW),
+		).rejects.toMatchObject({ code: ErrorCode.LISTING_QUOTA_REACHED });
+		expect(transactions.run).toHaveBeenCalledTimes(1);
+	});
+
+	it('thử lại vì trùng mã thì giao dịch mới khóa và kiểm hạn mức lại từ đầu', async () => {
+		const { service, repository, users, memberships } = build();
+		repository.create.mockRejectedValueOnce(new ListingCodeTakenError());
+		await service.create(owner, PROPERTY_ID, createDto(), NOW);
+		expect(users.lockById).toHaveBeenCalledTimes(2);
+		expect(memberships.resolve).toHaveBeenCalledTimes(2);
+	});
+});
+
+describe('ListingsService.show: cửa hạn mức (spec 0003 AC-5, AC-7)', () => {
+	it('khóa dòng users, kiểm hạn mức, rồi mới chuyển trạng thái, cùng một giao dịch', async () => {
+		const { service, users, memberships, repository } = build({
+			ownership: HIDDEN_BY_OWNER,
+		});
+		await service.show(owner, LISTING_ID, NOW);
+		expect(users.lockById).toHaveBeenCalledWith(LANDLORD_ID, tx);
+		expect(memberships.resolve).toHaveBeenCalledWith(LANDLORD_ID, NOW, tx);
+		const order = (mock: jest.Mock): number =>
+			mock.mock.invocationCallOrder[0] ?? 0;
+		expect(order(users.lockById)).toBeLessThan(order(memberships.resolve));
+		expect(order(memberships.resolve)).toBeLessThan(
+			order(repository.countVisibleByLandlord),
+		);
+		expect(order(repository.countVisibleByLandlord)).toBeLessThan(
+			order(repository.transition),
+		);
+	});
+
+	it('còn chỗ thì hiện lại và trả tin đọc lại sau giao dịch', async () => {
+		const { service, repository } = build({
+			ownership: HIDDEN_BY_OWNER,
+			visibleCount: 1,
+		});
+		await service.show(owner, LISTING_ID, NOW);
+		expect(repository.transition).toHaveBeenCalledTimes(1);
+		expect(repository.findOwnerDetail).toHaveBeenCalledWith(LISTING_ID);
+	});
+
+	it('đủ hạn mức thì 403 LISTING_QUOTA_REACHED, không chuyển trạng thái', async () => {
+		const { service, repository } = build({
+			ownership: HIDDEN_BY_OWNER,
+			visibleCount: 2,
+		});
+		await expect(
+			service.show(owner, LISTING_ID, NOW),
+		).rejects.toMatchObject({ code: ErrorCode.LISTING_QUOTA_REACHED });
+		expect(repository.transition).not.toHaveBeenCalled();
+	});
+
+	it('hết dùng thử thì 403 MEMBERSHIP_REQUIRED, báo trước LISTING_QUOTA_REACHED, không chuyển', async () => {
+		const { service, repository } = build({
+			ownership: HIDDEN_BY_OWNER,
+			membership: EXPIRED,
+			visibleCount: 99,
+		});
+		await expect(
+			service.show(owner, LISTING_ID, NOW),
+		).rejects.toMatchObject({ code: ErrorCode.MEMBERSHIP_REQUIRED });
+		expect(repository.countVisibleByLandlord).not.toHaveBeenCalled();
+		expect(repository.transition).not.toHaveBeenCalled();
+	});
+});
+
+describe('hết dùng thử không chặn hide, sửa, xóa tin (spec 0003 AC-6)', () => {
+	it('hide, update và remove chạy bình thường khi hết dùng thử và không đụng cửa hạn mức', async () => {
+		const { service, repository, users, memberships } = build({
+			membership: EXPIRED,
+			visibleCount: 99,
+		});
+		await service.hide(owner, LISTING_ID);
+		await service.update(
+			owner,
+			LISTING_ID,
+			updateDto({ price: 4_000_000 }),
+		);
+		await service.remove(owner, LISTING_ID);
+		expect(repository.transition).toHaveBeenCalledTimes(1);
+		expect(repository.update).toHaveBeenCalledTimes(1);
+		expect(repository.softDelete).toHaveBeenCalledTimes(1);
+		expect(memberships.resolve).not.toHaveBeenCalled();
+		expect(users.lockById).not.toHaveBeenCalled();
+		expect(repository.countVisibleByLandlord).not.toHaveBeenCalled();
 	});
 });

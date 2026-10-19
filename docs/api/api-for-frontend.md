@@ -39,7 +39,7 @@ Mỗi tài khoản chỉ thuộc **một** loại, chọn lúc đăng ký và **
 
 ### Mô hình kinh doanh (để FE hiểu bối cảnh)
 
-Đăng ký miễn phí. Người tìm trọ dùng miễn phí mãi. Người đăng bài được dùng thử khoảng một tháng với khoảng 1 đến 2 tin, muốn tiếp tục phải mua gói theo tháng. Admin là người vận hành và thu tiền. **Phần dùng thử, hạn mức và mua gói chưa có API** (mục 10).
+Đăng ký miễn phí. Người tìm trọ dùng miễn phí mãi. Người đăng bài được dùng thử khoảng một tháng với khoảng 1 đến 2 tin, muốn tiếp tục phải mua gói theo tháng. Admin là người vận hành và thu tiền. **Kỳ dùng thử lúc đăng ký và việc chặn đăng, hiện tin theo hạn mức đã chạy** (từ 2026-10-19, mục 6.1, 6.18 và 6.23). **Xem trạng thái dùng thử (`GET /me/membership`), tin biến khỏi công khai khi hết kỳ, và mua gói chưa có API** (mục 10).
 
 ### Trạng thái các tính năng
 
@@ -54,8 +54,9 @@ Mỗi tài khoản chỉ thuộc **một** loại, chọn lúc đăng ký và **
 | Nhà trọ của chủ trọ (tạo, xem danh sách và chi tiết, sửa, xóa mềm) | Có (mới, 2026-10-16) |
 | Tin đăng: đăng, sửa, xóa, ẩn và hiện của chủ trọ; danh sách và chi tiết tin công khai (có lọc, số điện thoại cho người đăng nhập, đếm lượt xem) | Có (mới, 2026-10-16) |
 | Ảnh tin; admin ẩn tin và quản lý danh mục phường, tiện ích | Chưa có (đang làm từng phần, mục 10) |
-| Tham số hệ thống: admin xem và đổi số ngày dùng thử, số tin dùng thử | Có (mới, 2026-10-16, mục 6.24). Mới lưu và đọc ra, chưa áp vào đăng ký và hạn mức tin |
-| Dùng thử, hạn mức tin, mua gói | Chưa có (đang làm từng phần, mục 10) |
+| Tham số hệ thống: admin xem và đổi số ngày dùng thử, số tin dùng thử | Có (mục 6.24). Đã áp vào đăng ký (số ngày) và vào đăng, hiện tin (số tin) từ 2026-10-19 |
+| Kỳ dùng thử lúc đăng ký; chặn đăng và hiện tin khi hết dùng thử hoặc đủ hạn mức | Có (mới, 2026-10-19, mục 6.1, 6.18, 6.23) |
+| Tin biến khỏi công khai khi hết dùng thử hoặc vượt hạn mức, `GET /me/membership`, cờ `isPublic`, mua gói | Chưa có (đang làm từng phần, mục 10) |
 | Theo dõi chủ trọ, lượt xem | Chưa có |
 
 ---
@@ -150,6 +151,8 @@ Lưu ý: **một trường có thể xuất hiện nhiều lần** trong `errors
 | `LISTING_NOT_FOUND` | 404 | Tin không có hoặc đã xóa; ở route công khai còn gồm tin không hiển thị công khai vì bất kỳ lý do nào (đang ẩn, chủ trọ bị khóa...), kể cả với chính chủ, và đường dẫn không lấy được mã tin | Hiện "tin không còn", quay về danh sách |
 | `LISTING_STATE_INVALID` | 409 | Chuyển trạng thái tin không hợp lệ (ẩn tin không đang hiện, hiện tin đã hiện, ẩn tin đang bị admin ẩn) | Tải lại tin (`GET /me/listings/:id`) rồi cập nhật nút |
 | `LISTING_HIDDEN_BY_ADMIN` | 403 | Chủ trọ cố hiện lại tin đang bị admin ẩn | Hiện nhãn "bị quản trị viên ẩn" kèm `moderationReason`, ẩn nút "Hiện" |
+| `MEMBERSHIP_REQUIRED` | 403 | Đăng tin hoặc hiện lại tin khi **kỳ dùng thử đã hết** và chưa có gói (cả tài khoản admin, vì admin không có kỳ dùng thử). Chỉ hai API đăng và hiện tin trả mã này | Hiện `message` kèm nút "Mua gói" (trang mua gói chưa có, mục 10). Vẫn cho ẩn, sửa, xóa tin và quản lý nhà trọ |
+| `LISTING_QUOTA_REACHED` | 403 | Đăng tin hoặc hiện lại tin khi **còn trong kỳ dùng thử nhưng số tin đang hiện đã bằng hoặc vượt hạn mức** | Hiện `message`, gợi ý "ẩn hoặc xóa bớt một tin" (hoặc nâng gói). Chưa có API cho biết hạn mức, xem mục 9 |
 | `CANNOT_LOCK_SELF` | 409 | Admin tự khóa chính mình | Hiện `message` |
 | `ACCOUNT_ALREADY_LOCKED` | 409 | Khóa tài khoản đang bị khóa | Làm mới trạng thái trên giao diện |
 | `ACCOUNT_NOT_LOCKED` | 409 | Mở khóa tài khoản không bị khóa | Làm mới trạng thái trên giao diện |
@@ -287,6 +290,8 @@ Ký hiệu cột **Cần**: "công khai" = không cần đăng nhập; "đăng n
 **Luật số điện thoại.** Backend chuẩn hóa trước khi kiểm: bỏ dấu cách, dấu chấm, dấu gạch; đầu số `+84` hoặc `84` đổi thành `0`. Kết quả phải là số di động Việt Nam đúng dạng `0` + (`3`, `5`, `7`, `8` hoặc `9`) + 8 chữ số. Ví dụ `+84 912.345.678` lưu thành `0912345678`. Tenant không bắt buộc số, nhưng nếu gửi thì cũng bị kiểm định dạng như trên. Chỉ kiểm định dạng và trùng, **không có SMS hay mã xác thực**.
 
 Thứ tự kiểm trùng: email trước, số điện thoại sau.
+
+**Kỳ dùng thử.** Chủ trọ đăng ký xong có ngay một **kỳ dùng thử** tính từ đúng lúc đăng ký (mặc định **30 ngày**, admin đổi được `trial_days` ở 6.24; `0` nghĩa là hết dùng thử ngay, dùng để dựng cảnh "hết quyền" khi demo). Trong kỳ, chủ trọ được hiện tối đa `trial_listing_limit` tin (mặc định 2). Hạn dùng thử **không nằm trong phản hồi này** (`user` vẫn đúng 6 trường); sẽ xem được ở `GET /me/membership` khi API đó có (mục 10). Người tìm trọ không có kỳ dùng thử. Đăng ký trùng số điện thoại bị 409 và **không** tạo thêm kỳ dùng thử (mỗi số điện thoại một lần dùng thử).
 
 **201 Created**: đặt cookie `rt`, trả
 
@@ -666,8 +671,10 @@ Cần nhớ:
 - `coverImageUrl` là ảnh bìa và `images[]` là các ảnh theo thứ tự `position`; **ảnh tin chưa có API tải lên** nên hiện luôn là `null` và `[]`. Khi có, `url` là đường dẫn tương đối `/api/v1/media/public/<uuid>.<đuôi>`, FE tự nối với địa chỉ API.
 - `deposit` và `availableFrom` là `null` khi không có. `availableFrom` luôn là chuỗi `YYYY-MM-DD`.
 - `fullAddress` do backend ghép sẵn (xem 6.17), FE hiển thị thẳng.
+- **Hạn mức tin (từ 2026-10-19).** Đăng tin là thêm một tin đang hiện, nên phải còn trong kỳ dùng thử và còn chỗ. Chỉ tin `visible` chưa xóa mới tính vào số tin đang hiện. Còn kỳ dùng thử mà số tin đang hiện đã **bằng hoặc vượt** hạn mức thì 403 `LISTING_QUOTA_REACHED`; hết kỳ dùng thử thì 403 `MEMBERSHIP_REQUIRED`. Ẩn hoặc xóa một tin trả lại một chỗ, đăng thêm được ngay. Hai yêu cầu đăng cùng lúc khi chỉ còn một chỗ thì đúng một yêu cầu thành công.
+- Thứ tự báo lỗi: 404 `PROPERTY_NOT_FOUND` và 403 `NOT_RESOURCE_OWNER` luôn đến **trước** hai lỗi hạn mức; lỗi dữ liệu 400 `VALIDATION_FAILED` đến trước tất cả.
 
-**Lỗi**: 400 `VALIDATION_FAILED` · 404 `PROPERTY_NOT_FOUND` · 403 `NOT_RESOURCE_OWNER` (nhà trọ của người khác) · 403 `PERMISSION_DENIED` · 400 `INVALID_ID` · 429 `RATE_LIMITED` (quá 60 lần mỗi giờ). Lỗi thì không có tin nào được tạo.
+**Lỗi**: 400 `VALIDATION_FAILED` · 404 `PROPERTY_NOT_FOUND` · 403 `NOT_RESOURCE_OWNER` (nhà trọ của người khác) · 403 `MEMBERSHIP_REQUIRED` (hết dùng thử) · 403 `LISTING_QUOTA_REACHED` (đủ hạn mức) · 403 `PERMISSION_DENIED` · 400 `INVALID_ID` · 429 `RATE_LIMITED` (quá 60 lần mỗi giờ). Lỗi thì không có tin nào được tạo.
 
 ### 6.19 Danh sách tin công khai
 
@@ -779,8 +786,9 @@ Cần nhớ:
 - Tin `hidden_by_admin` **chủ trọ không tự hiện lại được**: FE hiện nhãn "Bị quản trị viên ẩn", hiển thị `moderationReason` (lý do admin ghi) và ẩn nút "Hiện", thay bằng hướng dẫn liên hệ admin (hệ thống chưa có kháng nghị). Chủ trọ vẫn **sửa được** tin để khắc phục. Khi admin gỡ ẩn, tin về `hidden_by_owner` và chủ trọ hiện lại được.
 - Admin ẩn đúng lúc chủ trọ bấm hiện thì **admin luôn thắng**: chủ trọ nhận 403 `LISTING_HIDDEN_BY_ADMIN` và trạng thái cuối là `hidden_by_admin`. FE gặp 409 hoặc 403 ở hai API này thì tải lại tin (`GET /me/listings/:id`) để lấy trạng thái thật.
 - Tin `hidden_by_owner` và `hidden_by_admin` biến khỏi danh sách và chi tiết công khai.
+- **`hide` không bao giờ bị hạn mức chặn** (kể cả khi hết dùng thử). **`show` thì có**: hiện lại là thêm một tin đang hiện nên đi qua cùng cửa hạn mức với đăng tin (6.18). Thứ tự báo lỗi của `show`: 404 `LISTING_NOT_FOUND` hoặc 403 `NOT_RESOURCE_OWNER`, rồi `LISTING_HIDDEN_BY_ADMIN` hoặc 409 `LISTING_STATE_INVALID` (theo bảng trên), rồi 403 `MEMBERSHIP_REQUIRED` (hết dùng thử), rồi 403 `LISTING_QUOTA_REACHED` (đủ hạn mức). Bị chặn thì tin giữ nguyên `hidden_by_owner`.
 
-**Lỗi**: 409 `LISTING_STATE_INVALID` · 403 `LISTING_HIDDEN_BY_ADMIN` (chỉ `show`) · 404 `LISTING_NOT_FOUND` · 403 `NOT_RESOURCE_OWNER` · 403 `PERMISSION_DENIED` · 400 `INVALID_ID` · 429 `RATE_LIMITED`.
+**Lỗi**: 409 `LISTING_STATE_INVALID` · 403 `LISTING_HIDDEN_BY_ADMIN` (chỉ `show`) · 403 `MEMBERSHIP_REQUIRED` (chỉ `show`) · 403 `LISTING_QUOTA_REACHED` (chỉ `show`) · 404 `LISTING_NOT_FOUND` · 403 `NOT_RESOURCE_OWNER` · 403 `PERMISSION_DENIED` · 400 `INVALID_ID` · 429 `RATE_LIMITED`.
 
 ### 6.24 Tham số hệ thống (admin)
 
@@ -791,7 +799,7 @@ Hai tham số nghiệp vụ của kỳ dùng thử miễn phí, admin chỉnh đ
 | `trial_days` | 30 | 0 đến 365 | Số ngày dùng thử của chủ trọ đăng ký **sau** khi đổi. `0` nghĩa là hết dùng thử ngay lúc đăng ký (cách dựng cảnh "hết quyền" khi demo) |
 | `trial_listing_limit` | 2 | 0 đến 100 | Số tin đang hiện tối đa trong kỳ dùng thử, áp ngay cho mọi chủ trọ còn trong kỳ |
 
-> **Mới lưu và đọc ra.** Việc áp hai tham số vào đăng ký (ngày hết dùng thử) và vào việc chặn đăng tin sẽ có ở các mốc sau của tính năng dùng thử (mục 10, hàng 9). Hiện đổi hai con số này chưa làm thay đổi hành vi nào của chủ trọ.
+> **Đã áp vào hành vi (từ 2026-10-19).** `trial_days` quyết định hạn dùng thử của chủ trọ đăng ký sau đó (6.1); `trial_listing_limit` quyết định số tin đang hiện tối đa của chủ trọ còn trong kỳ, kiểm lúc đăng và hiện lại tin (6.18, 6.23). Việc ẩn tin vượt hạn mức khỏi kết quả công khai và `GET /me/membership` chưa có (mục 10, hàng 9).
 
 `GET /settings` · quyền `setting:read`
 
@@ -814,7 +822,7 @@ Cần nhớ:
 - Dùng `min` và `max` trong chính phản hồi để giới hạn ô nhập, không cứng số trong FE.
 - `updatedAt` và `updatedBy` là `null` khi tham số chưa từng được sửa (giá trị lấy từ seed hoặc mặc định). `updatedBy` cũng `null` nếu admin sửa lần cuối đã bị xóa khỏi hệ thống.
 - Hệ thống tự dùng giá trị mặc định (30 và 2) nếu dòng tham số bị thiếu hoặc hỏng, nên `GET /settings` không bao giờ 500 vì lý do này.
-- Đổi `trial_days` **không** đổi hạn dùng thử của người đã đăng ký; đổi `trial_listing_limit` có hiệu lực ngay cho mọi chủ trọ còn trong kỳ (khi phần hạn mức tin có ở mốc sau).
+- Đổi `trial_days` **không** đổi hạn dùng thử của người đã đăng ký; đổi `trial_listing_limit` có hiệu lực ngay cho mọi chủ trọ còn trong kỳ ở lần đăng hoặc hiện lại tin kế tiếp. Hạ hạn mức xuống thấp hơn số tin đang hiện **không ẩn tin nào ngay** (phần ẩn khỏi công khai chưa có); nó chỉ chặn đăng và hiện thêm cho đến khi số tin đang hiện xuống dưới hạn mức mới.
 
 **Lỗi**: 400 `VALIDATION_FAILED` (không phải số nguyên, thiếu `value`, hoặc ngoài khoảng của khóa; `errors` có một dòng `field: "value"`) · 404 `NOT_FOUND` (khóa không có) · 403 `PERMISSION_DENIED` (chủ trọ, người tìm trọ) · 403 `ACCOUNT_LOCKED` · 401 `TOKEN_MISSING`.
 
@@ -860,6 +868,7 @@ Hai ô: mật khẩu hiện tại, mật khẩu mới. Gọi `POST /auth/change-
 3. **Sửa tin**: mở biểu mẫu bằng `GET /me/listings/:id`, gửi `PATCH` các trường đã đổi (cho phép sửa cả khi tin đang ẩn, kể cả bị admin ẩn). Muốn bỏ tiền cọc hoặc ngày vào ở thì gửi `null`.
 4. **Xóa tin**: hỏi xác nhận, `DELETE`. Muốn xóa nhà trọ thì phải xóa hết tin của nó trước.
 5. Gặp 409 `LISTING_STATE_INVALID` hoặc 403 `LISTING_HIDDEN_BY_ADMIN` ở nút ẩn, hiện: tải lại tin để lấy trạng thái thật (có thể admin vừa ẩn).
+6. **Hạn mức** (đăng tin và nút "Hiện"): gặp 403 `LISTING_QUOTA_REACHED` thì báo "bạn đã dùng hết số tin được hiện, hãy ẩn hoặc xóa bớt một tin" và giữ nguyên biểu mẫu để người dùng không mất chữ đã nhập; gặp 403 `MEMBERSHIP_REQUIRED` thì báo kỳ dùng thử đã hết kèm nút "Mua gói" (trang mua gói chưa có). **Không** coi hai lỗi này là lỗi hệ thống, và **không** thử lại tự động. Khi hết dùng thử vẫn cho ẩn, sửa, xóa tin và quản lý nhà trọ bình thường.
 
 ### Tìm trọ (khách và người tìm trọ)
 
@@ -886,6 +895,7 @@ Hai ô: mật khẩu hiện tại, mật khẩu mới. Gọi `POST /auth/change-
 - **Loại tài khoản không đổi.** Không có API đổi loại.
 - **Địa chỉ hai cấp.** Mọi địa chỉ trong hệ thống theo đơn vị hành chính mới sau sáp nhập: số nhà và đường, phường hoặc xã (`GET /wards`), tỉnh hoặc thành phố. Không có quận huyện. Xem mục 6.15.
 - **Nhà trọ** thuộc đúng một chủ trọ (không đổi chủ). Mỗi nhà trọ có tối đa một khoản phí cho mỗi loại trong 6 loại, tiện ích chọn từ danh mục. Xóa nhà trọ là xóa mềm và chỉ được khi không còn tin chưa xóa. Mọi thao tác chỉ trên nhà trọ của chính mình (403 `NOT_RESOURCE_OWNER` nếu khác), kể cả admin.
+- **Dùng thử và hạn mức tin** (từ 2026-10-19). Chủ trọ có kỳ dùng thử từ lúc đăng ký (mặc định 30 ngày) và trong kỳ được hiện tối đa 2 tin (admin đổi cả hai con số). Hạn mức hiện hành là `trial_listing_limit` khi còn trong kỳ (so sánh chặt: đúng lúc hết hạn là hết), ngược lại là 0. Chỉ tin `visible` chưa xóa tính vào "đang hiện". Cửa hạn mức chỉ ở **đăng tin** và **hiện lại tin**; ẩn, sửa, xóa tin và mọi thao tác nhà trọ không bị chặn. Hạn mức tính lại mỗi lần gọi, không lưu: đổi tham số hay hết hạn có hiệu lực ngay.
 - **Tin đăng** thuộc một nhà trọ, nên chủ tin là chủ nhà trọ (không đổi). Tin **hiện ngay khi đăng**, không nháp, không duyệt. Ba trạng thái: `visible`, `hidden_by_owner`, `hidden_by_admin`. Chủ trọ tự chuyển giữa `visible` và `hidden_by_owner`; tin `hidden_by_admin` chủ trọ không tự hiện lại được nhưng vẫn sửa và xóa được.
 - **Một tin hiện ra công khai khi và chỉ khi** tin `visible` và chưa xóa, nhà trọ chưa xóa, và chủ trọ đang hoạt động (không bị khóa, chưa xóa). Tính lúc đọc nên khóa tài khoản chủ trọ làm mọi tin của họ biến khỏi danh sách ngay, mở khóa thì hiện lại. (Về sau thêm điều kiện còn dùng thử hoặc có gói.)
 - **Số điện thoại chủ trọ** chỉ trả ở chi tiết tin và chỉ cho người gọi có access token hợp lệ; không có ở danh sách và không bao giờ có cho khách.
@@ -908,8 +918,9 @@ Hai ô: mật khẩu hiện tại, mật khẩu mới. Gọi `POST /auth/change-
 - **Chưa có API danh sách người dùng** nên màn hình admin chưa tìm được người để khóa ngoài việc biết sẵn id.
 - **Lượt xem tính trong bộ nhớ** của backend: khởi động lại thì mọi người xem được tính lại từ đầu (cộng dư vài lượt), và nếu sau này chạy nhiều bản backend thì mỗi bản tính riêng. Nhiều người không đăng nhập dùng chung một IP chỉ tính một lượt mỗi 30 phút.
 - **Số điện thoại với tài khoản vừa bị khóa**: access token còn hạn (tối đa 15 phút) vẫn được coi là đã đăng nhập ở trang chi tiết tin, nên tài khoản vừa bị khóa còn thấy số điện thoại đến khi token hết hạn. Mọi phiên của tài khoản đã bị hủy nên không refresh được.
-- **Tin chưa có hạn mức, dùng thử và gói**: hiện mọi chủ trọ đăng được số tin không giới hạn và tin hiện mãi (mục 10, hàng 9 và 10). Tin không tự hết hạn: phòng đã cho thuê mà chủ trọ quên ẩn thì tin vẫn nằm đó. Hai tham số ở mục 6.24 mới được lưu, chưa áp vào đâu.
-- **Tạm thời: đăng ký chủ trọ trả 500** trên cơ sở dữ liệu đã chạy migration `free_trial_settings` cho đến khi xong mốc 2 của tính năng dùng thử (mốc 2 sẽ đặt hạn dùng thử lúc đăng ký). Đăng ký người tìm trọ và mọi API khác không bị ảnh hưởng. Mục này sẽ bị xóa khi mốc 2 xong.
+- **Hạn mức mới chặn ở phía ghi.** Đăng và hiện lại tin đã bị chặn khi hết dùng thử hoặc đủ hạn mức (6.18, 6.23), nhưng **tin của chủ trọ hết dùng thử vẫn còn hiện ở danh sách và chi tiết công khai**, và tin đã hiện vượt hạn mức (do admin hạ `trial_listing_limit`) cũng chưa bị ẩn. Hai việc đó thuộc mốc sau của tính năng dùng thử (mục 10, hàng 9), cùng với `GET /me/membership` và cờ `isPublic`. Chưa có gói (hàng 10). Tin không tự hết hạn: phòng đã cho thuê mà chủ trọ quên ẩn thì tin vẫn nằm đó.
+- **FE chưa biết hạn mức và hạn dùng thử của chủ trọ** cho đến khi có `GET /me/membership`: chỉ biết sau khi bị `MEMBERSHIP_REQUIRED` hoặc `LISTING_QUOTA_REACHED`. Đừng tự tính hạn dùng thử ở FE.
+- **Chủ trọ đăng ký trước 2026-10-16** nhận hạn dùng thử bằng thời điểm chạy migration cộng 30 ngày (không phải thời điểm họ đăng ký).
 - **Chưa có ảnh tin** và **chưa có kháng nghị** khi bị ẩn tin: chủ trọ sửa tin xong vẫn phải liên hệ admin ngoài hệ thống.
 - **Tìm kiếm** chỉ khớp theo từng từ (không sửa lỗi chính tả, không tìm gần đúng). Từ ngắn dưới 3 ký tự vẫn tìm được nhưng chậm hơn khi có hàng chục nghìn tin.
 - **Số tổng `total` của danh sách** là một phép đếm riêng nên chậm dần khi có hàng chục nghìn tin; chấp nhận ở bản demo.
@@ -924,7 +935,7 @@ Backend sẽ làm theo thứ tự dưới đây. Mỗi mục khi xong sẽ vào 
 | Thứ tự | Tính năng | Ảnh hưởng tới FE |
 |---|---|---|
 | 8 | **Phần còn lại của nhà trọ và tin** (đã có: danh sách phường, xã và tiện ích, nhà trọ, đăng tin, xem tin, ẩn và hiện tin, mục 6.15 đến 6.23): **ảnh tin** (tải lên từng ảnh, tối đa 5 ảnh mỗi tin, xem ảnh), **admin ẩn và gỡ ẩn tin kèm lý do** cùng danh sách tin để kiểm duyệt, **admin quản lý danh mục phường và tiện ích** | Nút tải ảnh trong biểu mẫu tin; màn hình kiểm duyệt cho admin; `moderationReason` đã có sẵn trong API tin của chủ trọ. **Không cần hàng chờ duyệt** |
-| 9 | **Dùng thử miễn phí và hạn mức tin** cho chủ trọ: dùng thử 30 ngày, tối đa 2 tin đang hiện (admin đổi được hai con số này). Hết kỳ dùng thử mà chưa mua gói thì tin của chủ trọ tự biến khỏi danh sách công khai. **Đã có**: API admin xem và đổi hai tham số (mục 6.24). **Chưa có**: đặt hạn dùng thử lúc đăng ký, chặn đăng và hiện tin theo hạn mức, tin biến khỏi công khai khi hết kỳ, `GET /me/membership`, cờ `isPublic` | Lỗi chặn đăng hoặc hiện thêm tin kèm gợi ý mua gói; hiện ngày hết hạn dùng thử và số tin còn lại |
+| 9 | **Dùng thử miễn phí và hạn mức tin** cho chủ trọ: dùng thử 30 ngày, tối đa 2 tin đang hiện (admin đổi được hai con số này). Hết kỳ dùng thử mà chưa mua gói thì tin của chủ trọ tự biến khỏi danh sách công khai. **Đã có**: API admin xem và đổi hai tham số (mục 6.24); hạn dùng thử đặt lúc đăng ký (6.1); chặn đăng và hiện lại tin khi hết dùng thử hoặc đủ hạn mức (6.18, 6.23, mã lỗi `MEMBERSHIP_REQUIRED` và `LISTING_QUOTA_REACHED`). **Chưa có**: tin biến khỏi công khai khi hết kỳ hoặc vượt hạn mức, `GET /me/membership`, cờ `isPublic` | Lỗi chặn đăng hoặc hiện thêm tin kèm gợi ý mua gói; hiện ngày hết hạn dùng thử và số tin còn lại |
 | 10 | **Mua gói và gia hạn theo tháng**, **thanh toán thử** (bấm xác nhận là có gói, không có tiền thật, không chuyển sang cổng thanh toán nào, nên **không có trang VNPay**) | Trang chọn gói, nút thanh toán thử, lịch sử đơn |
 | 11 | **Theo dõi chủ trọ** và hiển thị số người theo dõi, tổng lượt xem tin | Nút theo dõi, số liệu trên hồ sơ chủ trọ |
 | 12 | **Lưu phòng yêu thích** cho người tìm trọ | Nút lưu trên tin, trang danh sách tin đã lưu |
@@ -940,11 +951,22 @@ Backend sẽ làm theo thứ tự dưới đây. Mỗi mục khi xong sẽ vào 
 
 Mới nhất ở trên cùng. Mục nào **phá vỡ** cách FE đang gọi sẽ ghi rõ "ĐỔI KHÁC VỚI TRƯỚC".
 
+### 2026-10-19 · Dùng thử và chặn đăng tin theo hạn mức (mốc 2 của dùng thử)
+
+- **Đăng ký chủ trọ chạy lại bình thường** (lỗi 500 tạm thời của mốc 1 đã hết). Chủ trọ đăng ký xong có kỳ dùng thử tính từ lúc đăng ký, mặc định 30 ngày (admin đổi `trial_days`). Phản hồi đăng ký **không đổi** (`user` vẫn 6 trường, không có hạn dùng thử). Đăng ký người tìm trọ không đổi.
+- **ĐỔI KHÁC VỚI TRƯỚC**: hai API `POST /properties/:propertyId/listings` (đăng tin) và `POST /listings/:id/show` (hiện lại tin) giờ có thể trả **hai mã lỗi mới**, đều **403**: `MEMBERSHIP_REQUIRED` (hết dùng thử, chưa có gói) và `LISTING_QUOTA_REACHED` (còn dùng thử nhưng số tin đang hiện đã bằng hoặc vượt hạn mức, mặc định 2). Đã thêm vào bảng mã lỗi ở mục 3. Chỉ tin `visible` chưa xóa tính vào "đang hiện".
+- Thứ tự báo lỗi của đăng tin: 404 `PROPERTY_NOT_FOUND` và 403 `NOT_RESOURCE_OWNER` trước, rồi `MEMBERSHIP_REQUIRED`, rồi `LISTING_QUOTA_REACHED`. Của hiện lại tin: 404 hoặc 403 sở hữu, rồi `LISTING_HIDDEN_BY_ADMIN` hoặc `LISTING_STATE_INVALID`, rồi `MEMBERSHIP_REQUIRED`, rồi `LISTING_QUOTA_REACHED`.
+- **Không bị chặn** dù hết dùng thử: ẩn, sửa, xóa tin; tạo, sửa, xóa nhà trọ. Ẩn hoặc xóa một tin trả lại một chỗ ngay. Đổi `trial_listing_limit` có hiệu lực ngay ở lần đăng hoặc hiện kế tiếp.
+- Hai yêu cầu đăng hoặc hiện cùng lúc của cùng một chủ trọ khi chỉ còn một chỗ: đúng một yêu cầu thành công, yêu cầu kia nhận `LISTING_QUOTA_REACHED`.
+- Tài khoản admin không có kỳ dùng thử nên đăng tin bị `MEMBERSHIP_REQUIRED`.
+- **Chưa có** (mốc sau): tin của chủ trọ hết dùng thử hoặc vượt hạn mức biến khỏi danh sách và chi tiết công khai; `GET /me/membership`; cờ `isPublic`. Nên **hiện tại tin vẫn hiện công khai dù chủ trọ đã hết dùng thử**.
+- **FE cần làm**: xử lý hai mã lỗi mới ở nút đăng tin và nút "Hiện" (mục 7, bước 6): hiện `message`, giữ nguyên biểu mẫu, gợi ý ẩn hoặc xóa bớt tin hoặc mua gói. Chưa cần làm trang trạng thái dùng thử.
+
 ### 2026-10-16 · Tham số hệ thống: admin đổi số ngày và số tin dùng thử (mốc 1 của dùng thử)
 
 - Thêm 2 API cho admin: `GET /settings` và `PATCH /settings/:key`. Xem mục 6.24. Quyền `setting:read` và `setting:update` (chỉ admin giữ). Hai khóa: `trial_days` (mặc định 30, từ 0 đến 365) và `trial_listing_limit` (mặc định 2, từ 0 đến 100).
 - **Mới lưu và đọc ra, chưa áp vào đâu**: đăng ký chủ trọ chưa có hạn dùng thử và đăng tin chưa bị chặn theo hạn mức. Hai việc đó thuộc mốc 2 và 3 của tính năng; FE đừng dựng giao diện hạn mức vội.
-- **Tạm thời, ảnh hưởng tới FE**: migration của mốc này thêm ràng buộc "chủ trọ phải có hạn dùng thử", nhưng đăng ký chưa đặt hạn đó. Vì vậy trên cơ sở dữ liệu đã chạy migration, `POST /auth/register` với `accountType: "landlord"` **trả 500 `INTERNAL_ERROR`** cho đến khi xong mốc 2. Đăng ký `tenant` và mọi API khác không đổi.
+- **Tạm thời, ảnh hưởng tới FE** (đã hết từ 2026-10-19, xem mục nhật ký đó): migration của mốc này thêm ràng buộc "chủ trọ phải có hạn dùng thử", nhưng đăng ký chưa đặt hạn đó. Vì vậy trên cơ sở dữ liệu đã chạy migration, `POST /auth/register` với `accountType: "landlord"` **trả 500 `INTERNAL_ERROR`** cho đến khi xong mốc 2. Đăng ký `tenant` và mọi API khác không đổi.
 - Không thêm mã lỗi mới (lỗi dùng `VALIDATION_FAILED`, `NOT_FOUND`, `PERMISSION_DENIED` đã có).
 - **FE cần làm**: (tùy chọn) trang tham số cho admin theo luồng ở mục 7; chưa cần làm gì khác.
 

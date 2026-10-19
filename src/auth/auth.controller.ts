@@ -67,7 +67,7 @@ export class AuthController {
 		@Res({ passthrough: true }) res: Response,
 	): Promise<RegisterResponse> {
 		const { refreshToken, accessToken, expiresIn, user } =
-			await this.authService.register(dto, clientInfo(req));
+			await this.authService.register(dto, clientInfo(req), new Date());
 		this.writeRefreshCookie(res, refreshToken);
 		return { accessToken, expiresIn, user };
 	}

@@ -11,13 +11,17 @@ export function normalizeEmail(email: string): string {
 	return email.trim().toLowerCase();
 }
 
-/** Mật khẩu đã được băm bởi AuthService (PasswordHasher); số điện thoại đã chuẩn hóa ở DTO. */
+/**
+ * Mật khẩu đã được băm bởi AuthService (PasswordHasher); số điện thoại đã chuẩn hóa ở DTO. `trialEndsAt` do
+ * MembershipsService tính: có giá trị với chủ trọ (CHECK ở DB bắt buộc), `null` với người tìm trọ.
+ */
 export interface NewUserInput {
 	readonly email: string;
 	readonly passwordHash: string;
 	readonly name: string | null;
 	readonly phone: string | null;
 	readonly accountType: SelfRegisterType;
+	readonly trialEndsAt: Date | null;
 }
 
 /** Luật nghiệp vụ của "người dùng": chuẩn hóa email, tạo, tìm, khóa và mở khóa. */
@@ -36,6 +40,7 @@ export class UsersService {
 				name: input.name?.trim() || null,
 				phone: input.phone,
 				accountType: input.accountType,
+				trialEndsAt: input.trialEndsAt,
 			},
 			tx,
 		);
@@ -76,8 +81,16 @@ export class UsersService {
 		return this.usersRepository.landlordPhoneExistsIncludingDeleted(phone);
 	}
 
-	findById(id: string): Promise<UserWithoutPassword | null> {
-		return this.usersRepository.findById(id);
+	findById(
+		id: string,
+		tx?: Prisma.TransactionClient,
+	): Promise<UserWithoutPassword | null> {
+		return this.usersRepository.findById(id, tx);
+	}
+
+	/** Khóa dòng của một người dùng đến hết giao dịch `tx` (đăng và hiện tin, spec 0003). */
+	lockById(id: string, tx: Prisma.TransactionClient): Promise<void> {
+		return this.usersRepository.lockById(id, tx);
 	}
 
 	/**

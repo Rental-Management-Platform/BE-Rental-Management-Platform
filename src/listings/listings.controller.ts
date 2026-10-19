@@ -51,7 +51,7 @@ export class PropertyListingsController {
 		@Param('propertyId', uuidParam()) propertyId: string,
 		@Body() dto: CreateListingDto,
 	): Promise<OwnerListingDetailResponse> {
-		return this.listings.create(user, propertyId, dto);
+		return this.listings.create(user, propertyId, dto, new Date());
 	}
 }
 
@@ -132,7 +132,7 @@ export class ListingsController {
 		@CurrentUser() user: RequestUser,
 		@Param('id', uuidParam()) id: string,
 	): Promise<OwnerListingDetailResponse> {
-		return this.listings.show(user, id);
+		return this.listings.show(user, id, new Date());
 	}
 }
 

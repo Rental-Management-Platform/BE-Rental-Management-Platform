@@ -8,6 +8,7 @@ import { AppThrottlerGuard } from '../common/rate-limit/app-throttler.guard';
 import { RATE_LIMIT_OPTIONS } from '../common/rate-limit/rate-limit.options';
 import { AppConfigService } from '../config/app-config.service';
 import { MailModule } from '../mail/mail.module';
+import { MembershipsModule } from '../memberships/memberships.module';
 import { UsersModule } from '../users/users.module';
 import { AuthSessionsRepository } from './auth-sessions.repository';
 import { AuthController } from './auth.controller';
@@ -26,6 +27,7 @@ import { TokenService } from './token.service';
 		UsersModule,
 		AccountTypesModule,
 		MailModule,
+		MembershipsModule,
 		PassportModule,
 		ThrottlerModule.forRoot(RATE_LIMIT_OPTIONS),
 		JwtModule.registerAsync({

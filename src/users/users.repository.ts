@@ -4,7 +4,7 @@ import type { Prisma, User } from '../generated/prisma/client';
 
 export type NewUser = Pick<
 	User,
-	'email' | 'passwordHash' | 'name' | 'phone' | 'accountType'
+	'email' | 'passwordHash' | 'name' | 'phone' | 'accountType' | 'trialEndsAt'
 >;
 export type UserWithoutPassword = Omit<User, 'passwordHash'>;
 
@@ -110,6 +110,15 @@ export class UsersRepository {
 			where: { id, ...notDeleted },
 			omit: withoutPassword,
 		});
+	}
+
+	/**
+	 * Khóa dòng người dùng bằng `SELECT ... FOR UPDATE` cho đến hết giao dịch (spec 0003, "Thứ tự khóa": `users`
+	 * trước, rồi `properties`, rồi `listings`). Đăng và hiện tin khóa dòng của chủ trọ để việc đếm tin đang hiện
+	 * rồi ghi không bị hai yêu cầu cùng lúc vượt qua hạn mức. Không đọc cột nào, và không lọc `deleted_at`.
+	 */
+	async lockById(id: string, tx: Prisma.TransactionClient): Promise<void> {
+		await tx.$queryRaw`SELECT id FROM users WHERE id = ${id}::uuid FOR UPDATE`;
 	}
 
 	/** Khóa bằng một câu cập nhật có điều kiện: hai người khóa cùng lúc thì chỉ một người thắng. */

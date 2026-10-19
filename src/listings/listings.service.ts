@@ -7,8 +7,11 @@ import type { Page } from '../common/pagination/pagination';
 import { skipOf, toPage } from '../common/pagination/pagination';
 import { TransactionRunner } from '../common/persistence/transaction-runner';
 import { toSearchKey } from '../common/text/to-search-key';
+import type { Prisma } from '../generated/prisma/client';
+import { MembershipsService } from '../memberships/memberships.service';
 import { ModerationLogsRepository } from '../moderation/moderation-logs.repository';
 import { PropertiesRepository } from '../properties/properties.repository';
+import { UsersService } from '../users/users.service';
 import type { CreateListingDto } from './dto/create-listing.dto';
 import type {
 	ListingDetailResponse,
@@ -57,7 +60,8 @@ function toDateOnly(value: string | null | undefined): Date | null {
  * khóa dòng nhà trọ giống sửa và xóa nhà trọ, nên `search_key` luôn dựng từ tên và địa chỉ mới nhất. Chuyển
  * trạng thái là một câu `updateMany` có điều kiện trạng thái nguồn nên admin ẩn đua với chủ trọ thì admin thắng.
  *
- * Hàng 9 sẽ kiểm hạn mức tin trong giao dịch của `create` và `show` (khóa dòng `users` của chủ trọ, spec 0005).
+ * Chỉ `create` và `show` (đưa tin về `visible`) có cửa hạn mức (spec 0003 AC-4 đến AC-7): khóa dòng `users` của
+ * chủ trọ, kiểm hạn mức, rồi ghi, tất cả trong một giao dịch. `hide`, `update`, `remove` không bị chặn.
  */
 @Injectable()
 export class ListingsService {
@@ -69,6 +73,8 @@ export class ListingsService {
 		private readonly moderationLogs: ModerationLogsRepository,
 		private readonly transactions: TransactionRunner,
 		private readonly views: ViewDeduplicator,
+		private readonly users: UsersService,
+		private readonly memberships: MembershipsService,
 	) {}
 
 	// ----- đăng và sửa -----
@@ -76,17 +82,19 @@ export class ListingsService {
 	/**
 	 * Đăng tin vào nhà trọ của mình: trạng thái `visible`, `view_count` 0, mã ngắn duy nhất. Không kiểm trùng mã
 	 * trước (vẫn đua giữa hai request): chèn thẳng, gặp trùng thì sinh mã mới và thử lại tối đa 5 lần. Vòng thử lại
-	 * bọc NGOÀI cả giao dịch vì giao dịch PostgreSQL đã lỗi thì bị hủy, không chèn tiếp được.
+	 * bọc NGOÀI cả giao dịch vì giao dịch PostgreSQL đã lỗi thì bị hủy, không chèn tiếp được. `now` là đồng hồ
+	 * ứng dụng do controller lấy một lần mỗi request.
 	 */
 	async create(
 		user: RequestUser,
 		propertyId: string,
 		dto: CreateListingDto,
+		now: Date,
 	): Promise<OwnerListingDetailResponse> {
 		let collision: unknown;
 		for (let attempt = 1; attempt <= LISTING_CODE_ATTEMPTS; attempt += 1) {
 			try {
-				const id = await this.insertOnce(user, propertyId, dto);
+				const id = await this.insertOnce(user, propertyId, dto, now);
 				return await this.readOwner(id);
 			} catch (error: unknown) {
 				if (!(error instanceof ListingCodeTakenError)) throw error;
@@ -101,17 +109,24 @@ export class ListingsService {
 		});
 	}
 
+	/**
+	 * Thứ tự khóa của spec 0003: dòng `users` của người gọi trước, rồi dòng nhà trọ. Kiểm sở hữu nằm trước kiểm
+	 * hạn mức nên nhà trọ không có (404) hay của người khác (403) luôn được báo trước hai lỗi hạn mức (AC-4).
+	 */
 	private insertOnce(
 		user: RequestUser,
 		propertyId: string,
 		dto: CreateListingDto,
+		now: Date,
 	): Promise<string> {
 		return this.transactions.run(async (tx) => {
+			await this.users.lockById(user.userId, tx);
 			const locked = await this.properties.lockLiveById(propertyId, tx);
 			if (locked === null) {
 				throw new AppException(ErrorCode.PROPERTY_NOT_FOUND);
 			}
 			assertOwner(user, locked.landlordId);
+			await this.assertRoomForOneMore(user.userId, now, tx);
 			const source = await this.properties.findAddressSource(
 				propertyId,
 				tx,
@@ -208,23 +223,62 @@ export class ListingsService {
 	}
 
 	/**
-	 * `hidden_by_owner` sang `visible`. Tin đang `hidden_by_admin` thì 403 `LISTING_HIDDEN_BY_ADMIN` (chủ trọ không
-	 * tự gỡ lệnh ẩn của admin); trạng thái khác thì 409 `LISTING_STATE_INVALID`.
+	 * `hidden_by_owner` sang `visible`. Thứ tự báo lỗi (spec 0003 AC-5): 404 hoặc 403 sở hữu, rồi tin đang
+	 * `hidden_by_admin` thì 403 `LISTING_HIDDEN_BY_ADMIN` (chủ trọ không tự gỡ lệnh ẩn của admin) hoặc trạng thái
+	 * khác thì 409 `LISTING_STATE_INVALID`, rồi `MEMBERSHIP_REQUIRED`, rồi `LISTING_QUOTA_REACHED`. Hiện tin là
+	 * thêm một tin đang hiện nên đi qua cùng cửa hạn mức với `create`, trong giao dịch đã khóa dòng `users`.
 	 */
 	async show(
 		user: RequestUser,
 		id: string,
+		now: Date,
 	): Promise<OwnerListingDetailResponse> {
-		await this.requireOwned(user, id);
-		const moved = await this.repository.transition(
-			id,
-			['hidden_by_owner'],
-			'visible',
-		);
+		const owned = await this.requireOwned(user, id);
+		if (owned.status === 'hidden_by_admin') {
+			throw new AppException(ErrorCode.LISTING_HIDDEN_BY_ADMIN);
+		}
+		if (owned.status !== 'hidden_by_owner') {
+			throw new AppException(ErrorCode.LISTING_STATE_INVALID);
+		}
+		const moved = await this.transactions.run(async (tx) => {
+			await this.users.lockById(user.userId, tx);
+			await this.assertRoomForOneMore(user.userId, now, tx);
+			return this.repository.transition(
+				id,
+				['hidden_by_owner'],
+				'visible',
+				tx,
+			);
+		});
+		// Trạng thái đã đổi giữa lần kiểm trên và giao dịch (admin ẩn, hoặc tin bị xóa): câu UPDATE có điều kiện
+		// nguồn không ghi đè, đọc lại để báo đúng lỗi.
 		if (!moved) {
 			await this.explainRefusal(id, 'show');
 		}
 		return this.readOwner(id);
+	}
+
+	/**
+	 * Cửa hạn mức (spec 0003 AC-3, AC-4, AC-6): phải gọi trong giao dịch đã khóa dòng `users` của chủ trọ. Hết
+	 * dùng thử và chưa có gói thì 403 `MEMBERSHIP_REQUIRED`; còn hiệu lực mà số tin đang hiện đã bằng hoặc vượt
+	 * hạn mức thì 403 `LISTING_QUOTA_REACHED`; còn chỗ thì qua.
+	 */
+	private async assertRoomForOneMore(
+		landlordId: string,
+		now: Date,
+		tx: Prisma.TransactionClient,
+	): Promise<void> {
+		const membership = await this.memberships.resolve(landlordId, now, tx);
+		if (membership.state === 'expired') {
+			throw new AppException(ErrorCode.MEMBERSHIP_REQUIRED);
+		}
+		const visible = await this.repository.countVisibleByLandlord(
+			landlordId,
+			tx,
+		);
+		if (visible >= membership.limit) {
+			throw new AppException(ErrorCode.LISTING_QUOTA_REACHED);
+		}
 	}
 
 	/**

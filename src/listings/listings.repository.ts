@@ -329,6 +329,24 @@ export class ListingsRepository {
 		return result.count === 1;
 	}
 
+	/**
+	 * Số tin đang hiện của một chủ trọ (spec 0003 AC-6): `status = 'visible'` và chưa xóa mềm, qua nhà trọ của
+	 * họ. Tin đang bị ẩn bớt khỏi công khai vì vượt hạn mức vẫn là `visible` nên vẫn được đếm. Gọi trong giao
+	 * dịch đã khóa dòng `users` của chủ trọ để con số này không đổi trước khi người gọi ghi.
+	 */
+	countVisibleByLandlord(
+		landlordId: string,
+		tx?: Prisma.TransactionClient,
+	): Promise<number> {
+		return this.client(tx).listing.count({
+			where: {
+				status: 'visible',
+				...notDeleted,
+				property: { landlordId },
+			},
+		});
+	}
+
 	// ----- dùng bởi module nhà trọ (mốc 2) -----
 
 	/** Số tin chưa xóa mềm của một nhà trọ, mọi trạng thái (kể cả đang ẩn). */
