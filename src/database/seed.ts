@@ -7,12 +7,13 @@ import { normalizeEmail } from '../users/users.service';
 import { buildDatabaseUrl } from './build-database-url';
 import { loadEnvFile } from './load-env';
 import { seedCatalog } from './seed-catalog';
+import { seedSettings } from './seed-settings';
 
 /**
- * Seed chạy lại nhiều lần vẫn đúng (spec 0003 AC-9, spec 0002 AC-1). Làm ba việc: kiểm ba loại tài
- * khoản đã có (do migration tạo; thiếu thì dừng), thêm danh mục phường và tiện ích còn thiếu, và tạo
- * admin đầu tiên khi chưa có admin nào. Không bao giờ ghi đè quyền của loại hay tên danh mục, vì admin
- * có thể đã chỉnh.
+ * Seed chạy lại nhiều lần vẫn đúng (spec 0003 AC-9 của phân quyền, spec 0002 AC-1, spec 0003 AC-12 của dùng
+ * thử). Làm bốn việc: kiểm ba loại tài khoản đã có (do migration tạo; thiếu thì dừng), thêm danh mục phường và
+ * tiện ích còn thiếu, thêm hai tham số dùng thử mặc định còn thiếu, và tạo admin đầu tiên khi chưa có admin nào.
+ * Không bao giờ ghi đè quyền của loại, tên danh mục hay giá trị tham số, vì admin có thể đã chỉnh.
  */
 async function main(): Promise<void> {
 	loadEnvFile();
@@ -46,8 +47,9 @@ async function main(): Promise<void> {
 			);
 		}
 
-		// Danh mục chạy trước phần admin vì phần admin có thể kết thúc sớm (đã có admin).
+		// Danh mục và tham số chạy trước phần admin vì phần admin có thể kết thúc sớm (đã có admin).
 		await seedCatalog(prisma);
+		await seedSettings(prisma);
 
 		// Tính cả admin bị khóa và đã xóa mềm: đã từng có admin thì không tự tạo thêm.
 		const admins = await prisma.user.count({

@@ -25,7 +25,7 @@ _Đây là các khuyến nghị để việc làm gọn gàng, không phải yê
 | 6 | Quên mật khẩu và đổi mật khẩu | Release 6 | done |
 | 7 | Giới hạn tần suất | Release 7 | done |
 | 8 | Nhà trọ, đăng tin và xem tin | Release 8 | in-progress |
-| 9 | Dùng thử miễn phí và hạn mức tin | Release 9 | planned |
+| 9 | Dùng thử miễn phí và hạn mức tin | Release 9 | in-progress |
 | 10 | Mua gói (thanh toán thử) và gia hạn theo tháng | Release 10 | planned |
 | 11 | Theo dõi chủ trọ và số người biết đến | Release 11 | planned |
 | 12 | Lưu phòng yêu thích | Release 12 | planned |
@@ -133,10 +133,16 @@ Spec [0002](../specs/0002-property-listings/index.md) (16 AC, 5 mốc, đã đư
 
 ## Release 9: dùng thử và hạn mức
 
-### 9. Dùng thử miễn phí và hạn mức tin · planned · needs a decision
-Chủ trọ dùng thử miễn phí `trial_days` ngày (mặc định 30) với tối đa `trial_listing_limit` tin đang hiện (mặc định 2); cả hai chỉnh bằng bảng `settings`. Một số điện thoại chỉ nhận dùng thử một lần (đã có ở đăng ký, không xác thực bằng mã gửi về). Chỉ tin đang hiện tính vào hạn mức, ẩn một tin là trả lại một chỗ. Hết kỳ dùng thử mà không có gói đang hiệu lực thì mọi tin của chủ trọ tự biến khỏi công khai (suy ra lúc đọc, không cần cron), chủ trọ vẫn xem và sửa được tin của mình; có gói thì tin hiện lại. Người tìm trọ không bị giới hạn. Đã chốt ngày 2026-10-11; còn lại cho `/architect`: cột lưu hạn dùng thử, mã lỗi và thông báo khi chạm hạn mức, cách tính hạn mức hiện hành khi có gói.
-**Done when:** tài khoản chủ trọ mới có một kỳ dùng thử và một hạn mức tin; đăng hoặc hiện thêm tin khi đã đủ hạn mức bị chặn kèm gợi ý mua gói; ẩn một tin thì đăng thêm được; hết kỳ dùng thử mà chưa có gói thì tin của chủ trọ biến khỏi danh sách công khai; một số điện thoại không nhận dùng thử lần hai; số ngày và số tin dùng thử đổi được bằng `settings`, không viết cứng trong code.
-- [ ] Design it (spec): `/architect free trial and listing quota`
+### 9. Dùng thử miễn phí và hạn mức tin · in-progress
+Chủ trọ dùng thử miễn phí `trial_days` ngày (mặc định 30) với tối đa `trial_listing_limit` tin đang hiện (mặc định 2); cả hai chỉnh bằng bảng `settings`. Một số điện thoại chỉ nhận dùng thử một lần (đã có ở đăng ký, không xác thực bằng mã gửi về). Chỉ tin đang hiện tính vào hạn mức, ẩn một tin là trả lại một chỗ. Hết kỳ dùng thử mà không có gói đang hiệu lực thì mọi tin của chủ trọ tự biến khỏi công khai (suy ra lúc đọc, không cần cron), chủ trọ vẫn xem và sửa được tin của mình; có gói thì tin hiện lại. Người tìm trọ không bị giới hạn. Đã thiết kế đầy đủ ở spec 0003 (13 AC, 4 mốc), bạn Accept ngày 2026-10-16: hạn dùng thử lưu thành cột `users.trial_ends_at` lúc đăng ký (đổi `trial_days` chỉ ảnh hưởng người đăng ký sau); hạn mức hiện hành tính ở một hàm (gói thay hạn mức dùng thử khi còn hiệu lực, hàng 10 cắm vào); hai mã lỗi 403 `MEMBERSHIP_REQUIRED` và `LISTING_QUOTA_REACHED`; khi hạn mức bị hạ thấp hơn số tin đang hiện thì chỉ các tin đăng sớm nhất còn hiện công khai; thêm `GET /me/membership`, cờ `isPublic` cho tin của chủ trọ và API admin cho `settings`.
+**Done when:** tài khoản chủ trọ mới có một kỳ dùng thử và một hạn mức tin; đăng hoặc hiện thêm tin khi đã đủ hạn mức bị chặn kèm gợi ý mua gói (hết kỳ thì báo cần mua gói, còn kỳ mà đủ tin thì báo ẩn bớt hoặc nâng gói); ẩn một tin thì đăng thêm được, hai yêu cầu cùng lúc không vượt hạn mức; hết kỳ dùng thử mà chưa có gói thì tin của chủ trọ biến khỏi danh sách công khai ngay mà không cần việc nền; admin hạ hạn mức thì chỉ các tin đăng sớm nhất còn hiện và `isPublic` cho chủ trọ biết tin nào bị ẩn bớt; chủ trọ đọc được kỳ dùng thử và hạn mức ở `GET /me/membership`; một số điện thoại không nhận dùng thử lần hai; số ngày và số tin dùng thử đổi được bằng API `settings` của admin, không viết cứng trong code.
+- [x] Design it (spec): `/architect free trial and listing quota`
+- [ ] Build it: `/develop free trial and listing quota`
+   - [x] Mốc 1: nền dữ liệu và tham số: migration `users.trial_ends_at` cùng bảng `settings`, seed hai dòng mặc định, API admin `GET /settings` và `PATCH /settings/:key` (AC-2, AC-12)
+   - [ ] Mốc 2: kỳ dùng thử và cổng hạn mức ở phía ghi: `trial_ends_at` lúc đăng ký, hàm hạn mức, hai mã lỗi, khóa dòng `users` khi đăng và hiện tin (AC-1, AC-3, AC-4, AC-5, AC-6, AC-7)
+   - [ ] Mốc 3: luật hiển thị công khai theo hạng, SQL thô hai bước cho danh sách và chi tiết (AC-8, AC-9)
+   - [ ] Mốc 4: `GET /me/membership`, cờ `isPublic`, đo `EXPLAIN` ở 60 nghìn tin, tài liệu và kiểm cuối (AC-10, AC-11, AC-13)
+Spec [0003](../specs/0003-free-trial-listing-quota/index.md) (13 AC, 4 mốc, đã được bạn Accept ngày 2026-10-16; trạng thái spec đi theo tính năng) · code in `src/settings/`, `src/memberships/`, `src/listings/`, `src/auth/`, `src/users/`, `prisma/` · tài liệu in `docs/api/`
 
 ## Release 10: mua gói
 
@@ -179,6 +185,7 @@ Ngoài phạm vi bản này, giữ lại để kế hoạch trung thực.
 - **Giao dịch nhiều bước và chạy migration trong container**: làm cùng tính năng cần chúng (hàng 5 khi gán vai trò lúc đăng ký, và spec 0006).
 - **Duyệt tin trước khi hiển thị**: đã bỏ hẳn ngày 2026-10-11, thay bằng admin ẩn tin sau khi đăng (hàng 8). Không làm lại trừ khi bạn đổi ý.
 - **Hoãn khỏi MVP (chốt 2026-10-11)**: xác thực chủ trọ và ảnh giấy tờ, báo cáo tin xấu, liên hệ chủ trọ có giới hạn mỗi ngày, đẩy tin và tin nổi bật, kiểm tra tại chỗ, quảng cáo, thu chi và dashboard doanh thu, thống kê cho chủ trọ, tìm quanh địa điểm mốc, lịch sử giá tin, cổng thanh toán thật (VNPay), hoàn tiền và tặng gói, đổi loại tài khoản. Thêm lại bằng `/scope` khi tới lượt · needs a decision
+- **Hoãn từ spec 0003 (2026-10-16)**: email nhắc sắp hết dùng thử (cần việc nền), admin gia hạn dùng thử cho một chủ trọ cụ thể, API công khai cho FE hiện "dùng thử N ngày, M tin" trước khi đăng ký · needs a decision
 
 ## Legend
 

@@ -29,15 +29,19 @@ model User {
   lockedReason      String?   @map("locked_reason")
   /// Lần gần nhất đổi hoặc đặt lại mật khẩu (spec 0002); rỗng nếu chưa từng đổi.
   passwordChangedAt DateTime? @map("password_changed_at") @db.Timestamptz(6)
+  /// Hết kỳ dùng thử của chủ trọ, đặt lúc đăng ký (spec 0003 dùng thử). Bắt buộc với landlord (CHECK ở migration);
+  /// rỗng với tenant và admin.
+  trialEndsAt       DateTime? @map("trial_ends_at") @db.Timestamptz(6)
   createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt         DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt         DateTime? @map("deleted_at") @db.Timestamptz(6)
 
-  accountTypeRef AccountType     @relation(fields: [accountType], references: [key], onDelete: Restrict, map: "users_account_type_fk")
-  sessions       AuthSession[]
-  moderationLogs ModerationLog[]
-  passwordResets PasswordReset[]
-  properties     Property[]
+  accountTypeRef  AccountType     @relation(fields: [accountType], references: [key], onDelete: Restrict, map: "users_account_type_fk")
+  sessions        AuthSession[]
+  moderationLogs  ModerationLog[]
+  passwordResets  PasswordReset[]
+  properties      Property[]
+  updatedSettings Setting[]
 
   @@index([accountType], map: "users_account_type_idx")
   @@map("users")
@@ -253,4 +257,18 @@ model ListingImage {
 
   @@unique([listingId, position], map: "listing_images_listing_id_position_unique")
   @@map("listing_images")
+}
+
+/// Tham số nghiệp vụ admin chỉnh được (spec 0003 dùng thử). Khóa hợp lệ do code đăng ký (SETTING_DEFINITIONS);
+/// giá trị lưu dạng chữ, được ép số nguyên và kiểm khoảng mỗi lần đọc. CHECK ở migration: key dạng ^[a-z][a-z0-9_]{1,59}$.
+model Setting {
+  key       String   @id(map: "settings_pkey")
+  value     String
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  /// Admin sửa lần cuối; rỗng khi dòng do seed tạo hoặc admin đó đã bị xóa.
+  updatedBy String?  @map("updated_by") @db.Uuid
+
+  updatedByUser User? @relation(fields: [updatedBy], references: [id], onDelete: SetNull, map: "settings_updated_by_fk")
+
+  @@map("settings")
 }

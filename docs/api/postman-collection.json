@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Rental Management Platform API",
-    "description": "Bộ request để thử API backend. Cập nhật cùng mỗi thay đổi API (xem docs/api/api-for-frontend.md, mục Nhật ký thay đổi).\n\nCách dùng:\n1. Import file này vào Postman.\n2. Mở tab Variables của collection, điền `adminEmail` và `adminPassword` theo ADMIN_SEED_* trong .env (không commit mật khẩu thật).\n3. Chạy API (`npm run start:dev`), rồi chạy lần lượt folder 00, 01, 02, 03, 04, 05, 07, 08, 09. Folder 06 (giới hạn tần suất, lỗi 429) chạy riêng, đừng chạy cả bộ nhiều lần liên tiếp: bộ đếm nằm trong bộ nhớ backend, muốn chạy lại ngay thì khởi động lại backend.\n4. Các request tự lưu token vào biến `userToken` và `adminToken`.\n\nCookie refresh (`rt`) có Path `/api/v1/auth`, Postman tự giữ và tự gửi cho các request dưới đường dẫn đó.",
+    "description": "Bộ request để thử API backend. Cập nhật cùng mỗi thay đổi API (xem docs/api/api-for-frontend.md, mục Nhật ký thay đổi).\n\nCách dùng:\n1. Import file này vào Postman.\n2. Mở tab Variables của collection, điền `adminEmail` và `adminPassword` theo ADMIN_SEED_* trong .env (không commit mật khẩu thật).\n3. Chạy API (`npm run start:dev`), rồi chạy lần lượt folder 00, 01, 02, 03, 04, 05, 07, 08, 09, 10. Folder 06 (giới hạn tần suất, lỗi 429) chạy riêng, đừng chạy cả bộ nhiều lần liên tiếp: bộ đếm nằm trong bộ nhớ backend, muốn chạy lại ngay thì khởi động lại backend.\n4. Các request tự lưu token vào biến `userToken` và `adminToken`.\n\nCookie refresh (`rt`) có Path `/api/v1/auth`, Postman tự giữ và tự gửi cho các request dưới đường dẫn đó.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -3976,6 +3976,735 @@
               ]
             },
             "description": "Không còn tin chưa xóa nên xóa mềm nhà trọ thành công (204)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "10 Tham số hệ thống (admin)",
+      "description": "Admin xem và đổi hai tham số dùng thử (spec 0003 dùng thử, mốc 1): `trial_days` (mặc định 30, từ 0 đến 365) và `trial_listing_limit` (mặc định 2, từ 0 đến 100). **Chạy sau folder 01** (cần `userToken` cho hai request 403) và sau `npm run seed` (seed thêm hai dòng mặc định). Request đầu đăng nhập admin và lưu `adminToken`; folder tự trả hai tham số về mặc định ở cuối các request đổi. Lưu ý: ở mốc này tham số mới chỉ được lưu và đọc ra, việc áp vào đăng ký và hạn mức tin thuộc mốc 2 và 3.",
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{adminToken}}",
+            "type": "string"
+          }
+        ]
+      },
+      "item": [
+        {
+          "name": "Đăng nhập admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.collectionVariables.set('adminToken', pm.response.json().accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Công khai. Đăng nhập admin do `npm run seed` tạo (điền `adminEmail`, `adminPassword` ở biến của collection). Lưu token vào `adminToken`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Danh sách tham số (GET /settings)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('đúng hai khóa theo thứ tự', () => pm.expect(pm.response.json().map((s) => s.key)).to.eql(['trial_days', 'trial_listing_limit']));",
+                  "pm.test('mỗi phần tử có đúng 6 trường', () => pm.response.json().forEach((s) => pm.expect(Object.keys(s).sort()).to.eql(['key', 'max', 'min', 'updatedAt', 'updatedBy', 'value'])));",
+                  "pm.test('khoảng cho phép: trial_days 0 đến 365, trial_listing_limit 0 đến 100', () => {",
+                  "    const [days, limit] = pm.response.json();",
+                  "    pm.expect([days.min, days.max]).to.eql([0, 365]);",
+                  "    pm.expect([limit.min, limit.max]).to.eql([0, 100]);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/settings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "settings"
+              ]
+            },
+            "description": "Cần quyền `setting:read` (chỉ admin). Luôn trả đúng hai phần tử theo thứ tự `trial_days`, `trial_listing_limit`, kể cả khi chưa có dòng trong DB (khi đó `value` là mặc định 30 và 2, `updatedAt` và `updatedBy` là `null`)."
+          }
+        },
+        {
+          "name": "Đổi số ngày dùng thử (PATCH /settings/trial_days)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const setting = pm.response.json();",
+                  "pm.test('giá trị mới được trả về', () => {",
+                  "    pm.expect(setting.key).to.eql('trial_days');",
+                  "    pm.expect(setting.value).to.eql(14);",
+                  "});",
+                  "pm.test('ghi người sửa và thời điểm sửa', () => {",
+                  "    pm.expect(setting.updatedBy).to.be.a('string');",
+                  "    pm.expect(new Date(setting.updatedAt).toString()).to.not.eql('Invalid Date');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/settings/trial_days",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "settings",
+                "trial_days"
+              ]
+            },
+            "description": "Cần quyền `setting:update` và đọc lại quyền từ DB (`@FreshAuth`). Đổi `trial_days` chỉ ảnh hưởng chủ trọ đăng ký SAU lần đổi. Trả phần tử đã đổi, `updatedBy` là id admin.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": 14\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Đổi số tin dùng thử (PATCH /settings/trial_listing_limit)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('giá trị mới được trả về', () => {",
+                  "    pm.expect(pm.response.json().key).to.eql('trial_listing_limit');",
+                  "    pm.expect(pm.response.json().value).to.eql(3);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/settings/trial_listing_limit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "settings",
+                "trial_listing_limit"
+              ]
+            },
+            "description": "Cần quyền `setting:update`. Về sau `trial_listing_limit` có hiệu lực ngay cho mọi chủ trọ còn trong kỳ dùng thử (phần áp vào hạn mức tin thuộc mốc sau của tính năng; mốc này mới lưu và đọc ra).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": 3\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Xem lại sau khi đổi (GET /settings)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('thấy 14 và 3', () => pm.expect(pm.response.json().map((s) => s.value)).to.eql([14, 3]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/settings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "settings"
+              ]
+            },
+            "description": "Hai giá trị vừa đổi hiện ra ngay, không cần khởi động lại backend."
+          }
+        },
+        {
+          "name": "Đặt lại mặc định: số ngày dùng thử = 30",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('về 30', () => pm.expect(pm.response.json().value).to.eql(30));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/settings/trial_days",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "settings",
+                "trial_days"
+              ]
+            },
+            "description": "Trả `trial_days` về 30 để các lần chạy sau (và các folder khác) thấy giá trị mặc định.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": 30\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Đặt lại mặc định: số tin dùng thử = 2",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('về 2', () => pm.expect(pm.response.json().value).to.eql(2));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/settings/trial_listing_limit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "settings",
+                "trial_listing_limit"
+              ]
+            },
+            "description": "Trả `trial_listing_limit` về 2.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Số ngày ngoài khoảng (366)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 400 VALIDATION_FAILED', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED');",
+                  "});",
+                  "pm.test('nêu khoảng cho phép', () => pm.expect(pm.response.json().errors[0].message).to.include('từ 0 đến 365'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/settings/trial_days",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "settings",
+                "trial_days"
+              ]
+            },
+            "description": "Mong đợi 400 VALIDATION_FAILED, `errors` có trường `value` nêu khoảng từ 0 đến 365.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": 366\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Số tin ngoài khoảng (101)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 400 VALIDATION_FAILED', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/settings/trial_listing_limit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "settings",
+                "trial_listing_limit"
+              ]
+            },
+            "description": "Mong đợi 400 VALIDATION_FAILED. Khoảng của `trial_listing_limit` là 0 đến 100.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": 101\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Số âm (-1)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 400 VALIDATION_FAILED', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/settings/trial_days",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "settings",
+                "trial_days"
+              ]
+            },
+            "description": "Mong đợi 400 VALIDATION_FAILED.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": -1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Số thập phân (1.5)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 400 VALIDATION_FAILED', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/settings/trial_days",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "settings",
+                "trial_days"
+              ]
+            },
+            "description": "Mong đợi 400 VALIDATION_FAILED. Chỉ nhận số nguyên.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": 1.5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Chữ thay vì số",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 400 VALIDATION_FAILED', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/settings/trial_days",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "settings",
+                "trial_days"
+              ]
+            },
+            "description": "Mong đợi 400 VALIDATION_FAILED. Số viết thành chuỗi (`\"5\"`) cũng bị từ chối.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": \"5\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Khóa không có (PATCH /settings/khoa_la)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 404 NOT_FOUND', () => {",
+                  "    pm.response.to.have.status(404);",
+                  "    pm.expect(pm.response.json().code).to.eql('NOT_FOUND');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/settings/khoa_la",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "settings",
+                "khoa_la"
+              ]
+            },
+            "description": "Mong đợi 404 NOT_FOUND. Chỉ có hai khóa `trial_days` và `trial_listing_limit`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Chủ trọ hoặc người tìm trọ xem tham số (GET /settings)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 403 PERMISSION_DENIED', () => {",
+                  "    pm.response.to.have.status(403);",
+                  "    pm.expect(pm.response.json().code).to.eql('PERMISSION_DENIED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/settings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "settings"
+              ]
+            },
+            "description": "Dùng `userToken` (không phải admin). Mong đợi 403 PERMISSION_DENIED: quyền `setting:*` chỉ admin giữ.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Chủ trọ hoặc người tìm trọ đổi tham số (PATCH /settings/trial_days)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 403 PERMISSION_DENIED', () => {",
+                  "    pm.response.to.have.status(403);",
+                  "    pm.expect(pm.response.json().code).to.eql('PERMISSION_DENIED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/settings/trial_days",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "settings",
+                "trial_days"
+              ]
+            },
+            "description": "Dùng `userToken`. Mong đợi 403 PERMISSION_DENIED.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Không có token (GET /settings)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 401 TOKEN_MISSING', () => {",
+                  "    pm.response.to.have.status(401);",
+                  "    pm.expect(pm.response.json().code).to.eql('TOKEN_MISSING');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/settings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "settings"
+              ]
+            },
+            "description": "Mong đợi 401 TOKEN_MISSING.",
+            "auth": {
+              "type": "noauth"
+            }
           }
         }
       ]

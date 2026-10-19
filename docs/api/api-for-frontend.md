@@ -54,7 +54,8 @@ Mỗi tài khoản chỉ thuộc **một** loại, chọn lúc đăng ký và **
 | Nhà trọ của chủ trọ (tạo, xem danh sách và chi tiết, sửa, xóa mềm) | Có (mới, 2026-10-16) |
 | Tin đăng: đăng, sửa, xóa, ẩn và hiện của chủ trọ; danh sách và chi tiết tin công khai (có lọc, số điện thoại cho người đăng nhập, đếm lượt xem) | Có (mới, 2026-10-16) |
 | Ảnh tin; admin ẩn tin và quản lý danh mục phường, tiện ích | Chưa có (đang làm từng phần, mục 10) |
-| Dùng thử, hạn mức, mua gói | Chưa có |
+| Tham số hệ thống: admin xem và đổi số ngày dùng thử, số tin dùng thử | Có (mới, 2026-10-16, mục 6.24). Mới lưu và đọc ra, chưa áp vào đăng ký và hạn mức tin |
+| Dùng thử, hạn mức tin, mua gói | Chưa có (đang làm từng phần, mục 10) |
 | Theo dõi chủ trọ, lượt xem | Chưa có |
 
 ---
@@ -244,7 +245,7 @@ Quyền admin chỉnh được **chỉ gồm hành động lẻ** của các mod
 | `user` | read, lock, revoke | | tất cả | `lock`, `revoke` |
 | `account_type` | read, update | | tất cả | có |
 | `catalog` | read, create, update, delete | | tất cả | chưa |
-| `setting` | read, update | | tất cả | chưa |
+| `setting` | read, update | | tất cả | có (mục 6.24) |
 | `property` | read, create, update, delete | có | | có (mục 6.17) |
 | `listing` | read, create, update, delete, moderate | có | `moderate` | `read`, `create`, `update`, `delete` (mục 6.18 đến 6.23); `moderate` chưa |
 | `favorite` | read, create, delete | có | | chưa |
@@ -781,6 +782,42 @@ Cần nhớ:
 
 **Lỗi**: 409 `LISTING_STATE_INVALID` · 403 `LISTING_HIDDEN_BY_ADMIN` (chỉ `show`) · 404 `LISTING_NOT_FOUND` · 403 `NOT_RESOURCE_OWNER` · 403 `PERMISSION_DENIED` · 400 `INVALID_ID` · 429 `RATE_LIMITED`.
 
+### 6.24 Tham số hệ thống (admin)
+
+Hai tham số nghiệp vụ của kỳ dùng thử miễn phí, admin chỉnh được mà không cần sửa code. Chỉ admin giữ quyền `setting:read` và `setting:update`.
+
+| Khóa (`key`) | Mặc định | Khoảng | Ý nghĩa |
+|---|---|---|---|
+| `trial_days` | 30 | 0 đến 365 | Số ngày dùng thử của chủ trọ đăng ký **sau** khi đổi. `0` nghĩa là hết dùng thử ngay lúc đăng ký (cách dựng cảnh "hết quyền" khi demo) |
+| `trial_listing_limit` | 2 | 0 đến 100 | Số tin đang hiện tối đa trong kỳ dùng thử, áp ngay cho mọi chủ trọ còn trong kỳ |
+
+> **Mới lưu và đọc ra.** Việc áp hai tham số vào đăng ký (ngày hết dùng thử) và vào việc chặn đăng tin sẽ có ở các mốc sau của tính năng dùng thử (mục 10, hàng 9). Hiện đổi hai con số này chưa làm thay đổi hành vi nào của chủ trọ.
+
+`GET /settings` · quyền `setting:read`
+
+**200 OK**: mảng **đúng hai phần tử** theo thứ tự `trial_days`, `trial_listing_limit` (danh mục cố định, không phân trang):
+
+```json
+[
+  { "key": "trial_days", "value": 30, "min": 0, "max": 365, "updatedAt": "2026-10-16T03:00:00.000Z", "updatedBy": null },
+  { "key": "trial_listing_limit", "value": 2, "min": 0, "max": 100, "updatedAt": "2026-10-16T03:00:00.000Z", "updatedBy": null }
+]
+```
+
+`PATCH /settings/:key` · quyền `setting:update`. `:key` là `trial_days` hoặc `trial_listing_limit`.
+
+Body: `{ "value": 14 }`. `value` là **số nguyên** (không gửi chuỗi như `"14"` hay số thập phân).
+
+**200 OK**: một phần tử cùng dạng với `GET /settings`, có `updatedAt` là lúc vừa đổi và `updatedBy` là id admin vừa đổi. Lệnh này luôn đọc lại quyền từ cơ sở dữ liệu, nên admin vừa bị khóa bị từ chối ngay dù token còn hạn.
+
+Cần nhớ:
+- Dùng `min` và `max` trong chính phản hồi để giới hạn ô nhập, không cứng số trong FE.
+- `updatedAt` và `updatedBy` là `null` khi tham số chưa từng được sửa (giá trị lấy từ seed hoặc mặc định). `updatedBy` cũng `null` nếu admin sửa lần cuối đã bị xóa khỏi hệ thống.
+- Hệ thống tự dùng giá trị mặc định (30 và 2) nếu dòng tham số bị thiếu hoặc hỏng, nên `GET /settings` không bao giờ 500 vì lý do này.
+- Đổi `trial_days` **không** đổi hạn dùng thử của người đã đăng ký; đổi `trial_listing_limit` có hiệu lực ngay cho mọi chủ trọ còn trong kỳ (khi phần hạn mức tin có ở mốc sau).
+
+**Lỗi**: 400 `VALIDATION_FAILED` (không phải số nguyên, thiếu `value`, hoặc ngoài khoảng của khóa; `errors` có một dòng `field: "value"`) · 404 `NOT_FOUND` (khóa không có) · 403 `PERMISSION_DENIED` (chủ trọ, người tìm trọ) · 403 `ACCOUNT_LOCKED` · 401 `TOKEN_MISSING`.
+
 ---
 
 ## 7. Luồng màn hình gợi ý
@@ -834,6 +871,7 @@ Hai ô: mật khẩu hiện tại, mật khẩu mới. Gọi `POST /auth/change-
 
 - **Chỉnh quyền loại tài khoản**: lấy `GET /permissions` (danh mục) và `GET /account-types` (quyền hiện tại). Vẽ ma trận hành động theo module cho `landlord` và `tenant`. Tắt (không cho chọn) mọi hành động trong `adminActions`. Khi lưu, gửi **toàn bộ** danh sách đang chọn bằng `PATCH /account-types/:key`. Nên ghi chú: người dùng đang đăng nhập nhận quyền mới trong tối đa 15 phút hoặc khi họ refresh.
 - **Khóa, mở khóa**: bắt nhập **lý do** (bắt buộc cả khóa lẫn mở khóa). Khóa xong thì người đó mất phiên ngay. Hiện tại **chưa có API danh sách người dùng** để tìm id; xem mục 10.
+- **Tham số hệ thống**: một trang nhỏ với hai ô số: lấy `GET /settings`, mỗi dòng một ô nhập có giới hạn `min` và `max` lấy từ phản hồi, nút lưu gọi `PATCH /settings/:key` cho từng khóa (mục 6.24). Hiện `updatedAt` và `updatedBy` để biết ai sửa lần cuối. Nên ghi chú: đổi số ngày chỉ áp cho chủ trọ đăng ký sau đó.
 
 ### Hiển thị theo quyền
 
@@ -870,7 +908,8 @@ Hai ô: mật khẩu hiện tại, mật khẩu mới. Gọi `POST /auth/change-
 - **Chưa có API danh sách người dùng** nên màn hình admin chưa tìm được người để khóa ngoài việc biết sẵn id.
 - **Lượt xem tính trong bộ nhớ** của backend: khởi động lại thì mọi người xem được tính lại từ đầu (cộng dư vài lượt), và nếu sau này chạy nhiều bản backend thì mỗi bản tính riêng. Nhiều người không đăng nhập dùng chung một IP chỉ tính một lượt mỗi 30 phút.
 - **Số điện thoại với tài khoản vừa bị khóa**: access token còn hạn (tối đa 15 phút) vẫn được coi là đã đăng nhập ở trang chi tiết tin, nên tài khoản vừa bị khóa còn thấy số điện thoại đến khi token hết hạn. Mọi phiên của tài khoản đã bị hủy nên không refresh được.
-- **Tin chưa có hạn mức, dùng thử và gói**: hiện mọi chủ trọ đăng được số tin không giới hạn và tin hiện mãi (mục 10, hàng 9 và 10). Tin không tự hết hạn: phòng đã cho thuê mà chủ trọ quên ẩn thì tin vẫn nằm đó.
+- **Tin chưa có hạn mức, dùng thử và gói**: hiện mọi chủ trọ đăng được số tin không giới hạn và tin hiện mãi (mục 10, hàng 9 và 10). Tin không tự hết hạn: phòng đã cho thuê mà chủ trọ quên ẩn thì tin vẫn nằm đó. Hai tham số ở mục 6.24 mới được lưu, chưa áp vào đâu.
+- **Tạm thời: đăng ký chủ trọ trả 500** trên cơ sở dữ liệu đã chạy migration `free_trial_settings` cho đến khi xong mốc 2 của tính năng dùng thử (mốc 2 sẽ đặt hạn dùng thử lúc đăng ký). Đăng ký người tìm trọ và mọi API khác không bị ảnh hưởng. Mục này sẽ bị xóa khi mốc 2 xong.
 - **Chưa có ảnh tin** và **chưa có kháng nghị** khi bị ẩn tin: chủ trọ sửa tin xong vẫn phải liên hệ admin ngoài hệ thống.
 - **Tìm kiếm** chỉ khớp theo từng từ (không sửa lỗi chính tả, không tìm gần đúng). Từ ngắn dưới 3 ký tự vẫn tìm được nhưng chậm hơn khi có hàng chục nghìn tin.
 - **Số tổng `total` của danh sách** là một phép đếm riêng nên chậm dần khi có hàng chục nghìn tin; chấp nhận ở bản demo.
@@ -885,7 +924,7 @@ Backend sẽ làm theo thứ tự dưới đây. Mỗi mục khi xong sẽ vào 
 | Thứ tự | Tính năng | Ảnh hưởng tới FE |
 |---|---|---|
 | 8 | **Phần còn lại của nhà trọ và tin** (đã có: danh sách phường, xã và tiện ích, nhà trọ, đăng tin, xem tin, ẩn và hiện tin, mục 6.15 đến 6.23): **ảnh tin** (tải lên từng ảnh, tối đa 5 ảnh mỗi tin, xem ảnh), **admin ẩn và gỡ ẩn tin kèm lý do** cùng danh sách tin để kiểm duyệt, **admin quản lý danh mục phường và tiện ích** | Nút tải ảnh trong biểu mẫu tin; màn hình kiểm duyệt cho admin; `moderationReason` đã có sẵn trong API tin của chủ trọ. **Không cần hàng chờ duyệt** |
-| 9 | **Dùng thử miễn phí và hạn mức tin** cho chủ trọ: dùng thử 30 ngày, tối đa 2 tin đang hiện (admin đổi được hai con số này). Hết kỳ dùng thử mà chưa mua gói thì tin của chủ trọ tự biến khỏi danh sách công khai | Lỗi chặn đăng hoặc hiện thêm tin kèm gợi ý mua gói; hiện ngày hết hạn dùng thử và số tin còn lại |
+| 9 | **Dùng thử miễn phí và hạn mức tin** cho chủ trọ: dùng thử 30 ngày, tối đa 2 tin đang hiện (admin đổi được hai con số này). Hết kỳ dùng thử mà chưa mua gói thì tin của chủ trọ tự biến khỏi danh sách công khai. **Đã có**: API admin xem và đổi hai tham số (mục 6.24). **Chưa có**: đặt hạn dùng thử lúc đăng ký, chặn đăng và hiện tin theo hạn mức, tin biến khỏi công khai khi hết kỳ, `GET /me/membership`, cờ `isPublic` | Lỗi chặn đăng hoặc hiện thêm tin kèm gợi ý mua gói; hiện ngày hết hạn dùng thử và số tin còn lại |
 | 10 | **Mua gói và gia hạn theo tháng**, **thanh toán thử** (bấm xác nhận là có gói, không có tiền thật, không chuyển sang cổng thanh toán nào, nên **không có trang VNPay**) | Trang chọn gói, nút thanh toán thử, lịch sử đơn |
 | 11 | **Theo dõi chủ trọ** và hiển thị số người theo dõi, tổng lượt xem tin | Nút theo dõi, số liệu trên hồ sơ chủ trọ |
 | 12 | **Lưu phòng yêu thích** cho người tìm trọ | Nút lưu trên tin, trang danh sách tin đã lưu |
@@ -900,6 +939,14 @@ Backend sẽ làm theo thứ tự dưới đây. Mỗi mục khi xong sẽ vào 
 ## 11. Nhật ký thay đổi
 
 Mới nhất ở trên cùng. Mục nào **phá vỡ** cách FE đang gọi sẽ ghi rõ "ĐỔI KHÁC VỚI TRƯỚC".
+
+### 2026-10-16 · Tham số hệ thống: admin đổi số ngày và số tin dùng thử (mốc 1 của dùng thử)
+
+- Thêm 2 API cho admin: `GET /settings` và `PATCH /settings/:key`. Xem mục 6.24. Quyền `setting:read` và `setting:update` (chỉ admin giữ). Hai khóa: `trial_days` (mặc định 30, từ 0 đến 365) và `trial_listing_limit` (mặc định 2, từ 0 đến 100).
+- **Mới lưu và đọc ra, chưa áp vào đâu**: đăng ký chủ trọ chưa có hạn dùng thử và đăng tin chưa bị chặn theo hạn mức. Hai việc đó thuộc mốc 2 và 3 của tính năng; FE đừng dựng giao diện hạn mức vội.
+- **Tạm thời, ảnh hưởng tới FE**: migration của mốc này thêm ràng buộc "chủ trọ phải có hạn dùng thử", nhưng đăng ký chưa đặt hạn đó. Vì vậy trên cơ sở dữ liệu đã chạy migration, `POST /auth/register` với `accountType: "landlord"` **trả 500 `INTERNAL_ERROR`** cho đến khi xong mốc 2. Đăng ký `tenant` và mọi API khác không đổi.
+- Không thêm mã lỗi mới (lỗi dùng `VALIDATION_FAILED`, `NOT_FOUND`, `PERMISSION_DENIED` đã có).
+- **FE cần làm**: (tùy chọn) trang tham số cho admin theo luồng ở mục 7; chưa cần làm gì khác.
 
 ### 2026-10-16 · Tin đăng: đăng, xem công khai, ẩn và hiện
 
