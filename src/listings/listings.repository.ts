@@ -319,6 +319,38 @@ export class ListingsRepository {
 		return rows.length === 1;
 	}
 
+	// ----- số liệu theo chủ trọ (hồ sơ công khai, spec 0005) -----
+
+	/**
+	 * Tổng `view_count` của mọi tin thuộc mọi nhà trọ của chủ trọ, KHÔNG lọc trạng thái hay xóa mềm (spec 0005
+	 * AC-4): ẩn hay xóa tin không làm số này giảm. `SUM` của cột int trả `bigint`, đổi sang số của JavaScript ở đây;
+	 * chủ trọ chưa có tin thì 0.
+	 */
+	async sumViewCountByLandlord(landlordId: string): Promise<number> {
+		const rows = await this.prisma.$queryRaw<{ total: bigint }[]>`
+			SELECT COALESCE(SUM(l.view_count), 0)::bigint AS total
+			FROM listings l
+			JOIN properties p ON p.id = l.property_id
+			WHERE p.landlord_id = ${landlordId}::uuid`;
+		return Number(rows[0]?.total ?? 0);
+	}
+
+	/**
+	 * Số tin của chủ trọ đang hiện công khai ngay lúc đọc (spec 0005 AC-5): đúng hai mảnh SQL của danh sách và chi
+	 * tiết (`publicListingFrom` cộng `publicListingCondition`, cùng `now` và hạn mức dùng thử), nên luôn bằng số tin
+	 * của chủ trọ đó mà `GET /listings` trả cộng mọi trang. Chủ trọ hết dùng thử và hết gói thì 0.
+	 */
+	async countPublicByLandlord(
+		landlordId: string,
+		visibility: PublicVisibility,
+	): Promise<number> {
+		const rows = await this.prisma.$queryRaw<{ total: number }[]>`
+			SELECT count(*)::int AS total ${publicListingFrom(visibility.now)}
+			WHERE p.landlord_id = ${landlordId}::uuid
+				AND ${publicListingCondition(visibility.now, visibility.trialListingLimit)}`;
+		return rows[0]?.total ?? 0;
+	}
+
 	/**
 	 * Cộng một lượt xem bằng một câu `UPDATE` nguyên tử (spec 0002 AC-13) và trả số lượt sau khi cộng, hoặc
 	 * `null` nếu tin không còn `visible` (đã bị ẩn hay xóa ngay giữa lúc đọc và lúc cộng: không cộng).

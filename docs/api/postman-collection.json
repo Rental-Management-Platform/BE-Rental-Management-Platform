@@ -404,6 +404,21 @@
       "key": "catListingId",
       "value": "",
       "description": "Id tin tạo ở folder 17."
+    },
+    {
+      "key": "profileLandlordId",
+      "value": "",
+      "description": "Id chủ trọ của folder 08, mà folder 18 xem hồ sơ (lấy từ /auth/me)."
+    },
+    {
+      "key": "profileTenantId",
+      "value": "",
+      "description": "Id người tìm trọ (tenantToken), dùng thử 404 ở folder 18."
+    },
+    {
+      "key": "profileAdminId",
+      "value": "",
+      "description": "Id admin, dùng thử 404 ở folder 18."
     }
   ],
   "auth": {
@@ -15494,6 +15509,599 @@
                   "type": "string"
                 }
               ]
+            }
+          }
+        }
+      ],
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{adminToken}}",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "name": "18 Hồ sơ công khai của chủ trọ",
+      "description": "Hồ sơ công khai của chủ trọ với số người theo dõi, tổng lượt xem và số tin đang hiện (spec 0005, mốc 1, phần đọc). **Chạy sau folder 09** (dùng `userToken` và `tenantToken`) và từ trên xuống. Request đầu đăng nhập admin và lưu `adminToken`; ba request kế lấy id chủ trọ, người tìm trọ và admin. Folder không thêm lần đăng ký nào. Phần theo dõi và bỏ theo dõi (mốc 2) sẽ thêm vào folder này.",
+      "item": [
+        {
+          "name": "Đăng nhập admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.collectionVariables.set('adminToken', pm.response.json().accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Công khai. Đăng nhập admin do `npm run seed` tạo (điền `adminEmail`, `adminPassword` ở biến của collection). Lưu token vào `adminToken`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Lấy id chủ trọ của folder 08 (GET /auth/me)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const user = pm.response.json().user;",
+                  "pm.test('là tài khoản chủ trọ', () => pm.expect(user.accountType).to.eql('landlord'));",
+                  "pm.collectionVariables.set('profileLandlordId', user.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            },
+            "description": "Cần đăng nhập. Lấy `user.id` của chủ trọ đang đăng nhập bằng `userToken` (chủ trọ có nhà trọ và tin ở folder 08 và 09) và lưu vào `profileLandlordId`: đây là chủ trọ mà các request bên dưới xem hồ sơ.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Lấy id người tìm trọ (GET /auth/me)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const user = pm.response.json().user;",
+                  "pm.test('là tài khoản tenant', () => pm.expect(user.accountType).to.eql('tenant'));",
+                  "pm.collectionVariables.set('profileTenantId', user.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            },
+            "description": "Cần đăng nhập. Lấy `user.id` của người tìm trọ (`tenantToken`) và lưu vào `profileTenantId`, để thử xem hồ sơ của một id không phải chủ trọ.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Lấy id admin (GET /auth/me)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const user = pm.response.json().user;",
+                  "pm.test('là tài khoản admin', () => pm.expect(user.accountType).to.eql('admin'));",
+                  "pm.collectionVariables.set('profileAdminId', user.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            },
+            "description": "Cần đăng nhập. Lấy `user.id` của admin và lưu vào `profileAdminId`, để thử xem hồ sơ của một id không phải chủ trọ.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Khách xem hồ sơ chủ trọ, không cần đăng nhập (GET /landlords/:id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const body = pm.response.json();",
+                  "pm.test('đúng bảy trường', () => pm.expect(Object.keys(body).sort()).to.eql(['followerCount', 'id', 'isFollowing', 'joinedAt', 'name', 'publicListingCount', 'totalViewCount']));",
+                  "pm.test('id đúng là chủ trọ cần xem', () => pm.expect(body.id).to.eql(pm.collectionVariables.get('profileLandlordId')));",
+                  "pm.test('ba số là số nguyên không âm', () => {",
+                  "    ['followerCount', 'totalViewCount', 'publicListingCount'].forEach((key) => {",
+                  "        pm.expect(Number.isInteger(body[key])).to.eql(true);",
+                  "        pm.expect(body[key]).to.be.at.least(0);",
+                  "    });",
+                  "});",
+                  "pm.test('joinedAt là ngày giờ hợp lệ', () => pm.expect(Number.isNaN(Date.parse(body.joinedAt))).to.eql(false));",
+                  "pm.test('Cache-Control là private, no-store', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('private, no-store'));",
+                  "pm.test('không lộ email hay số điện thoại', () => {",
+                  "    pm.expect(pm.response.text()).to.not.match(/@/);",
+                  "    pm.expect(pm.response.text()).to.not.match(/phone|email/i);",
+                  "});",
+                  "pm.test('khách: isFollowing là null', () => pm.expect(body.isFollowing).to.eql(null));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{profileLandlordId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{profileLandlordId}}"
+              ]
+            },
+            "description": "Công khai. Hồ sơ gồm đúng bảy trường: `id`, `name`, `joinedAt`, `followerCount`, `totalViewCount`, `publicListingCount`, `isFollowing`. Khách nhận `isFollowing: null`. Không có email, số điện thoại hay danh sách người theo dõi. Phản hồi có `Cache-Control: private, no-store`. Giới hạn 300 lần mỗi phút theo IP.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Người tìm trọ xem hồ sơ (GET /landlords/:id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const body = pm.response.json();",
+                  "pm.test('đúng bảy trường', () => pm.expect(Object.keys(body).sort()).to.eql(['followerCount', 'id', 'isFollowing', 'joinedAt', 'name', 'publicListingCount', 'totalViewCount']));",
+                  "pm.test('id đúng là chủ trọ cần xem', () => pm.expect(body.id).to.eql(pm.collectionVariables.get('profileLandlordId')));",
+                  "pm.test('ba số là số nguyên không âm', () => {",
+                  "    ['followerCount', 'totalViewCount', 'publicListingCount'].forEach((key) => {",
+                  "        pm.expect(Number.isInteger(body[key])).to.eql(true);",
+                  "        pm.expect(body[key]).to.be.at.least(0);",
+                  "    });",
+                  "});",
+                  "pm.test('joinedAt là ngày giờ hợp lệ', () => pm.expect(Number.isNaN(Date.parse(body.joinedAt))).to.eql(false));",
+                  "pm.test('Cache-Control là private, no-store', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('private, no-store'));",
+                  "pm.test('không lộ email hay số điện thoại', () => {",
+                  "    pm.expect(pm.response.text()).to.not.match(/@/);",
+                  "    pm.expect(pm.response.text()).to.not.match(/phone|email/i);",
+                  "});",
+                  "pm.test('đã đăng nhập: isFollowing là false (chưa theo dõi)', () => pm.expect(body.isFollowing).to.eql(false));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{profileLandlordId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{profileLandlordId}}"
+              ]
+            },
+            "description": "Có token hợp lệ thì `isFollowing` là `true` hoặc `false`. Chưa có API theo dõi (mốc 2) nên ở đây là `false`; khi có API, bước này đổi thành theo dõi rồi kiểm `true`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Chủ trọ xem hồ sơ của chính mình (GET /landlords/:id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const body = pm.response.json();",
+                  "pm.test('đúng bảy trường', () => pm.expect(Object.keys(body).sort()).to.eql(['followerCount', 'id', 'isFollowing', 'joinedAt', 'name', 'publicListingCount', 'totalViewCount']));",
+                  "pm.test('id đúng là chủ trọ cần xem', () => pm.expect(body.id).to.eql(pm.collectionVariables.get('profileLandlordId')));",
+                  "pm.test('ba số là số nguyên không âm', () => {",
+                  "    ['followerCount', 'totalViewCount', 'publicListingCount'].forEach((key) => {",
+                  "        pm.expect(Number.isInteger(body[key])).to.eql(true);",
+                  "        pm.expect(body[key]).to.be.at.least(0);",
+                  "    });",
+                  "});",
+                  "pm.test('joinedAt là ngày giờ hợp lệ', () => pm.expect(Number.isNaN(Date.parse(body.joinedAt))).to.eql(false));",
+                  "pm.test('Cache-Control là private, no-store', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('private, no-store'));",
+                  "pm.test('không lộ email hay số điện thoại', () => {",
+                  "    pm.expect(pm.response.text()).to.not.match(/@/);",
+                  "    pm.expect(pm.response.text()).to.not.match(/phone|email/i);",
+                  "});",
+                  "pm.test('isFollowing là false', () => pm.expect(body.isFollowing).to.eql(false));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{profileLandlordId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{profileLandlordId}}"
+              ]
+            },
+            "description": "Chủ trọ mở hồ sơ của mình vẫn là 200. `isFollowing` là `false` vì không ai tự theo dõi chính mình.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Token sai vẫn xem được như khách (GET /landlords/:id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200, không phải 401', () => pm.response.to.have.status(200));",
+                  "pm.test('isFollowing là null như khách', () => pm.expect(pm.response.json().isFollowing).to.eql(null));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{profileLandlordId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{profileLandlordId}}"
+              ]
+            },
+            "description": "Đọc đăng nhập tùy chọn: token sai hay hết hạn được coi như khách, trả 200 với `isFollowing: null`, không bao giờ 401.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "khong.phai.token",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "publicListingCount bằng số tin của chủ trọ trong GET /listings",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const profile = pm.response.json();",
+                  "const base = pm.variables.get('baseUrl');",
+                  "let counted = 0;",
+                  "function loadPage(page) {",
+                  "    pm.sendRequest(base + '/listings?pageSize=50&page=' + page, (error, response) => {",
+                  "        pm.test('tải được trang ' + page + ' của GET /listings', () => {",
+                  "            pm.expect(error).to.eql(null);",
+                  "            pm.expect(response).to.have.status(200);",
+                  "        });",
+                  "        if (error || response.code !== 200) return;",
+                  "        const items = response.json().items;",
+                  "        counted += items.filter((item) => item.landlord.id === profile.id).length;",
+                  "        if (items.length === 50) {",
+                  "            loadPage(page + 1);",
+                  "            return;",
+                  "        }",
+                  "        pm.test('publicListingCount bằng số tin trong GET /listings (' + counted + ')', () => pm.expect(profile.publicListingCount).to.eql(counted));",
+                  "    });",
+                  "}",
+                  "loadPage(1);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{profileLandlordId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{profileLandlordId}}"
+              ]
+            },
+            "description": "Số tin đang hiện công khai ở hồ sơ phải bằng số tin của chủ trọ này mà `GET /listings` trả khi duyệt hết mọi trang (cùng một luật hiển thị). Test tải từng trang 50 tin rồi đếm theo `landlord.id`.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: id của người tìm trọ không phải chủ trọ",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 404 LANDLORD_NOT_FOUND', () => {",
+                  "    pm.response.to.have.status(404);",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.code).to.eql('LANDLORD_NOT_FOUND');",
+                  "    pm.expect(body.message).to.eql('Không tìm thấy chủ trọ.');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{profileTenantId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{profileTenantId}}"
+              ]
+            },
+            "description": "Id của tài khoản `tenant` không phải chủ trọ: 404 `LANDLORD_NOT_FOUND`.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: id của admin không phải chủ trọ",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 404 LANDLORD_NOT_FOUND', () => {",
+                  "    pm.response.to.have.status(404);",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.code).to.eql('LANDLORD_NOT_FOUND');",
+                  "    pm.expect(body.message).to.eql('Không tìm thấy chủ trọ.');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{profileAdminId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{profileAdminId}}"
+              ]
+            },
+            "description": "Id của tài khoản `admin` không phải chủ trọ: 404 `LANDLORD_NOT_FOUND`.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: id không tồn tại",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 404 LANDLORD_NOT_FOUND', () => {",
+                  "    pm.response.to.have.status(404);",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.code).to.eql('LANDLORD_NOT_FOUND');",
+                  "    pm.expect(body.message).to.eql('Không tìm thấy chủ trọ.');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/0192f1c2-7a4b-7c3e-9d1a-000000000000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "0192f1c2-7a4b-7c3e-9d1a-000000000000"
+              ]
+            },
+            "description": "Id đúng dạng UUID nhưng không có: 404 `LANDLORD_NOT_FOUND`. Chủ trọ đang bị khóa hoặc đã xóa mềm cũng trả đúng mã này, mở khóa thì hồ sơ trở lại.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: id không phải UUID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 400 INVALID_ID', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    pm.expect(pm.response.json().code).to.eql('INVALID_ID');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/abc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "abc"
+              ]
+            },
+            "description": "Id sai định dạng: 400 `INVALID_ID`.",
+            "auth": {
+              "type": "noauth"
             }
           }
         }

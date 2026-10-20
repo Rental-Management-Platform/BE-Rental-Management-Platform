@@ -44,6 +44,10 @@ model User {
   updatedSettings Setting[]
   orders          Order[]
   subscriptions   Subscription[]
+  /// Các chủ trọ mà người này theo dõi (spec 0005 theo dõi chủ trọ).
+  following       Follow[]        @relation("Follower")
+  /// Những người theo dõi chủ trọ này; chỉ dùng để đếm, không bao giờ trả danh sách ra ngoài.
+  followers       Follow[]        @relation("FollowedLandlord")
 
   @@index([accountType], map: "users_account_type_idx")
   @@map("users")
@@ -342,4 +346,21 @@ model Subscription {
 
   @@index([userId, endsAt(sort: Desc)], map: "subscriptions_user_id_ends_at_idx")
   @@map("subscriptions")
+}
+
+model Follow {
+  /// Người theo dõi, luôn lấy từ access token (spec 0005).
+  userId     String   @map("user_id") @db.Uuid
+  /// Chủ trọ được theo dõi. Khóa ngoại không ép được "phải là tài khoản landlord": Service kiểm trước khi ghi.
+  /// CHECK follows_self_check (user_id <> landlord_id) ở migration.
+  landlordId String   @map("landlord_id") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user     User @relation("Follower", fields: [userId], references: [id], onDelete: Restrict, map: "follows_user_id_fk")
+  landlord User @relation("FollowedLandlord", fields: [landlordId], references: [id], onDelete: Restrict, map: "follows_landlord_id_fk")
+
+  // Khóa chính (user_id, landlord_id) chặn trùng cặp và phủ luôn việc tra theo user_id.
+  @@id([userId, landlordId], map: "follows_pkey")
+  @@index([landlordId], map: "follows_landlord_id_idx")
+  @@map("follows")
 }

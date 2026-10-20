@@ -66,6 +66,9 @@ export enum ErrorCode {
 	PLAN_INACTIVE = 'PLAN_INACTIVE',
 	ORDER_NOT_FOUND = 'ORDER_NOT_FOUND',
 	ORDER_STATE_INVALID = 'ORDER_STATE_INVALID',
+
+	// Theo dõi chủ trọ và hồ sơ công khai (spec 0005)
+	LANDLORD_NOT_FOUND = 'LANDLORD_NOT_FOUND',
 }
 
 export interface ErrorDefinition {
@@ -296,6 +299,11 @@ export const ERRORS: Record<ErrorCode, ErrorDefinition> = {
 	[ErrorCode.ORDER_STATE_INVALID]: {
 		status: HttpStatus.CONFLICT,
 		message: 'Đơn không còn ở trạng thái phù hợp cho thao tác này.',
+	},
+	// Id không phải chủ trọ đang hoạt động: không có, là tenant hay admin, bị khóa hoặc đã xóa mềm (spec 0005).
+	[ErrorCode.LANDLORD_NOT_FOUND]: {
+		status: HttpStatus.NOT_FOUND,
+		message: 'Không tìm thấy chủ trọ.',
 	},
 };
 

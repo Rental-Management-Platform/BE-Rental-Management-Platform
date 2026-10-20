@@ -6,6 +6,7 @@ import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { CatalogModule } from './catalog/catalog.module';
 import { AllExceptionsFilter } from './common/errors/all-exceptions.filter';
+import { LandlordsModule } from './landlords/landlords.module';
 import { ListingsModule } from './listings/listings.module';
 import { PersistenceModule } from './common/persistence/persistence.module';
 import { AppConfigModule } from './config/app-config.module';
@@ -34,6 +35,7 @@ import { UsersModule } from './users/users.module';
 		MembershipsModule,
 		PlansModule,
 		OrdersModule,
+		LandlordsModule,
 	],
 	controllers: [AppController],
 	providers: [

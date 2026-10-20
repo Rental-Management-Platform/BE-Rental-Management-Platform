@@ -151,6 +151,95 @@ describe('ListingsRepository.isPubliclyVisible (spec 0002 AC-8, spec 0004 AC-9)'
 	});
 });
 
+/** Đối số của một lần gọi thẻ mẫu `$queryRaw`: đoạn chữ tĩnh nối bằng `?`, rồi các giá trị chèn vào theo thứ tự. */
+function rawCall(queryRaw: jest.Mock): { text: string; values: unknown[] } {
+	const call = (queryRaw.mock.calls as unknown as unknown[][])[0] ?? [];
+	const strings = call[0] as readonly string[];
+	return {
+		text: strings.join('?').replace(/\s+/g, ' '),
+		values: call.slice(1),
+	};
+}
+
+describe('ListingsRepository.sumViewCountByLandlord (spec 0005 AC-4)', () => {
+	function build(rows: { total: bigint }[]) {
+		const queryRaw = jest.fn(() => Promise.resolve(rows));
+		const repository = new ListingsRepository({
+			$queryRaw: queryRaw,
+		} as unknown as PrismaService);
+		return { repository, queryRaw };
+	}
+
+	it('cộng view_count của mọi tin qua nhà trọ của chủ trọ, KHÔNG lọc trạng thái hay xóa mềm', async () => {
+		const { repository, queryRaw } = build([{ total: 3n }]);
+		await repository.sumViewCountByLandlord('chu-tro-1');
+		const { text, values } = rawCall(queryRaw);
+		expect(text).toContain('SUM(l.view_count)');
+		expect(text).toContain('JOIN properties p ON p.id = l.property_id');
+		expect(text).toContain('WHERE p.landlord_id = ?::uuid');
+		expect(text).not.toContain('status');
+		expect(text).not.toContain('deleted_at');
+		expect(values).toEqual(['chu-tro-1']);
+	});
+
+	it('đổi bigint của PostgreSQL sang số của JavaScript; không có dòng hay tổng 0 thì 0', async () => {
+		await expect(
+			build([{ total: 1840n }]).repository.sumViewCountByLandlord('x'),
+		).resolves.toBe(1840);
+		await expect(
+			build([{ total: 0n }]).repository.sumViewCountByLandlord('x'),
+		).resolves.toBe(0);
+		await expect(
+			build([]).repository.sumViewCountByLandlord('x'),
+		).resolves.toBe(0);
+	});
+});
+
+describe('ListingsRepository.countPublicByLandlord (spec 0005 AC-5)', () => {
+	function build(rows: { total: number }[]) {
+		const queryRaw = jest.fn(() => Promise.resolve(rows));
+		const repository = new ListingsRepository({
+			$queryRaw: queryRaw,
+		} as unknown as PrismaService);
+		return { repository, queryRaw };
+	}
+
+	it('dùng đúng hai mảnh SQL công khai cùng `now` và hạn mức, chỉ thêm điều kiện chủ trọ', async () => {
+		const { repository, queryRaw } = build([{ total: 2 }]);
+		await repository.countPublicByLandlord('chu-tro-1', {
+			now: NOW,
+			trialListingLimit: 2,
+		});
+		const { text, values } = rawCall(queryRaw);
+		expect(text).toContain('SELECT count(*)::int AS total');
+		expect(text).toContain('WHERE p.landlord_id = ?::uuid AND ?');
+		// Thứ tự giá trị chèn: phép nối kỳ gói, id chủ trọ, điều kiện hiển thị.
+		const [from, landlordId, condition] = values as [
+			Prisma.Sql,
+			string,
+			Prisma.Sql,
+		];
+		expect(flat(from)).toContain('LEFT JOIN LATERAL');
+		expect(from.values).toEqual([NOW.toISOString()]);
+		expect(landlordId).toBe('chu-tro-1');
+		expect(flat(condition)).toContain("l.status = 'visible'");
+		expect(condition.values).toEqual([NOW.toISOString(), 2]);
+	});
+
+	it('trả số đếm; không có dòng thì 0', async () => {
+		const visibility = { now: NOW, trialListingLimit: 2 };
+		await expect(
+			build([{ total: 7 }]).repository.countPublicByLandlord(
+				'x',
+				visibility,
+			),
+		).resolves.toBe(7);
+		await expect(
+			build([]).repository.countPublicByLandlord('x', visibility),
+		).resolves.toBe(0);
+	});
+});
+
 describe('ListingsRepository.findEarliestVisibleIds (spec 0003 AC-9, AC-11)', () => {
 	it('hỏi N tin visible chưa xóa của chủ trọ, đăng sớm nhất trước, khóa phụ id (cùng thứ tự với luật hạng)', async () => {
 		const findMany = jest.fn(() =>
