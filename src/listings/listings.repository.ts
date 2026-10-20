@@ -100,6 +100,13 @@ export interface PublicListFilter {
 	readonly sort: ListingSort;
 }
 
+/** Bộ lọc danh sách kiểm duyệt của admin; `searchWords` đã qua `toSearchKey` và đã cắt gọn. */
+export interface ModerationFilter {
+	readonly status?: ListingStatus;
+	readonly landlordId?: string;
+	readonly searchWords: readonly string[];
+}
+
 /**
  * Hai giá trị mà luật hiển thị công khai cần ngoài chính các cột (spec 0003): đồng hồ ứng dụng lấy một lần mỗi
  * request, và hạn mức dùng thử đọc một lần mỗi request từ `settings`.
@@ -390,6 +397,49 @@ export class ListingsRepository {
 		return { rows, total };
 	}
 
+	// ----- đọc của admin (kiểm duyệt) -----
+
+	/**
+	 * Một trang tin cho admin tìm và kiểm duyệt (spec 0002 AC-9): mọi trạng thái, kể cả tin đang ẩn, bỏ tin đã xóa
+	 * mềm, mới nhất trước. Từ khóa là các điều kiện `contains` nối bằng AND, mỗi từ đã tự thoát `%`, `_`, `\` bằng
+	 * `escapeLike` (Prisma không tự thoát). Không áp luật hiển thị công khai: admin phải thấy cả tin bị ẩn vì hết gói.
+	 */
+	async findModerationPage(
+		filter: ModerationFilter,
+		skip: number,
+		take: number,
+	): Promise<{ rows: PublicSummaryRow[]; total: number }> {
+		const where: Prisma.ListingWhereInput = {
+			...notDeleted,
+			...(filter.status === undefined ? {} : { status: filter.status }),
+			...(filter.landlordId === undefined
+				? {}
+				: { property: { landlordId: filter.landlordId } }),
+			AND: filter.searchWords.map((word) => ({
+				searchKey: { contains: escapeLike(word) },
+			})),
+		};
+		const [rows, total] = await Promise.all([
+			this.prisma.listing.findMany({
+				where,
+				include: publicSummaryInclude,
+				orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+				skip,
+				take,
+			}),
+			this.prisma.listing.count({ where }),
+		]);
+		return { rows, total };
+	}
+
+	/** Một mục kiểm duyệt (tin chưa xóa mềm, mọi trạng thái), hoặc `null`. Đọc sau khi giao dịch ẩn hay gỡ ẩn đã xong. */
+	findModerationRow(id: string): Promise<PublicSummaryRow | null> {
+		return this.prisma.listing.findFirst({
+			where: { id, ...notDeleted },
+			include: publicSummaryInclude,
+		});
+	}
+
 	// ----- ghi của chủ trọ -----
 
 	/** Sửa cột của tin chưa xóa mềm. Trả `false` nếu tin không còn (đã xóa mềm ngay giữa chừng). */
@@ -492,6 +542,31 @@ export class ListingsRepository {
 		return this.client(tx).listing.findMany({
 			where: { propertyId, ...notDeleted },
 			select: { id: true, title: true },
+			orderBy: { id: 'asc' },
+		});
+	}
+
+	/**
+	 * Mọi tin chưa xóa mềm của các nhà trọ thuộc một phường, kèm tên và địa chỉ nhà trọ: đủ để dựng lại `search_key`
+	 * khi admin đổi tên phường (spec 0002 AC-2). Tên phường mới do người gọi truyền vào, không đọc lại từ bảng.
+	 */
+	findLiveForWard(
+		wardCode: string,
+		tx?: Prisma.TransactionClient,
+	): Promise<
+		{
+			id: string;
+			title: string;
+			property: { name: string; addressText: string };
+		}[]
+	> {
+		return this.client(tx).listing.findMany({
+			where: { ...notDeleted, property: { wardCode } },
+			select: {
+				id: true,
+				title: true,
+				property: { select: { name: true, addressText: true } },
+			},
 			orderBy: { id: 'asc' },
 		});
 	}

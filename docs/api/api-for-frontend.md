@@ -1,6 +1,6 @@
 # Tài liệu API và nghiệp vụ cho Frontend
 
-Cập nhật lần cuối: 2026-10-19 (xem mục [Nhật ký thay đổi](#11-nhật-ký-thay-đổi) để biết thay đổi gần nhất).
+Cập nhật lần cuối: 2026-10-20 (xem mục [Nhật ký thay đổi](#11-nhật-ký-thay-đổi) để biết thay đổi gần nhất).
 
 File này do đội backend giữ và **cập nhật cùng mỗi thay đổi API**. Mục đích: để bên FE hiểu hệ thống làm gì, mỗi màn hình cần gọi API nào, và xử lý lỗi ra sao. Đi kèm file này là bộ request thử trong Postman: [`postman-collection.json`](postman-collection.json) (import vào Postman để gọi thử từng API).
 
@@ -25,7 +25,7 @@ Quy ước đọc file: phần nào ghi **Chưa có** nghĩa là đã lên kế 
 
 ## 1. Hệ thống làm gì
 
-Nền tảng quản lý và cho thuê nhà trọ. Hiện backend đã có phần **tài khoản và phân quyền**, danh mục địa chỉ và tiện ích, **nhà trọ của chủ trọ** (tạo, xem, sửa, xóa mềm) và **tin đăng** (đăng, sửa, ẩn, hiện, xóa; khách xem danh sách và chi tiết); **bảng giá gói** cùng phần admin quản lý gói (mục 6.26), **đơn mua gói và thanh toán thử** (mục 6.27); **gói đổi hạn mức tin** (mục 6.25); **ảnh của tin** (tải lên, xóa và xem ảnh, mục 6.28); phần admin ẩn tin và quản lý danh mục sẽ làm tiếp (mục 10).
+Nền tảng quản lý và cho thuê nhà trọ. Hiện backend đã có phần **tài khoản và phân quyền**, danh mục địa chỉ và tiện ích, **nhà trọ của chủ trọ** (tạo, xem, sửa, xóa mềm) và **tin đăng** (đăng, sửa, ẩn, hiện, xóa; khách xem danh sách và chi tiết); **bảng giá gói** cùng phần admin quản lý gói (mục 6.26), **đơn mua gói và thanh toán thử** (mục 6.27); **gói đổi hạn mức tin** (mục 6.25); **ảnh của tin** (tải lên, xóa và xem ảnh, mục 6.28); **admin kiểm duyệt tin** (tìm, ẩn, gỡ ẩn kèm lý do, mục 6.29) và **admin quản lý danh mục phường và tiện ích** (mục 6.30).
 
 ### Ba loại tài khoản
 
@@ -139,7 +139,7 @@ Lưu ý: **một trường có thể xuất hiện nhiều lần** trong `errors
 | `PERMISSION_DENIED` | 403 | Đã đăng nhập nhưng không có quyền làm việc này | Hiện thông báo không đủ quyền |
 | `NOT_RESOURCE_OWNER` | 403 | Thao tác trên dữ liệu của người khác (hiện: nhà trọ của chủ trọ khác) | Hiện `message`, quay về danh sách của mình |
 | `FORBIDDEN` | 403 | Bị từ chối khác | Hiện `message` |
-| `NOT_FOUND` | 404 | Route hoặc nội dung không tồn tại | Hiện `message` |
+| `NOT_FOUND` | 404 | Route hoặc nội dung không tồn tại (kể cả phường hoặc tiện ích không có ở API danh mục của admin, 6.30) | Hiện `message` |
 | `EMAIL_TAKEN` | 409 | Email đã có tài khoản (kể cả tài khoản đã xóa) | Báo lỗi ở ô email |
 | `PHONE_TAKEN` | 409 | Số điện thoại đã thuộc một tài khoản người đăng bài khác | Báo lỗi ở ô số điện thoại |
 | `RESET_TOKEN_INVALID` | 400 | Liên kết đặt lại mật khẩu sai, hết hạn, đã dùng, hoặc đã bị thay bằng liên kết mới hơn | Báo liên kết không dùng được, mời xin liên kết mới |
@@ -151,10 +151,12 @@ Lưu ý: **một trường có thể xuất hiện nhiều lần** trong `errors
 | `USER_NOT_FOUND` | 404 | Không có người dùng với id này | Hiện `message` |
 | `WARD_UNKNOWN` | 400 | Mã phường hoặc xã (`wardCode`) không có trong `GET /wards`. `errors` có một dòng `field: "wardCode"` | Lỗi lập trình hoặc danh mục đã đổi: tải lại `GET /wards` rồi cho chọn lại |
 | `AMENITY_UNKNOWN` | 400 | Có khóa tiện ích (`amenityKeys`) không có trong `GET /amenities`. `errors` có một dòng `field: "amenityKeys"` nêu các khóa lạ | Tải lại `GET /amenities` rồi cho chọn lại |
+| `CATALOG_CODE_TAKEN` | 409 | Admin tạo phường (mã) hoặc tiện ích (khóa) trùng với mục đã có (mục 6.30) | Báo lỗi ở ô mã hoặc khóa |
+| `CATALOG_IN_USE` | 409 | Admin xóa phường hoặc tiện ích còn nhà trọ đang dùng, kể cả nhà trọ đã xóa mềm (mục 6.30) | Báo "đang có nhà trọ dùng, không xóa được", gợi ý đổi tên |
 | `PROPERTY_NOT_FOUND` | 404 | Nhà trọ không có, hoặc đã xóa mềm | Quay về danh sách nhà trọ |
 | `PROPERTY_HAS_LISTINGS` | 409 | Xóa nhà trọ còn tin chưa xóa | Báo "xóa các tin của nhà trọ này trước" |
-| `LISTING_NOT_FOUND` | 404 | Tin không có hoặc đã xóa; ở route công khai còn gồm tin không hiển thị công khai vì bất kỳ lý do nào (đang ẩn, chủ trọ bị khóa...), kể cả với chính chủ, và đường dẫn không lấy được mã tin | Hiện "tin không còn", quay về danh sách |
-| `LISTING_STATE_INVALID` | 409 | Chuyển trạng thái tin không hợp lệ (ẩn tin không đang hiện, hiện tin đã hiện, ẩn tin đang bị admin ẩn) | Tải lại tin (`GET /me/listings/:id`) rồi cập nhật nút |
+| `LISTING_NOT_FOUND` | 404 | Tin không có hoặc đã xóa; ở route công khai còn gồm tin không hiển thị công khai vì bất kỳ lý do nào (đang ẩn, chủ trọ bị khóa...), kể cả với chính chủ, và đường dẫn không lấy được mã tin; ở API kiểm duyệt của admin (6.29) là tin không có hoặc đã xóa mềm | Hiện "tin không còn", quay về danh sách |
+| `LISTING_STATE_INVALID` | 409 | Chuyển trạng thái tin không hợp lệ (ẩn tin không đang hiện, hiện tin đã hiện, ẩn tin đang bị admin ẩn); ở API kiểm duyệt của admin (6.29) là ẩn tin đã bị admin ẩn hoặc gỡ ẩn tin không bị admin ẩn | Tải lại tin (`GET /me/listings/:id`) rồi cập nhật nút |
 | `LISTING_HIDDEN_BY_ADMIN` | 403 | Chủ trọ cố hiện lại tin đang bị admin ẩn | Hiện nhãn "bị quản trị viên ẩn" kèm `moderationReason`, ẩn nút "Hiện" |
 | `LISTING_IMAGE_LIMIT` | 409 | Tải ảnh lên tin đã đủ 5 ảnh | Tắt nút tải khi `images` đã đủ 5 ảnh; báo "hãy xóa bớt một ảnh trước" |
 | `IMAGE_INVALID` | 400 | Tải ảnh mà thiếu tệp, tệp không phải JPEG, PNG hoặc WebP (kiểm bằng nội dung tệp, không theo đuôi tên), sai tên trường (phải là `file`), hoặc gửi nhiều hơn một tệp | Hiện `message`, nhắc chọn đúng một ảnh JPEG, PNG hoặc WebP |
@@ -193,6 +195,8 @@ Chỉ **sáu API đăng nhập và mật khẩu, các API ghi nhà trọ, tin, t
 | `GET /listings` (công khai) | 300 lần mỗi phút | không | 1 phút |
 | `GET /plans` (công khai) | 300 lần mỗi phút | không | 1 phút |
 | `GET /listings/:slugCode` (công khai) | 300 lần mỗi phút | 60 lần mỗi phút, **chỉ khi request có access token hợp lệ** (khách không bị bộ đếm này, chỉ chịu giới hạn theo IP) | 1 phút |
+
+API của admin (kiểm duyệt tin, danh mục phường và tiện ích, tham số hệ thống, quản lý gói, quyền và khóa tài khoản) **không có giới hạn tần suất thêm**.
 
 Cách đếm: vượt số lần trong cột thì **lần vượt đó bị từ chối và bị chặn đúng khoảng thời gian ở cột "Bị chặn trong"** kể từ lần vượt; `Retry-After` cho biết còn bao lâu. Email được so không phân biệt hoa thường và bỏ khoảng trắng đầu cuối (`An@Example.com` và ` an@example.com ` là một). Gửi email sai dạng hoặc không có email thì tính vào bộ đếm email theo IP, nên không né được giới hạn bằng cách bỏ trống.
 
@@ -520,13 +524,13 @@ Cần nhớ:
 - `name` là **tên đầy đủ kèm loại đơn vị** (`Phường ...`, `Xã ...`, `Đặc khu ...`), hiển thị thẳng được, không cần tự ghép "Phường" vào trước.
 - `code` là mã 5 chữ số theo danh mục hành chính mới. **Dùng `code` để lưu và so sánh**, đừng so chuỗi `name` (cách đặt dấu thanh theo nguồn, ví dụ `Hoà`, người dùng có thể gõ `Hòa`; tìm kiếm tin sẽ bỏ dấu nên không bị ảnh hưởng).
 - Bản demo có **168 đơn vị của Thành phố Hồ Chí Minh** (113 phường, 54 xã, 1 đặc khu), kể cả các phường thuộc Bình Dương và Bà Rịa Vũng Tàu cũ vì hai tỉnh đó đã sáp nhập vào thành phố. Mỗi phần tử có sẵn `provinceCode` và `provinceName` nên thêm tỉnh khác sau này không đổi API.
-- Danh sách ít thay đổi (chỉ admin sửa được, về sau): FE có thể lưu tạm trong phiên làm việc.
+- Danh sách ít thay đổi (chỉ admin sửa được, mục 6.30): FE có thể lưu tạm trong phiên làm việc.
 
 ### 6.16 Danh sách tiện ích
 
 `GET /amenities` · công khai
 
-**200 OK**: mảng `{ "key": "wifi", "name": "Wifi" }`, 13 tiện ích mẫu (wifi, máy lạnh, máy nước nóng, phòng vệ sinh riêng, bếp, gác lửng, máy giặt, chỗ để xe, thang máy, camera an ninh, giờ giấc tự do, có nội thất, ban công), xếp theo tên. `key` ổn định, dùng để gửi lên khi tạo hoặc sửa nhà trọ (`amenityKeys`, mục 6.17).
+**200 OK**: mảng `{ "key": "wifi", "name": "Wifi" }`, 13 tiện ích mẫu (wifi, máy lạnh, máy nước nóng, phòng vệ sinh riêng, bếp, gác lửng, máy giặt, chỗ để xe, thang máy, camera an ninh, giờ giấc tự do, có nội thất, ban công), xếp theo tên. `key` ổn định, dùng để gửi lên khi tạo hoặc sửa nhà trọ (`amenityKeys`, mục 6.17). Admin thêm, đổi tên và xóa tiện ích ở mục 6.30.
 
 ### 6.17 Nhà trọ của chủ trọ
 
@@ -803,7 +807,7 @@ Chủ trọ tự ẩn tin (ví dụ khi hết phòng) và hiện lại khi còn 
 **200 OK**: Tin của chủ trọ sau khi chuyển (đọc `status` và `isPublic` để cập nhật giao diện; sau `hide`, `isPublic` luôn là `false`).
 
 Cần nhớ:
-- Tin `hidden_by_admin` **chủ trọ không tự hiện lại được**: FE hiện nhãn "Bị quản trị viên ẩn", hiển thị `moderationReason` (lý do admin ghi) và ẩn nút "Hiện", thay bằng hướng dẫn liên hệ admin (hệ thống chưa có kháng nghị). Chủ trọ vẫn **sửa được** tin để khắc phục. Khi admin gỡ ẩn, tin về `hidden_by_owner` và chủ trọ hiện lại được.
+- Tin `hidden_by_admin` **chủ trọ không tự hiện lại được**: FE hiện nhãn "Bị quản trị viên ẩn", hiển thị `moderationReason` (lý do admin ghi) và ẩn nút "Hiện", thay bằng hướng dẫn liên hệ admin (hệ thống chưa có kháng nghị). Chủ trọ vẫn **sửa được** tin để khắc phục. Khi admin gỡ ẩn, tin về `hidden_by_owner` và chủ trọ hiện lại được. Phía admin ẩn và gỡ ẩn ở mục 6.29.
 - Admin ẩn đúng lúc chủ trọ bấm hiện thì **admin luôn thắng**: chủ trọ nhận 403 `LISTING_HIDDEN_BY_ADMIN` và trạng thái cuối là `hidden_by_admin`. FE gặp 409 hoặc 403 ở hai API này thì tải lại tin (`GET /me/listings/:id`) để lấy trạng thái thật.
 - Tin `hidden_by_owner` và `hidden_by_admin` biến khỏi danh sách và chi tiết công khai.
 - **`hide` không bao giờ bị hạn mức chặn** (kể cả khi hết dùng thử và hết gói). **`show` thì có**: hiện lại là thêm một tin đang hiện nên đi qua cùng cửa hạn mức với đăng tin (6.18). Thứ tự báo lỗi của `show`: 404 `LISTING_NOT_FOUND` hoặc 403 `NOT_RESOURCE_OWNER`, rồi `LISTING_HIDDEN_BY_ADMIN` hoặc 409 `LISTING_STATE_INVALID` (theo bảng trên), rồi 403 `MEMBERSHIP_REQUIRED` (hết dùng thử, không có gói), rồi 403 `LISTING_QUOTA_REACHED` (đủ hạn mức của gói hoặc của kỳ dùng thử). Bị chặn thì tin giữ nguyên `hidden_by_owner`.
@@ -1104,6 +1108,97 @@ Cần nhớ:
 - Ảnh của tin bị ẩn nằm trong bộ nhớ đệm trình duyệt tối đa một ngày. Chủ trọ **không xem được ảnh của tin đang ẩn của chính mình** qua đường này (thẻ `<img>` không gửi token); hiện lại tin là thấy.
 - Xóa mềm tin giữ nguyên ảnh (ổ đĩa chỉ tăng). Ảnh được kiểm bằng nội dung tệp, tên tệp do backend đặt, không thể đi ra ngoài thư mục lưu ảnh.
 
+### 6.29 Kiểm duyệt tin (admin)
+
+Admin tìm tin của mọi chủ trọ, ẩn tin vi phạm kèm lý do và gỡ ẩn khi chủ trọ đã sửa. Cả ba API cần quyền `listing:moderate` (chỉ admin giữ). Chủ trọ và người tìm trọ gọi bị 403 `PERMISSION_DENIED`; không có token thì 401 `TOKEN_MISSING`. Không có bước duyệt trước khi tin hiện: admin chỉ xử lý sau khi tin đã đăng.
+
+`GET /moderation/listings` · quyền `listing:moderate`
+
+Danh sách tin để kiểm duyệt: **mọi trạng thái, kể cả tin đang ẩn và tin của chủ trọ đã hết dùng thử**, chỉ bỏ tin đã xóa mềm, mới đăng xếp trước. Đây là danh sách riêng của admin, **không** theo luật hiển thị công khai ở 6.19.
+
+| Query | Kiểu | Luật |
+|---|---|---|
+| `status` | chuỗi, tùy chọn | `visible`, `hidden_by_owner` hoặc `hidden_by_admin`. Giá trị khác là 400 `VALIDATION_FAILED` |
+| `landlordId` | UUID, tùy chọn | Chỉ tin của chủ trọ này. Không phải UUID là 400 `VALIDATION_FAILED` |
+| `q` | chuỗi, tùy chọn | Từ khóa giống 6.19: không dấu, không phân biệt hoa thường, mỗi từ phải khớp (tối đa 6 từ). Tìm trong tiêu đề, tên nhà trọ, địa chỉ và tên phường. Ký tự `%`, `_` và `\` chỉ khớp chính nó |
+| `page`, `pageSize` | số | Như mọi danh sách: `page` từ 1, `pageSize` từ 1 đến 50 (mặc định 20) |
+
+**200 OK**: `{ "items": [...], "total", "page", "pageSize" }`. Mỗi phần tử là một **Mục kiểm duyệt**:
+
+```json
+{
+  "id": "0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8d03",
+  "code": "k7m2xq9p",
+  "slug": "phong-dep-co-gac-gan-cho-ben-thanh",
+  "title": "Phòng đẹp có gác gần chợ Bến Thành",
+  "price": 3500000,
+  "areaM2": 22.5,
+  "deposit": 3500000,
+  "availableFrom": "2026-11-01",
+  "coverImageUrl": null,
+  "ward": { "code": "26743", "name": "Phường Bến Thành" },
+  "addressText": "12 Lê Lợi",
+  "fullAddress": "12 Lê Lợi, Phường Bến Thành, Thành phố Hồ Chí Minh",
+  "landlord": { "id": "0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8d01", "name": "Anh Nam" },
+  "createdAt": "2026-10-20T03:00:00.000Z",
+  "status": "hidden_by_admin",
+  "moderationReason": "Ảnh không đúng thực tế",
+  "viewCount": 12
+}
+```
+
+Đó là tin tóm tắt (6.19) có `landlord` nhưng **không có số điện thoại**, cộng ba trường: `status`; `moderationReason` (lý do ẩn gần nhất, chỉ có giá trị khi `status` là `hidden_by_admin`, ngược lại `null`); `viewCount`. **Không có `isPublic`** (cờ đó dành cho chủ trọ, 6.18).
+
+`POST /moderation/listings/:id/hide` · quyền `listing:moderate` · cần đăng nhập còn mới
+`POST /moderation/listings/:id/unhide` · quyền `listing:moderate` · cần đăng nhập còn mới
+
+Body: `{ "reason": "..." }`. `reason` bắt buộc, **1 đến 500 ký tự sau khi cắt khoảng trắng đầu cuối**: thiếu, rỗng, toàn khoảng trắng hay dài hơn là 400 `VALIDATION_FAILED` (`errors[].field` là `reason`). Không nhận trường nào khác.
+
+| Trạng thái hiện tại | `hide` | `unhide` |
+|---|---|---|
+| `visible` | thành `hidden_by_admin` | 409 `LISTING_STATE_INVALID` |
+| `hidden_by_owner` | thành `hidden_by_admin` | 409 `LISTING_STATE_INVALID` |
+| `hidden_by_admin` | 409 `LISTING_STATE_INVALID` | thành `hidden_by_owner` |
+
+**200 OK**: Mục kiểm duyệt sau khi chuyển.
+
+**Lỗi**: 400 `VALIDATION_FAILED` · 400 `INVALID_ID` · 404 `LISTING_NOT_FOUND` (tin không có hoặc đã xóa mềm) · 409 `LISTING_STATE_INVALID` · 403 `PERMISSION_DENIED` · 403 `ACCOUNT_LOCKED` · 401.
+
+Cần nhớ:
+- "Cần đăng nhập còn mới" nghĩa là backend đọc lại tài khoản admin từ cơ sở dữ liệu cho hai API ghi này (như khóa tài khoản ở 6.10): admin vừa bị khóa hay vừa mất quyền bị từ chối ngay, không đợi access token hết hạn. `GET /moderation/listings` thì theo quyền trong token như các API đọc khác.
+- Mỗi lần ẩn hoặc gỡ ẩn ghi **một dòng lịch sử kiểm duyệt** (người làm, tin, hành động, lý do) trong cùng giao dịch với việc đổi trạng thái. Chưa có API đọc lịch sử này (mục 9).
+- `unhide` đưa tin về `hidden_by_owner`, **không** về `visible`: chủ trọ tự bấm "Hiện" lại, và lúc đó tin đi qua cửa hạn mức như mọi lần hiện tin (6.23). Sau `unhide` chủ trọ chỉ thấy nhãn "Bị quản trị viên ẩn" biến mất.
+- Lệnh ẩn nhận cả hai trạng thái nguồn. Admin ẩn đúng lúc chủ trọ bấm ẩn hoặc hiện thì **admin luôn thắng** (6.23). Hai admin ẩn cùng một tin cùng lúc thì một người nhận 200, người kia nhận 409 `LISTING_STATE_INVALID` và chỉ có đúng một dòng lịch sử.
+- Tin bị ẩn biến khỏi danh sách, chi tiết và ảnh công khai ngay (6.19, 6.20, 6.28). Chủ trọ thấy `status` là `hidden_by_admin` kèm `moderationReason` ở 6.21 và vẫn sửa được tin.
+- Admin **không sửa hay xóa tin của người khác** (kiểm chủ sở hữu, 403 `NOT_RESOURCE_OWNER`): admin chỉ ẩn và gỡ ẩn.
+
+### 6.30 Quản lý phường, xã, đặc khu và tiện ích (admin)
+
+Danh sách đọc công khai ở 6.15 và 6.16. Phần ghi (thêm, đổi tên, xóa) chỉ admin giữ quyền `catalog:create`, `catalog:update`, `catalog:delete`. Chủ trọ và người tìm trọ gọi bị 403 `PERMISSION_DENIED`; không có token thì 401 `TOKEN_MISSING`. Hai danh sách ngắn, dùng cho ô chọn, nên **không phân trang**.
+
+| API | Quyền | Body | Kết quả |
+|---|---|---|---|
+| `POST /wards` | `catalog:create` | `code`, `name`, `provinceCode`, `provinceName` | 201, một phường |
+| `PATCH /wards/:code` | `catalog:update` | `name?`, `provinceName?` | 200, phường sau khi sửa |
+| `DELETE /wards/:code` | `catalog:delete` | không | 204 |
+| `POST /amenities` | `catalog:create` | `key`, `name` | 201, một tiện ích |
+| `PATCH /amenities/:key` | `catalog:update` | `name` | 200, tiện ích sau khi sửa |
+| `DELETE /amenities/:key` | `catalog:delete` | không | 204 |
+
+Phản hồi là đúng hình dạng của 6.15 (`code`, `name`, `provinceCode`, `provinceName`) và 6.16 (`key`, `name`).
+
+Luật dữ liệu:
+- **Phường**: `code` đúng 5 chữ số; `provinceCode` đúng 2 chữ số; `name` và `provinceName` từ 2 đến 100 ký tự sau khi cắt khoảng trắng. `name` là tên đầy đủ kèm loại đơn vị ("Phường Bến Thành"). **Không có trường quận huyện**: trường lạ bị 400. `code` và `provinceCode` là khóa của dòng, **không đổi được** (gửi chúng ở `PATCH` là 400). `PATCH` với thân rỗng trả 200 và không đổi gì.
+- **Tiện ích**: `key` gồm chữ thường, số, gạch dưới, bắt đầu bằng chữ, dài 2 đến 30 ký tự; `name` từ 2 đến 50 ký tự. `PATCH` bắt buộc có `name`; khóa không đổi được.
+
+**Lỗi**: 400 `VALIDATION_FAILED` · 409 `CATALOG_CODE_TAKEN` (tạo trùng mã phường hoặc khóa tiện ích, kể cả mã do seed tạo) · 409 `CATALOG_IN_USE` (xóa mục còn nhà trọ đang dùng, **kể cả nhà trọ đã xóa mềm**) · 404 `NOT_FOUND` (phường hoặc tiện ích không có, kể cả mã hay khóa rác) · 403 `PERMISSION_DENIED` · 401.
+
+Cần nhớ:
+- **Đổi tên phường làm mới tìm kiếm**: trong cùng giao dịch với việc đổi tên, backend dựng lại từ khóa tìm kiếm của mọi tin chưa xóa thuộc phường đó. Ngay sau `PATCH`, tìm theo tên mới ra tin (6.19) và tìm theo tên cũ không còn ra nữa. `fullAddress` ghép lúc đọc nên cũng đổi ngay ở nhà trọ, tin công khai và tin của chủ trọ. Chỉ đổi `provinceName` thì từ khóa không đổi.
+- Xóa bị chặn khi còn nhà trọ dùng, nên gặp 409 `CATALOG_IN_USE` thì báo "mục này đang được nhà trọ sử dụng nên chưa thể xóa". Nhà trọ đã xóa mềm vẫn giữ tham chiếu, nên một phường hay tiện ích từng được dùng thì không bao giờ xóa được.
+- Danh sách công khai (6.15, 6.16) thấy thay đổi ngay. FE đang lưu tạm danh sách trong phiên thì nên tải lại sau khi admin sửa.
+- `npm run seed` chỉ thêm dòng còn thiếu, nên phường hoặc tiện ích mẫu mà admin đã xóa sẽ quay lại ở lần chạy seed sau; tên admin đã sửa thì seed không ghi đè.
+
 ---
 
 ## 7. Luồng màn hình gợi ý
@@ -1174,6 +1269,8 @@ Hai ô: mật khẩu hiện tại, mật khẩu mới. Gọi `POST /auth/change-
 - **Khóa, mở khóa**: bắt nhập **lý do** (bắt buộc cả khóa lẫn mở khóa). Khóa xong thì người đó mất phiên ngay. Hiện tại **chưa có API danh sách người dùng** để tìm id; xem mục 10.
 - **Quản lý gói**: bảng lấy từ `GET /plans/all` (phân trang), hiện cả gói đã tắt với nhãn "Đã ngừng bán". Biểu mẫu tạo và sửa dùng chung: tên, giá, số tin, số ngày, công tắc "Đang bán"; giới hạn ô nhập theo mục 6.26. Công tắc đổi `isActive` bằng `PATCH`. Nút xóa hỏi xác nhận; gặp 409 `PLAN_IN_USE` thì báo "gói đã có đơn, hãy tắt thay vì xóa". Gặp 409 `PLAN_NAME_TAKEN` thì báo ở ô tên (mục 6.26).
 - **Tham số hệ thống**: một trang nhỏ với hai ô số: lấy `GET /settings`, mỗi dòng một ô nhập có giới hạn `min` và `max` lấy từ phản hồi, nút lưu gọi `PATCH /settings/:key` cho từng khóa (mục 6.24). Hiện `updatedAt` và `updatedBy` để biết ai sửa lần cuối. Nên ghi chú: đổi số ngày chỉ áp cho chủ trọ đăng ký sau đó.
+- **Kiểm duyệt tin**: bảng lấy từ `GET /moderation/listings` (phân trang) với ô tìm kiếm `q`, bộ lọc `status` và `landlordId` (mục 6.29). Mỗi dòng hiện ảnh bìa, tiêu đề, tên chủ trọ, `fullAddress`, `viewCount` và nhãn trạng thái. Tin `visible` hoặc `hidden_by_owner` có nút "Ẩn"; tin `hidden_by_admin` có nút "Gỡ ẩn" và hiện `moderationReason`. Cả hai nút mở hộp nhập **lý do bắt buộc** (1 đến 500 ký tự) trước khi gửi. Sau khi gọi, thay dòng bằng Mục kiểm duyệt trả về; gặp 409 `LISTING_STATE_INVALID` thì tải lại dòng (có thể chủ trọ hoặc admin khác vừa đổi). Nhắc admin: gỡ ẩn **không** tự hiện tin, chủ trọ phải bấm "Hiện". Chưa có màn hình lịch sử kiểm duyệt (mục 9).
+- **Danh mục phường, xã và tiện ích**: hai bảng nhỏ lấy từ `GET /wards` và `GET /amenities`, mỗi bảng có nút thêm, đổi tên và xóa (mục 6.30). Ô mã phường đúng 5 chữ số, mã tỉnh đúng 2 chữ số, khóa tiện ích chữ thường, số, gạch dưới; **không có ô quận huyện**. Mã và khóa chỉ nhập lúc tạo, sau đó chỉ cho đổi tên. Tạo gặp 409 `CATALOG_CODE_TAKEN` thì báo ở ô mã; xóa gặp 409 `CATALOG_IN_USE` thì báo "đang có nhà trọ dùng, không xóa được" (gợi ý đổi tên thay vì xóa).
 
 ### Hiển thị theo quyền
 
@@ -1193,6 +1290,8 @@ Hai ô: mật khẩu hiện tại, mật khẩu mới. Gọi `POST /auth/change-
 - **Một tin hiện ra công khai khi và chỉ khi** tin `visible` và chưa xóa, nhà trọ chưa xóa, và chủ trọ đang hoạt động (không bị khóa, chưa xóa), **tin nằm trong N tin `visible` đăng sớm nhất của chủ trọ**, N là hạn mức hiện hành của chủ trọ (số tin của gói đang chạy, hoặc `trial_listing_limit` khi còn dùng thử, hoặc 0; mục 6.19). Tính lúc đọc nên khóa tài khoản, hết gói và hết dùng thử, hay hạ hạn mức làm tin biến khỏi danh sách ngay, còn mở khóa, nâng hạn mức hay mua gói thì tin hiện lại.
 - **Gói** (từ 2026-10-19). Bảng giá công khai chỉ có gói đang bán. Admin tạo, sửa, tắt, xóa gói; xóa chỉ khi chưa có đơn nào đặt gói đó. Giá, số tin và số ngày của một lần mua được chốt vào đơn lúc tạo đơn, nên sửa gói không đổi đơn đã đặt. Mua gói là tạo đơn rồi thanh toán thử (6.27), ra một kỳ 30 ngày; các kỳ nối tiếp nhau. **Gói đang chạy thay hạn mức dùng thử**, kể cả khi nhỏ hơn. Gói hết đúng lúc `endsAt` (so chặt): hạn mức quay về dùng thử nếu còn, không thì 0 và mọi tin biến ngay. Mua gói không đổi hạn dùng thử. Mua thêm khi đang có gói thì kỳ mới nối vào cuối, kể cả gói khác: gói lớn hơn chỉ có hiệu lực từ khi kỳ trước hết.
 - **Số điện thoại chủ trọ** chỉ trả ở chi tiết tin và chỉ cho người gọi có access token hợp lệ; không có ở danh sách và không bao giờ có cho khách.
+- **Kiểm duyệt tin** (từ 2026-10-20). Không duyệt trước khi tin hiện; admin xử lý sau khi đăng. Admin ẩn tin `visible` hoặc `hidden_by_owner` thành `hidden_by_admin`, và gỡ ẩn tin `hidden_by_admin` về `hidden_by_owner`; mỗi lần bắt buộc có lý do và ghi một dòng lịch sử trong cùng giao dịch (6.29). Admin ẩn đua với chủ trọ thì admin thắng. Admin không sửa hay xóa tin của người khác.
+- **Danh mục phường và tiện ích** do admin quản lý (6.30). Xóa chỉ được khi không nhà trọ nào dùng, kể cả nhà trọ đã xóa mềm. Đổi tên phường làm tìm kiếm theo tên mới có hiệu lực ngay.
 - **Lượt xem** tính một lần cho mỗi người xem trong 30 phút, chủ tin không tính (6.20).
 - **Khóa tài khoản**: tài khoản bị khóa không đăng nhập, không refresh được và mọi phiên bị hủy lúc khóa. Đăng nhập sai mật khẩu vẫn báo `INVALID_CREDENTIALS` (không lộ tài khoản có bị khóa hay không); chỉ khi đúng mật khẩu mới báo `ACCOUNT_LOCKED`. Admin không tự khóa mình được.
 - **Đổi hoặc đặt lại mật khẩu** hủy phiên: đặt lại hủy **tất cả**; đổi (khi đang đăng nhập) hủy tất cả **trừ phiên đang dùng**.
@@ -1217,6 +1316,9 @@ Hai ô: mật khẩu hiện tại, mật khẩu mới. Gọi `POST /auth/change-
 - **`isPublic` và `GET /me/membership` chỉ nhìn tin và hạn mức**, không nhìn tài khoản đã bị khóa hay nhà trọ đã xóa: `isPublic` là `true` nghĩa là tin nằm trong hạn mức, còn khóa tài khoản chặn tin ở API công khai theo luật ở mục 8. Chủ trọ vừa bị khóa chỉ còn gọi được trong tối đa 15 phút (token còn hạn). Đừng tự tính hạn dùng thử hay hạn mức ở FE, luôn lấy từ `GET /me/membership`.
 - **Chủ trọ đăng ký trước 2026-10-16** nhận hạn dùng thử bằng thời điểm chạy migration cộng 30 ngày (không phải thời điểm họ đăng ký).
 - **Chưa có kháng nghị** khi bị ẩn tin: chủ trọ sửa tin xong vẫn phải liên hệ admin ngoài hệ thống.
+- **Lịch sử kiểm duyệt chưa có API đọc.** Mỗi lần ẩn hoặc gỡ ẩn tin ghi một dòng vào bảng `moderation_logs`, nhưng ra ngoài chỉ có `moderationReason` (lý do ẩn gần nhất) trong API tin. Lý do gỡ ẩn và các lần ẩn cũ chỉ xem được trong cơ sở dữ liệu.
+- **Đổi tên phường dựng lại từ khóa từng tin một** trong một giao dịch, nên phường có hàng chục nghìn tin sẽ đổi tên chậm. Một tin đang được đăng đúng lúc phường đổi tên có thể mang tên phường cũ trong từ khóa tìm kiếm cho tới lần sửa tin kế tiếp (hiển thị `fullAddress` vẫn đúng vì ghép lúc đọc). Chấp nhận ở bản demo.
+- **Danh mục không có tìm kiếm hay phân trang** (`GET /wards` trả cả 168 đơn vị một lần, và admin quản lý trên cùng danh sách đó).
 - **Ảnh tin không được xử lý**: không nén, không đổi kích thước, giữ nguyên dữ liệu EXIF (có thể chứa vị trí GPS và kiểu máy ảnh), không có API đổi thứ tự ảnh. Nếu backend dừng đúng giữa lúc ghi tệp và ghi cơ sở dữ liệu thì có thể còn tệp ảnh mồ côi trên ổ đĩa, và xóa mềm tin cũng giữ ảnh nên ổ đĩa chỉ tăng. Chấp nhận ở bản demo.
 - **Chủ trọ không xem được ảnh của tin đang ẩn của chính mình** qua `/media/public` (đường đó chỉ phục vụ tin đang hiện công khai và thẻ ảnh không gửi token); hiện lại tin là thấy. Ảnh của tin vừa bị ẩn còn nằm trong bộ nhớ đệm trình duyệt tối đa một ngày.
 - **Tìm kiếm** chỉ khớp theo từng từ (không sửa lỗi chính tả, không tìm gần đúng). Từ ngắn dưới 3 ký tự vẫn tìm được nhưng chậm hơn khi có hàng chục nghìn tin.
@@ -1231,7 +1333,6 @@ Backend sẽ làm theo thứ tự dưới đây. Mỗi mục khi xong sẽ vào 
 
 | Thứ tự | Tính năng | Ảnh hưởng tới FE |
 |---|---|---|
-| 8 | **Phần còn lại của nhà trọ và tin** (đã có: danh sách phường, xã và tiện ích, nhà trọ, đăng tin, xem tin, ẩn và hiện tin, ảnh tin; mục 6.15 đến 6.23 và 6.28): **admin ẩn và gỡ ẩn tin kèm lý do** cùng danh sách tin để kiểm duyệt, **admin quản lý danh mục phường và tiện ích** | Màn hình kiểm duyệt cho admin; `moderationReason` đã có sẵn trong API tin của chủ trọ. **Không cần hàng chờ duyệt** |
 | 9 | **Dùng thử miễn phí và hạn mức tin** cho chủ trọ: dùng thử 30 ngày, tối đa 2 tin đang hiện (admin đổi được hai con số này). Hết kỳ dùng thử mà chưa mua gói thì tin của chủ trọ tự biến khỏi danh sách công khai. **Đã có**: API admin xem và đổi hai tham số (mục 6.24); hạn dùng thử đặt lúc đăng ký (6.1); chặn đăng và hiện lại tin khi hết dùng thử hoặc đủ hạn mức (6.18, 6.23, mã lỗi `MEMBERSHIP_REQUIRED` và `LISTING_QUOTA_REACHED`); tin biến khỏi danh sách và chi tiết công khai khi hết kỳ hoặc vượt hạn mức, ẩn bớt theo thứ tự đăng (6.19, 6.20); `GET /me/membership` và cờ `isPublic` (6.25, 6.18). **Còn lại**: đo tốc độ ở hàng chục nghìn tin | Lỗi chặn đăng hoặc hiện thêm tin kèm gợi ý mua gói; hiện ngày hết hạn dùng thử và số tin còn lại |
 | 10 | **Mua gói và gia hạn theo tháng**, **thanh toán thử** (bấm xác nhận là có gói, không có tiền thật, không chuyển sang cổng thanh toán nào, nên **không có trang VNPay**). **Đã có**: bảng giá công khai và API admin tạo, sửa, tắt, xóa gói (mục 6.26); tạo, xem, hủy đơn, thanh toán thử và kỳ gói nối tiếp (mục 6.27). Gói đổi hạn mức tin và hiển thị công khai, `state = plan` và `subscription` trong `GET /me/membership` (mục 6.25). **Còn lại**: không còn gì ở backend cho mục này | Trang chọn gói, nút thanh toán thử, lịch sử đơn, dải trạng thái gói đang chạy (đều dựng được) |
 | 11 | **Theo dõi chủ trọ** và hiển thị số người theo dõi, tổng lượt xem tin | Nút theo dõi, số liệu trên hồ sơ chủ trọ |
@@ -1247,6 +1348,17 @@ Backend sẽ làm theo thứ tự dưới đây. Mỗi mục khi xong sẽ vào 
 ## 11. Nhật ký thay đổi
 
 Mới nhất ở trên cùng. Mục nào **phá vỡ** cách FE đang gọi sẽ ghi rõ "ĐỔI KHÁC VỚI TRƯỚC".
+
+### 2026-10-20 · Admin kiểm duyệt tin và quản lý danh mục (mốc 5 của nhà trọ và tin; phần nhà trọ và tin xong)
+
+- **API mới** (mục 6.29): `GET /moderation/listings` (danh sách kiểm duyệt có lọc `status`, `landlordId`, `q` và phân trang), `POST /moderation/listings/:id/hide` và `POST /moderation/listings/:id/unhide` (bắt buộc `reason` 1 đến 500 ký tự; ẩn và gỡ ẩn cần đăng nhập còn mới). Gỡ ẩn đưa tin về `hidden_by_owner`, chủ trọ tự hiện lại.
+- **API mới** (mục 6.30): `POST /wards`, `PATCH /wards/:code`, `DELETE /wards/:code`, `POST /amenities`, `PATCH /amenities/:key`, `DELETE /amenities/:key` (quyền `catalog:*`, chỉ admin). Đây là thêm method mới trên hai đường dẫn đã có; `GET /wards` và `GET /amenities` công khai **giữ nguyên**. Chỉ thêm, không đổi API đang chạy: không phá FE cũ.
+- **Hai mã lỗi bắt đầu được trả**: `CATALOG_CODE_TAKEN` (409) và `CATALOG_IN_USE` (409), đã thêm vào bảng mã lỗi (mục 3). `LISTING_STATE_INVALID` và `LISTING_NOT_FOUND` giờ còn gặp ở API kiểm duyệt của admin.
+- Đổi tên phường làm mới tìm kiếm theo tên mới ngay; `fullAddress` đổi theo tên phường ngay.
+- `moderationReason` ở API tin của chủ trọ (6.18, 6.21) **đã có từ trước**, giờ có dữ liệu thật khi admin ẩn tin. Hình dạng phản hồi nào đang chạy cũng **không đổi**.
+- **Giới hạn tần suất**: API của admin (kiểm duyệt, danh mục) không có giới hạn thêm (mục 3).
+- **FE cần làm** (tùy chọn): màn hình kiểm duyệt tin và màn hình quản lý danh mục cho admin (mục 7, Màn hình admin).
+- Mục 10 đã bỏ dòng "phần còn lại của nhà trọ và tin" vì đã xong.
 
 ### 2026-10-19 · Ảnh của tin: tải lên, xóa và xem ảnh (mốc 4 của nhà trọ và tin)
 

@@ -4,10 +4,10 @@ import type { Prisma } from '../generated/prisma/client';
 
 export interface NewModerationLog {
 	readonly actorId: string;
-	readonly targetType: 'user';
+	readonly targetType: 'user' | 'listing';
 	readonly targetId: string;
-	/** `lock` hoặc `unlock`; các tính năng sau thêm hành động duyệt của mình. */
-	readonly action: 'lock' | 'unlock';
+	/** `lock` và `unlock` cho tài khoản; `hide_listing` và `unhide_listing` cho tin (spec 0002 AC-9). */
+	readonly action: 'lock' | 'unlock' | 'hide_listing' | 'unhide_listing';
 	readonly reason: string;
 }
 

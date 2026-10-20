@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Rental Management Platform API",
-    "description": "Bộ request để thử API backend. Cập nhật cùng mỗi thay đổi API (xem docs/api/api-for-frontend.md, mục Nhật ký thay đổi).\n\nCách dùng:\n1. Import file này vào Postman.\n2. Mở tab Variables của collection, điền `adminEmail` và `adminPassword` theo ADMIN_SEED_* trong .env (không commit mật khẩu thật).\n3. Chạy API (`npm run start:dev`), rồi chạy lần lượt folder 00, 01, 02, 03, 04, 05, 07, 08, 09, 10, 11, 12, 13. Folder 06 (giới hạn tần suất, lỗi 429) chạy riêng, đừng chạy cả bộ nhiều lần liên tiếp: bộ đếm nằm trong bộ nhớ backend, muốn chạy lại ngay thì khởi động lại backend.\n4. Các request tự lưu token vào biến `userToken` và `adminToken`.\n\nCookie refresh (`rt`) có Path `/api/v1/auth`, Postman tự giữ và tự gửi cho các request dưới đường dẫn đó.",
+    "description": "Bộ request để thử API backend. Cập nhật cùng mỗi thay đổi API (xem docs/api/api-for-frontend.md, mục Nhật ký thay đổi).\n\nCách dùng:\n1. Import file này vào Postman.\n2. Mở tab Variables của collection, điền `adminEmail` và `adminPassword` theo ADMIN_SEED_* trong .env (không commit mật khẩu thật).\n3. Chạy API (`npm run start:dev`), rồi chạy lần lượt folder 00, 01, 02, 03, 04, 05, rồi 07 đến 17 (folder 15 cần thư mục làm việc `docs/api` vì có tải tệp mẫu). Folder 06 (giới hạn tần suất, lỗi 429) chạy riêng, đừng chạy cả bộ nhiều lần liên tiếp: bộ đếm nằm trong bộ nhớ backend, muốn chạy lại ngay thì khởi động lại backend.\n4. Các request tự lưu token vào biến `userToken` và `adminToken`.\n\nCookie refresh (`rt`) có Path `/api/v1/auth`, Postman tự giữ và tự gửi cho các request dưới đường dẫn đó.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -344,6 +344,66 @@
       "key": "imgFile2",
       "value": "",
       "description": "Tên tệp của ảnh thứ hai ở folder 15."
+    },
+    {
+      "key": "modPropertyId",
+      "value": "",
+      "description": "Id nhà trọ tạo ở folder 16."
+    },
+    {
+      "key": "modListingId",
+      "value": "",
+      "description": "Id tin tạo ở folder 16 để thử kiểm duyệt."
+    },
+    {
+      "key": "modListingCode",
+      "value": "",
+      "description": "Mã ngắn của tin ở folder 16."
+    },
+    {
+      "key": "modListingSlug",
+      "value": "",
+      "description": "Slug của tin ở folder 16."
+    },
+    {
+      "key": "modLandlordId",
+      "value": "",
+      "description": "Id chủ trọ của tin ở folder 16 (lấy từ danh sách kiểm duyệt)."
+    },
+    {
+      "key": "modLongReason",
+      "value": "",
+      "description": "Lý do 501 ký tự sinh trong pre-request script ở folder 16."
+    },
+    {
+      "key": "catWardCode",
+      "value": "",
+      "description": "Mã phường thử 99xxx sinh ngẫu nhiên ở folder 17."
+    },
+    {
+      "key": "catWardName",
+      "value": "",
+      "description": "Tên hiện tại của phường wardCode, đọc ở folder 17 để trả về như cũ."
+    },
+    {
+      "key": "catWardSearch",
+      "value": "",
+      "description": "Tên phường wardCode đã bỏ dấu, chữ thường, dùng làm từ khóa ở folder 17."
+    },
+    {
+      "key": "catAmenityKey",
+      "value": "",
+      "description": "Khóa tiện ích thử sinh ngẫu nhiên ở folder 17."
+    },
+    {
+      "key": "catPropertyId",
+      "value": "",
+      "description": "Id nhà trọ tạo ở folder 17."
+    },
+    {
+      "key": "catListingId",
+      "value": "",
+      "description": "Id tin tạo ở folder 17."
     }
   ],
   "auth": {
@@ -11934,6 +11994,3520 @@
           }
         }
       ]
+    },
+    {
+      "name": "16 Kiểm duyệt tin (admin)",
+      "description": "Admin tìm tin, ẩn và gỡ ẩn tin vi phạm kèm lý do (spec 0002 AC-9, mốc 5). **Chạy sau folder 09** (dùng `userToken` của chủ trọ, `tenantToken` của người tìm trọ, `wardCode` của folder 07) **và từ trên xuống**. Request đầu đăng nhập admin và lưu `adminToken` (cần `adminEmail`, `adminPassword`). Folder tự tạo nhà trọ và tin rồi dọn lại, không đăng ký tài khoản mới. Ẩn và gỡ ẩn cần `@FreshAuth`: tài khoản admin vừa bị khóa bị từ chối ngay. Mỗi lần ẩn hay gỡ ẩn ghi một dòng `moderation_logs` (không có API đọc, xem trong DB). Cần hạn mức tin còn chỗ cho chủ trọ `userToken` (mặc định 2 tin đang hiện).",
+      "item": [
+        {
+          "name": "Đăng nhập admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.collectionVariables.set('adminToken', pm.response.json().accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Công khai. Đăng nhập admin do `npm run seed` tạo (điền `adminEmail`, `adminPassword` ở biến của collection). Lưu token vào `adminToken`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Tạo nhà trọ để thử kiểm duyệt (POST /properties)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('modPropertyId', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/properties",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties"
+              ]
+            },
+            "description": "Dùng `userToken` (chủ trọ). Lưu `modPropertyId`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Nhà trọ kiểm duyệt Postman\",\n  \"addressText\": \"12 Lê Lợi\",\n  \"wardCode\": \"{{wardCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Đăng tin để thử kiểm duyệt (POST /properties/:propertyId/listings)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "const listing = pm.response.json();",
+                  "pm.test('tin mới là visible', () => pm.expect(listing.status).to.eql('visible'));",
+                  "pm.collectionVariables.set('modListingId', listing.id);",
+                  "pm.collectionVariables.set('modListingCode', listing.code);",
+                  "pm.collectionVariables.set('modListingSlug', listing.slug);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/properties/{{modPropertyId}}/listings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "{{modPropertyId}}",
+                "listings"
+              ]
+            },
+            "description": "Dùng `userToken`. Tiêu đề có từ khóa `kdpm` để các request sau tìm đúng tin này. Lưu `modListingId`, `modListingCode`, `modListingSlug`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Phòng kiểm duyệt Postman kdpm\",\n  \"description\": \"Phòng sạch sẽ, thoáng mát, giờ giấc tự do, có chỗ để xe.\",\n  \"price\": 3000000,\n  \"areaM2\": 20\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin xem danh sách kiểm duyệt (GET /moderation/listings)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('có cấu trúc trang', () => { const b = pm.response.json(); pm.expect(Object.keys(b).sort()).to.eql(['items', 'page', 'pageSize', 'total']); pm.expect(b.pageSize).to.eql(50); });",
+                  "const found = pm.response.json().items.find((i) => i.id === pm.collectionVariables.get('modListingId'));",
+                  "pm.test('thấy tin vừa đăng', () => pm.expect(found).to.be.an('object'));",
+                  "pm.test('mục kiểm duyệt: status, moderationReason, viewCount, landlord không số điện thoại', () => {",
+                  "    pm.expect(found.status).to.eql('visible');",
+                  "    pm.expect(found.moderationReason).to.eql(null);",
+                  "    pm.expect(found.viewCount).to.be.a('number');",
+                  "    pm.expect(Object.keys(found.landlord).sort()).to.eql(['id', 'name']);",
+                  "    pm.expect(found).to.not.have.property('isPublic');",
+                  "});",
+                  "pm.test('fullAddress hai cấp, không quận huyện', () => pm.expect(found.fullAddress).to.match(/Thành phố Hồ Chí Minh$/));",
+                  "pm.collectionVariables.set('modLandlordId', found.landlord.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/moderation/listings?q=kdpm&pageSize=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "moderation",
+                "listings"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "kdpm"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Cần quyền `listing:moderate` (chỉ admin). Trả trang `{ items, total, page, pageSize }` của \"Mục kiểm duyệt\", mới nhất trước, mọi trạng thái trừ tin đã xóa mềm. `q` không dấu, không phân biệt hoa thường. Lưu `modLandlordId`."
+          }
+        },
+        {
+          "name": "Thử lỗi: chủ trọ xem danh sách kiểm duyệt",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 403', () => pm.response.to.have.status(403));",
+                  "pm.test('mã lỗi PERMISSION_DENIED', () => pm.expect(pm.response.json().code).to.eql('PERMISSION_DENIED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/moderation/listings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "moderation",
+                "listings"
+              ]
+            },
+            "description": "Chủ trọ không có quyền `listing:moderate`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: người tìm trọ ẩn tin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 403', () => pm.response.to.have.status(403));",
+                  "pm.test('mã lỗi PERMISSION_DENIED', () => pm.expect(pm.response.json().code).to.eql('PERMISSION_DENIED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/moderation/listings/{{modListingId}}/hide",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "moderation",
+                "listings",
+                "{{modListingId}}",
+                "hide"
+              ]
+            },
+            "description": "Người tìm trọ không có quyền `listing:moderate`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Thử\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: chưa đăng nhập ẩn tin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 401', () => pm.response.to.have.status(401));",
+                  "pm.test('mã lỗi TOKEN_MISSING', () => pm.expect(pm.response.json().code).to.eql('TOKEN_MISSING'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/moderation/listings/{{modListingId}}/hide",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "moderation",
+                "listings",
+                "{{modListingId}}",
+                "hide"
+              ]
+            },
+            "description": "Không có token.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Thử\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: ẩn tin thiếu lý do",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('mã lỗi VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));",
+                  "pm.test('lỗi ở trường reason', () => pm.expect(pm.response.json().errors.map((e) => e.field)).to.include('reason'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/moderation/listings/{{modListingId}}/hide",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "moderation",
+                "listings",
+                "{{modListingId}}",
+                "hide"
+              ]
+            },
+            "description": "Lý do là bắt buộc.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: ẩn tin lý do chỉ có khoảng trắng",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('mã lỗi VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));",
+                  "pm.test('lỗi ở trường reason', () => pm.expect(pm.response.json().errors.map((e) => e.field)).to.include('reason'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/moderation/listings/{{modListingId}}/hide",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "moderation",
+                "listings",
+                "{{modListingId}}",
+                "hide"
+              ]
+            },
+            "description": "Lý do được cắt khoảng trắng trước khi kiểm, nên chỉ có khoảng trắng là rỗng.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"    \"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: ẩn tin lý do quá 500 ký tự",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('modLongReason', 'a'.repeat(501));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('mã lỗi VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));",
+                  "pm.test('lỗi ở trường reason', () => pm.expect(pm.response.json().errors.map((e) => e.field)).to.include('reason'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/moderation/listings/{{modListingId}}/hide",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "moderation",
+                "listings",
+                "{{modListingId}}",
+                "hide"
+              ]
+            },
+            "description": "Lý do tối đa 500 ký tự. Biến `modLongReason` được sinh trong pre-request script (501 ký tự).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"{{modLongReason}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: ẩn tin có trường lạ",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('mã lỗi VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));",
+                  "pm.test('lỗi ở trường status', () => pm.expect(pm.response.json().errors.map((e) => e.field)).to.include('status'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/moderation/listings/{{modListingId}}/hide",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "moderation",
+                "listings",
+                "{{modListingId}}",
+                "hide"
+              ]
+            },
+            "description": "Không nhận trường nào ngoài `reason`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Thử\",\n  \"status\": \"visible\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: id không phải UUID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('mã lỗi INVALID_ID', () => pm.expect(pm.response.json().code).to.eql('INVALID_ID'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/moderation/listings/abc/hide",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "moderation",
+                "listings",
+                "abc",
+                "hide"
+              ]
+            },
+            "description": "Id sai định dạng là 400 `INVALID_ID`, không phải 404.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Thử\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: ẩn tin không tồn tại",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 404', () => pm.response.to.have.status(404));",
+                  "pm.test('mã lỗi LISTING_NOT_FOUND', () => pm.expect(pm.response.json().code).to.eql('LISTING_NOT_FOUND'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/moderation/listings/0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8d99/hide",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "moderation",
+                "listings",
+                "0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8d99",
+                "hide"
+              ]
+            },
+            "description": "Id đúng dạng nhưng không có tin.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Thử\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: gỡ ẩn tin đang hiện",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 409', () => pm.response.to.have.status(409));",
+                  "pm.test('mã lỗi LISTING_STATE_INVALID', () => pm.expect(pm.response.json().code).to.eql('LISTING_STATE_INVALID'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/moderation/listings/{{modListingId}}/unhide",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "moderation",
+                "listings",
+                "{{modListingId}}",
+                "unhide"
+              ]
+            },
+            "description": "Chỉ tin `hidden_by_admin` mới gỡ ẩn được.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Thử\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Admin ẩn tin kèm lý do (POST /moderation/listings/:id/hide)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "const item = pm.response.json();",
+                  "pm.test('đã hidden_by_admin kèm lý do đã cắt khoảng trắng', () => { pm.expect(item.status).to.eql('hidden_by_admin'); pm.expect(item.moderationReason).to.eql('Ảnh không đúng thực tế'); });",
+                  "pm.test('landlord chỉ có id và name', () => pm.expect(Object.keys(item.landlord).sort()).to.eql(['id', 'name']));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/moderation/listings/{{modListingId}}/hide",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "moderation",
+                "listings",
+                "{{modListingId}}",
+                "hide"
+              ]
+            },
+            "description": "Cần `listing:moderate` và đăng nhập còn mới (`@FreshAuth`). Ẩn tin `visible` hoặc `hidden_by_owner` thành `hidden_by_admin`, ghi một dòng lịch sử kiểm duyệt trong cùng giao dịch. Lý do được cắt khoảng trắng đầu cuối. Trả \"Mục kiểm duyệt\".",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"  Ảnh không đúng thực tế  \"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: ẩn lần hai",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 409', () => pm.response.to.have.status(409));",
+                  "pm.test('mã lỗi LISTING_STATE_INVALID', () => pm.expect(pm.response.json().code).to.eql('LISTING_STATE_INVALID'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/moderation/listings/{{modListingId}}/hide",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "moderation",
+                "listings",
+                "{{modListingId}}",
+                "hide"
+              ]
+            },
+            "description": "Tin đã `hidden_by_admin` nên không ẩn nữa.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Lần hai\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Tin biến khỏi công khai (GET /listings/:slugCode)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 404', () => pm.response.to.have.status(404));",
+                  "pm.test('mã lỗi LISTING_NOT_FOUND', () => pm.expect(pm.response.json().code).to.eql('LISTING_NOT_FOUND'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{modListingSlug}}-{{modListingCode}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{modListingSlug}}-{{modListingCode}}"
+              ]
+            },
+            "description": "Tin bị admin ẩn trả 404 như tin không tồn tại.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Chủ trọ thấy lý do bị ẩn (GET /me/listings/:id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('hidden_by_admin kèm lý do', () => { const b = pm.response.json(); pm.expect(b.status).to.eql('hidden_by_admin'); pm.expect(b.moderationReason).to.eql('Ảnh không đúng thực tế'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me/listings/{{modListingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "listings",
+                "{{modListingId}}"
+              ]
+            },
+            "description": "Chủ trọ vẫn xem được tin của mình, kèm `status` và lý do ẩn gần nhất ở `moderationReason`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: chủ trọ hiện lại tin bị admin ẩn (POST /listings/:id/show)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 403', () => pm.response.to.have.status(403));",
+                  "pm.test('mã lỗi LISTING_HIDDEN_BY_ADMIN', () => pm.expect(pm.response.json().code).to.eql('LISTING_HIDDEN_BY_ADMIN'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{modListingId}}/show",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{modListingId}}",
+                "show"
+              ]
+            },
+            "description": "Chủ trọ không tự gỡ lệnh ẩn của admin: 403 `LISTING_HIDDEN_BY_ADMIN`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Chủ trọ vẫn sửa được tin đang bị ẩn (PATCH /listings/:id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('giá đã đổi, vẫn hidden_by_admin', () => { const b = pm.response.json(); pm.expect(b.price).to.eql(3200000); pm.expect(b.status).to.eql('hidden_by_admin'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{modListingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{modListingId}}"
+              ]
+            },
+            "description": "Sửa tin được ở mọi trạng thái, kể cả `hidden_by_admin`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"price\": 3200000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin lọc theo trạng thái và chủ trọ (GET /moderation/listings)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "const items = pm.response.json().items;",
+                  "pm.test('mọi mục đúng trạng thái và đúng chủ trọ', () => items.forEach((i) => { pm.expect(i.status).to.eql('hidden_by_admin'); pm.expect(i.landlord.id).to.eql(pm.collectionVariables.get('modLandlordId')); }));",
+                  "pm.test('có tin vừa ẩn, kèm lý do', () => { const f = items.find((i) => i.id === pm.collectionVariables.get('modListingId')); pm.expect(f).to.be.an('object'); pm.expect(f.moderationReason).to.eql('Ảnh không đúng thực tế'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/moderation/listings?status=hidden_by_admin&landlordId={{modLandlordId}}&pageSize=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "moderation",
+                "listings"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "hidden_by_admin"
+                },
+                {
+                  "key": "landlordId",
+                  "value": "{{modLandlordId}}"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Lọc theo `status` và `landlordId`. Tin `hidden_by_admin` có `moderationReason`."
+          }
+        },
+        {
+          "name": "Thử lỗi: lọc status lạ",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('mã lỗi VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));",
+                  "pm.test('lỗi ở trường status', () => pm.expect(pm.response.json().errors.map((e) => e.field)).to.include('status'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/moderation/listings?status=deleted",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "moderation",
+                "listings"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "deleted"
+                }
+              ]
+            },
+            "description": "`status` chỉ nhận `visible`, `hidden_by_owner`, `hidden_by_admin`."
+          }
+        },
+        {
+          "name": "Thử lỗi: lọc landlordId sai dạng",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('mã lỗi VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));",
+                  "pm.test('lỗi ở trường landlordId', () => pm.expect(pm.response.json().errors.map((e) => e.field)).to.include('landlordId'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/moderation/listings?landlordId=abc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "moderation",
+                "listings"
+              ],
+              "query": [
+                {
+                  "key": "landlordId",
+                  "value": "abc"
+                }
+              ]
+            },
+            "description": "`landlordId` phải là UUID."
+          }
+        },
+        {
+          "name": "Thử lỗi: pageSize quá 50",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('mã lỗi VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));",
+                  "pm.test('lỗi ở trường pageSize', () => pm.expect(pm.response.json().errors.map((e) => e.field)).to.include('pageSize'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/moderation/listings?pageSize=51",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "moderation",
+                "listings"
+              ],
+              "query": [
+                {
+                  "key": "pageSize",
+                  "value": "51"
+                }
+              ]
+            },
+            "description": "`pageSize` tối đa 50."
+          }
+        },
+        {
+          "name": "Thử lỗi: gỡ ẩn thiếu lý do",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('mã lỗi VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));",
+                  "pm.test('lỗi ở trường reason', () => pm.expect(pm.response.json().errors.map((e) => e.field)).to.include('reason'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/moderation/listings/{{modListingId}}/unhide",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "moderation",
+                "listings",
+                "{{modListingId}}",
+                "unhide"
+              ]
+            },
+            "description": "Gỡ ẩn cũng bắt buộc có lý do.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Admin gỡ ẩn tin (POST /moderation/listings/:id/unhide)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('về hidden_by_owner, hết lý do ẩn', () => { const b = pm.response.json(); pm.expect(b.status).to.eql('hidden_by_owner'); pm.expect(b.moderationReason).to.eql(null); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/moderation/listings/{{modListingId}}/unhide",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "moderation",
+                "listings",
+                "{{modListingId}}",
+                "unhide"
+              ]
+            },
+            "description": "Gỡ ẩn đưa tin về `hidden_by_owner`, không về `visible`: chủ trọ tự quyết hiện lại (và việc hiện lại đi qua cửa hạn mức). Ghi một dòng lịch sử.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Chủ trọ đã sửa lại ảnh\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Sau gỡ ẩn tin vẫn chưa hiện công khai (GET /listings/:slugCode)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 404', () => pm.response.to.have.status(404));",
+                  "pm.test('mã lỗi LISTING_NOT_FOUND', () => pm.expect(pm.response.json().code).to.eql('LISTING_NOT_FOUND'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{modListingSlug}}-{{modListingCode}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{modListingSlug}}-{{modListingCode}}"
+              ]
+            },
+            "description": "Tin đang `hidden_by_owner` nên chưa hiện công khai.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: gỡ ẩn lần hai",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 409', () => pm.response.to.have.status(409));",
+                  "pm.test('mã lỗi LISTING_STATE_INVALID', () => pm.expect(pm.response.json().code).to.eql('LISTING_STATE_INVALID'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/moderation/listings/{{modListingId}}/unhide",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "moderation",
+                "listings",
+                "{{modListingId}}",
+                "unhide"
+              ]
+            },
+            "description": "Tin không còn `hidden_by_admin`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Lần hai\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Chủ trọ hiện lại tin sau khi được gỡ ẩn (POST /listings/:id/show)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('visible', () => pm.expect(pm.response.json().status).to.eql('visible'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{modListingId}}/show",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{modListingId}}",
+                "show"
+              ]
+            },
+            "description": "Chủ trọ tự hiện lại; đi qua cửa hạn mức như mọi lần hiện tin.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Tin hiện lại ở công khai (GET /listings/:slugCode)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{modListingSlug}}-{{modListingCode}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{modListingSlug}}-{{modListingCode}}"
+              ]
+            },
+            "description": "Tin `visible` của chủ trọ còn hạn mức hiện công khai.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Chủ trọ tự ẩn tin (POST /listings/:id/hide)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('hidden_by_owner', () => pm.expect(pm.response.json().status).to.eql('hidden_by_owner'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{modListingId}}/hide",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{modListingId}}",
+                "hide"
+              ]
+            },
+            "description": "Chuẩn bị cho request kế tiếp: admin ẩn tin đang `hidden_by_owner`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin ẩn tin đang hidden_by_owner",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('hidden_by_admin', () => pm.expect(pm.response.json().status).to.eql('hidden_by_admin'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/moderation/listings/{{modListingId}}/hide",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "moderation",
+                "listings",
+                "{{modListingId}}",
+                "hide"
+              ]
+            },
+            "description": "Lệnh ẩn của admin nhận cả hai trạng thái nguồn `visible` và `hidden_by_owner`. Admin ẩn đua với chủ trọ ẩn hay hiện thì admin luôn thắng.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Vi phạm khi chủ trọ đang tự ẩn\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Dọn dẹp: chủ trọ xóa tin (DELETE /listings/:id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{modListingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{modListingId}}"
+              ]
+            },
+            "description": "Xóa mềm tin ở mọi trạng thái.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Tin đã xóa không còn trong danh sách kiểm duyệt (GET /moderation/listings)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('không còn tin đã xóa', () => pm.expect(pm.response.json().items.map((i) => i.id)).to.not.include(pm.collectionVariables.get('modListingId')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/moderation/listings?q=kdpm&pageSize=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "moderation",
+                "listings"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "kdpm"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Danh sách kiểm duyệt bỏ tin đã xóa mềm."
+          }
+        },
+        {
+          "name": "Thử lỗi: ẩn tin đã xóa mềm",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 404', () => pm.response.to.have.status(404));",
+                  "pm.test('mã lỗi LISTING_NOT_FOUND', () => pm.expect(pm.response.json().code).to.eql('LISTING_NOT_FOUND'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/moderation/listings/{{modListingId}}/hide",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "moderation",
+                "listings",
+                "{{modListingId}}",
+                "hide"
+              ]
+            },
+            "description": "Tin đã xóa mềm coi như không tồn tại.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Thử\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Dọn dẹp: chủ trọ xóa nhà trọ (DELETE /properties/:id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/properties/{{modPropertyId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "{{modPropertyId}}"
+              ]
+            },
+            "description": "Nhà trọ hết tin sống nên xóa mềm được.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{adminToken}}",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "name": "17 Quản lý phường và tiện ích (admin)",
+      "description": "Admin tạo, sửa tên và xóa phường, xã, đặc khu và tiện ích (spec 0002 AC-2, mốc 5). **Chạy sau folder 09** (dùng `userToken`, `tenantToken` và `wardCode` của folder 07) **và từ trên xuống**. Request đầu đăng nhập admin và lưu `adminToken`. Phường và tiện ích thử có mã sinh ngẫu nhiên và được xóa lại trong folder; nhà trọ và tin thử cũng được dọn. Phần \"đổi tên phường\" dùng chính phường `{{wardCode}}` và TRẢ TÊN VỀ NHƯ CŨ ở cuối chuỗi: nếu dừng giữa chừng thì tự sửa tên phường đó bằng `PATCH /wards/{{wardCode}}`. Xóa phường hay tiện ích thật còn người dùng luôn bị 409, nên không mất dữ liệu seed. Cần hạn mức tin còn chỗ cho chủ trọ `userToken`.",
+      "item": [
+        {
+          "name": "Đăng nhập admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.collectionVariables.set('adminToken', pm.response.json().accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Công khai. Đăng nhập admin do `npm run seed` tạo (điền `adminEmail`, `adminPassword` ở biến của collection). Lưu token vào `adminToken`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: chủ trọ tạo phường (POST /wards)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 403', () => pm.response.to.have.status(403));",
+                  "pm.test('mã lỗi PERMISSION_DENIED', () => pm.expect(pm.response.json().code).to.eql('PERMISSION_DENIED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/wards",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wards"
+              ]
+            },
+            "description": "Ghi danh mục cần `catalog:create` (chỉ admin).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"99999\",\n  \"name\": \"Phường Thử\",\n  \"provinceCode\": \"79\",\n  \"provinceName\": \"Thành phố Hồ Chí Minh\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: người tìm trọ sửa phường (PATCH /wards/:code)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 403', () => pm.response.to.have.status(403));",
+                  "pm.test('mã lỗi PERMISSION_DENIED', () => pm.expect(pm.response.json().code).to.eql('PERMISSION_DENIED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/wards/{{wardCode}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wards",
+                "{{wardCode}}"
+              ]
+            },
+            "description": "Cần `catalog:update`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Tên mới\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: chưa đăng nhập xóa phường (DELETE /wards/:code)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 401', () => pm.response.to.have.status(401));",
+                  "pm.test('mã lỗi TOKEN_MISSING', () => pm.expect(pm.response.json().code).to.eql('TOKEN_MISSING'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/wards/{{wardCode}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wards",
+                "{{wardCode}}"
+              ]
+            },
+            "description": "Không có token.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: chủ trọ tạo tiện ích (POST /amenities)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 403', () => pm.response.to.have.status(403));",
+                  "pm.test('mã lỗi PERMISSION_DENIED', () => pm.expect(pm.response.json().code).to.eql('PERMISSION_DENIED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/amenities",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "amenities"
+              ]
+            },
+            "description": "Cần `catalog:create`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"key\": \"thu_nghiem\",\n  \"name\": \"Thử nghiệm\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: mã phường 4 chữ số",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('mã lỗi VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));",
+                  "pm.test('lỗi ở trường code', () => pm.expect(pm.response.json().errors.map((e) => e.field)).to.include('code'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/wards",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wards"
+              ]
+            },
+            "description": "Mã phường sau sáp nhập gồm đúng 5 chữ số.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"9999\",\n  \"name\": \"Phường Thử\",\n  \"provinceCode\": \"79\",\n  \"provinceName\": \"Thành phố Hồ Chí Minh\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: mã tỉnh 3 chữ số",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('mã lỗi VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));",
+                  "pm.test('lỗi ở trường provinceCode', () => pm.expect(pm.response.json().errors.map((e) => e.field)).to.include('provinceCode'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/wards",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wards"
+              ]
+            },
+            "description": "Mã tỉnh hoặc thành phố gồm đúng 2 chữ số.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"99999\",\n  \"name\": \"Phường Thử\",\n  \"provinceCode\": \"790\",\n  \"provinceName\": \"Thành phố Hồ Chí Minh\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: thêm trường quận huyện",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('mã lỗi VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));",
+                  "pm.test('lỗi ở trường districtName', () => pm.expect(pm.response.json().errors.map((e) => e.field)).to.include('districtName'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/wards",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wards"
+              ]
+            },
+            "description": "Địa chỉ hai cấp: không có quận huyện, trường lạ bị từ chối.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"99999\",\n  \"name\": \"Phường Thử\",\n  \"provinceCode\": \"79\",\n  \"provinceName\": \"Thành phố Hồ Chí Minh\",\n  \"districtName\": \"Quận 1\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Tạo phường thử (POST /wards)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('catWardCode', '99' + String(Math.floor(Math.random() * 1000)).padStart(3, '0'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "pm.test('đúng 4 trường', () => pm.expect(Object.keys(pm.response.json()).sort()).to.eql(['code', 'name', 'provinceCode', 'provinceName']));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/wards",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wards"
+              ]
+            },
+            "description": "Cần `catalog:create`. Mã `99xxx` được sinh ngẫu nhiên trong pre-request script và lưu vào `catWardCode`. Trả đúng 4 trường `code`, `name`, `provinceCode`, `provinceName`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"{{catWardCode}}\",\n  \"name\": \"Phường Thử {{catWardCode}}\",\n  \"provinceCode\": \"79\",\n  \"provinceName\": \"Thành phố Hồ Chí Minh\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: tạo trùng mã phường",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 409', () => pm.response.to.have.status(409));",
+                  "pm.test('mã lỗi CATALOG_CODE_TAKEN', () => pm.expect(pm.response.json().code).to.eql('CATALOG_CODE_TAKEN'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/wards",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wards"
+              ]
+            },
+            "description": "Mã phường đã có: 409 `CATALOG_CODE_TAKEN`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"{{catWardCode}}\",\n  \"name\": \"Phường Thử Khác\",\n  \"provinceCode\": \"79\",\n  \"provinceName\": \"Thành phố Hồ Chí Minh\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: tạo trùng mã phường có sẵn từ seed",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 409', () => pm.response.to.have.status(409));",
+                  "pm.test('mã lỗi CATALOG_CODE_TAKEN', () => pm.expect(pm.response.json().code).to.eql('CATALOG_CODE_TAKEN'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/wards",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wards"
+              ]
+            },
+            "description": "Mã `{{wardCode}}` do seed tạo.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"{{wardCode}}\",\n  \"name\": \"Phường Thử Khác\",\n  \"provinceCode\": \"79\",\n  \"provinceName\": \"Thành phố Hồ Chí Minh\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Danh sách phường có phường mới, không cần đăng nhập (GET /wards)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('có phường vừa tạo', () => pm.expect(pm.response.json().map((w) => w.code)).to.include(pm.collectionVariables.get('catWardCode')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/wards",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wards"
+              ]
+            },
+            "description": "Danh sách công khai thấy ngay phường vừa tạo.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Đổi tên phường thử (PATCH /wards/:code)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('tên mới, mã giữ nguyên', () => { const b = pm.response.json(); pm.expect(b.name).to.eql('Phường Thử Đã Đổi'); pm.expect(b.code).to.eql(pm.collectionVariables.get('catWardCode')); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/wards/{{catWardCode}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wards",
+                "{{catWardCode}}"
+              ]
+            },
+            "description": "Cần `catalog:update`. Chỉ đổi `name` và `provinceName`; mã không đổi.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Phường Thử Đã Đổi\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: sửa phường không có",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 404', () => pm.response.to.have.status(404));",
+                  "pm.test('mã lỗi NOT_FOUND', () => pm.expect(pm.response.json().code).to.eql('NOT_FOUND'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/wards/00000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wards",
+                "00000"
+              ]
+            },
+            "description": "Phường không tồn tại: 404 `NOT_FOUND`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Tên mới\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: sửa tên phường rỗng",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('mã lỗi VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));",
+                  "pm.test('lỗi ở trường name', () => pm.expect(pm.response.json().errors.map((e) => e.field)).to.include('name'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/wards/{{catWardCode}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wards",
+                "{{catWardCode}}"
+              ]
+            },
+            "description": "Tên 2 đến 100 ký tự.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: đổi mã phường",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('mã lỗi VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));",
+                  "pm.test('lỗi ở trường code', () => pm.expect(pm.response.json().errors.map((e) => e.field)).to.include('code'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/wards/{{catWardCode}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wards",
+                "{{catWardCode}}"
+              ]
+            },
+            "description": "Mã là khóa của dòng, không đổi được.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"11111\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Tạo nhà trọ ở phường thật, gắn tiện ích wifi (POST /properties)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('catPropertyId', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/properties",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties"
+              ]
+            },
+            "description": "Dùng `userToken`. Nhà trọ này giữ phường `{{wardCode}}` và tiện ích `wifi` đang được dùng. Lưu `catPropertyId`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Nhà trọ danh mục Postman\",\n  \"addressText\": \"12 Lê Lợi\",\n  \"wardCode\": \"{{wardCode}}\",\n  \"amenityKeys\": [\n    \"wifi\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Đọc tên phường thật hiện tại (GET /wards)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "const ward = pm.response.json().find((w) => w.code === pm.collectionVariables.get('wardCode'));",
+                  "pm.test('có phường wardCode', () => pm.expect(ward).to.be.an('object'));",
+                  "pm.collectionVariables.set('catWardName', ward.name);",
+                  "pm.collectionVariables.set('catWardSearch', ward.name.normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'd').toLowerCase());"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/wards",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wards"
+              ]
+            },
+            "description": "Lưu tên phường `{{wardCode}}` vào `catWardName` và dạng bỏ dấu của nó vào `catWardSearch` để các request tìm kiếm bên dưới dùng đúng tên hiện có.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Đăng tin để thử làm mới từ khóa (POST /properties/:propertyId/listings)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('catListingId', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/properties/{{catPropertyId}}/listings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "{{catPropertyId}}",
+                "listings"
+              ]
+            },
+            "description": "Tiêu đề có từ khóa `dtpm` và KHÔNG chứa tên phường, nên chỉ khớp tên phường qua `search_key`. Lưu `catListingId`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Phòng thử đổi tên phường dtpm\",\n  \"description\": \"Phòng sạch sẽ, thoáng mát, giờ giấc tự do, có chỗ để xe.\",\n  \"price\": 3000000,\n  \"areaM2\": 20\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Điều khiển dương: từ khóa tên phường hiện tại khớp tin (GET /moderation/listings)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('tin khớp', () => pm.expect(pm.response.json().items.map((i) => i.id)).to.include(pm.collectionVariables.get('catListingId')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/moderation/listings?q=dtpm {{catWardSearch}}&pageSize=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "moderation",
+                "listings"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "dtpm {{catWardSearch}}"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "`search_key` của tin chứa tên phường, nên tìm theo tên phường hiện tại ra tin."
+          }
+        },
+        {
+          "name": "Đổi tên phường thật (PATCH /wards/:code)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('tên mới', () => pm.expect(pm.response.json().name).to.eql('Phường Đổi Tên Thử'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/wards/{{wardCode}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wards",
+                "{{wardCode}}"
+              ]
+            },
+            "description": "Đổi tên phường làm mới `search_key` của mọi tin thuộc phường trong cùng giao dịch. Cuối chuỗi này có request trả tên về như cũ.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Phường Đổi Tên Thử\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Từ khóa tên phường mới khớp tin (GET /moderation/listings)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('tin khớp tên mới', () => pm.expect(pm.response.json().items.map((i) => i.id)).to.include(pm.collectionVariables.get('catListingId')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/moderation/listings?q=dtpm doi ten thu&pageSize=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "moderation",
+                "listings"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "dtpm doi ten thu"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Sau khi đổi tên, tìm theo tên mới ra tin."
+          }
+        },
+        {
+          "name": "Từ khóa tên phường cũ không còn khớp tin (GET /moderation/listings)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('tin không còn khớp tên cũ', () => pm.expect(pm.response.json().items.map((i) => i.id)).to.not.include(pm.collectionVariables.get('catListingId')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/moderation/listings?q=dtpm {{catWardSearch}}&pageSize=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "moderation",
+                "listings"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "dtpm {{catWardSearch}}"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Tên cũ đã bị thay trong `search_key`."
+          }
+        },
+        {
+          "name": "fullAddress của nhà trọ đổi theo tên phường mới (GET /properties/:id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('fullAddress có tên phường mới', () => pm.expect(pm.response.json().fullAddress).to.eql('12 Lê Lợi, Phường Đổi Tên Thử, Thành phố Hồ Chí Minh'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/properties/{{catPropertyId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "{{catPropertyId}}"
+              ]
+            },
+            "description": "`fullAddress` ghép lúc đọc nên đổi ngay theo tên phường.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Trả tên phường thật về như cũ (PATCH /wards/:code)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('tên đã khôi phục', () => pm.expect(pm.response.json().name).to.eql(pm.collectionVariables.get('catWardName')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/wards/{{wardCode}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wards",
+                "{{wardCode}}"
+              ]
+            },
+            "description": "Khôi phục tên đã đọc ở `catWardName` để các folder khác không bị lệch tên phường.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{catWardName}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Tên phường cũ khớp lại tin (GET /moderation/listings)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('tin khớp lại', () => pm.expect(pm.response.json().items.map((i) => i.id)).to.include(pm.collectionVariables.get('catListingId')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/moderation/listings?q=dtpm {{catWardSearch}}&pageSize=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "moderation",
+                "listings"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "dtpm {{catWardSearch}}"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Sau khi trả tên, `search_key` được dựng lại theo tên cũ."
+          }
+        },
+        {
+          "name": "Thử lỗi: xóa phường còn nhà trọ dùng (DELETE /wards/:code)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 409', () => pm.response.to.have.status(409));",
+                  "pm.test('mã lỗi CATALOG_IN_USE', () => pm.expect(pm.response.json().code).to.eql('CATALOG_IN_USE'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/wards/{{wardCode}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wards",
+                "{{wardCode}}"
+              ]
+            },
+            "description": "Phường còn nhà trọ dùng (kể cả nhà trọ đã xóa mềm): 409 `CATALOG_IN_USE`. Request này không bao giờ xóa được phường thật."
+          }
+        },
+        {
+          "name": "Xóa phường thử (DELETE /wards/:code)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/wards/{{catWardCode}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wards",
+                "{{catWardCode}}"
+              ]
+            },
+            "description": "Cần `catalog:delete`. Phường thử chưa nhà trọ nào dùng nên xóa được."
+          }
+        },
+        {
+          "name": "Phường đã xóa biến khỏi danh sách (GET /wards)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('không còn phường thử', () => pm.expect(pm.response.json().map((w) => w.code)).to.not.include(pm.collectionVariables.get('catWardCode')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/wards",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wards"
+              ]
+            },
+            "description": "Danh sách công khai không còn phường vừa xóa.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: xóa lại phường đã xóa",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 404', () => pm.response.to.have.status(404));",
+                  "pm.test('mã lỗi NOT_FOUND', () => pm.expect(pm.response.json().code).to.eql('NOT_FOUND'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/wards/{{catWardCode}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wards",
+                "{{catWardCode}}"
+              ]
+            },
+            "description": "Phường không còn: 404 `NOT_FOUND`."
+          }
+        },
+        {
+          "name": "Thử lỗi: khóa tiện ích chữ hoa",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('mã lỗi VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));",
+                  "pm.test('lỗi ở trường key', () => pm.expect(pm.response.json().errors.map((e) => e.field)).to.include('key'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/amenities",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "amenities"
+              ]
+            },
+            "description": "Khóa gồm chữ thường, số, gạch dưới, bắt đầu bằng chữ, dài 2 đến 30 ký tự.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"key\": \"Wifi2\",\n  \"name\": \"Thử\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: khóa tiện ích bắt đầu bằng số",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('mã lỗi VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));",
+                  "pm.test('lỗi ở trường key', () => pm.expect(pm.response.json().errors.map((e) => e.field)).to.include('key'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/amenities",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "amenities"
+              ]
+            },
+            "description": "Khóa phải bắt đầu bằng chữ.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"key\": \"1wifi\",\n  \"name\": \"Thử\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: thiếu tên tiện ích",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('mã lỗi VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));",
+                  "pm.test('lỗi ở trường name', () => pm.expect(pm.response.json().errors.map((e) => e.field)).to.include('name'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/amenities",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "amenities"
+              ]
+            },
+            "description": "Tên là bắt buộc.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"key\": \"thu_nghiem\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Tạo tiện ích thử (POST /amenities)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('catAmenityKey', 'pm' + String(Math.floor(Math.random() * 1000000)).padStart(6, '0'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "pm.test('đúng 2 trường', () => pm.expect(Object.keys(pm.response.json()).sort()).to.eql(['key', 'name']));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/amenities",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "amenities"
+              ]
+            },
+            "description": "Cần `catalog:create`. Khóa `pmXXXXXX` được sinh ngẫu nhiên và lưu vào `catAmenityKey`. Trả đúng 2 trường `key`, `name`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"key\": \"{{catAmenityKey}}\",\n  \"name\": \"Tiện ích thử Postman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: tạo trùng khóa tiện ích",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 409', () => pm.response.to.have.status(409));",
+                  "pm.test('mã lỗi CATALOG_CODE_TAKEN', () => pm.expect(pm.response.json().code).to.eql('CATALOG_CODE_TAKEN'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/amenities",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "amenities"
+              ]
+            },
+            "description": "Khóa đã có: 409 `CATALOG_CODE_TAKEN`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"key\": \"{{catAmenityKey}}\",\n  \"name\": \"Khác\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: tạo trùng khóa tiện ích có sẵn từ seed",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 409', () => pm.response.to.have.status(409));",
+                  "pm.test('mã lỗi CATALOG_CODE_TAKEN', () => pm.expect(pm.response.json().code).to.eql('CATALOG_CODE_TAKEN'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/amenities",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "amenities"
+              ]
+            },
+            "description": "Khóa `wifi` do seed tạo.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"key\": \"wifi\",\n  \"name\": \"Khác\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Danh sách tiện ích có tiện ích mới, không cần đăng nhập (GET /amenities)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('có tiện ích vừa tạo', () => pm.expect(pm.response.json().map((a) => a.key)).to.include(pm.collectionVariables.get('catAmenityKey')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/amenities",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "amenities"
+              ]
+            },
+            "description": "Danh sách công khai thấy ngay tiện ích vừa tạo.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Đổi tên tiện ích thử (PATCH /amenities/:key)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('tên mới', () => pm.expect(pm.response.json().name).to.eql('Tiện ích đã đổi tên'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/amenities/{{catAmenityKey}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "amenities",
+                "{{catAmenityKey}}"
+              ]
+            },
+            "description": "Cần `catalog:update`. Chỉ đổi `name`; khóa không đổi.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Tiện ích đã đổi tên\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: sửa tiện ích không có",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 404', () => pm.response.to.have.status(404));",
+                  "pm.test('mã lỗi NOT_FOUND', () => pm.expect(pm.response.json().code).to.eql('NOT_FOUND'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/amenities/khong_co",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "amenities",
+                "khong_co"
+              ]
+            },
+            "description": "Tiện ích không tồn tại: 404 `NOT_FOUND`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Tên mới\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: sửa tiện ích thiếu tên",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('mã lỗi VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));",
+                  "pm.test('lỗi ở trường name', () => pm.expect(pm.response.json().errors.map((e) => e.field)).to.include('name'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/amenities/{{catAmenityKey}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "amenities",
+                "{{catAmenityKey}}"
+              ]
+            },
+            "description": "Tên là bắt buộc khi sửa.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: xóa tiện ích còn nhà trọ dùng (DELETE /amenities/wifi)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 409', () => pm.response.to.have.status(409));",
+                  "pm.test('mã lỗi CATALOG_IN_USE', () => pm.expect(pm.response.json().code).to.eql('CATALOG_IN_USE'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/amenities/wifi",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "amenities",
+                "wifi"
+              ]
+            },
+            "description": "Nhà trọ ở trên đang dùng `wifi`: 409 `CATALOG_IN_USE`. Request này không bao giờ xóa được tiện ích thật."
+          }
+        },
+        {
+          "name": "Xóa tiện ích thử (DELETE /amenities/:key)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/amenities/{{catAmenityKey}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "amenities",
+                "{{catAmenityKey}}"
+              ]
+            },
+            "description": "Cần `catalog:delete`. Tiện ích thử chưa nhà trọ nào dùng nên xóa được."
+          }
+        },
+        {
+          "name": "Thử lỗi: xóa lại tiện ích đã xóa",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 404', () => pm.response.to.have.status(404));",
+                  "pm.test('mã lỗi NOT_FOUND', () => pm.expect(pm.response.json().code).to.eql('NOT_FOUND'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/amenities/{{catAmenityKey}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "amenities",
+                "{{catAmenityKey}}"
+              ]
+            },
+            "description": "Tiện ích không còn: 404 `NOT_FOUND`."
+          }
+        },
+        {
+          "name": "Dọn dẹp: chủ trọ xóa tin (DELETE /listings/:id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{catListingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{catListingId}}"
+              ]
+            },
+            "description": "Xóa mềm tin thử.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Dọn dẹp: chủ trọ xóa nhà trọ (DELETE /properties/:id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/properties/{{catPropertyId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "{{catPropertyId}}"
+              ]
+            },
+            "description": "Xóa mềm nhà trọ thử.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{adminToken}}",
+            "type": "string"
+          }
+        ]
+      }
     }
   ]
 }

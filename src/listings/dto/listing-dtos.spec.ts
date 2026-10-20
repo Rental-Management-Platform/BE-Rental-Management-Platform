@@ -1,9 +1,11 @@
 import { AppException } from '../../common/errors/app.exception';
 import { createValidationPipe } from '../../common/errors/create-validation-pipe';
 import type { FieldError } from '../../common/errors/error-code';
+import { ModerationReasonDto } from '../../moderation/dto/moderation-reason.dto';
 import { CreateListingDto } from './create-listing.dto';
 import {
 	ListListingsQueryDto,
+	ModerationListingsQueryDto,
 	MyListingsQueryDto,
 } from './listing-queries.dto';
 import { UpdateListingDto } from './update-listing.dto';
@@ -344,5 +346,85 @@ describe('MyListingsQueryDto (spec 0002 AC-14)', () => {
 		const { errors, value } = await parse({});
 		expect(errors).toEqual([]);
 		expect(value).toMatchObject({ page: 1, pageSize: 20 });
+	});
+});
+
+describe('ModerationListingsQueryDto (spec 0002 AC-9)', () => {
+	const parse = (query: Record<string, string>) =>
+		validate(ModerationListingsQueryDto, query, 'query');
+	const LANDLORD = '0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8d01';
+
+	it('không lọc gì thì lấy trang 1 với 20 dòng', async () => {
+		const { errors, value } = await parse({});
+		expect(errors).toEqual([]);
+		expect(value).toMatchObject({ page: 1, pageSize: 20 });
+	});
+
+	it('nhận đủ ba bộ lọc cùng lúc', async () => {
+		const { errors } = await parse({
+			status: 'hidden_by_admin',
+			landlordId: LANDLORD,
+			q: 'bến thành',
+		});
+		expect(errors).toEqual([]);
+	});
+
+	it.each(['deleted', 'HIDDEN_BY_ADMIN', ''])(
+		'từ chối status %p bằng 400 VALIDATION_FAILED',
+		async (status) => {
+			expect(fields((await parse({ status })).errors)).toEqual([
+				'status',
+			]);
+		},
+	);
+
+	it('từ chối landlordId không phải UUID bằng 400 (không để Prisma báo lỗi kiểu thành 500)', async () => {
+		expect(fields((await parse({ landlordId: 'abc' })).errors)).toEqual([
+			'landlordId',
+		]);
+	});
+
+	it('từ chối pageSize 51 và page 0', async () => {
+		expect(fields((await parse({ pageSize: '51' })).errors)).toEqual([
+			'pageSize',
+		]);
+		expect(fields((await parse({ page: '0' })).errors)).toEqual(['page']);
+	});
+
+	it('cắt khoảng trắng của q; q quá 500 ký tự bị từ chối', async () => {
+		const { value } = await parse({ q: '  ben thanh  ' });
+		expect(value).toMatchObject({ q: 'ben thanh' });
+		expect(fields((await parse({ q: 'a'.repeat(501) })).errors)).toEqual([
+			'q',
+		]);
+	});
+
+	it('từ chối trường lạ', async () => {
+		expect(fields((await parse({ sort: 'newest' })).errors)).toEqual([
+			'sort',
+		]);
+	});
+});
+
+describe('ModerationReasonDto trên ẩn và gỡ ẩn tin (spec 0002 AC-9)', () => {
+	const parse = (body: object) => validate(ModerationReasonDto, body);
+
+	it('nhận lý do 1 đến 500 ký tự và cắt khoảng trắng', async () => {
+		const { errors, value } = await parse({
+			reason: '  Ảnh sai sự thật  ',
+		});
+		expect(errors).toEqual([]);
+		expect(value).toMatchObject({ reason: 'Ảnh sai sự thật' });
+		expect((await parse({ reason: 'a'.repeat(500) })).errors).toEqual([]);
+	});
+
+	it.each([
+		{},
+		{ reason: '' },
+		{ reason: '   ' },
+		{ reason: 'a'.repeat(501) },
+		{ reason: 7 },
+	])('từ chối %j bằng 400 VALIDATION_FAILED', async (body) => {
+		expect(fields((await parse(body)).errors)).toEqual(['reason']);
 	});
 });

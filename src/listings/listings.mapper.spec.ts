@@ -4,12 +4,14 @@ import {
 	ownerSummaryRow,
 	publicDetailRow,
 	publicSummaryRow,
+	LANDLORD_ID,
 	WARD,
 } from './listings.fixtures';
 import {
 	toListingDetail,
 	toListingImage,
 	toListingSummary,
+	toModerationItem,
 	toOwnerDetail,
 	toOwnerSummary,
 } from './listings.mapper';
@@ -319,5 +321,32 @@ describe('toOwnerSummary và toOwnerDetail (spec 0002 AC-14)', () => {
 				includePhone: false,
 			}),
 		).not.toHaveProperty('isPublic');
+	});
+});
+
+describe('toModerationItem (spec 0002 AC-9, "Mục kiểm duyệt")', () => {
+	it('là tin tóm tắt có chủ trọ (không điện thoại) cộng status, moderationReason và viewCount', () => {
+		const item = toModerationItem(
+			publicSummaryRow({ status: 'hidden_by_admin', viewCount: 12 }),
+			'Ảnh không thật',
+		);
+		expect(item).toMatchObject({
+			status: 'hidden_by_admin',
+			moderationReason: 'Ảnh không thật',
+			viewCount: 12,
+			landlord: { id: LANDLORD_ID, name: 'Anh Nam' },
+			fullAddress: '12 Lê Lợi, Phường Bến Thành, Thành phố Hồ Chí Minh',
+		});
+		expect(item.landlord).not.toHaveProperty('phone');
+		expect(item).not.toHaveProperty('isPublic');
+	});
+
+	it('lý do chỉ có khi tin đang hidden_by_admin, kể cả khi người gọi lỡ truyền một lý do cũ', () => {
+		for (const status of ['visible', 'hidden_by_owner']) {
+			expect(
+				toModerationItem(publicSummaryRow({ status }), 'Lý do cũ')
+					.moderationReason,
+			).toBeNull();
+		}
 	});
 });

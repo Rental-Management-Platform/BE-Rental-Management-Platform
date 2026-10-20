@@ -13,6 +13,8 @@ import {
 } from './listing-images.controller';
 import { ListingImagesRepository } from './listing-images.repository';
 import { ListingImagesService } from './listing-images.service';
+import { ListingModerationController } from './listing-moderation.controller';
+import { ListingModerationService } from './listing-moderation.service';
 import { ListingsDataModule } from './listings-data.module';
 import {
 	ListingsController,
@@ -29,7 +31,7 @@ import { ViewDeduplicator } from './view-deduplicator';
  */
 const MAX_FILES_PER_REQUEST = 5;
 
-/** Tin đăng của chủ trọ và đọc công khai (spec 0002 mốc 3), ảnh tin và route phục vụ ảnh (mốc 4). */
+/** Tin đăng của chủ trọ và đọc công khai (spec 0002 mốc 3), ảnh tin và route phục vụ ảnh (mốc 4), kiểm duyệt của admin (mốc 5). */
 @Module({
 	imports: [
 		ListingsDataModule,
@@ -57,9 +59,11 @@ const MAX_FILES_PER_REQUEST = 5;
 		MyListingsController,
 		ListingImagesController,
 		MediaController,
+		ListingModerationController,
 	],
 	providers: [
 		ListingsService,
+		ListingModerationService,
 		ViewDeduplicator,
 		ListingImagesService,
 		ListingImagesRepository,

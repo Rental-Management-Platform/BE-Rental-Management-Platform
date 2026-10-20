@@ -1,4 +1,4 @@
-# Verify: nhà trọ, tin đăng và xem tin · spec 0002 · cập nhật 2026-10-19 (thêm mốc 4)
+# Verify: nhà trọ, tin đăng và xem tin · spec 0002 · cập nhật 2026-10-20 (thêm mốc 5)
 _Các bước suy ra từ acceptance criteria của spec 0002. `/check verify` chạy lại các bước này; `/test` khóa những bước bền thành test. Mỗi cột mốc build thêm một mục bên dưới._
 
 Chuẩn bị một lần cho mọi mốc: `.env` có đủ biến (xem `verify.md` của spec 0001), DB đã áp migration (`npm run migration:deploy`) và đã seed (`npm run seed`), rồi `npm run start:dev`. Mọi đường dẫn nằm dưới `/api/v1`.
@@ -193,3 +193,78 @@ Chuẩn bị: database thử đã `migration:deploy` và `seed`; API chạy vớ
 ### Chưa kiểm được ở mốc 4
 - Hai lần xóa đồng thời cùng một ảnh; tiến trình chết đúng giữa lúc ghi tệp và commit (để lại tệp mồ côi, spec đã chấp nhận); `UPLOAD_DIR` không ghi được do quyền; `Cross-Origin-Resource-Policy` khi thêm `helmet` (chưa có `helmet`); Docker Compose với `/data/uploads` (thuộc spec 0006, chưa có `compose.yaml`).
 - Chưa có kiểm cuối do `/check verify` chạy trên bản độc lập; các bước ở trên do người build chạy.
+
+---
+
+## Mốc 5: kiểm duyệt của admin, danh mục admin, tài liệu và kiểm cuối (AC-2, AC-9, AC-15 và rà lại AC-1 đến AC-16)
+
+Chạy trên một database thử (ví dụ `rental_management_verify`), không chạy trên database đang dùng. Cần admin do `npm run seed` tạo; đăng nhập bằng `ADMIN_SEED_*`. Mốc này không có migration mới.
+
+### UI / manual
+
+**Kiểm duyệt tin: quyền và đầu vào (AC-9)**
+- [ ] Chủ trọ và người tìm trọ gọi `GET /moderation/listings`, `POST /moderation/listings/:id/hide`, `POST /moderation/listings/:id/unhide` → 403 `PERMISSION_DENIED`; không token → 401 `TOKEN_MISSING`; tin không đổi → AC-9
+- [ ] `hide` thiếu `reason`, `reason` rỗng, toàn khoảng trắng, 501 ký tự, thêm trường lạ `status` → 400 `VALIDATION_FAILED` (`errors[].field` đúng), tin không đổi trạng thái, không có dòng `moderation_logs` mới → AC-9
+- [ ] `:id` là `abc` → 400 `INVALID_ID`; id đúng dạng nhưng không có tin → 404 `LISTING_NOT_FOUND`; tin đã xóa mềm → 404 → AC-9
+- [ ] Khóa tài khoản admin trong DB khi token còn hạn rồi `hide` → 403 `ACCOUNT_LOCKED` (`@FreshAuth`); `GET /moderation/listings` không có `@FreshAuth` nên theo quyền trong token → AC-9
+
+**Ẩn và gỡ ẩn (AC-9)**
+- [ ] Admin `hide` tin `visible` với lý do có khoảng trắng đầu cuối → 200, `status` là `hidden_by_admin`, `moderationReason` đã cắt khoảng trắng, `landlord` chỉ có `id` và `name`, không có `isPublic`, `fullAddress` hai cấp. DB có đúng một dòng `moderation_logs` (`target_type = listing`, `action = hide_listing`, `actor_id` là admin, đúng lý do) → AC-9
+- [ ] `hide` lần hai → 409 `LISTING_STATE_INVALID`, không thêm dòng lịch sử → AC-9
+- [ ] Tin bị ẩn: `GET /listings/:slugCode` → 404, biến khỏi `GET /listings`, ảnh ở `/media/public` → 404 → AC-9
+- [ ] Chủ trọ: `GET /me/listings/:id` và `GET /me/listings` thấy `hidden_by_admin` kèm `moderationReason`; `show` → 403 `LISTING_HIDDEN_BY_ADMIN`; `hide` của chủ trọ → 409; `PATCH` sửa tin vẫn 200 → AC-9, AC-14
+- [ ] `unhide` thiếu lý do → 400; `unhide` tin đang `visible` hoặc `hidden_by_owner` → 409 → AC-9
+- [ ] `unhide` đúng → 200, `status` là `hidden_by_owner`, `moderationReason` là `null`, một dòng `unhide_listing`; tin CHƯA hiện công khai; chủ trọ `show` → 200 `visible` và tin hiện lại → AC-9
+- [ ] Admin `hide` tin đang `hidden_by_owner` → 200 `hidden_by_admin` → AC-9
+- [ ] Ẩn, gỡ ẩn, rồi ẩn lại với lý do khác: chủ trọ thấy lý do MỚI NHẤT → AC-9
+
+**Danh sách kiểm duyệt (AC-9)**
+- [ ] `GET /moderation/listings?pageSize=50` → 200 `{ items, total, page, pageSize }`, mới nhất trước, thấy cả `visible`, `hidden_by_owner`, `hidden_by_admin` và tin của chủ trọ đã hết dùng thử; không có tin đã xóa mềm → AC-9
+- [ ] Lọc `status`, `landlordId`, `q` (không dấu, không phân biệt hoa thường; khớp tiêu đề, tên nhà trọ, tên phường). `q=%` và `q=_` chỉ ra tin có ký tự đó thật; `q=\` không lỗi 500 và ra rỗng; `q` toàn khoảng trắng thì bỏ lọc → AC-9
+- [ ] `status=deleted`, `landlordId=abc`, `pageSize=51` → 400 `VALIDATION_FAILED` → AC-9
+- [ ] Mỗi dòng đúng 17 trường của Mục kiểm duyệt; `moderationReason` chỉ có giá trị ở tin `hidden_by_admin` → AC-9, AC-16
+
+**Danh mục admin (AC-2)**
+- [ ] Chủ trọ và người tìm trọ: `POST`, `PATCH`, `DELETE` trên `/wards` và `/amenities` → 403; không token → 401 → AC-2
+- [ ] `POST /wards`: mã 4 chữ số, mã có chữ, mã tỉnh 3 chữ số, thiếu tên, trường lạ `districtName` → 400 `VALIDATION_FAILED`; hợp lệ → 201 đúng 4 trường; trùng mã (kể cả mã do seed tạo) → 409 `CATALOG_CODE_TAKEN`; `GET /wards` công khai thấy ngay → AC-2
+- [ ] `PATCH /wards/:code`: tên rỗng hoặc gửi `code` → 400; phường không có hoặc mã rác → 404 `NOT_FOUND`; thân rỗng → 200 không đổi gì → AC-2
+- [ ] Đổi tên phường (trước đó "tên cũ" khớp một tin có tiêu đề không chứa tên phường): ngay sau `PATCH`, tìm theo tên mới ra tin (ở `GET /listings` và `GET /moderation/listings`), tìm theo tên cũ không còn ra tin đó; `fullAddress` của nhà trọ và tin đổi theo; chỉ đổi `provinceName` thì `search_key` không đổi → AC-2, AC-16
+- [ ] `DELETE /wards/:code`: phường còn nhà trọ dùng → 409 `CATALOG_IN_USE`; phường chỉ còn nhà trọ đã xóa mềm dùng → 409; phường chưa ai dùng → 204 và biến khỏi `GET /wards`; xóa lại → 404; tạo nhà trọ chọn phường vừa xóa → 400 `WARD_UNKNOWN` → AC-2
+- [ ] Tiện ích: khóa chữ hoa, bắt đầu bằng số, 31 ký tự, thiếu tên → 400; tạo → 201 đúng 2 trường; trùng khóa (kể cả `wifi`) → 409; `PATCH` đổi tên → 200, `PATCH` thiếu tên hoặc gửi `key` → 400, không có → 404; `DELETE` còn nhà trọ dùng (kể cả đã xóa mềm) → 409 `CATALOG_IN_USE`, chưa ai dùng → 204, xóa lại → 404; nhà trọ chọn khóa vừa xóa → 400 `AMENITY_UNKNOWN` → AC-2
+
+**Đua nhau (AC-9)**
+- [ ] 20 vòng: tin `hidden_by_owner`, đồng thời admin `hide` và chủ trọ gọi `show`, `hide`, `show` → mọi vòng kết thúc ở `hidden_by_admin` và lệnh của admin trả 200 → AC-6, AC-9
+- [ ] 10 vòng: hai lệnh `hide` của admin cùng lúc trên một tin `visible` → một 200 và một 409; DB có đúng một dòng `hide_listing` cho tin đó → AC-9
+
+**Giới hạn tần suất (AC-15)**
+- [ ] Khởi động lại API (bộ đếm về 0). `PATCH /properties/:id` lần 31 → 429 `RATE_LIMITED` kèm `Retry-After` là số nguyên dương; `PATCH /listings/:id` lần 61; `POST /listings/:id/images` lần 61; `GET /listings/:slugCode` của người đăng nhập lần 61 (khách cùng IP vẫn mở được); `GET /listings` lần 301 → AC-15
+- [ ] 120 lần `GET /moderation/listings` liên tiếp không bị 429 (API admin không giới hạn thêm) → AC-15
+
+### Commands
+- [ ] `npm test` → 53 suite, 987 bài qua; `npx tsc --noEmit` và `npx eslint "src/**/*.ts" "test/**/*.ts"` (không `--fix`) sạch → mọi AC
+- [ ] `git diff -- prisma` rỗng: mốc 5 không đổi `schema.prisma` và không có migration mới → AC-2, AC-9
+- [ ] Newman các folder 00, 01, 03, 04, 05 và 07 đến 17 từ trên xuống trên DB thử sạch, `--working-dir docs/api` → 329 request, 645 assertion, 0 lỗi; chạy lần hai trên cùng DB cũng 0 lỗi (folder 17 tự dọn: phường và tiện ích thử bị xóa, tên phường thật được trả về) → AC-2, AC-9
+- [ ] Log API trong lúc chạy Newman: không dòng `ERROR`, không phản hồi 5xx, không cảnh báo `pg` về truy vấn song song trên một kết nối → AC-2, AC-9
+
+### Điều khiển âm (đã làm khi build, 2026-10-20)
+- Bỏ điều kiện trạng thái nguồn khỏi câu `updateMany` của `transition` trong `dist`: admin chỉ thắng 1 trong 20 vòng đua, và hai lệnh `hide` cùng lúc cho 2 dòng lịch sử thay vì 1. Build lại từ mã nguồn thì 20/20 và 10/10.
+- Cho Service ghi lịch sử bất kể câu lệnh có đổi dòng nào không (`if (changed)` thành `if (true)` trong `dist`): hai lệnh `hide` cùng lúc luôn cho 2 dòng lịch sử, 0/10 vòng đạt. Build lại thì 10/10.
+- Lỗi của chính phép kiểm bắt được khi viết: tiêu đề tin mẫu có sẵn chữ "Bến Thành" nên vẫn khớp từ khóa tên phường cũ qua tiêu đề. Phép kiểm đổi tên phường giờ dùng tin có tiêu đề không chứa tên phường và có điều khiển dương (trước khi đổi tên thì khớp); folder 17 của Postman dựng theo cách đó.
+
+### Acceptance-criteria coverage
+- AC-2: các bước danh mục admin, đổi tên phường làm mới `search_key`, quyền. AC-9: các bước ẩn, gỡ ẩn, danh sách kiểm duyệt, đua và điều khiển âm. AC-15: bước giới hạn tần suất gọi thật cho cả năm nhóm (các nhóm đã được thêm ở mốc 3 và 4, mốc 5 không thêm nhóm nào). Rà lại cả spec: AC-1 đến AC-16 đều có bước ở mốc 1 đến 5.
+
+### Value sourcing
+- [ ] `actor_id` và `reason` của ẩn, gỡ ẩn = `sub` của token (đọc lại DB do `@FreshAuth`) và `reason` trong body đã cắt khoảng trắng → đăng nhập hai admin khác nhau, mỗi người ẩn một tin, `actor_id` đúng từng người → AC-9
+- [ ] `moderationReason` = `reason` của dòng `moderation_logs` mới nhất có `target_type = listing`, `action = hide_listing`, chỉ khi `status` là `hidden_by_admin` → ẩn, gỡ ẩn, ẩn lại với lý do khác: chủ trọ thấy lý do mới nhất; sau gỡ ẩn là `null` → AC-9
+- [ ] Trạng thái nguồn của lệnh ẩn (`visible` hoặc `hidden_by_owner`) và của lệnh gỡ ẩn (`hidden_by_admin`) nằm trong chính câu `updateMany`, không đọc ra trước → AC-9
+- [ ] `landlord { id, name }` của Mục kiểm duyệt = `properties.landlord_id` và `users.name` (rỗng thì `null`); không có số điện thoại → AC-9
+- [ ] "Còn nhà trọ dùng" = khóa ngoại RESTRICT của DB (`properties.ward_code`, `property_amenities.amenity_key`), tính cả nhà trọ đã xóa mềm vì dòng vẫn còn → AC-2
+- [ ] Tin cần làm mới `search_key` khi đổi tên phường = mọi tin chưa xóa của nhà trọ có `ward_code` đó; khóa mới = `toSearchKey(tiêu đề, tên nhà trọ, địa chỉ, tên phường mới)` → AC-2
+- [ ] Mã lỗi suy từ Prisma: trùng khóa chính (`P2002`) = `CATALOG_CODE_TAKEN`; dòng không có (`P2025`) = `NOT_FOUND`; vi phạm khóa ngoại khi xóa (`P2003`) = `CATALOG_IN_USE` → AC-2
+
+### Chưa kiểm được ở mốc 5
+- Khóa tài khoản admin khi token còn hạn rồi `hide` (`@FreshAuth` ra 403 `ACCOUNT_LOCKED`) và hai admin khác nhau ẩn (cột `actor_id`): chưa chạy ở mốc này vì DB thử chỉ có một admin. Cơ chế `@FreshAuth` có bước kiểm riêng ở `verify.md` của hàng 9 (spec 0003, mốc 1).
+- Đổi tên phường đúng lúc có tin đang được đăng (tin mới có thể mang `search_key` theo tên cũ); spec đã chấp nhận.
+- Đổi tên phường có hàng nghìn tin (lặp từng tin trong một giao dịch): chưa đo.
+- Chưa có bộ test e2e tự động bằng Jest (xem ghi chú ở bước 12 của Build plan); chưa có kiểm cuối do `/check verify` chạy trên bản độc lập, các bước ở trên do người build chạy.

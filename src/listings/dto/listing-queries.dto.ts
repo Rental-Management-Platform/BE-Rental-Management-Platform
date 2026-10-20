@@ -4,6 +4,7 @@ import {
 	IsInt,
 	IsOptional,
 	IsString,
+	IsUUID,
 	Matches,
 	MaxLength,
 	Max,
@@ -53,6 +54,26 @@ export class ListListingsQueryDto extends PaginationQueryDto {
 	@IsOptional()
 	@IsIn([...LISTING_SORTS])
 	sort: ListingSort = 'newest';
+}
+
+/**
+ * Query của `GET /moderation/listings` (spec 0002 AC-9): phân trang cộng lọc theo trạng thái, chủ trọ và từ khóa.
+ * Giá trị ngoài biên (`status` lạ, `landlordId` không phải UUID) là 400 `VALIDATION_FAILED`.
+ */
+export class ModerationListingsQueryDto extends PaginationQueryDto {
+	@IsOptional()
+	@IsIn([...LISTING_STATUSES])
+	status?: ListingStatus;
+
+	@IsOptional()
+	@IsUUID(undefined, { message: 'Phải là mã chủ trọ hợp lệ.' })
+	landlordId?: string;
+
+	@IsOptional()
+	@Trim()
+	@IsString()
+	@MaxLength(LISTING_LIMITS.searchTextMax)
+	q?: string;
 }
 
 /** Query của `GET /me/listings` (spec 0002 AC-14): phân trang cộng lọc theo trạng thái. */

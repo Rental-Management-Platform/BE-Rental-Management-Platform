@@ -175,3 +175,79 @@ describe('ListingsRepository.findEarliestVisibleIds (spec 0003 AC-9, AC-11)', ()
 		});
 	});
 });
+
+describe('ListingsRepository.findModerationPage (spec 0002 AC-9)', () => {
+	function build() {
+		const findMany = jest.fn(() => Promise.resolve([]));
+		const count = jest.fn(() => Promise.resolve(0));
+		const repository = new ListingsRepository({
+			listing: { findMany, count },
+		} as unknown as PrismaService);
+		return { repository, findMany, count };
+	}
+
+	it('không lọc gì: mọi trạng thái, chỉ bỏ tin đã xóa mềm, mới nhất trước với khóa phụ id', async () => {
+		const { repository, findMany, count } = build();
+		await repository.findModerationPage({ searchWords: [] }, 20, 10);
+		const args = (findMany.mock.calls as unknown as unknown[][])[0][0] as {
+			where: object;
+			orderBy: unknown;
+			skip: number;
+			take: number;
+		};
+		expect(args.where).toEqual({ deletedAt: null, AND: [] });
+		expect(args.orderBy).toEqual([{ createdAt: 'desc' }, { id: 'desc' }]);
+		expect(args.skip).toBe(20);
+		expect(args.take).toBe(10);
+		// `total` đếm bằng cùng điều kiện.
+		expect(count).toHaveBeenCalledWith({
+			where: { deletedAt: null, AND: [] },
+		});
+	});
+
+	it('lọc theo trạng thái và chủ trọ (qua nhà trọ)', async () => {
+		const { repository, findMany } = build();
+		await repository.findModerationPage(
+			{ status: 'hidden_by_admin', landlordId: 'chu-1', searchWords: [] },
+			0,
+			20,
+		);
+		const { where } = (
+			findMany.mock.calls as unknown as unknown[][]
+		)[0][0] as { where: object };
+		expect(where).toEqual({
+			deletedAt: null,
+			status: 'hidden_by_admin',
+			property: { landlordId: 'chu-1' },
+			AND: [],
+		});
+	});
+
+	it('mỗi từ khóa là một điều kiện contains nối bằng AND và đã thoát %, _ và gạch chéo ngược', async () => {
+		const { repository, findMany } = build();
+		await repository.findModerationPage(
+			{ searchWords: ['phong', '100%', 'a_b', 'c\\d'] },
+			0,
+			20,
+		);
+		const { where } = (
+			findMany.mock.calls as unknown as unknown[][]
+		)[0][0] as { where: { AND: unknown } };
+		expect(where.AND).toEqual([
+			{ searchKey: { contains: 'phong' } },
+			{ searchKey: { contains: '100\\%' } },
+			{ searchKey: { contains: 'a\\_b' } },
+			{ searchKey: { contains: 'c\\\\d' } },
+		]);
+	});
+
+	it('không áp luật hiển thị công khai: admin thấy cả tin đang ẩn và tin của chủ trọ hết gói', async () => {
+		const { repository, findMany } = build();
+		await repository.findModerationPage({ searchWords: [] }, 0, 20);
+		const { where } = (
+			findMany.mock.calls as unknown as unknown[][]
+		)[0][0] as { where: Record<string, unknown> };
+		expect(where).not.toHaveProperty('status');
+		expect(where).not.toHaveProperty('property');
+	});
+});

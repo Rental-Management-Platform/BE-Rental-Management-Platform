@@ -70,6 +70,18 @@ export interface OwnerListingSummaryResponse extends Omit<
 	readonly isPublic: boolean;
 }
 
+/**
+ * "Mục kiểm duyệt" (spec 0002, "Hình dạng trả về"): dòng của `GET /moderation/listings` và kết quả hai route ẩn, gỡ ẩn
+ * của admin. Tin tóm tắt (có `landlord { id, name }`) cộng trạng thái, lý do ẩn gần nhất và lượt xem. Không có
+ * `isPublic`: cờ đó là của chủ trọ (spec 0003 AC-11).
+ */
+export interface ModerationListingResponse extends ListingSummaryResponse {
+	readonly status: ListingStatus;
+	/** Có giá trị khi `status` là `hidden_by_admin`: lý do ẩn gần nhất; ngược lại `null`. */
+	readonly moderationReason: string | null;
+	readonly viewCount: number;
+}
+
 /** Tin của chủ trọ (`/me/listings/:id` và kết quả mọi route ghi): chi tiết bỏ `landlord`, cộng `status`, `moderationReason` và `isPublic`. */
 export interface OwnerListingDetailResponse extends Omit<
 	ListingDetailResponse,

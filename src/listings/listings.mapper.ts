@@ -9,6 +9,7 @@ import type {
 	ListingDetailResponse,
 	ListingImageResponse,
 	ListingSummaryResponse,
+	ModerationListingResponse,
 	OwnerListingDetailResponse,
 	OwnerListingSummaryResponse,
 } from './dto/listing.response';
@@ -105,6 +106,23 @@ export function toListingSummary(
 			id: row.property.landlord.id,
 			name: orNull(row.property.landlord.name),
 		},
+	};
+}
+
+/**
+ * Mục kiểm duyệt của admin: tin tóm tắt có chủ trọ (không số điện thoại) cộng trạng thái, lý do ẩn của admin
+ * (chỉ khi `hidden_by_admin`) và lượt xem. Dùng lại hàng đọc của danh sách công khai vì cần đúng các quan hệ đó.
+ */
+export function toModerationItem(
+	row: PublicSummaryRow,
+	moderationReason: string | null,
+): ModerationListingResponse {
+	return {
+		...toListingSummary(row),
+		status: row.status as ListingStatus,
+		moderationReason:
+			row.status === 'hidden_by_admin' ? moderationReason : null,
+		viewCount: row.viewCount,
 	};
 }
 

@@ -24,7 +24,7 @@ _Đây là các khuyến nghị để việc làm gọn gàng, không phải yê
 | 5 | Phân quyền theo loại tài khoản | Release 5 | done |
 | 6 | Quên mật khẩu và đổi mật khẩu | Release 6 | done |
 | 7 | Giới hạn tần suất | Release 7 | done |
-| 8 | Nhà trọ, đăng tin và xem tin | Release 8 | in-progress |
+| 8 | Nhà trọ, đăng tin và xem tin | Release 8 | done |
 | 9 | Dùng thử miễn phí và hạn mức tin | Release 9 | done |
 | 10 | Mua gói (thanh toán thử) và gia hạn theo tháng | Release 10 | in-progress |
 | 11 | Theo dõi chủ trọ và số người biết đến | Release 11 | planned |
@@ -119,16 +119,16 @@ Spec [0002](../specs/0001-backend-foundation/0002-authentication-tokens.md) (AC-
 
 ## Release 8: nhà trọ và đăng tin
 
-### 8. Nhà trọ, đăng tin và xem tin · in-progress
+### 8. Nhà trọ, đăng tin và xem tin · done
 Chủ trọ tạo nhà trọ (địa chỉ, phường, phí, tiện ích) rồi đăng tin phòng thuộc nhà trọ đó; tin hiện ngay khi đăng, không có nháp và không có duyệt. Chủ trọ tự ẩn và hiện lại tin của mình; admin ẩn hoặc gỡ ẩn tin của người khác kèm lý do (quyền `listing:moderate`). Người tìm trọ xem danh sách tin công khai có lọc đơn giản (từ khóa, phường, khoảng giá, sắp xếp) và xem chi tiết tin. Địa chỉ theo đơn vị hành chính hai cấp sau sáp nhập (tỉnh hoặc thành phố, rồi phường, xã hoặc đặc khu; không quận huyện), API trả sẵn `fullAddress`. Ảnh tải lên ổ đĩa, tối đa 5 ảnh mỗi tin. Đây là lát cắt để hạn mức, gói và lượt theo dõi có chỗ bám vào. Đã thiết kế đầy đủ ở spec 0002 (cột, API, mã ngắn của tin, nguồn 168 phường, quy tắc đếm lượt xem), bạn Accept ngày 2026-10-14.
 **Done when:** chủ trọ tạo nhà trọ và đăng tin, tin hiện ngay trong danh sách công khai; chủ trọ ẩn và hiện lại tin của mình; admin ẩn tin của chủ trọ kèm lý do thì tin biến khỏi danh sách công khai, chủ trọ thấy lý do và không tự hiện lại được; chỉ tin đang hiện của tài khoản đang hoạt động mới hiển thị công khai; người tìm trọ lọc được danh sách và mở được chi tiết, mỗi người xem được cộng một lượt xem trong 30 phút (chủ tin không tính), khách chưa đăng nhập không thấy số điện thoại; mọi địa chỉ có `fullAddress` hai cấp; tải lên được tối đa 5 ảnh mỗi tin; admin quản lý danh mục phường và tiện ích và có danh sách tin để kiểm duyệt.
 - [x] Design it (spec): `/architect property listings`
-- [ ] Build it: `/develop property listings`
+- [x] Build it: `/develop property listings`
    - [x] Mốc 1: nền dữ liệu (7 bảng, 11 mã lỗi, hàm `toSearchKey`, `toSlug`, nhận loại ảnh) và `GET /wards`, `GET /amenities` theo địa chỉ hai cấp sau sáp nhập, kèm seed 168 phường (AC-1)
    - [x] Mốc 2: nhà trọ, phí và tiện ích, xóa mềm có chặn khi còn tin, `fullAddress` (AC-3, AC-4, AC-16)
    - [x] Mốc 3: đăng tin, danh sách và chi tiết công khai, lượt xem, tin của chủ trọ, sửa, ẩn và hiện (AC-5, AC-6, AC-7, AC-10 đến AC-14, AC-16)
    - [x] Mốc 4: ảnh tin, tối đa 5 ảnh mỗi tin (AC-8); đã chạy thật trên DB thử 2026-10-19 (86 kiểm tra HTTP và SQL với tệp ảnh thật gồm đồng thời, lỗi DB giả và luật hiển thị, ba điều khiển âm, 906 bài unit, Newman 253 request và 479 assertion với hai assertion đã biết của folder 02); nhóm giới hạn `listingImage` đã thêm ở mốc này, mốc 5 không còn nhóm nào thiếu
-   - [ ] Mốc 5: kiểm duyệt của admin, danh mục admin, giới hạn tần suất, tài liệu và kiểm cuối (AC-2, AC-9, AC-15)
+   - [x] Mốc 5: kiểm duyệt của admin, danh mục admin, giới hạn tần suất, tài liệu và kiểm cuối (AC-2, AC-9, AC-15); đã chạy thật trên DB thử 2026-10-20 (184 kiểm tra HTTP, đua admin với chủ trọ 20/20 và hai admin cùng lúc 10/10 kèm hai điều khiển âm đều bị bắt, năm nhóm giới hạn tần suất gọi thật, 987 bài unit, Newman 329 request và 645 assertion không lỗi hai lần liên tiếp); README viết lại; phần "test e2e" của bước 12 thay bằng script gọi thật và Newman, chưa có bộ Jest e2e (`test/app.e2e-spec.ts` là bản mẫu Nest còn sót và hỏng)
 Spec [0002](../specs/0002-property-listings/index.md) (16 AC, 5 mốc, đã được bạn Accept ngày 2026-10-14; trạng thái spec đi theo tính năng) · code in `src/catalog/`, `src/properties/`, `src/listings/`, `src/common/pagination/`, `src/common/auth/optional-auth.decorator.ts`, `src/common/text/`, `src/common/files/`, `src/storage/`, `src/database/seed-data.ts`, `src/database/seed-catalog.ts`, `prisma/seed-data/`, `prisma/migrations/20261014090000_property_listings/` · tài liệu in `docs/api/`
 
 ## Release 9: dùng thử và hạn mức
