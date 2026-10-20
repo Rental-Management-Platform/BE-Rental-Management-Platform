@@ -419,6 +419,11 @@
       "key": "profileAdminId",
       "value": "",
       "description": "Id admin, dùng thử 404 ở folder 18."
+    },
+    {
+      "key": "profileFollowerCount",
+      "value": "",
+      "description": "Số người theo dõi hiện tại của chủ trọ ở folder 18, làm mốc cho các request theo dõi và bỏ theo dõi."
     }
   ],
   "auth": {
@@ -15526,7 +15531,7 @@
     },
     {
       "name": "18 Hồ sơ công khai của chủ trọ",
-      "description": "Hồ sơ công khai của chủ trọ với số người theo dõi, tổng lượt xem và số tin đang hiện (spec 0005, mốc 1, phần đọc). **Chạy sau folder 09** (dùng `userToken` và `tenantToken`) và từ trên xuống. Request đầu đăng nhập admin và lưu `adminToken`; ba request kế lấy id chủ trọ, người tìm trọ và admin. Folder không thêm lần đăng ký nào. Phần theo dõi và bỏ theo dõi (mốc 2) sẽ thêm vào folder này.",
+      "description": "Hồ sơ công khai của chủ trọ với số người theo dõi, tổng lượt xem và số tin đang hiện (spec 0005). **Chạy sau folder 09** (dùng `userToken` và `tenantToken`) và từ trên xuống. Request đầu đăng nhập admin và lưu `adminToken`; ba request kế lấy id chủ trọ, người tìm trọ và admin. Nửa đầu là phần đọc (mốc 1); các request `[ghi]` ở nửa sau là theo dõi, bỏ theo dõi, lỗi và quyền (mốc 2) và kết thúc với người tìm trọ không còn theo dõi, nên chạy lại được. Folder không thêm lần đăng ký nào. Giới hạn 60 lần ghi mỗi giờ không được thử ở đây (xem `docs/specs/0005-landlord-follow-reach/verify.md`).",
       "item": [
         {
           "name": "Đăng nhập admin",
@@ -15779,7 +15784,8 @@
                   "    pm.expect(pm.response.text()).to.not.match(/@/);",
                   "    pm.expect(pm.response.text()).to.not.match(/phone|email/i);",
                   "});",
-                  "pm.test('đã đăng nhập: isFollowing là false (chưa theo dõi)', () => pm.expect(body.isFollowing).to.eql(false));"
+                  "pm.test('đã đăng nhập: isFollowing là false (chưa theo dõi)', () => pm.expect(body.isFollowing).to.eql(false));",
+                  "pm.collectionVariables.set('profileFollowerCount', body.followerCount);"
                 ]
               }
             }
@@ -15797,7 +15803,7 @@
                 "{{profileLandlordId}}"
               ]
             },
-            "description": "Có token hợp lệ thì `isFollowing` là `true` hoặc `false`. Chưa có API theo dõi (mốc 2) nên ở đây là `false`; khi có API, bước này đổi thành theo dõi rồi kiểm `true`.",
+            "description": "Có token hợp lệ thì `isFollowing` là `true` hoặc `false`. Ở bước này người tìm trọ chưa theo dõi nên là `false`; các request `[ghi]` bên dưới theo dõi rồi bỏ theo dõi, kết thúc với `isFollowing` là `false` để folder chạy lại được. Request này cũng lưu `followerCount` hiện tại vào `profileFollowerCount` làm mốc so sánh.",
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -16100,6 +16106,755 @@
               ]
             },
             "description": "Id sai định dạng: 400 `INVALID_ID`.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "[ghi] Người tìm trọ theo dõi chủ trọ (POST /landlords/:id/follow)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const body = pm.response.json();",
+                  "pm.test('đúng bảy trường', () => pm.expect(Object.keys(body).sort()).to.eql(['followerCount', 'id', 'isFollowing', 'joinedAt', 'name', 'publicListingCount', 'totalViewCount']));",
+                  "pm.test('id đúng là chủ trọ cần xem', () => pm.expect(body.id).to.eql(pm.collectionVariables.get('profileLandlordId')));",
+                  "pm.test('isFollowing là true', () => pm.expect(body.isFollowing).to.eql(true));",
+                  "pm.test('followerCount tăng một', () => pm.expect(body.followerCount).to.eql(Number(pm.collectionVariables.get('profileFollowerCount')) + (1)));",
+                  "pm.test('Cache-Control là private, no-store', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('private, no-store'));",
+                  "pm.collectionVariables.set('profileFollowerCount', body.followerCount);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{profileLandlordId}}/follow",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{profileLandlordId}}",
+                "follow"
+              ]
+            },
+            "description": "Cần quyền `follow:create` (mặc định chỉ `tenant`). Không có body: người theo dõi luôn là người trong token, nội dung gửi kèm bị bỏ qua. Trả 200 (không phải 201) kèm hồ sơ mới của chủ trọ, nên FE cập nhật nút trong một lần gọi. Giới hạn 60 lần mỗi giờ theo người dùng, mỗi API đếm riêng.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[ghi] Theo dõi lặp lại vẫn 200, số không đổi (POST /landlords/:id/follow)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const body = pm.response.json();",
+                  "pm.test('đúng bảy trường', () => pm.expect(Object.keys(body).sort()).to.eql(['followerCount', 'id', 'isFollowing', 'joinedAt', 'name', 'publicListingCount', 'totalViewCount']));",
+                  "pm.test('id đúng là chủ trọ cần xem', () => pm.expect(body.id).to.eql(pm.collectionVariables.get('profileLandlordId')));",
+                  "pm.test('isFollowing là true', () => pm.expect(body.isFollowing).to.eql(true));",
+                  "pm.test('followerCount không đổi', () => pm.expect(body.followerCount).to.eql(Number(pm.collectionVariables.get('profileFollowerCount')) + (0)));",
+                  "pm.test('Cache-Control là private, no-store', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('private, no-store'));",
+                  "pm.collectionVariables.set('profileFollowerCount', body.followerCount);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{profileLandlordId}}/follow",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{profileLandlordId}}",
+                "follow"
+              ]
+            },
+            "description": "Mỗi cặp (người theo dõi, chủ trọ) chỉ có một dòng. Bấm lại vẫn 200 và `followerCount` không đổi, kể cả khi nhiều lần gọi chạy đồng thời.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[ghi] Người đã theo dõi xem lại hồ sơ (GET /landlords/:id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const body = pm.response.json();",
+                  "pm.test('đúng bảy trường', () => pm.expect(Object.keys(body).sort()).to.eql(['followerCount', 'id', 'isFollowing', 'joinedAt', 'name', 'publicListingCount', 'totalViewCount']));",
+                  "pm.test('id đúng là chủ trọ cần xem', () => pm.expect(body.id).to.eql(pm.collectionVariables.get('profileLandlordId')));",
+                  "pm.test('isFollowing là true', () => pm.expect(body.isFollowing).to.eql(true));",
+                  "pm.test('followerCount khớp kết quả của POST', () => pm.expect(body.followerCount).to.eql(Number(pm.collectionVariables.get('profileFollowerCount')) + (0)));",
+                  "pm.test('Cache-Control là private, no-store', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('private, no-store'));",
+                  "pm.collectionVariables.set('profileFollowerCount', body.followerCount);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{profileLandlordId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{profileLandlordId}}"
+              ]
+            },
+            "description": "Mở lại hồ sơ bằng `GET` ra cùng số với kết quả của `POST`: `isFollowing` là `true`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[ghi] Khách xem hồ sơ sau khi có người theo dõi (GET /landlords/:id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const body = pm.response.json();",
+                  "pm.test('isFollowing là null', () => pm.expect(body.isFollowing).to.eql(null));",
+                  "pm.test('followerCount giống người đã đăng nhập thấy', () => pm.expect(body.followerCount).to.eql(Number(pm.collectionVariables.get('profileFollowerCount'))));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{profileLandlordId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{profileLandlordId}}"
+              ]
+            },
+            "description": "Khách vẫn thấy cùng `followerCount`, còn `isFollowing` là `null`.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "[ghi] Người tìm trọ bỏ theo dõi (DELETE /landlords/:id/follow)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const body = pm.response.json();",
+                  "pm.test('đúng bảy trường', () => pm.expect(Object.keys(body).sort()).to.eql(['followerCount', 'id', 'isFollowing', 'joinedAt', 'name', 'publicListingCount', 'totalViewCount']));",
+                  "pm.test('id đúng là chủ trọ cần xem', () => pm.expect(body.id).to.eql(pm.collectionVariables.get('profileLandlordId')));",
+                  "pm.test('isFollowing là false', () => pm.expect(body.isFollowing).to.eql(false));",
+                  "pm.test('followerCount giảm một', () => pm.expect(body.followerCount).to.eql(Number(pm.collectionVariables.get('profileFollowerCount')) + (-1)));",
+                  "pm.test('Cache-Control là private, no-store', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('private, no-store'));",
+                  "pm.collectionVariables.set('profileFollowerCount', body.followerCount);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{profileLandlordId}}/follow",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{profileLandlordId}}",
+                "follow"
+              ]
+            },
+            "description": "Cần quyền `follow:delete`. Không có body. Trả 200 kèm hồ sơ mới với `isFollowing: false` và `followerCount` giảm một.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[ghi] Bỏ theo dõi lặp lại vẫn 200, số không đổi (DELETE /landlords/:id/follow)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const body = pm.response.json();",
+                  "pm.test('đúng bảy trường', () => pm.expect(Object.keys(body).sort()).to.eql(['followerCount', 'id', 'isFollowing', 'joinedAt', 'name', 'publicListingCount', 'totalViewCount']));",
+                  "pm.test('id đúng là chủ trọ cần xem', () => pm.expect(body.id).to.eql(pm.collectionVariables.get('profileLandlordId')));",
+                  "pm.test('isFollowing là false', () => pm.expect(body.isFollowing).to.eql(false));",
+                  "pm.test('followerCount không đổi', () => pm.expect(body.followerCount).to.eql(Number(pm.collectionVariables.get('profileFollowerCount')) + (0)));",
+                  "pm.test('Cache-Control là private, no-store', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('private, no-store'));",
+                  "pm.collectionVariables.set('profileFollowerCount', body.followerCount);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{profileLandlordId}}/follow",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{profileLandlordId}}",
+                "follow"
+              ]
+            },
+            "description": "Chưa theo dõi mà bỏ theo dõi vẫn 200 và số không đổi.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[ghi] Thử lỗi: tự theo dõi chính mình (POST /landlords/:id/follow)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 409 CANNOT_FOLLOW_SELF', () => {",
+                  "    pm.response.to.have.status(409);",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.code).to.eql('CANNOT_FOLLOW_SELF');",
+                  "    pm.expect(body.message).to.eql('Bạn không thể theo dõi chính mình.');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{profileTenantId}}/follow",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{profileTenantId}}",
+                "follow"
+              ]
+            },
+            "description": "Người tìm trọ có quyền theo dõi nhưng id trên đường dẫn chính là mình: 409 `CANNOT_FOLLOW_SELF`. Kiểm trước khi tra chủ trọ (nên không phải 404 dù tài khoản này không phải chủ trọ); `CHECK` ở DB là lớp cuối.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[ghi] Thử lỗi: theo dõi id không phải chủ trọ (POST /landlords/:id/follow)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 404 LANDLORD_NOT_FOUND', () => {",
+                  "    pm.response.to.have.status(404);",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.code).to.eql('LANDLORD_NOT_FOUND');",
+                  "    pm.expect(body.message).to.eql('Không tìm thấy chủ trọ.');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{profileAdminId}}/follow",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{profileAdminId}}",
+                "follow"
+              ]
+            },
+            "description": "Id của một tài khoản không phải chủ trọ (ở đây là admin): 404 `LANDLORD_NOT_FOUND`. Không có dòng nào được ghi.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[ghi] Thử lỗi: theo dõi id không tồn tại (POST /landlords/:id/follow)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 404 LANDLORD_NOT_FOUND', () => {",
+                  "    pm.response.to.have.status(404);",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.code).to.eql('LANDLORD_NOT_FOUND');",
+                  "    pm.expect(body.message).to.eql('Không tìm thấy chủ trọ.');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/0192f1c2-7a4b-7c3e-9d1a-000000000000/follow",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "0192f1c2-7a4b-7c3e-9d1a-000000000000",
+                "follow"
+              ]
+            },
+            "description": "Id đúng dạng UUID nhưng không có: 404 `LANDLORD_NOT_FOUND`. Chủ trọ đang bị khóa hoặc đã xóa mềm cũng trả đúng mã này.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[ghi] Thử lỗi: bỏ theo dõi id không phải chủ trọ (DELETE /landlords/:id/follow)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 404 LANDLORD_NOT_FOUND', () => {",
+                  "    pm.response.to.have.status(404);",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.code).to.eql('LANDLORD_NOT_FOUND');",
+                  "    pm.expect(body.message).to.eql('Không tìm thấy chủ trọ.');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{profileAdminId}}/follow",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{profileAdminId}}",
+                "follow"
+              ]
+            },
+            "description": "Bỏ theo dõi cũng kiểm chủ trọ hợp lệ: 404 `LANDLORD_NOT_FOUND`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[ghi] Thử lỗi: id không phải UUID (POST /landlords/:id/follow)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 400 INVALID_ID', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.code).to.eql('INVALID_ID');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/abc/follow",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "abc",
+                "follow"
+              ]
+            },
+            "description": "Id sai định dạng: 400 `INVALID_ID`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[ghi] Thử lỗi: chủ trọ không có quyền theo dõi (POST /landlords/:id/follow)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 403 PERMISSION_DENIED', () => {",
+                  "    pm.response.to.have.status(403);",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.code).to.eql('PERMISSION_DENIED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{profileLandlordId}}/follow",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{profileLandlordId}}",
+                "follow"
+              ]
+            },
+            "description": "Chủ trọ mặc định không giữ `follow:create`: 403 `PERMISSION_DENIED`, kiểm trước khi nhìn id nên không phải 409. Admin có thể cấp quyền này cho `landlord` bằng API quyền; khi đó chủ trọ theo dõi được chủ trọ khác nhưng không theo dõi được chính mình.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[ghi] Thử lỗi: chủ trọ không có quyền bỏ theo dõi (DELETE /landlords/:id/follow)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 403 PERMISSION_DENIED', () => {",
+                  "    pm.response.to.have.status(403);",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.code).to.eql('PERMISSION_DENIED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{profileLandlordId}}/follow",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{profileLandlordId}}",
+                "follow"
+              ]
+            },
+            "description": "Chủ trọ mặc định không giữ `follow:delete`: 403 `PERMISSION_DENIED`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[ghi] Thử lỗi: admin không theo dõi được (POST /landlords/:id/follow)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 403 PERMISSION_DENIED', () => {",
+                  "    pm.response.to.have.status(403);",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.code).to.eql('PERMISSION_DENIED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{profileLandlordId}}/follow",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{profileLandlordId}}",
+                "follow"
+              ]
+            },
+            "description": "Admin giữ mọi quyền (kể cả `follow:create`) nhưng không theo dõi ai: 403 `PERMISSION_DENIED`, do Service kiểm loại tài khoản. Không có dòng nào được ghi.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[ghi] Thử lỗi: admin không bỏ theo dõi được (DELETE /landlords/:id/follow)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 403 PERMISSION_DENIED', () => {",
+                  "    pm.response.to.have.status(403);",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.code).to.eql('PERMISSION_DENIED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{profileLandlordId}}/follow",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{profileLandlordId}}",
+                "follow"
+              ]
+            },
+            "description": "Admin cũng bị 403 `PERMISSION_DENIED` khi bỏ theo dõi.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[ghi] Thử lỗi: khách theo dõi (POST /landlords/:id/follow)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 401 TOKEN_MISSING', () => {",
+                  "    pm.response.to.have.status(401);",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.code).to.eql('TOKEN_MISSING');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{profileLandlordId}}/follow",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{profileLandlordId}}",
+                "follow"
+              ]
+            },
+            "description": "Không có token: 401 `TOKEN_MISSING`. Không có dòng nào được ghi.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "[ghi] Thử lỗi: khách bỏ theo dõi (DELETE /landlords/:id/follow)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 401 TOKEN_MISSING', () => {",
+                  "    pm.response.to.have.status(401);",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.code).to.eql('TOKEN_MISSING');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{profileLandlordId}}/follow",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{profileLandlordId}}",
+                "follow"
+              ]
+            },
+            "description": "Không có token: 401 `TOKEN_MISSING`.",
             "auth": {
               "type": "noauth"
             }

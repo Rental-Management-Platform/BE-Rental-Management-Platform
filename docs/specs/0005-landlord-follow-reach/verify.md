@@ -1,4 +1,4 @@
-# Verify: theo dõi chủ trọ và hồ sơ công khai · spec 0005 · updated 2026-10-20 (mốc 1)
+# Verify: theo dõi chủ trọ và hồ sơ công khai · spec 0005 · updated 2026-10-20 (mốc 1 và mốc 2)
 _Steps derived from spec 0005 acceptance criteria. `/check verify` runs these; `/test` locks the durable ones._
 
 ## Mốc 1: bảng `follows` và hồ sơ công khai, phần đọc (AC-1 đến AC-5, AC-9 phần đọc)
@@ -59,6 +59,50 @@ Sửa file đã build trong `dist` để phá đúng một luật, chạy lại 
 - Theo dõi và bỏ theo dõi bằng API (AC-6, AC-7), chạy lặp và hai lần gọi đồng thời, quyền (chủ trọ, admin, khách), tự theo dõi 409 `CANNOT_FOLLOW_SELF`, giới hạn `followWrite` (AC-8, AC-9 phần ghi): thuộc mốc 2. Cho tới khi có, `isFollowing` của người đăng nhập chỉ đổi được bằng `INSERT` tay.
 - Chưa có phép kiểm tự động nào chạy trên database thật; các phép kiểm ở trên là script chạy tay. `/test` có thể khóa lại các dòng bền (hình dạng bảy trường, 404, `Cache-Control`).
 
+## Mốc 2: theo dõi và bỏ theo dõi, phần ghi (AC-6 đến AC-9)
+
+Chạy trên một database thử, không chạy trên database đang dùng. Server **mới khởi động** (bộ đếm giới hạn tần suất nằm trong bộ nhớ, và đăng ký tối đa 10 lần mỗi giờ theo IP). Đăng nhập admin bằng `ADMIN_SEED_*` trong `.env`. Dựng sẵn: chủ trọ L1 (một nhà trọ, một tin 40 lượt xem) và L2, năm người tìm trọ T1 đến T5.
+
+### Commands
+- [ ] `npm test` → toàn bộ qua (gồm `landlords.service.spec.ts`, `landlords.repository.spec.ts`, `rate-limits.spec.ts`, `error-code.spec.ts` và `route-declarations.spec.ts`) → AC-6 đến AC-9
+- [ ] `npx tsc --noEmit` và `npx eslint "{src,test}/**/*.ts"` → sạch → AC-6 đến AC-9
+- [ ] Newman folder `18` cùng folder 00, 01, 03, 04, 05, 07 đến 17 (trừ 02 và 06), trên database dựng lại từ đầu → 0 lỗi → AC-6 đến AC-9
+
+### UI / manual (gọi API, Postman folder `18`, các request `[ghi]`)
+- [ ] T1 `POST /landlords/<L1>/follow` → 200; đúng bảy khóa; `isFollowing` là `true`; `followerCount` tăng một; `Cache-Control: private, no-store`; `totalViewCount` 40 và `publicListingCount` 1 → AC-6 (Value sourcing: hồ sơ trả về)
+- [ ] `follows` có đúng một dòng (T1, L1) với `created_at` có giá trị → AC-6 (Value sourcing: `user_id`, `landlord_id`, `created_at`)
+- [ ] T2 gọi `POST` kèm body `{"userId": <T3>, "landlordId": <L2>}` → 200, dòng ghi là (T2, L1), không có dòng nào của T3 hay tới L2 → AC-6 (Value sourcing: người theo dõi lấy từ token, không từ body)
+- [ ] `POST` lặp ba lần → 200 mỗi lần, `followerCount` không đổi, vẫn một dòng → AC-6
+- [ ] Sáu vòng, mỗi vòng 10 `POST` đồng thời cùng một cặp (T3,L1), (T3,L2), (T4,L1), (T4,L2), (T2,L2), (T1,L2) → mọi lần 200, đúng một dòng mỗi cặp, `isFollowing` luôn `true`; `followerCount` của L1 bằng một phép đếm SQL độc lập (chỉ người theo dõi `active`, chưa xóa mềm) → AC-6, AC-3
+- [ ] `GET /landlords/<L1>` bằng token T1 → `isFollowing: true`, cùng số với kết quả `POST`; bằng token T2 chưa theo dõi (khi chưa gọi) → `false`; khách → `null` → AC-6 (Value sourcing: `isFollowing`)
+- [ ] T1 `DELETE /landlords/<L1>/follow` → 200, `isFollowing: false`, `followerCount` giảm một, dòng (T1, L1) mất còn các dòng khác nguyên → AC-7
+- [ ] `DELETE` lặp khi chưa theo dõi → 200, số không đổi; 10 `DELETE` đồng thời → mọi lần 200 và dòng đã mất → AC-7
+- [ ] Chủ trọ (quyền mặc định) `POST` và `DELETE` → 403 `PERMISSION_DENIED`; admin `POST` và `DELETE` → 403 `PERMISSION_DENIED` dù giữ `follow:manage`; khách → 401 `TOKEN_MISSING`; tổng số dòng `follows` không đổi và không có dòng nào mang id admin → AC-8
+- [ ] T1 `POST` id không tồn tại, id của tenant, id của admin → 404 `LANDLORD_NOT_FOUND`; `DELETE` id không tồn tại và id của tenant → 404; `abc` → 400 `INVALID_ID` (cả `POST` và `DELETE`); admin gửi `abc` → 400, không phải 403 → AC-8
+- [ ] T1 `POST /landlords/<T1>/follow` (id của chính mình, T1 không phải chủ trọ) → 409 `CANNOT_FOLLOW_SELF`, không phải 404; không có dòng (T1, T1) → AC-8
+- [ ] Admin khóa L2 → `POST`, `DELETE` và `GET` của L2 đều 404 `LANDLORD_NOT_FOUND`, dòng (T1, L2) còn nguyên; mở khóa → `GET` bằng T1 là 200 với `isFollowing: true` → AC-2, AC-8
+- [ ] Admin cấp `follow:create` và `follow:delete` cho `landlord` (`PATCH /account-types/landlord`, thêm hai khóa vào danh sách cũ), L1 đăng nhập lại → `POST` id của chính mình 409 `CANNOT_FOLLOW_SELF` và không có dòng (L1, L1); `DELETE` id của chính mình 200 với `isFollowing: false`; `POST` L2 → 200 và có dòng (L1, L2). Khôi phục danh sách quyền cũ → L1 `POST` lại bị 403 → AC-8
+- [ ] T5 `POST` 60 lần → đều 200; lần 61 → 429 `RATE_LIMITED` kèm `Retry-After` (giây); `DELETE` của T5 vẫn 200 (đếm riêng); T4 `POST` vẫn 200 (đếm theo người dùng); `GET /landlords/<L1>` vẫn 200 → AC-9
+
+### Điều khiển âm (đã làm khi build, 2026-10-20)
+Sửa file đã build trong `dist` để phá đúng một luật, chạy lại phép kiểm, mỗi lần phải có đúng các phép kiểm tương ứng báo SAI, rồi `npx nest build` để khôi phục.
+- [x] Bỏ `skipDuplicates` ở `createMany` → 4 phép kiểm sai: theo dõi lặp trả 500, 9 trong 10 lần đồng thời trả 500, 60 lần `POST` đầu trả 500 → AC-6
+- [x] Bỏ kiểm admin ở `follow` và `unfollow` → 2 phép kiểm sai: admin `POST` và `DELETE` trả 200 (admin ghi được dòng) → AC-8
+- [x] Bỏ kiểm tự theo dõi → 2 phép kiểm sai: tenant nhận 404 thay vì 409, chủ trọ có quyền nhận 500 do `follows_self_check` ở DB → AC-8
+- [x] Nâng giới hạn `followWrite` từ 60 lên 600 → 2 phép kiểm sai: lần 61 không bị chặn, không có `Retry-After` → AC-9
+- [x] Bỏ lệnh xóa ở `unfollow` → 6 phép kiểm sai: số không giảm, dòng không mất, `DELETE` đồng thời không xóa được → AC-7
+
+### Đã kiểm khi build (2026-10-20)
+- [x] 67 phép kiểm HTTP và SQL trên `rental_management_verify` (tất cả các dòng ở "UI / manual" ở trên trừ Newman), bản build sạch 67 trên 67 sau khi khôi phục.
+- [x] Newman folder 00, 01, 03, 04, 05, 07 đến 18 trên database dựng lại từ đầu: 360 request, 729 assertion, 0 lỗi; chạy lại folder 07, 08, 09, 18 trên cùng database: 84 request, 193 assertion, 0 lỗi (nên folder 18 chạy lại được). Log server không có dòng ERROR. Không chạy folder 02 (cần token gửi qua email) và 06.
+- [x] `npm test`: 57 bộ, 1031 test qua (trước mốc này 1015); `tsc` và `eslint` sạch.
+
+### Chưa kiểm được ở mốc 2
+- **Giới hạn 60 lần mỗi giờ không nằm trong Postman** (chạy 61 request mỗi lần sẽ làm collection nặng); chỉ có script chạy tay ở trên.
+- Chưa đo `EXPLAIN` cho đường ghi: `INSERT ... ON CONFLICT DO NOTHING` và `DELETE` đều theo khóa chính của `follows`, không có truy vấn gộp mới. Đường đọc đã đo ở mốc 1.
+- Chưa có phép kiểm tự động nào chạy trên database thật; các phép kiểm ở trên là script chạy tay. `/test` có thể khóa lại các dòng bền (200 kèm hồ sơ, chạy lặp, 403 cho admin, 409, 404).
+- **Spec lệch một điểm, cần `/architect`:** mục Security model nói admin theo mặc định không giữ `follow:create`, nhưng admin giữ `manage` mọi module nên qua được guard quyền. Build đã chặn admin bằng 403 trong Service để AC-8 đúng như đã Accept (xem ghi chú ở bước 6 của Build plan). Cần sửa một dòng trong spec cho khớp.
+
 ## Acceptance-criteria coverage
-- AC-1: hình dạng bảy trường, người xem, `Cache-Control`, không lộ dữ liệu · AC-2: id không phải chủ trọ, khóa, mở khóa, xóa mềm, `INVALID_ID` · AC-3: `followerCount` và ràng buộc DB · AC-4: `totalViewCount` · AC-5: `publicListingCount` · AC-9: phần đọc (300 mỗi phút theo IP) đã phủ; phần ghi chờ mốc 2.
-- AC-6, AC-7, AC-8: chưa phủ (mốc 2).
+- AC-1: hình dạng bảy trường, người xem, `Cache-Control`, không lộ dữ liệu · AC-2: id không phải chủ trọ, khóa, mở khóa, xóa mềm, `INVALID_ID` · AC-3: `followerCount` và ràng buộc DB · AC-4: `totalViewCount` · AC-5: `publicListingCount` (mốc 1).
+- AC-6: theo dõi, chạy lặp, đồng thời, nguồn của người theo dõi · AC-7: bỏ theo dõi, chạy lặp, đồng thời · AC-8: quyền (chủ trọ, admin, khách), tự theo dõi, 404, 400, chủ trọ bị khóa · AC-9: phần đọc 300 mỗi phút theo IP (mốc 1) và phần ghi 60 mỗi giờ cho mỗi API theo người dùng (mốc 2).

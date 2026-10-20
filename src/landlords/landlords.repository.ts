@@ -48,4 +48,20 @@ export class LandlordsRepository {
 		});
 		return row !== null;
 	}
+
+	/**
+	 * Ghi dòng theo dõi bằng một câu `INSERT ... ON CONFLICT DO NOTHING` (`createMany` với `skipDuplicates`): cặp đã
+	 * có thì không làm gì và không lỗi, nên bấm lặp hay hai lần gọi đồng thời vẫn ra đúng một dòng (spec 0005 AC-6).
+	 */
+	async addFollow(userId: string, landlordId: string): Promise<void> {
+		await this.prisma.follow.createMany({
+			data: [{ userId, landlordId }],
+			skipDuplicates: true,
+		});
+	}
+
+	/** Xóa dòng theo dõi của đúng cặp; không có dòng nào thì không làm gì và không lỗi (spec 0005 AC-7). */
+	async removeFollow(userId: string, landlordId: string): Promise<void> {
+		await this.prisma.follow.deleteMany({ where: { userId, landlordId } });
+	}
 }

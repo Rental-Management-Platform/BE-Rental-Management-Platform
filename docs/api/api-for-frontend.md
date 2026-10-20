@@ -25,7 +25,7 @@ Quy ước đọc file: phần nào ghi **Chưa có** nghĩa là đã lên kế 
 
 ## 1. Hệ thống làm gì
 
-Nền tảng quản lý và cho thuê nhà trọ. Hiện backend đã có phần **tài khoản và phân quyền**, danh mục địa chỉ và tiện ích, **nhà trọ của chủ trọ** (tạo, xem, sửa, xóa mềm) và **tin đăng** (đăng, sửa, ẩn, hiện, xóa; khách xem danh sách và chi tiết); **bảng giá gói** cùng phần admin quản lý gói (mục 6.26), **đơn mua gói và thanh toán thử** (mục 6.27); **gói đổi hạn mức tin** (mục 6.25); **ảnh của tin** (tải lên, xóa và xem ảnh, mục 6.28); **admin kiểm duyệt tin** (tìm, ẩn, gỡ ẩn kèm lý do, mục 6.29) và **admin quản lý danh mục phường và tiện ích** (mục 6.30); **hồ sơ công khai của chủ trọ** với số người theo dõi, tổng lượt xem và số tin đang hiện (mục 6.31).
+Nền tảng quản lý và cho thuê nhà trọ. Hiện backend đã có phần **tài khoản và phân quyền**, danh mục địa chỉ và tiện ích, **nhà trọ của chủ trọ** (tạo, xem, sửa, xóa mềm) và **tin đăng** (đăng, sửa, ẩn, hiện, xóa; khách xem danh sách và chi tiết); **bảng giá gói** cùng phần admin quản lý gói (mục 6.26), **đơn mua gói và thanh toán thử** (mục 6.27); **gói đổi hạn mức tin** (mục 6.25); **ảnh của tin** (tải lên, xóa và xem ảnh, mục 6.28); **admin kiểm duyệt tin** (tìm, ẩn, gỡ ẩn kèm lý do, mục 6.29) và **admin quản lý danh mục phường và tiện ích** (mục 6.30); **hồ sơ công khai của chủ trọ** với số người theo dõi, tổng lượt xem và số tin đang hiện (mục 6.31), cùng **theo dõi và bỏ theo dõi chủ trọ** (mục 6.32).
 
 ### Ba loại tài khoản
 
@@ -63,7 +63,7 @@ Mỗi tài khoản chỉ thuộc **một** loại, chọn lúc đăng ký và **
 | Tạo đơn mua gói, hủy đơn, thanh toán thử, gia hạn nối tiếp, lịch sử đơn | Có (mới, 2026-10-19, mục 6.27) |
 | Gói đổi hạn mức tin và hiển thị công khai; `state = plan` và `subscription` trong `GET /me/membership` | Có (mới, 2026-10-19, mục 6.25) |
 | Hồ sơ công khai của chủ trọ: số người theo dõi, tổng lượt xem tin, số tin đang hiện (`GET /landlords/:id`) | Có (mới, 2026-10-20, mục 6.31) |
-| Theo dõi và bỏ theo dõi chủ trọ | Chưa có (đang làm, mục 10). Cho tới khi có, `isFollowing` của người đã đăng nhập luôn là `false` |
+| Theo dõi và bỏ theo dõi chủ trọ (`POST` và `DELETE /landlords/:id/follow`) | Có (mới, 2026-10-20, mục 6.32) |
 
 ---
 
@@ -169,7 +169,8 @@ Lưu ý: **một trường có thể xuất hiện nhiều lần** trong `errors
 | `PLAN_INACTIVE` | 409 | Đặt đơn bằng gói đã ngừng bán, hoặc thanh toán đơn mà gói đã bị tắt sau khi đặt (đơn vẫn `pending`) | Cho chọn gói khác rồi tạo đơn mới |
 | `ORDER_NOT_FOUND` | 404 | Đơn không có (xem, thanh toán, hủy) | Quay về lịch sử đơn |
 | `ORDER_STATE_INVALID` | 409 | Thanh toán đơn đã hủy, hoặc hủy đơn đã trả | Tải lại đơn rồi cập nhật nút |
-| `LANDLORD_NOT_FOUND` | 404 | Mở hồ sơ công khai (6.31) của một id không phải chủ trọ đang hoạt động: không có, là tài khoản người tìm trọ hoặc admin, chủ trọ đang bị khóa hoặc đã xóa | Hiện "không tìm thấy chủ trọ", quay về trang trước. Chủ trọ được mở khóa thì hồ sơ trở lại |
+| `LANDLORD_NOT_FOUND` | 404 | Mở hồ sơ công khai (6.31), theo dõi hoặc bỏ theo dõi (6.32) một id không phải chủ trọ đang hoạt động: không có, là tài khoản người tìm trọ hoặc admin, chủ trọ đang bị khóa hoặc đã xóa | Hiện "không tìm thấy chủ trọ", quay về trang trước. Chủ trọ được mở khóa thì hồ sơ trở lại |
+| `CANNOT_FOLLOW_SELF` | 409 | Theo dõi chính tài khoản của mình (6.32; chỉ gặp khi tài khoản có quyền `follow:create`, ví dụ người tìm trọ gõ id của mình hoặc chủ trọ được admin cấp quyền) | Hiện `message`. Ẩn nút theo dõi trên hồ sơ của chính mình |
 | `CANNOT_LOCK_SELF` | 409 | Admin tự khóa chính mình | Hiện `message` |
 | `ACCOUNT_ALREADY_LOCKED` | 409 | Khóa tài khoản đang bị khóa | Làm mới trạng thái trên giao diện |
 | `ACCOUNT_NOT_LOCKED` | 409 | Mở khóa tài khoản không bị khóa | Làm mới trạng thái trên giao diện |
@@ -180,7 +181,7 @@ Lưu ý: **một trường có thể xuất hiện nhiều lần** trong `errors
 
 ### Lỗi 429 `RATE_LIMITED`: gọi quá nhanh
 
-Chỉ **sáu API đăng nhập và mật khẩu, các API ghi nhà trọ, tin, tải ảnh và đơn, và bốn API đọc công khai (hai của tin, một của bảng giá, một của hồ sơ chủ trọ)** có giới hạn (các API đọc khác thì chưa). Body lỗi cùng dạng như mọi lỗi khác (có `requestId`), kèm header **`Retry-After`**: số giây còn phải đợi (số nguyên, ít nhất 1). Mỗi API đếm riêng, nên bị chặn đăng nhập không làm hỏng việc đọc `GET /auth/me` hay đăng xuất.
+Chỉ **sáu API đăng nhập và mật khẩu, các API ghi nhà trọ, tin, tải ảnh, đơn và theo dõi chủ trọ, và bốn API đọc công khai (hai của tin, một của bảng giá, một của hồ sơ chủ trọ)** có giới hạn (các API đọc khác thì chưa). Body lỗi cùng dạng như mọi lỗi khác (có `requestId`), kèm header **`Retry-After`**: số giây còn phải đợi (số nguyên, ít nhất 1). Mỗi API đếm riêng, nên bị chặn đăng nhập không làm hỏng việc đọc `GET /auth/me` hay đăng xuất.
 
 | API | Giới hạn theo IP | Giới hạn theo email (hoặc người dùng) | Bị chặn trong |
 |---|---|---|---|
@@ -194,6 +195,7 @@ Chỉ **sáu API đăng nhập và mật khẩu, các API ghi nhà trọ, tin, t
 | `POST /properties/:propertyId/listings`, `PATCH /listings/:id`, `DELETE /listings/:id`, `POST /listings/:id/hide`, `POST /listings/:id/show` | không | 60 lần mỗi giờ **cho mỗi API** (năm API đếm riêng, theo người dùng đang đăng nhập) | 1 giờ |
 | `POST /listings/:id/images` | không | 60 lần mỗi giờ (theo người dùng đang đăng nhập; chỉ API tải lên. Xóa ảnh và xem ảnh `/media` không bị giới hạn) | 1 giờ |
 | `POST /orders`, `POST /orders/:id/pay`, `POST /orders/:id/cancel` | không | 30 lần mỗi giờ **cho mỗi API** (ba API đếm riêng, theo người dùng đang đăng nhập) | 1 giờ |
+| `POST /landlords/:id/follow`, `DELETE /landlords/:id/follow` | không | 60 lần mỗi giờ **cho mỗi API** (hai API đếm riêng, theo người dùng đang đăng nhập) | 1 giờ |
 | `GET /listings` (công khai) | 300 lần mỗi phút | không | 1 phút |
 | `GET /plans` (công khai) | 300 lần mỗi phút | không | 1 phút |
 | `GET /landlords/:id` (công khai, hồ sơ chủ trọ) | 300 lần mỗi phút | không | 1 phút |
@@ -275,7 +277,7 @@ Quyền admin chỉnh được **chỉ gồm hành động lẻ** của các mod
 | `property` | read, create, update, delete | có | | có (mục 6.17) |
 | `listing` | read, create, update, delete, moderate | có | `moderate` | `read`, `create`, `update`, `delete` (mục 6.18 đến 6.23); `moderate` chưa |
 | `favorite` | read, create, delete | có | | chưa |
-| `follow` | create, delete | có | | chưa |
+| `follow` | create, delete | có | | có (mục 6.32): `create` cho `POST`, `delete` cho `DELETE`. Admin giữ cả hai nhưng vẫn bị 403 |
 | `plan` | read, create, update, delete | | tất cả | chưa |
 | `order` | create, read, cancel | có | | chưa |
 | `subscription` | read | có | | chưa |
@@ -1239,7 +1241,33 @@ Hồ sơ **không có** email, số điện thoại hay danh sách người theo
 Cần nhớ:
 - **Các số tính lúc mở hồ sơ**, không lưu sẵn, nên đổi ngay khi có người theo dõi bị khóa, tin bị ẩn hay xóa, chủ trọ hết gói. Ba số được đọc không cùng một thời điểm chính xác, nên có thể lệch nhau vài mili giây.
 - **`totalViewCount` khác tổng `viewCount` trong `GET /me/listings`**, vì tổng này gồm cả tin đã ẩn và đã xóa. FE đừng tự cộng để đối chiếu.
-- **Theo dõi và bỏ theo dõi chưa có API** (đang làm). Cho tới khi có, `followerCount` chưa tăng được từ giao diện và `isFollowing` của người đã đăng nhập luôn là `false`. FE chưa nên dựng nút theo dõi.
+- **Nút theo dõi** gọi `POST` hoặc `DELETE /landlords/:id/follow` (mục 6.32); hai API đó trả luôn hồ sơ mới.
+
+### 6.32 Theo dõi và bỏ theo dõi chủ trọ
+
+`POST /landlords/:id/follow` · cần quyền `follow:create`
+`DELETE /landlords/:id/follow` · cần quyền `follow:delete`
+
+Mặc định chỉ tài khoản **`tenant`** (người tìm trọ) giữ hai quyền này. `:id` là id của chủ trọ (cùng id với 6.31). **Không có body** (nếu gửi kèm thì bị bỏ qua): người theo dõi luôn là người trong access token.
+
+**200 OK** (cả hai API, kể cả khi gọi lại): hồ sơ mới của chủ trọ, cùng đúng bảy trường như 6.31, được đọc lại **sau khi ghi** với người gọi là người xem. Sau `POST` thì `isFollowing` là `true`, sau `DELETE` thì là `false`, và `followerCount` đã cập nhật. FE gán thẳng kết quả vào trang hồ sơ, **không cần gọi lại `GET`**. Phản hồi có `Cache-Control: private, no-store`. Lưu ý là 200, không phải 201, vì gọi lại không tạo thêm gì.
+
+| Lỗi | Khi nào |
+|---|---|
+| 401 `TOKEN_MISSING`, `TOKEN_INVALID`, `TOKEN_EXPIRED` | Chưa đăng nhập hoặc token hết hạn (khác với 6.31, hai API này **bắt buộc** đăng nhập) |
+| 403 `PERMISSION_DENIED` | Không có quyền: chủ trọ và admin theo mặc định. **Admin giữ mọi quyền nhưng vẫn bị 403**: admin không theo dõi ai |
+| 400 `INVALID_ID` | `:id` không phải UUID |
+| 409 `CANNOT_FOLLOW_SELF` | Chỉ `POST`: `:id` là chính người gọi |
+| 404 `LANDLORD_NOT_FOUND` | `:id` không phải chủ trọ đang hoạt động (không có, là người tìm trọ hoặc admin, chủ trọ bị khóa hoặc đã xóa mềm) |
+| 429 `RATE_LIMITED` | Quá 60 lần mỗi giờ cho mỗi API theo người dùng (mục 3) |
+
+Cần nhớ:
+- **Gọi lại luôn an toàn.** `POST` khi đã theo dõi vẫn 200 và số không đổi; `DELETE` khi chưa theo dõi vẫn 200. Bấm đúp hay thử lại khi mạng chậm không làm sai số, kể cả khi nhiều lần gọi chạy cùng lúc. Mỗi người chỉ được tính một lần cho mỗi chủ trọ.
+- **Ẩn nút theo dõi** khi `permissions` trong `GET /auth/me` không có `follow:create` (chủ trọ, admin) và trên hồ sơ của chính mình. Khách thì giữ nút nhưng dẫn tới đăng nhập. Backend vẫn là nơi kiểm cuối: gặp 403 thì báo không đủ quyền.
+- **Chủ trọ bị khóa** thì cả hồ sơ, theo dõi và bỏ theo dõi đều 404 `LANDLORD_NOT_FOUND`. Người đã theo dõi không mất dòng theo dõi: chủ trọ được mở khóa thì họ vẫn đang theo dõi và số trở lại như cũ. Gặp 404 khi bấm nút thì báo "chủ trọ không còn" và cập nhật lại trang.
+- **Số người theo dõi chỉ tính tài khoản đang hoạt động**, nên một người theo dõi bị khóa làm số giảm dù họ không bấm bỏ theo dõi.
+- Thứ tự kiểm lỗi: đăng nhập và quyền (401, 403), rồi `INVALID_ID` (400), rồi tự theo dõi (409), rồi chủ trọ (404). Riêng admin: id sai định dạng nhận 400 chứ không phải 403.
+- **Chưa có** danh sách "đang theo dõi" của người tìm trọ, danh sách người theo dõi cho chủ trọ, hay thông báo khi chủ trọ đăng tin mới (đã hoãn).
 
 ---
 
@@ -1296,6 +1324,12 @@ Hai ô: mật khẩu hiện tại, mật khẩu mới. Gọi `POST /auth/change-
 3. Số lượt xem hiện ở `viewCount`. Đừng tự cộng ở FE: backend đã tính theo người xem trong 30 phút.
 4. **Ảnh**: dùng `coverImageUrl` làm ảnh nhỏ ở danh sách và `images[]` làm thư viện ở trang chi tiết, nối `url` với địa chỉ API rồi gán vào `<img src>` (không cần token). `coverImageUrl` là `null` thì hiện ảnh thay thế. Ảnh trả 404 (tin vừa bị ẩn hay hết hạn mức) thì ẩn ô ảnh chứ đừng coi là lỗi hệ thống.
 
+### Hồ sơ chủ trọ (khách và người tìm trọ)
+
+1. **Mở từ tên chủ trọ** ở danh sách và chi tiết tin (`landlord.id`): gọi `GET /landlords/:id`, **gửi kèm access token nếu đã đăng nhập** để biết `isFollowing`. 404 thì báo "không tìm thấy chủ trọ".
+2. Hiện `name` (`null` thì ghi "Chủ trọ"), `joinedAt`, `followerCount`, `totalViewCount`, `publicListingCount`.
+3. **Nút theo dõi**: người tìm trọ bấm thì `POST /landlords/:id/follow`, bấm lại thì `DELETE`. Mỗi lần gán thẳng hồ sơ trả về vào trang (có `isFollowing` và `followerCount` mới). Khách thì dẫn tới đăng nhập; chủ trọ, admin và hồ sơ của chính mình thì ẩn nút (mục 6.32).
+
 ### Bảng giá gói (khách và chủ trọ)
 
 1. **Trang bảng giá**: gọi `GET /plans` (công khai, không cần token), vẽ mỗi gói một thẻ: tên, giá (định dạng đồng), "tối đa N tin", "N ngày". Đã xếp giá tăng dần.
@@ -1335,6 +1369,7 @@ Hai ô: mật khẩu hiện tại, mật khẩu mới. Gọi `POST /auth/change-
 - **Kiểm duyệt tin** (từ 2026-10-20). Không duyệt trước khi tin hiện; admin xử lý sau khi đăng. Admin ẩn tin `visible` hoặc `hidden_by_owner` thành `hidden_by_admin`, và gỡ ẩn tin `hidden_by_admin` về `hidden_by_owner`; mỗi lần bắt buộc có lý do và ghi một dòng lịch sử trong cùng giao dịch (6.29). Admin ẩn đua với chủ trọ thì admin thắng. Admin không sửa hay xóa tin của người khác.
 - **Danh mục phường và tiện ích** do admin quản lý (6.30). Xóa chỉ được khi không nhà trọ nào dùng, kể cả nhà trọ đã xóa mềm. Đổi tên phường làm tìm kiếm theo tên mới có hiệu lực ngay.
 - **Lượt xem** tính một lần cho mỗi người xem trong 30 phút, chủ tin không tính (6.20).
+- **Theo dõi chủ trọ** (6.32): chỉ người tìm trọ, mỗi cặp một lần, gọi lại an toàn, admin và chủ trọ mặc định không theo dõi được. Các con số trên hồ sơ (6.31) tính lúc đọc nên luôn khớp với dữ liệu thật; theo dõi chỉ làm tăng một con số, chưa có thông báo hay danh sách.
 - **Khóa tài khoản**: tài khoản bị khóa không đăng nhập, không refresh được và mọi phiên bị hủy lúc khóa. Đăng nhập sai mật khẩu vẫn báo `INVALID_CREDENTIALS` (không lộ tài khoản có bị khóa hay không); chỉ khi đúng mật khẩu mới báo `ACCOUNT_LOCKED`. Admin không tự khóa mình được.
 - **Đổi hoặc đặt lại mật khẩu** hủy phiên: đặt lại hủy **tất cả**; đổi (khi đang đăng nhập) hủy tất cả **trừ phiên đang dùng**.
 - **Mật khẩu mới** có thể trùng mật khẩu cũ (backend không cấm).
@@ -1365,6 +1400,8 @@ Hai ô: mật khẩu hiện tại, mật khẩu mới. Gọi `POST /auth/change-
 - **Chủ trọ không xem được ảnh của tin đang ẩn của chính mình** qua `/media/public` (đường đó chỉ phục vụ tin đang hiện công khai và thẻ ảnh không gửi token); hiện lại tin là thấy. Ảnh của tin vừa bị ẩn còn nằm trong bộ nhớ đệm trình duyệt tối đa một ngày.
 - **Tìm kiếm** chỉ khớp theo từng từ (không sửa lỗi chính tả, không tìm gần đúng). Từ ngắn dưới 3 ký tự vẫn tìm được nhưng chậm hơn khi có hàng chục nghìn tin.
 - **Số tổng `total` của danh sách** là một phép đếm riêng nên chậm dần khi có hàng chục nghìn tin. Đo thật trên 60 nghìn tin giả lập: phép đếm và các trang sâu mất từ vài trăm mili giây đến vài giây tùy cách tin phân bố giữa các chủ trọ, trong khi dưới vài nghìn tin thì không thấy. Chấp nhận ở bản demo; không phải bản chạy thật.
+- **Số người theo dõi có thể bị tăng ảo** bằng nhiều tài khoản người tìm trọ giả: chỉ có giới hạn đăng ký 10 lần mỗi giờ theo IP và việc admin khóa tài khoản chặn lại, không có chống gian lận nào khác.
+- **Theo dõi chỉ là một con số**: không thông báo cho người theo dõi, không danh sách "đang theo dõi", chủ trọ không xem được ai theo dõi mình, hồ sơ chưa liệt kê tin đang hiện của chủ trọ. Tất cả đã hoãn.
 - Ghi phí hoặc tiện ích khi sửa nhà trọ là **thay cả danh sách** (không có API thêm hay bỏ từng khoản), nên hai thiết bị cùng sửa một nhà trọ thì bản gửi sau thắng.
 
 ---
@@ -1377,7 +1414,6 @@ Backend sẽ làm theo thứ tự dưới đây. Mỗi mục khi xong sẽ vào 
 |---|---|---|
 | 9 | **Dùng thử miễn phí và hạn mức tin** cho chủ trọ: dùng thử 30 ngày, tối đa 2 tin đang hiện (admin đổi được hai con số này). Hết kỳ dùng thử mà chưa mua gói thì tin của chủ trọ tự biến khỏi danh sách công khai. **Đã có**: API admin xem và đổi hai tham số (mục 6.24); hạn dùng thử đặt lúc đăng ký (6.1); chặn đăng và hiện lại tin khi hết dùng thử hoặc đủ hạn mức (6.18, 6.23, mã lỗi `MEMBERSHIP_REQUIRED` và `LISTING_QUOTA_REACHED`); tin biến khỏi danh sách và chi tiết công khai khi hết kỳ hoặc vượt hạn mức, ẩn bớt theo thứ tự đăng (6.19, 6.20); `GET /me/membership` và cờ `isPublic` (6.25, 6.18). **Còn lại**: đo tốc độ ở hàng chục nghìn tin | Lỗi chặn đăng hoặc hiện thêm tin kèm gợi ý mua gói; hiện ngày hết hạn dùng thử và số tin còn lại |
 | 10 | **Mua gói và gia hạn theo tháng**, **thanh toán thử** (bấm xác nhận là có gói, không có tiền thật, không chuyển sang cổng thanh toán nào, nên **không có trang VNPay**). **Đã có**: bảng giá công khai và API admin tạo, sửa, tắt, xóa gói (mục 6.26); tạo, xem, hủy đơn, thanh toán thử và kỳ gói nối tiếp (mục 6.27). Gói đổi hạn mức tin và hiển thị công khai, `state = plan` và `subscription` trong `GET /me/membership` (mục 6.25). **Còn lại**: không còn gì ở backend cho mục này | Trang chọn gói, nút thanh toán thử, lịch sử đơn, dải trạng thái gói đang chạy (đều dựng được) |
-| 11 | **Theo dõi chủ trọ** và hiển thị số người theo dõi, tổng lượt xem tin. **Đã có**: hồ sơ công khai `GET /landlords/:id` với số người theo dõi, tổng lượt xem, số tin đang hiện và cờ `isFollowing` (mục 6.31). **Còn lại**: API theo dõi và bỏ theo dõi | Trang hồ sơ chủ trọ (dựng được); nút theo dõi (chờ API ghi) |
 | 12 | **Lưu phòng yêu thích** cho người tìm trọ | Nút lưu trên tin, trang danh sách tin đã lưu |
 | sau | API **danh sách người dùng** cho admin, API hồ sơ cá nhân | Màn hình quản lý người dùng, trang hồ sơ |
 
@@ -1390,6 +1426,16 @@ Backend sẽ làm theo thứ tự dưới đây. Mỗi mục khi xong sẽ vào 
 ## 11. Nhật ký thay đổi
 
 Mới nhất ở trên cùng. Mục nào **phá vỡ** cách FE đang gọi sẽ ghi rõ "ĐỔI KHÁC VỚI TRƯỚC".
+
+### 2026-10-20 · Theo dõi và bỏ theo dõi chủ trọ (mốc 2 của theo dõi chủ trọ, phần ghi)
+
+- **API mới** (mục 6.32): `POST /landlords/:id/follow` (quyền `follow:create`) và `DELETE /landlords/:id/follow` (quyền `follow:delete`). Không có body. Cả hai trả 200 kèm hồ sơ mới của chủ trọ (bảy trường như 6.31) với `isFollowing` và `followerCount` đã cập nhật, nên FE không cần gọi lại `GET`. Gọi lại an toàn: theo dõi khi đã theo dõi, bỏ theo dõi khi chưa theo dõi đều 200 và số không đổi.
+- **Mã lỗi mới**: `CANNOT_FOLLOW_SELF` (409), đã thêm vào bảng mã lỗi (mục 3). `LANDLORD_NOT_FOUND` giờ cũng trả ở hai API này.
+- **Quyền**: mặc định chỉ `tenant` giữ `follow:create` và `follow:delete`. **Admin giữ mọi quyền nhưng vẫn nhận 403 `PERMISSION_DENIED`** ở hai API này (backend kiểm loại tài khoản). Chủ trọ được admin cấp quyền thì theo dõi được chủ trọ khác nhưng không theo dõi được chính mình (409).
+- **Giới hạn tần suất**: hai API mỗi API 60 lần mỗi giờ theo người dùng (mục 3).
+- **`isFollowing` của người đã đăng nhập giờ có thể là `true`** ở `GET /landlords/:id` (trước đó luôn là `false` vì chưa có API ghi).
+- Chỉ thêm đường dẫn mới, **không đổi API đang chạy**: không phá FE cũ.
+- **FE cần làm** (tùy chọn): nút theo dõi trên trang hồ sơ chủ trọ (mục 7).
 
 ### 2026-10-20 · Hồ sơ công khai của chủ trọ (mốc 1 của theo dõi chủ trọ, phần đọc)
 

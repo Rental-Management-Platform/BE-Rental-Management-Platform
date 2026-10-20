@@ -69,6 +69,7 @@ export enum ErrorCode {
 
 	// Theo dõi chủ trọ và hồ sơ công khai (spec 0005)
 	LANDLORD_NOT_FOUND = 'LANDLORD_NOT_FOUND',
+	CANNOT_FOLLOW_SELF = 'CANNOT_FOLLOW_SELF',
 }
 
 export interface ErrorDefinition {
@@ -304,6 +305,11 @@ export const ERRORS: Record<ErrorCode, ErrorDefinition> = {
 	[ErrorCode.LANDLORD_NOT_FOUND]: {
 		status: HttpStatus.NOT_FOUND,
 		message: 'Không tìm thấy chủ trọ.',
+	},
+	// Người gọi theo dõi chính tài khoản của mình (spec 0005 AC-8).
+	[ErrorCode.CANNOT_FOLLOW_SELF]: {
+		status: HttpStatus.CONFLICT,
+		message: 'Bạn không thể theo dõi chính mình.',
 	},
 };
 

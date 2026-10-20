@@ -27,7 +27,7 @@ _Đây là các khuyến nghị để việc làm gọn gàng, không phải yê
 | 8 | Nhà trọ, đăng tin và xem tin | Release 8 | done |
 | 9 | Dùng thử miễn phí và hạn mức tin | Release 9 | done |
 | 10 | Mua gói (thanh toán thử) và gia hạn theo tháng | Release 10 | in-progress |
-| 11 | Theo dõi chủ trọ và số người biết đến | Release 11 | in-progress |
+| 11 | Theo dõi chủ trọ và số người biết đến | Release 11 | done |
 | 12 | Lưu phòng yêu thích | Release 12 | planned |
 | 13 | Dọn danh mục quyền theo MVP | Release 13 | done |
 
@@ -158,13 +158,13 @@ Spec [0004](../specs/0004-membership-packages-payment/index.md) (13 AC, 3 mốc,
 
 ## Release 11: theo dõi chủ trọ
 
-### 11. Theo dõi chủ trọ và số người biết đến · in-progress
+### 11. Theo dõi chủ trọ và số người biết đến · done
 Người tìm trọ theo dõi (follow) một chủ trọ. Chủ trọ và người xem thấy số người theo dõi cùng tổng lượt xem tin của chủ trọ trên hồ sơ công khai. Số này tích lũy trên tài khoản nên bỏ tài khoản để lập cái mới sẽ mất hết, giữ chủ trọ ở lại và mua gói. Chỉ giữ một loại lượt xem: lượt xem tin đã đếm ở hàng 8 (cột `view_count` của tin), cộng dồn theo chủ trọ, không làm thêm bộ đếm lượt xem hồ sơ riêng. Giữ trong MVP (chốt 2026-10-11). Đã thiết kế đầy đủ ở spec 0005 (9 AC, 2 mốc), bạn Accept ngày 2026-10-20: một bảng `follows`, ba API (`GET /landlords/:id` công khai, `POST` và `DELETE /landlords/:id/follow`), mọi số tính lúc đọc nên không bộ đếm lưu sẵn; hồ sơ hiện tên, ngày tham gia, số người theo dõi (chỉ tài khoản đang hoạt động), tổng lượt xem (mọi tin kể cả ẩn và đã xóa mềm), số tin đang hiện và cờ đã theo dõi; chủ trọ bị khóa thì hồ sơ trả 404; theo dõi lặp lại là an toàn; không có danh sách người theo dõi hay danh sách đang theo dõi.
 **Done when:** người tìm trọ đã đăng nhập theo dõi và bỏ theo dõi một chủ trọ, bấm lặp vẫn an toàn, mỗi người chỉ tính một lần, không tự theo dõi chính mình; hồ sơ công khai `GET /landlords/:id` (khách cũng xem được) hiện tên, ngày tham gia, số người theo dõi, tổng lượt xem tin, số tin đang hiện và cờ đã theo dõi; các số cập nhật đúng ngay khi có người bỏ theo dõi, người theo dõi hoặc chủ trọ bị khóa hay mở khóa, tin bị ẩn hoặc xóa, hay chủ trọ hết dùng thử; chủ trọ bị khóa thì hồ sơ biến mất (404).
 - [x] Design it (spec): `/architect landlord follow and reach`
-- [ ] Build it: `/develop landlord follow and reach`
+- [x] Build it: `/develop landlord follow and reach`
    - [x] Mốc 1: bảng `follows` và hồ sơ công khai `GET /landlords/:id` với các số, đọc trước (AC-1, AC-2, AC-3, AC-4, AC-5, AC-9 phần đọc); đã chạy thật trên DB thử 2026-10-20 (migration `20261020090000_landlord_follows` áp xong và hỏi schema thật, 62 phép kiểm HTTP và SQL với dòng theo dõi chèn tay, bốn điều khiển âm đều bị bắt, Newman 94 request và 184 assertion không lỗi, `EXPLAIN` ở 60 nghìn tin chậm nhất 1,5 ms); API theo dõi và bỏ theo dõi chưa có (mốc 2) nên `isFollowing` của người đăng nhập luôn là `false`
-   - [ ] Mốc 2: theo dõi và bỏ theo dõi, giới hạn tần suất, tài liệu và kiểm cuối (AC-6, AC-7, AC-8, AC-9 phần ghi)
+   - [x] Mốc 2: theo dõi và bỏ theo dõi, giới hạn tần suất, tài liệu và kiểm cuối (AC-6, AC-7, AC-8, AC-9 phần ghi); đã chạy thật trên DB thử 2026-10-20 (67 phép kiểm HTTP và SQL gồm 6 vòng đồng thời mỗi vòng 10 lần gọi cùng một cặp, năm điều khiển âm đều bị bắt, lần 61 là 429, 1031 bài unit, Newman 360 request và 729 assertion không lỗi); `ADMIN_PERMISSIONS` là `manage` mọi module nên admin giữ `follow:*`, Service chặn riêng admin bằng 403 để AC-8 đúng như đã Accept (ghi ở bước 6 của spec, cần `/architect` sửa mục Security model)
 Spec [0005](../specs/0005-landlord-follow-reach/index.md) (9 AC, 2 mốc, đã được bạn Accept ngày 2026-10-20; trạng thái spec đi theo tính năng) · code in `src/landlords/`, `src/listings/`, `src/common/rate-limit/`, `prisma/` · tài liệu in `docs/api/`
 
 ## Release 12: lưu phòng

@@ -70,3 +70,34 @@ describe('LandlordsRepository.isFollowing (spec 0005 AC-1)', () => {
 		).resolves.toBe(false);
 	});
 });
+
+describe('LandlordsRepository.addFollow (spec 0005 AC-6)', () => {
+	it('ghi một dòng bằng createMany với skipDuplicates: cặp đã có thì không lỗi và không thêm dòng', async () => {
+		const createMany = jest.fn(() => Promise.resolve({ count: 0 }));
+		const repository = new LandlordsRepository({
+			follow: { createMany },
+		} as unknown as PrismaService);
+		await expect(
+			repository.addFollow('u1', 'chu-1'),
+		).resolves.toBeUndefined();
+		expect(createMany).toHaveBeenCalledWith({
+			data: [{ userId: 'u1', landlordId: 'chu-1' }],
+			skipDuplicates: true,
+		});
+	});
+});
+
+describe('LandlordsRepository.removeFollow (spec 0005 AC-7)', () => {
+	it('xóa đúng cặp bằng deleteMany: không có dòng nào cũng không lỗi', async () => {
+		const deleteMany = jest.fn(() => Promise.resolve({ count: 0 }));
+		const repository = new LandlordsRepository({
+			follow: { deleteMany },
+		} as unknown as PrismaService);
+		await expect(
+			repository.removeFollow('u1', 'chu-1'),
+		).resolves.toBeUndefined();
+		expect(deleteMany).toHaveBeenCalledWith({
+			where: { userId: 'u1', landlordId: 'chu-1' },
+		});
+	});
+});
