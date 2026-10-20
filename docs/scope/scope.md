@@ -26,9 +26,9 @@ _Đây là các khuyến nghị để việc làm gọn gàng, không phải yê
 | 7 | Giới hạn tần suất | Release 7 | done |
 | 8 | Nhà trọ, đăng tin và xem tin | Release 8 | done |
 | 9 | Dùng thử miễn phí và hạn mức tin | Release 9 | done |
-| 10 | Mua gói (thanh toán thử) và gia hạn theo tháng | Release 10 | in-progress |
+| 10 | Mua gói (thanh toán thử) và gia hạn theo tháng | Release 10 | done |
 | 11 | Theo dõi chủ trọ và số người biết đến | Release 11 | done |
-| 12 | Lưu phòng yêu thích | Release 12 | planned |
+| 12 | Lưu phòng yêu thích | Release 12 | done |
 | 13 | Dọn danh mục quyền theo MVP | Release 13 | done |
 
 ## Foundations (đã có)
@@ -146,7 +146,7 @@ Spec [0003](../specs/0003-free-trial-listing-quota/index.md) (13 AC, 4 mốc, đ
 
 ## Release 10: mua gói
 
-### 10. Mua gói (thanh toán thử) và gia hạn theo tháng · in-progress
+### 10. Mua gói (thanh toán thử) và gia hạn theo tháng · done
 Chủ trọ xem bảng giá gói (công khai), chọn gói, tạo đơn rồi bấm thanh toán thử; đơn thành `paid` và gói có hiệu lực 30 ngày ngay, hạn mức tin tăng theo gói; gia hạn cộng nối tiếp 30 ngày. Admin quản lý gói (tên, giá, số tin tối đa, bật hay tắt). Không có cổng thanh toán, không có tiền thật, không biến môi trường mới (VNPay đã bỏ ngày 2026-10-11). Đã thiết kế đầy đủ ở spec 0004 (13 AC, 3 mốc), bạn Accept ngày 2026-10-19: ba bảng `plans`, `orders`, `subscriptions`; đơn chốt giá, số tin, số ngày lúc tạo; mọi đơn đã trả nối tiếp thành kỳ không chồng nhau (DB chặn); mỗi chủ trọ tối đa một đơn chờ, tạo đơn mới thì đơn chờ cũ tự hủy; bấm thanh toán lần hai trả lại kết quả cũ; chỉ tài khoản chủ trọ tạo được đơn; gói đang chạy thay hạn mức dùng thử qua hàm hạn mức và mảnh SQL hiển thị của hàng 9.
 **Done when:** xem được bảng giá công khai; tạo đơn mua gói và thấy trạng thái đơn; bấm thanh toán thử thì đơn thành `paid` và gói có hiệu lực ngay, bấm hai lần không tạo hai gói; gia hạn cộng nối tiếp 30 ngày; gói hết hạn thì tài khoản quay về trạng thái cần mua; xem được lịch sử đơn của mình; admin tạo, sửa và tắt gói.
 - [x] Design it (spec): `/architect membership packages and payment`
@@ -169,10 +169,14 @@ Spec [0005](../specs/0005-landlord-follow-reach/index.md) (9 AC, 2 mốc, đã �
 
 ## Release 12: lưu phòng
 
-### 12. Lưu phòng yêu thích · planned · needs a decision
-Người tìm trọ lưu một tin vào danh sách yêu thích, bỏ lưu và xem danh sách đã lưu. Giữ trong MVP theo lựa chọn của bạn ngày 2026-10-11. Cần hàng 8 có trước.
-**Done when:** người tìm trọ đã đăng nhập lưu và bỏ lưu một tin, mỗi tin chỉ lưu một lần; xem được danh sách tin đã lưu; tin không còn hiển thị công khai (bị ẩn, chủ trọ bị khóa hoặc hết kỳ dùng thử) không hiện trong danh sách đã lưu.
-- [ ] Design it (spec): `/architect favorites`
+### 12. Lưu phòng yêu thích · done
+Người tìm trọ lưu một tin vào danh sách yêu thích, bỏ lưu và xem danh sách đã lưu. Giữ trong MVP theo lựa chọn của bạn ngày 2026-10-11. Cần hàng 8 có trước. Đã thiết kế đầy đủ ở spec 0006 (8 AC, 2 mốc), bạn Accept ngày 2026-10-20: một bảng `favorites`, ba API (`POST` và `DELETE /listings/:id/favorite`, `GET /me/favorites`) cộng cờ `isFavorite` ở danh sách và chi tiết tin công khai; danh sách đã lưu dùng đúng hai mảnh SQL hiển thị công khai nên tin biến khỏi danh sách đúng lúc nó biến khỏi công khai, dòng lưu vẫn giữ và tin hiện lại thì quay về; mới lưu trước, chỉ phân trang; không giới hạn số tin; lưu và bỏ lưu lặp lại an toàn; admin bị chặn trong Service dù giữ `favorite:*`; không mã lỗi mới.
+**Done when:** người tìm trọ đã đăng nhập lưu và bỏ lưu một tin, bấm lặp hay đồng thời vẫn an toàn và mỗi tin chỉ lưu một lần; chỉ lưu được tin đang hiện công khai; xem được danh sách tin đã lưu (mới lưu trước, phân trang); tin không còn hiển thị công khai (bị ẩn, chủ trọ bị khóa, hết dùng thử hoặc hết gói, vượt hạn mức) không hiện trong danh sách đã lưu và hiện lại khi tin hiện lại; danh sách và chi tiết tin công khai cho biết tin nào mình đã lưu (`isFavorite`, `null` với khách); chủ trọ và admin không dùng được các API lưu.
+- [x] Design it (spec): `/architect favorites`
+- [x] Build it: `/develop favorites`
+   - [x] Mốc 1: bảng `favorites`, lưu và bỏ lưu, danh sách đã lưu, giới hạn tần suất, tài liệu và kiểm cuối (AC-1, AC-2, AC-3, AC-4, AC-5, AC-7, AC-8); đã chạy thật trên DB thử 2026-10-21 (migration `20261021090000_favorites` áp xong và hỏi schema thật, `migrate diff` không lệch, 245 kiểm tra HTTP và SQL gồm đồng thời và phép tính độc lập từ dòng thô, 11 kiểm tra giới hạn tần suất, bốn điều khiển âm đều bị bắt, `EXPLAIN` ở 60 048 tin: người lưu 200 tin 2,4 ms, người lưu 5 nghìn tin trang cuối 52,6 ms và phép đếm 47,6 ms, không chỉnh)
+   - [x] Mốc 2: cờ `isFavorite` ở `GET /listings` và chi tiết tin công khai, tài liệu và kiểm cuối (AC-6, AC-7); đã chạy thật trên DB thử 2026-10-21 (127 kiểm tra gồm khách, token rác, token hết hạn thật, người tìm trọ, chủ trọ, admin, ba điều khiển âm đều bị bắt, 1078 bài unit, Newman 405 request và 828 assertion không lỗi hai lần liên tiếp trên cùng một DB); `GET /listings` nay đọc đăng nhập tùy chọn và trả `Cache-Control: private, no-store`
+Spec [0006](../specs/0006-favorites/index.md) (8 AC, 2 mốc, đã được bạn Accept ngày 2026-10-20; trạng thái spec đi theo tính năng) · code in `src/favorites/`, `src/listings/`, `src/common/rate-limit/`, `prisma/` · tài liệu in `docs/api/`
 
 ## Release 13: dọn danh mục quyền
 
@@ -197,6 +201,7 @@ Ngoài phạm vi bản này, giữ lại để kế hoạch trung thực.
 - **Hoãn từ spec 0004 (2026-10-19)**: admin xem đơn của mọi người và số liệu doanh thu, email biên nhận và email nhắc sắp hết gói (cần việc nền), đổi sang gói khác có hiệu lực ngay (cắt gói cũ), mua nhiều kỳ trong một đơn, mô tả và thứ tự do admin đặt cho gói, tự hủy đơn chờ quá hạn; cổng thanh toán thật, hoàn tiền và tặng gói đã nằm ở mục hoãn khỏi MVP phía trên · needs a decision
 - **Hoãn từ spec 0003 (2026-10-16)**: email nhắc sắp hết dùng thử (cần việc nền), admin gia hạn dùng thử cho một chủ trọ cụ thể, API công khai cho FE hiện "dùng thử N ngày, M tin" trước khi đăng ký · needs a decision
 - **Hoãn từ spec 0005 (2026-10-20)**: danh sách "đang theo dõi" của người tìm trọ, danh sách tên người theo dõi cho chủ trọ, thông báo khi chủ trọ đăng tin mới (cần việc nền), danh sách tin đang hiện của chủ trọ trên hồ sơ (cần bộ lọc `landlordId`), số người theo dõi trong chi tiết tin, bảng hồ sơ chủ trọ riêng (tên hiển thị, Zalo), chống tăng ảo số người theo dõi · needs a decision
+- **Hoãn từ spec 0006 (2026-10-20)**: số lượt lưu cho chủ trọ, ghi chú riêng cho tin đã lưu, thông báo khi tin đã lưu đổi giá hoặc biến mất (cần việc nền), bộ lọc hoặc kiểu sắp xếp cho danh sách đã lưu, báo số tin đã lưu đang bị ẩn, giới hạn số tin được lưu, API riêng trả danh sách id đã lưu · needs a decision
 
 ## Legend
 

@@ -2,6 +2,7 @@ import { AppException } from '../common/errors/app.exception';
 import { ErrorCode } from '../common/errors/error-code';
 import type { RequestUser } from '../common/http/authenticated-request';
 import type { TransactionRunner } from '../common/persistence/transaction-runner';
+import type { FavoritesRepository } from '../favorites/favorites.repository';
 import type { Prisma } from '../generated/prisma/client';
 import type {
 	Membership,
@@ -117,6 +118,7 @@ interface Harness {
 	users: Mocks<'lockById'>;
 	memberships: Mocks<'resolve'>;
 	settings: Mocks<'getValue'>;
+	favorites: Mocks<'findSavedIds' | 'isFavorite'>;
 }
 
 function build(
@@ -129,6 +131,10 @@ function build(
 		trialListingLimit?: number;
 		/** Id các tin nằm trong hạn mức (N tin `visible` đăng sớm nhất); mặc định là tin của fixture. */
 		quotaIds?: string[];
+		/** Id các tin người xem đã lưu (trả về bởi `findSavedIds`). */
+		savedIds?: ReadonlySet<string>;
+		/** Kết quả của `isFavorite` cho chi tiết tin. */
+		isFavorite?: boolean;
 	} = {},
 ): Harness {
 	const repository = {
@@ -174,6 +180,12 @@ function build(
 			Promise.resolve(options.trialListingLimit ?? 2),
 		),
 	};
+	const favorites = {
+		findSavedIds: jest.fn(() =>
+			Promise.resolve<ReadonlySet<string>>(options.savedIds ?? new Set()),
+		),
+		isFavorite: jest.fn(() => Promise.resolve(options.isFavorite ?? false)),
+	};
 	const properties = {
 		lockLiveById: jest.fn(() =>
 			Promise.resolve(
@@ -212,6 +224,7 @@ function build(
 			users as unknown as UsersService,
 			memberships as unknown as MembershipsService,
 			settings as unknown as SettingsService,
+			favorites as unknown as FavoritesRepository,
 		),
 		repository,
 		properties,
@@ -221,6 +234,7 @@ function build(
 		users,
 		memberships,
 		settings,
+		favorites,
 	};
 }
 
@@ -400,6 +414,7 @@ describe('ListingsService.listPublic (AC-10, spec 0003 AC-8, AC-9)', () => {
 				page: 3,
 				pageSize: 10,
 			}),
+			undefined,
 			NOW,
 		);
 		expect(repository.findPublicPage).toHaveBeenCalledWith(
@@ -420,7 +435,7 @@ describe('ListingsService.listPublic (AC-10, spec 0003 AC-8, AC-9)', () => {
 		const { service, repository, settings } = build({
 			trialListingLimit: 5,
 		});
-		await service.listPublic(listQuery(), NOW);
+		await service.listPublic(listQuery(), undefined, NOW);
 		expect(settings.getValue).toHaveBeenCalledTimes(1);
 		expect(settings.getValue).toHaveBeenCalledWith('trial_listing_limit');
 		expect(argsOf(repository.findPublicPage)[0]?.[1]).toEqual({
@@ -431,7 +446,7 @@ describe('ListingsService.listPublic (AC-10, spec 0003 AC-8, AC-9)', () => {
 
 	it('hạn mức 0 vẫn được truyền xuống (luật hiển thị loại hết, Service không tự bỏ qua)', async () => {
 		const { service, repository } = build({ trialListingLimit: 0 });
-		await service.listPublic(listQuery(), NOW);
+		await service.listPublic(listQuery(), undefined, NOW);
 		expect(argsOf(repository.findPublicPage)[0]?.[1]).toEqual({
 			now: NOW,
 			trialListingLimit: 0,
@@ -442,6 +457,7 @@ describe('ListingsService.listPublic (AC-10, spec 0003 AC-8, AC-9)', () => {
 		const { service } = build();
 		const page = await service.listPublic(
 			listQuery({ page: 2, pageSize: 5 }),
+			undefined,
 			NOW,
 		);
 		expect(page).toMatchObject({ total: 41, page: 2, pageSize: 5 });
@@ -454,8 +470,8 @@ describe('ListingsService.listPublic (AC-10, spec 0003 AC-8, AC-9)', () => {
 
 	it('q rỗng hoặc vắng thì không lọc từ khóa', async () => {
 		const { service, repository } = build();
-		await service.listPublic(listQuery({ q: '   ' }), NOW);
-		await service.listPublic(listQuery(), NOW);
+		await service.listPublic(listQuery({ q: '   ' }), undefined, NOW);
+		await service.listPublic(listQuery(), undefined, NOW);
 		for (const call of argsOf(repository.findPublicPage)) {
 			expect((call[0] as { searchWords: string[] }).searchWords).toEqual(
 				[],
@@ -468,6 +484,7 @@ describe('ListingsService.listPublic (AC-10, spec 0003 AC-8, AC-9)', () => {
 		await expect(
 			service.listPublic(
 				listQuery({ minPrice: 5_000_000, maxPrice: 1_000_000 }),
+				undefined,
 				NOW,
 			),
 		).rejects.toMatchObject({
@@ -485,6 +502,7 @@ describe('ListingsService.listPublic (AC-10, spec 0003 AC-8, AC-9)', () => {
 		await expect(
 			service.listPublic(
 				listQuery({ minPrice: 3_000_000, maxPrice: 3_000_000 }),
+				undefined,
 				NOW,
 			),
 		).resolves.toBeDefined();
@@ -603,6 +621,174 @@ describe('ListingsService.getPublicDetail (AC-11, AC-12, AC-13, spec 0003 AC-8, 
 		repository.incrementViewCount.mockResolvedValueOnce(null);
 		const detail = await service.getPublicDetail('abcd2345', guest, NOW);
 		expect(detail.viewCount).toBe(7);
+	});
+});
+
+describe('ListingsService: cờ isFavorite của tin công khai (spec 0006 AC-6)', () => {
+	const VIEWER_ID = '0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8d99';
+
+	function twoRows(h: Harness) {
+		h.repository.findPublicPage.mockResolvedValueOnce({
+			rows: [
+				publicSummaryRow({ id: 'tin-a' }),
+				publicSummaryRow({ id: 'tin-b' }),
+				publicSummaryRow({ id: 'tin-c' }),
+			],
+			total: 3,
+		});
+	}
+
+	describe('listPublic', () => {
+		it('khách: mọi phần tử isFavorite là null và không đọc bảng favorites', async () => {
+			const h = build();
+			twoRows(h);
+			const page = await h.service.listPublic(
+				listQuery(),
+				undefined,
+				NOW,
+			);
+			expect(page.items.map((item) => item.isFavorite)).toEqual([
+				null,
+				null,
+				null,
+			]);
+			expect(h.favorites.findSavedIds).not.toHaveBeenCalled();
+		});
+
+		it('người đăng nhập: một truy vấn cho cả trang với id các tin của trang; tin đã lưu là true, còn lại false', async () => {
+			const h = build({ savedIds: new Set(['tin-b']) });
+			twoRows(h);
+			const page = await h.service.listPublic(
+				listQuery(),
+				VIEWER_ID,
+				NOW,
+			);
+			expect(h.favorites.findSavedIds).toHaveBeenCalledTimes(1);
+			expect(h.favorites.findSavedIds).toHaveBeenCalledWith(VIEWER_ID, [
+				'tin-a',
+				'tin-b',
+				'tin-c',
+			]);
+			expect(
+				page.items.map((item) => [item.id, item.isFavorite]),
+			).toEqual([
+				['tin-a', false],
+				['tin-b', true],
+				['tin-c', false],
+			]);
+		});
+
+		it('người đăng nhập chưa lưu tin nào (kể cả chủ trọ, admin): false chứ không phải null', async () => {
+			const { service } = build();
+			const page = await service.listPublic(listQuery(), VIEWER_ID, NOW);
+			expect(page.items.map((item) => item.isFavorite)).toEqual([false]);
+		});
+
+		it('trang rỗng thì không đọc favorites', async () => {
+			const h = build();
+			h.repository.findPublicPage.mockResolvedValueOnce({
+				rows: [],
+				total: 0,
+			});
+			const page = await h.service.listPublic(
+				listQuery(),
+				VIEWER_ID,
+				NOW,
+			);
+			expect(page.items).toEqual([]);
+			expect(h.favorites.findSavedIds).not.toHaveBeenCalled();
+		});
+
+		it('các trường khác của tin tóm tắt giữ nguyên, chỉ thêm isFavorite', async () => {
+			const { service } = build();
+			const [item] = (
+				await service.listPublic(listQuery(), undefined, NOW)
+			).items;
+			expect(Object.keys(item ?? {}).sort()).toEqual(
+				[
+					'addressText',
+					'areaM2',
+					'availableFrom',
+					'code',
+					'coverImageUrl',
+					'createdAt',
+					'deposit',
+					'fullAddress',
+					'id',
+					'isFavorite',
+					'landlord',
+					'price',
+					'slug',
+					'title',
+					'ward',
+				].sort(),
+			);
+		});
+	});
+
+	describe('getPublicDetail', () => {
+		it('khách: isFavorite là null và không đọc bảng favorites', async () => {
+			const h = build();
+			const detail = await h.service.getPublicDetail(
+				'abcd2345',
+				{ ip: '1.2.3.4' },
+				NOW,
+			);
+			expect(detail.isFavorite).toBeNull();
+			expect(h.favorites.isFavorite).not.toHaveBeenCalled();
+		});
+
+		it.each([[true], [false]])(
+			'người đăng nhập: tra đúng cặp (người xem, tin) theo khóa chính và trả %j',
+			async (isFavorite) => {
+				const h = build({ isFavorite });
+				const detail = await h.service.getPublicDetail(
+					'abcd2345',
+					{ userId: VIEWER_ID, ip: '1.2.3.4' },
+					NOW,
+				);
+				expect(h.favorites.isFavorite).toHaveBeenCalledWith(
+					VIEWER_ID,
+					LISTING_ID,
+				);
+				expect(detail.isFavorite).toBe(isFavorite);
+			},
+		);
+
+		it('chủ tin xem tin của mình: vẫn tra bình thường, không có luật riêng', async () => {
+			const h = build({ isFavorite: false });
+			const detail = await h.service.getPublicDetail(
+				'abcd2345',
+				{ userId: LANDLORD_ID, ip: '1.2.3.4' },
+				NOW,
+			);
+			expect(detail.isFavorite).toBe(false);
+		});
+
+		it('tin không hiện công khai: 404 và không đọc favorites', async () => {
+			const h = build();
+			h.repository.findPublicByCode.mockResolvedValueOnce(null);
+			await expect(
+				h.service.getPublicDetail(
+					'abcd2345',
+					{ userId: VIEWER_ID, ip: '1.2.3.4' },
+					NOW,
+				),
+			).rejects.toMatchObject({ code: ErrorCode.LISTING_NOT_FOUND });
+			expect(h.favorites.isFavorite).not.toHaveBeenCalled();
+		});
+	});
+
+	it('tin của chủ trọ không có trường isFavorite (chỉ hai API công khai có)', async () => {
+		const { service } = build();
+		const page = await service.listOwn(
+			owner,
+			{ page: 1, pageSize: 20 },
+			NOW,
+		);
+		expect(Object.keys(page.items[0] ?? {})).not.toContain('isFavorite');
+		const detail = await service.getOwn(owner, LISTING_ID, NOW);
+		expect(Object.keys(detail)).not.toContain('isFavorite');
 	});
 });
 

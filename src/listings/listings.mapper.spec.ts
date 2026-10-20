@@ -14,6 +14,7 @@ import {
 	toModerationItem,
 	toOwnerDetail,
 	toOwnerSummary,
+	toPublicSummary,
 } from './listings.mapper';
 
 const UUID_A = '11111111-1111-4111-8111-111111111111';
@@ -152,12 +153,18 @@ describe('toListingDetail (spec 0002 AC-11, AC-12)', () => {
 
 	it('khách thấy phone là null, người đăng nhập thấy số', () => {
 		expect(
-			toListingDetail(row(), { viewCount: 7, includePhone: false })
-				.landlord.phone,
+			toListingDetail(row(), {
+				viewCount: 7,
+				includePhone: false,
+				isFavorite: null,
+			}).landlord.phone,
 		).toBeNull();
 		expect(
-			toListingDetail(row(), { viewCount: 7, includePhone: true })
-				.landlord.phone,
+			toListingDetail(row(), {
+				viewCount: 7,
+				includePhone: true,
+				isFavorite: null,
+			}).landlord.phone,
 		).toBe('0912345678');
 	});
 
@@ -171,22 +178,29 @@ describe('toListingDetail (spec 0002 AC-11, AC-12)', () => {
 					landlord: { ...base.property.landlord, phone: '' },
 				},
 			},
-			{ viewCount: 0, includePhone: true },
+			{ viewCount: 0, includePhone: true, isFavorite: null },
 		);
 		expect(detail.landlord.phone).toBeNull();
 	});
 
 	it('số điện thoại không lọt vào bất cứ chỗ nào khác của phản hồi cho khách', () => {
 		const text = JSON.stringify(
-			toListingDetail(row(), { viewCount: 7, includePhone: false }),
+			toListingDetail(row(), {
+				viewCount: 7,
+				includePhone: false,
+				isFavorite: null,
+			}),
 		);
 		expect(text).not.toContain('0912345678');
 	});
 
 	it('viewCount lấy từ giá trị truyền vào (sau khi cộng), không phải giá trị cũ của dòng', () => {
 		expect(
-			toListingDetail(row(), { viewCount: 8, includePhone: false })
-				.viewCount,
+			toListingDetail(row(), {
+				viewCount: 8,
+				includePhone: false,
+				isFavorite: null,
+			}).viewCount,
 		).toBe(8);
 	});
 
@@ -197,6 +211,7 @@ describe('toListingDetail (spec 0002 AC-11, AC-12)', () => {
 		const detail = toListingDetail(base, {
 			viewCount: 7,
 			includePhone: false,
+			isFavorite: null,
 		});
 		expect(detail.description).toContain('Phòng sạch sẽ');
 		expect(detail.images).toEqual([
@@ -231,7 +246,11 @@ describe('toListingDetail (spec 0002 AC-11, AC-12)', () => {
 
 	it('không lộ cột nội bộ (searchKey, deletedAt, status, propertyId, landlordId)', () => {
 		const text = JSON.stringify(
-			toListingDetail(row(), { viewCount: 7, includePhone: true }),
+			toListingDetail(row(), {
+				viewCount: 7,
+				includePhone: true,
+				isFavorite: null,
+			}),
 		);
 		for (const secret of [
 			'searchKey',
@@ -319,6 +338,7 @@ describe('toOwnerSummary và toOwnerDetail (spec 0002 AC-14)', () => {
 			toListingDetail(publicDetailRow(), {
 				viewCount: 1,
 				includePhone: false,
+				isFavorite: null,
 			}),
 		).not.toHaveProperty('isPublic');
 	});
@@ -348,5 +368,46 @@ describe('toModerationItem (spec 0002 AC-9, "Mục kiểm duyệt")', () => {
 					.moderationReason,
 			).toBeNull();
 		}
+	});
+});
+
+describe('toPublicSummary và isFavorite của chi tiết (spec 0006 AC-6)', () => {
+	it.each([[null], [true], [false]])(
+		'toPublicSummary: tin tóm tắt cộng isFavorite %j, các trường khác y nguyên',
+		(isFavorite) => {
+			const row = publicSummaryRow();
+			expect(toPublicSummary(row, isFavorite)).toEqual({
+				...toListingSummary(row),
+				isFavorite,
+			});
+		},
+	);
+
+	it.each([[null], [true], [false]])(
+		'toListingDetail: isFavorite %j đi qua nguyên vẹn',
+		(isFavorite) => {
+			expect(
+				toListingDetail(publicDetailRow(), {
+					viewCount: 7,
+					includePhone: false,
+					isFavorite,
+				}).isFavorite,
+			).toBe(isFavorite);
+		},
+	);
+
+	it('chi tiết của chủ trọ không có isFavorite', () => {
+		expect(
+			Object.keys(toOwnerDetail(ownerDetailRow(), null, true)),
+		).not.toContain('isFavorite');
+		expect(
+			Object.keys(toOwnerSummary(ownerSummaryRow(), null, true)),
+		).not.toContain('isFavorite');
+	});
+
+	it('mục kiểm duyệt của admin không có isFavorite', () => {
+		expect(
+			Object.keys(toModerationItem(publicSummaryRow(), null)),
+		).not.toContain('isFavorite');
 	});
 });

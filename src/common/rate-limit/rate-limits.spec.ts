@@ -84,10 +84,11 @@ describe('hasUser', () => {
 describe('giới hạn tần suất: bảng RATE_LIMITS', () => {
 	const groups = Object.keys(RATE_LIMITS) as RateLimitGroup[];
 
-	it('có đủ mười ba nhóm: spec đăng nhập AC-10, đổi mật khẩu, nhà trọ và ảnh tin AC-15 (spec 0002), đơn mua gói (spec 0004 AC-13) và theo dõi chủ trọ (spec 0005 AC-9)', () => {
+	it('có đủ mười bốn nhóm: spec đăng nhập AC-10, đổi mật khẩu, nhà trọ và ảnh tin AC-15 (spec 0002), đơn mua gói (spec 0004 AC-13), theo dõi chủ trọ (spec 0005 AC-9) và lưu tin yêu thích (spec 0006 AC-8)', () => {
 		expect([...groups].sort()).toEqual(
 			[
 				'changePassword',
+				'favoriteWrite',
 				'followWrite',
 				'forgotPassword',
 				'listingImage',
@@ -133,6 +134,7 @@ describe('giới hạn tần suất: bảng RATE_LIMITS', () => {
 		expect(Object.keys(RATE_LIMITS.listingImage)).toEqual(['user']);
 		expect(Object.keys(RATE_LIMITS.orderWrite)).toEqual(['user']);
 		expect(Object.keys(RATE_LIMITS.followWrite)).toEqual(['user']);
+		expect(Object.keys(RATE_LIMITS.favoriteWrite)).toEqual(['user']);
 		expect(Object.keys(RATE_LIMITS.publicRead)).toEqual(['ip']);
 		expect(Object.keys(RATE_LIMITS.publicDetail).sort()).toEqual([
 			'ip',
@@ -147,7 +149,7 @@ describe('giới hạn tần suất: bảng RATE_LIMITS', () => {
 		expect(withEmail.sort()).toEqual(['forgotPassword', 'login']);
 	});
 
-	it('con số đúng bảng đã chốt ngày 2026-10-12, cộng nhóm nhà trọ và ảnh tin chốt ngày 2026-10-14, nhóm đơn chốt ngày 2026-10-19 và nhóm theo dõi chốt ngày 2026-10-20', () => {
+	it('con số đúng bảng đã chốt ngày 2026-10-12, cộng nhóm nhà trọ và ảnh tin chốt ngày 2026-10-14, nhóm đơn chốt ngày 2026-10-19 và các nhóm theo dõi, lưu tin chốt ngày 2026-10-20', () => {
 		const minute = 60 * 1000;
 		const hour = 60 * minute;
 		expect(RATE_LIMITS).toEqual({
@@ -168,6 +170,7 @@ describe('giới hạn tần suất: bảng RATE_LIMITS', () => {
 			listingImage: { user: { limit: 60, ttlMs: hour } },
 			orderWrite: { user: { limit: 30, ttlMs: hour } },
 			followWrite: { user: { limit: 60, ttlMs: hour } },
+			favoriteWrite: { user: { limit: 120, ttlMs: hour } },
 			publicRead: { ip: { limit: 300, ttlMs: minute } },
 			publicDetail: {
 				ip: { limit: 300, ttlMs: minute },

@@ -6,6 +6,7 @@ import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { CatalogModule } from './catalog/catalog.module';
 import { AllExceptionsFilter } from './common/errors/all-exceptions.filter';
+import { FavoritesModule } from './favorites/favorites.module';
 import { LandlordsModule } from './landlords/landlords.module';
 import { ListingsModule } from './listings/listings.module';
 import { PersistenceModule } from './common/persistence/persistence.module';
@@ -36,6 +37,7 @@ import { UsersModule } from './users/users.module';
 		PlansModule,
 		OrdersModule,
 		LandlordsModule,
+		FavoritesModule,
 	],
 	controllers: [AppController],
 	providers: [

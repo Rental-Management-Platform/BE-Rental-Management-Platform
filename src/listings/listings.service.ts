@@ -7,6 +7,7 @@ import type { Page } from '../common/pagination/pagination';
 import { skipOf, toPage } from '../common/pagination/pagination';
 import { TransactionRunner } from '../common/persistence/transaction-runner';
 import { toSearchKey } from '../common/text/to-search-key';
+import { FavoritesRepository } from '../favorites/favorites.repository';
 import type { Prisma } from '../generated/prisma/client';
 import { MembershipsService } from '../memberships/memberships.service';
 import { ModerationLogsRepository } from '../moderation/moderation-logs.repository';
@@ -16,9 +17,9 @@ import { UsersService } from '../users/users.service';
 import type { CreateListingDto } from './dto/create-listing.dto';
 import type {
 	ListingDetailResponse,
-	ListingSummaryResponse,
 	OwnerListingDetailResponse,
 	OwnerListingSummaryResponse,
+	PublicListingSummaryResponse,
 } from './dto/listing.response';
 import type {
 	ListListingsQueryDto,
@@ -33,9 +34,9 @@ import {
 } from './listing-code';
 import {
 	toListingDetail,
-	toListingSummary,
 	toOwnerDetail,
 	toOwnerSummary,
+	toPublicSummary,
 } from './listings.mapper';
 import { ListingsRepository } from './listings.repository';
 import type {
@@ -81,6 +82,7 @@ export class ListingsService {
 		private readonly users: UsersService,
 		private readonly memberships: MembershipsService,
 		private readonly settings: SettingsService,
+		private readonly favorites: FavoritesRepository,
 	) {}
 
 	// ----- đăng và sửa -----
@@ -363,12 +365,15 @@ export class ListingsService {
 
 	/**
 	 * Danh sách công khai có lọc, sắp xếp và phân trang. Chỉ tin thỏa `publicListingCondition` (spec 0003 AC-8,
-	 * AC-9). `now` là đồng hồ ứng dụng do controller lấy một lần mỗi request.
+	 * AC-9). `now` là đồng hồ ứng dụng do controller lấy một lần mỗi request. `viewerId` là người đăng nhập (đọc
+	 * đăng nhập tùy chọn): khách thì `undefined` và `isFavorite` là `null`, còn người đăng nhập nhận `true` hoặc
+	 * `false` theo dòng lưu của chính họ, đọc bằng một truy vấn cho cả trang (spec 0006 AC-6).
 	 */
 	async listPublic(
 		query: ListListingsQueryDto,
+		viewerId: string | undefined,
 		now: Date,
-	): Promise<Page<ListingSummaryResponse>> {
+	): Promise<Page<PublicListingSummaryResponse>> {
 		if (
 			query.minPrice !== undefined &&
 			query.maxPrice !== undefined &&
@@ -394,7 +399,25 @@ export class ListingsService {
 			skipOf(query),
 			query.pageSize,
 		);
-		return toPage(rows.map(toListingSummary), total, query);
+		const saved =
+			viewerId === undefined || rows.length === 0
+				? undefined
+				: await this.favorites.findSavedIds(
+						viewerId,
+						rows.map((row) => row.id),
+					);
+		return toPage(
+			rows.map((row) =>
+				toPublicSummary(
+					row,
+					viewerId === undefined
+						? null
+						: (saved?.has(row.id) ?? false),
+				),
+			),
+			total,
+			query,
+		);
 	}
 
 	/**
@@ -428,6 +451,10 @@ export class ListingsService {
 		return toListingDetail(row, {
 			viewCount,
 			includePhone: viewer.userId !== undefined,
+			isFavorite:
+				viewer.userId === undefined
+					? null
+					: await this.favorites.isFavorite(viewer.userId, row.id),
 		});
 	}
 

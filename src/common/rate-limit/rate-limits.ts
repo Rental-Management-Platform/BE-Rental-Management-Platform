@@ -26,6 +26,7 @@ export type RateLimitGroup =
 	| 'listingImage'
 	| 'orderWrite'
 	| 'followWrite'
+	| 'favoriteWrite'
 	| 'publicRead'
 	| 'publicDetail';
 
@@ -71,6 +72,8 @@ export const RATE_LIMITS: Readonly<
 	orderWrite: { user: { limit: 30, ttlMs: HOUR } },
 	// Spec theo dõi chủ trọ (0005) AC-9, con số bạn duyệt ngày 2026-10-20: theo dõi và bỏ theo dõi. Mỗi route đếm riêng.
 	followWrite: { user: { limit: 60, ttlMs: HOUR } },
+	// Spec lưu tin yêu thích (0006) AC-8, con số bạn duyệt ngày 2026-10-20: lưu và bỏ lưu. Mỗi route đếm riêng.
+	favoriteWrite: { user: { limit: 120, ttlMs: HOUR } },
 	// Danh sách công khai. 300 lần mỗi phút theo IP đủ rộng cho nhiều sinh viên dùng chung một IP ký túc xá.
 	publicRead: { ip: { limit: 300, ttlMs: MINUTE } },
 	// Chi tiết tin công khai. Bộ đếm `user` chỉ chạy khi request có người đăng nhập (xem `hasUser`), để một

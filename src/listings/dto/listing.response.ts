@@ -29,11 +29,22 @@ export interface ListingSummaryResponse {
 	readonly createdAt: Date;
 }
 
+/**
+ * Tin tóm tắt của `GET /listings` (spec 0006 AC-6): tin tóm tắt cộng `isFavorite`. Danh sách kiểm duyệt, danh sách của
+ * chủ trọ và danh sách đã lưu dựng từ `ListingSummaryResponse` chứ không từ kiểu này.
+ */
+export interface PublicListingSummaryResponse extends ListingSummaryResponse {
+	/** `null` với khách, token sai hoặc hết hạn; `true` hoặc `false` theo dòng lưu của chính người đăng nhập. */
+	readonly isFavorite: boolean | null;
+}
+
 /** Chi tiết công khai: tin tóm tắt cộng mô tả, lượt xem, ảnh, nhà trọ, và chủ trọ kèm số điện thoại (chỉ khi đăng nhập). */
 export interface ListingDetailResponse extends Omit<
 	ListingSummaryResponse,
 	'landlord'
 > {
+	/** `null` với khách, token sai hoặc hết hạn; `true` hoặc `false` theo dòng lưu của chính người đăng nhập (spec 0006 AC-6). */
+	readonly isFavorite: boolean | null;
 	readonly description: string;
 	readonly viewCount: number;
 	readonly images: readonly ListingImageResponse[];
@@ -85,7 +96,7 @@ export interface ModerationListingResponse extends ListingSummaryResponse {
 /** Tin của chủ trọ (`/me/listings/:id` và kết quả mọi route ghi): chi tiết bỏ `landlord`, cộng `status`, `moderationReason` và `isPublic`. */
 export interface OwnerListingDetailResponse extends Omit<
 	ListingDetailResponse,
-	'landlord'
+	'landlord' | 'isFavorite'
 > {
 	readonly status: ListingStatus;
 	readonly moderationReason: string | null;

@@ -48,6 +48,8 @@ model User {
   following       Follow[]        @relation("Follower")
   /// Những người theo dõi chủ trọ này; chỉ dùng để đếm, không bao giờ trả danh sách ra ngoài.
   followers       Follow[]        @relation("FollowedLandlord")
+  /// Các tin người này đã lưu (spec 0006 lưu tin yêu thích).
+  favorites       Favorite[]
 
   @@index([accountType], map: "users_account_type_idx")
   @@map("users")
@@ -241,8 +243,10 @@ model Listing {
   updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
 
-  property Property       @relation(fields: [propertyId], references: [id], onDelete: Restrict, map: "listings_property_id_fk")
-  images   ListingImage[]
+  property  Property       @relation(fields: [propertyId], references: [id], onDelete: Restrict, map: "listings_property_id_fk")
+  images    ListingImage[]
+  /// Những người đã lưu tin này; chỉ dùng để nối, không bao giờ trả danh sách ra ngoài (spec 0006).
+  favorites Favorite[]
 
   // Hai chỉ mục một phần (created_at DESC, id DESC) và (price, id) cho điều kiện hiển thị viết SQL ở migration.
   @@index([propertyId], map: "listings_property_id_idx")
@@ -363,4 +367,22 @@ model Follow {
   @@id([userId, landlordId], map: "follows_pkey")
   @@index([landlordId], map: "follows_landlord_id_idx")
   @@map("follows")
+}
+
+/// Tin yêu thích của người tìm trọ (spec 0006): một dòng cho mỗi cặp (người lưu, tin).
+model Favorite {
+  /// Người lưu, luôn lấy từ access token. Khóa ngoại không ép được "phải là người tìm trọ": Service kiểm trước khi ghi.
+  userId    String   @map("user_id") @db.Uuid
+  /// Tin được lưu. Dòng giữ nguyên khi tin bị ẩn hay xóa mềm; việc nó có hiện ra hay không suy ra lúc đọc.
+  listingId String   @map("listing_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Restrict, map: "favorites_user_id_fk")
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Restrict, map: "favorites_listing_id_fk")
+
+  // Khóa chính (user_id, listing_id) chặn lưu trùng một cặp và phủ luôn việc tra theo user_id.
+  @@id([userId, listingId], map: "favorites_pkey")
+  // Thứ tự "mới lưu trước" của danh sách đã lưu.
+  @@index([userId, createdAt(sort: Desc), listingId(sort: Desc)], map: "favorites_user_id_created_at_idx")
+  @@map("favorites")
 }

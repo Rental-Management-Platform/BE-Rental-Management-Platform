@@ -1,7 +1,7 @@
 # 0004. Mua gói bằng thanh toán thử và gia hạn theo tháng
 
 **Date**: 2026-10-19
-**Status**: In Progress
+**Status**: Accepted
 
 ## Summary
 

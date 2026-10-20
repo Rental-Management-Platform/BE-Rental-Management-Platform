@@ -12,6 +12,7 @@ import type {
 	ModerationListingResponse,
 	OwnerListingDetailResponse,
 	OwnerListingSummaryResponse,
+	PublicListingSummaryResponse,
 } from './dto/listing.response';
 import type {
 	OwnerDetailRow,
@@ -110,6 +111,17 @@ export function toListingSummary(
 }
 
 /**
+ * Tin tóm tắt của `GET /listings`: tin tóm tắt cộng `isFavorite` của người xem (spec 0006 AC-6). `isFavorite` là
+ * `null` với khách; Service tính từ dòng lưu của chính người xem.
+ */
+export function toPublicSummary(
+	row: PublicSummaryRow,
+	isFavorite: boolean | null,
+): PublicListingSummaryResponse {
+	return { ...toListingSummary(row), isFavorite };
+}
+
+/**
  * Mục kiểm duyệt của admin: tin tóm tắt có chủ trọ (không số điện thoại) cộng trạng thái, lý do ẩn của admin
  * (chỉ khi `hidden_by_admin`) và lượt xem. Dùng lại hàng đọc của danh sách công khai vì cần đúng các quan hệ đó.
  */
@@ -151,14 +163,20 @@ function toDetailFields(row: OwnerDetailRow, viewCount: number) {
 /**
  * Chi tiết công khai. `viewCount` là giá trị sau khi cộng (nếu vừa tính lượt) hoặc giá trị đã đọc. Số điện
  * thoại chỉ có khi `includePhone` (request có access token hợp lệ); khách thì luôn `null` (spec 0002 AC-12).
+ * `isFavorite` là `null` với khách, còn lại theo dòng lưu của chính người xem (spec 0006 AC-6).
  */
 export function toListingDetail(
 	row: PublicDetailRow,
-	options: { readonly viewCount: number; readonly includePhone: boolean },
+	options: {
+		readonly viewCount: number;
+		readonly includePhone: boolean;
+		readonly isFavorite: boolean | null;
+	},
 ): ListingDetailResponse {
 	const { landlord } = row.property;
 	return {
 		...toDetailFields(row, options.viewCount),
+		isFavorite: options.isFavorite,
 		landlord: {
 			id: landlord.id,
 			name: orNull(landlord.name),

@@ -1,6 +1,6 @@
 # Tài liệu API và nghiệp vụ cho Frontend
 
-Cập nhật lần cuối: 2026-10-20 (xem mục [Nhật ký thay đổi](#11-nhật-ký-thay-đổi) để biết thay đổi gần nhất).
+Cập nhật lần cuối: 2026-10-21 (xem mục [Nhật ký thay đổi](#11-nhật-ký-thay-đổi) để biết thay đổi gần nhất).
 
 File này do đội backend giữ và **cập nhật cùng mỗi thay đổi API**. Mục đích: để bên FE hiểu hệ thống làm gì, mỗi màn hình cần gọi API nào, và xử lý lỗi ra sao. Đi kèm file này là bộ request thử trong Postman: [`postman-collection.json`](postman-collection.json) (import vào Postman để gọi thử từng API).
 
@@ -25,7 +25,7 @@ Quy ước đọc file: phần nào ghi **Chưa có** nghĩa là đã lên kế 
 
 ## 1. Hệ thống làm gì
 
-Nền tảng quản lý và cho thuê nhà trọ. Hiện backend đã có phần **tài khoản và phân quyền**, danh mục địa chỉ và tiện ích, **nhà trọ của chủ trọ** (tạo, xem, sửa, xóa mềm) và **tin đăng** (đăng, sửa, ẩn, hiện, xóa; khách xem danh sách và chi tiết); **bảng giá gói** cùng phần admin quản lý gói (mục 6.26), **đơn mua gói và thanh toán thử** (mục 6.27); **gói đổi hạn mức tin** (mục 6.25); **ảnh của tin** (tải lên, xóa và xem ảnh, mục 6.28); **admin kiểm duyệt tin** (tìm, ẩn, gỡ ẩn kèm lý do, mục 6.29) và **admin quản lý danh mục phường và tiện ích** (mục 6.30); **hồ sơ công khai của chủ trọ** với số người theo dõi, tổng lượt xem và số tin đang hiện (mục 6.31), cùng **theo dõi và bỏ theo dõi chủ trọ** (mục 6.32).
+Nền tảng quản lý và cho thuê nhà trọ. Hiện backend đã có phần **tài khoản và phân quyền**, danh mục địa chỉ và tiện ích, **nhà trọ của chủ trọ** (tạo, xem, sửa, xóa mềm) và **tin đăng** (đăng, sửa, ẩn, hiện, xóa; khách xem danh sách và chi tiết); **bảng giá gói** cùng phần admin quản lý gói (mục 6.26), **đơn mua gói và thanh toán thử** (mục 6.27); **gói đổi hạn mức tin** (mục 6.25); **ảnh của tin** (tải lên, xóa và xem ảnh, mục 6.28); **admin kiểm duyệt tin** (tìm, ẩn, gỡ ẩn kèm lý do, mục 6.29) và **admin quản lý danh mục phường và tiện ích** (mục 6.30); **hồ sơ công khai của chủ trọ** với số người theo dõi, tổng lượt xem và số tin đang hiện (mục 6.31), **theo dõi và bỏ theo dõi chủ trọ** (mục 6.32), cùng **lưu tin yêu thích** của người tìm trọ (mục 6.33).
 
 ### Ba loại tài khoản
 
@@ -54,7 +54,7 @@ Mỗi tài khoản chỉ thuộc **một** loại, chọn lúc đăng ký và **
 | Nhà trọ của chủ trọ (tạo, xem danh sách và chi tiết, sửa, xóa mềm) | Có (mới, 2026-10-16) |
 | Tin đăng: đăng, sửa, xóa, ẩn và hiện của chủ trọ; danh sách và chi tiết tin công khai (có lọc, số điện thoại cho người đăng nhập, đếm lượt xem) | Có (mới, 2026-10-16) |
 | Ảnh tin: tải lên (tối đa 5 ảnh mỗi tin), xóa ảnh, xem ảnh công khai | Có (mới, 2026-10-19, mục 6.28) |
-| Admin ẩn tin và quản lý danh mục phường, tiện ích | Chưa có (đang làm từng phần, mục 10) |
+| Admin kiểm duyệt tin (ẩn, gỡ ẩn kèm lý do) và quản lý danh mục phường, tiện ích | Có (mới, 2026-10-20, mục 6.29 và 6.30) |
 | Tham số hệ thống: admin xem và đổi số ngày dùng thử, số tin dùng thử | Có (mục 6.24). Đã áp vào đăng ký (số ngày) và vào đăng, hiện tin (số tin) từ 2026-10-19 |
 | Kỳ dùng thử lúc đăng ký; chặn đăng và hiện tin khi hết dùng thử hoặc đủ hạn mức | Có (mới, 2026-10-19, mục 6.1, 6.18, 6.23) |
 | Tin biến khỏi công khai khi hết dùng thử hoặc vượt hạn mức (ẩn bớt theo thứ tự đăng) | Có (mới, 2026-10-19, mục 6.19, 6.20, 8) |
@@ -64,6 +64,8 @@ Mỗi tài khoản chỉ thuộc **một** loại, chọn lúc đăng ký và **
 | Gói đổi hạn mức tin và hiển thị công khai; `state = plan` và `subscription` trong `GET /me/membership` | Có (mới, 2026-10-19, mục 6.25) |
 | Hồ sơ công khai của chủ trọ: số người theo dõi, tổng lượt xem tin, số tin đang hiện (`GET /landlords/:id`) | Có (mới, 2026-10-20, mục 6.31) |
 | Theo dõi và bỏ theo dõi chủ trọ (`POST` và `DELETE /landlords/:id/follow`) | Có (mới, 2026-10-20, mục 6.32) |
+| Lưu tin yêu thích: lưu, bỏ lưu, danh sách đã lưu (`POST` và `DELETE /listings/:id/favorite`, `GET /me/favorites`) | Có (mới, 2026-10-21, mục 6.33) |
+| Cờ `isFavorite` ở danh sách và chi tiết tin công khai | Có (mới, 2026-10-21, mục 6.19, 6.20 và 6.33) |
 
 ---
 
@@ -156,7 +158,7 @@ Lưu ý: **một trường có thể xuất hiện nhiều lần** trong `errors
 | `CATALOG_IN_USE` | 409 | Admin xóa phường hoặc tiện ích còn nhà trọ đang dùng, kể cả nhà trọ đã xóa mềm (mục 6.30) | Báo "đang có nhà trọ dùng, không xóa được", gợi ý đổi tên |
 | `PROPERTY_NOT_FOUND` | 404 | Nhà trọ không có, hoặc đã xóa mềm | Quay về danh sách nhà trọ |
 | `PROPERTY_HAS_LISTINGS` | 409 | Xóa nhà trọ còn tin chưa xóa | Báo "xóa các tin của nhà trọ này trước" |
-| `LISTING_NOT_FOUND` | 404 | Tin không có hoặc đã xóa; ở route công khai còn gồm tin không hiển thị công khai vì bất kỳ lý do nào (đang ẩn, chủ trọ bị khóa...), kể cả với chính chủ, và đường dẫn không lấy được mã tin; ở API kiểm duyệt của admin (6.29) là tin không có hoặc đã xóa mềm | Hiện "tin không còn", quay về danh sách |
+| `LISTING_NOT_FOUND` | 404 | Tin không có hoặc đã xóa; ở route công khai còn gồm tin không hiển thị công khai vì bất kỳ lý do nào (đang ẩn, chủ trọ bị khóa...), kể cả với chính chủ, và đường dẫn không lấy được mã tin; ở API kiểm duyệt của admin (6.29) là tin không có hoặc đã xóa mềm; ở `POST /listings/:id/favorite` (6.33) là tin không hiện công khai vì bất kỳ lý do nào (bỏ lưu thì không bao giờ trả mã này) | Hiện "tin không còn", quay về danh sách |
 | `LISTING_STATE_INVALID` | 409 | Chuyển trạng thái tin không hợp lệ (ẩn tin không đang hiện, hiện tin đã hiện, ẩn tin đang bị admin ẩn); ở API kiểm duyệt của admin (6.29) là ẩn tin đã bị admin ẩn hoặc gỡ ẩn tin không bị admin ẩn | Tải lại tin (`GET /me/listings/:id`) rồi cập nhật nút |
 | `LISTING_HIDDEN_BY_ADMIN` | 403 | Chủ trọ cố hiện lại tin đang bị admin ẩn | Hiện nhãn "bị quản trị viên ẩn" kèm `moderationReason`, ẩn nút "Hiện" |
 | `LISTING_IMAGE_LIMIT` | 409 | Tải ảnh lên tin đã đủ 5 ảnh | Tắt nút tải khi `images` đã đủ 5 ảnh; báo "hãy xóa bớt một ảnh trước" |
@@ -181,7 +183,7 @@ Lưu ý: **một trường có thể xuất hiện nhiều lần** trong `errors
 
 ### Lỗi 429 `RATE_LIMITED`: gọi quá nhanh
 
-Chỉ **sáu API đăng nhập và mật khẩu, các API ghi nhà trọ, tin, tải ảnh, đơn và theo dõi chủ trọ, và bốn API đọc công khai (hai của tin, một của bảng giá, một của hồ sơ chủ trọ)** có giới hạn (các API đọc khác thì chưa). Body lỗi cùng dạng như mọi lỗi khác (có `requestId`), kèm header **`Retry-After`**: số giây còn phải đợi (số nguyên, ít nhất 1). Mỗi API đếm riêng, nên bị chặn đăng nhập không làm hỏng việc đọc `GET /auth/me` hay đăng xuất.
+Chỉ **sáu API đăng nhập và mật khẩu, các API ghi nhà trọ, tin, tải ảnh, đơn, theo dõi chủ trọ và lưu tin, và năm API đọc (hai của tin, một của bảng giá, một của hồ sơ chủ trọ, một của tin đã lưu)** có giới hạn (các API đọc khác thì chưa). Body lỗi cùng dạng như mọi lỗi khác (có `requestId`), kèm header **`Retry-After`**: số giây còn phải đợi (số nguyên, ít nhất 1). Mỗi API đếm riêng, nên bị chặn đăng nhập không làm hỏng việc đọc `GET /auth/me` hay đăng xuất.
 
 | API | Giới hạn theo IP | Giới hạn theo email (hoặc người dùng) | Bị chặn trong |
 |---|---|---|---|
@@ -196,9 +198,11 @@ Chỉ **sáu API đăng nhập và mật khẩu, các API ghi nhà trọ, tin, t
 | `POST /listings/:id/images` | không | 60 lần mỗi giờ (theo người dùng đang đăng nhập; chỉ API tải lên. Xóa ảnh và xem ảnh `/media` không bị giới hạn) | 1 giờ |
 | `POST /orders`, `POST /orders/:id/pay`, `POST /orders/:id/cancel` | không | 30 lần mỗi giờ **cho mỗi API** (ba API đếm riêng, theo người dùng đang đăng nhập) | 1 giờ |
 | `POST /landlords/:id/follow`, `DELETE /landlords/:id/follow` | không | 60 lần mỗi giờ **cho mỗi API** (hai API đếm riêng, theo người dùng đang đăng nhập) | 1 giờ |
+| `POST /listings/:id/favorite`, `DELETE /listings/:id/favorite` | không | 120 lần mỗi giờ **cho mỗi API** (hai API đếm riêng, theo người dùng đang đăng nhập) | 1 giờ |
 | `GET /listings` (công khai) | 300 lần mỗi phút | không | 1 phút |
 | `GET /plans` (công khai) | 300 lần mỗi phút | không | 1 phút |
 | `GET /landlords/:id` (công khai, hồ sơ chủ trọ) | 300 lần mỗi phút | không | 1 phút |
+| `GET /me/favorites` (tin đã lưu, cần đăng nhập) | 300 lần mỗi phút | không | 1 phút |
 | `GET /listings/:slugCode` (công khai) | 300 lần mỗi phút | 60 lần mỗi phút, **chỉ khi request có access token hợp lệ** (khách không bị bộ đếm này, chỉ chịu giới hạn theo IP) | 1 phút |
 
 API của admin (kiểm duyệt tin, danh mục phường và tiện ích, tham số hệ thống, quản lý gói, quyền và khóa tài khoản) **không có giới hạn tần suất thêm**.
@@ -705,9 +709,11 @@ Cần nhớ:
 
 ### 6.19 Danh sách tin công khai
 
-`GET /listings` · công khai (không cần đăng nhập)
+`GET /listings` · công khai, **đọc đăng nhập tùy chọn**
 
-Danh sách cho trang tìm trọ. **Chỉ tin đang hiện công khai**: tin `visible`, chưa xóa, thuộc nhà trọ chưa xóa của chủ trọ đang hoạt động, và tin nằm trong hạn mức của chủ trọ (khung dưới; chủ trọ không có gói và hết dùng thử thì hạn mức là 0). Tin bị ẩn, bị xóa, chủ trọ bị khóa, hết dùng thử mà không có gói, hoặc gói đã hết hạn biến khỏi danh sách **ngay**, không có độ trễ và không cần việc nền.
+Danh sách cho trang tìm trọ. **Gửi kèm `Authorization: Bearer <accessToken>` nếu người dùng đã đăng nhập** để mỗi tin có cờ `isFavorite` (đã lưu hay chưa). Khách, token sai hoặc token hết hạn vẫn nhận 200 và `isFavorite` là `null`, **không bao giờ 401**. Phản hồi có `Cache-Control: private, no-store` (nội dung đổi theo người xem), đừng cho proxy hay CDN cache danh sách này.
+
+ **Chỉ tin đang hiện công khai**: tin `visible`, chưa xóa, thuộc nhà trọ chưa xóa của chủ trọ đang hoạt động, và tin nằm trong hạn mức của chủ trọ (khung dưới; chủ trọ không có gói và hết dùng thử thì hạn mức là 0). Tin bị ẩn, bị xóa, chủ trọ bị khóa, hết dùng thử mà không có gói, hoặc gói đã hết hạn biến khỏi danh sách **ngay**, không có độ trễ và không cần việc nền.
 
 > **Luật hiển thị theo hạng (từ 2026-10-19).** Mỗi chủ trọ chỉ có tối đa N tin hiện công khai, N là hạn mức hiện hành của họ: số tin của **gói đang chạy** nếu có (thay hạn mức dùng thử, kể cả khi nhỏ hơn), không thì `trial_listing_limit` khi còn dùng thử (mặc định 2, mục 6.24), không thì 0. Các tin `visible` của họ xếp theo ngày đăng (`createdAt` cũ trước, ngang nhau thì theo `id`), chỉ N tin đầu còn hiện. Khi admin hạ hạn mức xuống dưới số tin đang hiện, các tin đăng sau cùng biến khỏi danh sách và khỏi chi tiết (404), nhưng **`status` của chúng vẫn là `visible`** và chủ trọ vẫn thấy chúng ở `/me/listings`. Chủ trọ ẩn hoặc xóa một tin thì tin đăng sớm nhất kế tiếp trong số bị ẩn bớt hiện lại. Hết kỳ dùng thử mà chưa có gói thì hạn mức là 0: mọi tin của chủ trọ đó biến khỏi công khai từ đúng thời điểm hết kỳ. Gói hết hạn cũng vậy (so chặt: đúng lúc `endsAt` là hết); gói hết mà dùng thử còn thì quay về hạn mức dùng thử. Admin nâng hạn mức hoặc chủ trọ mua gói thì tin hiện lại ngay. `total` và các trang đã tính theo luật này, FE không cần lọc thêm.
 
@@ -736,11 +742,13 @@ Danh sách cho trang tìm trọ. **Chỉ tin đang hiện công khai**: tin `vis
   "addressText": "12 Lê Lợi",
   "fullAddress": "12 Lê Lợi, Phường Bến Thành, Thành phố Hồ Chí Minh",
   "landlord": { "id": "0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8d01", "name": "Anh Nam" },
-  "createdAt": "2026-10-16T04:20:11.000Z"
+  "createdAt": "2026-10-16T04:20:11.000Z",
+  "isFavorite": false
 }
 ```
 
 Cần nhớ:
+- **`isFavorite`** (mới, 2026-10-21): `null` với khách, token sai hoặc token hết hạn; `true` hoặc `false` với người đã đăng nhập, theo dòng lưu của chính họ (mục 6.33). Chủ trọ và admin đã đăng nhập luôn nhận `false`, không phải `null`. Cờ được đọc bằng một truy vấn cho cả trang, nên tô tim được ngay không cần gọi thêm. Danh sách tin của chủ trọ (6.21) và danh sách kiểm duyệt của admin (6.29) **không có** trường này.
 - **Danh sách không bao giờ có số điện thoại** (dù có đăng nhập). Số chỉ có ở trang chi tiết (6.20).
 - `landlord.name` là `null` khi chủ trọ chưa đặt tên.
 - Link sang trang chi tiết: `/<slug>-<code>` (hoặc chỉ `<code>`).
@@ -761,6 +769,7 @@ Cần nhớ:
 - `viewCount`: số lượt xem (đã gồm lượt vừa tính nếu có).
 - `images`: `[ { "id", "position", "url" } ]` theo `position` tăng dần (ảnh bìa là `position` nhỏ nhất). Tin chưa có ảnh thì là `[]` (tải ảnh ở 6.28).
 - `property`: `{ id, name, addressText, fullAddress, ward { code, name, provinceCode, provinceName }, latitude, longitude, fees[], amenities[] }` (như 6.17: `fees` theo thứ tự cố định, `amenities` theo tên tiếng Việt).
+- `isFavorite`: `null` với khách, token sai hoặc token hết hạn; `true` hoặc `false` với người đã đăng nhập (chủ trọ và admin nhận `false`). Cùng luật với danh sách (6.19), đọc bằng một truy vấn theo khóa chính. Chi tiết tin trong `/me/listings/:id` (6.21) **không có** trường này.
 
 **Cách tính lượt xem**: mỗi người xem được cộng **một lượt cho mỗi tin trong 30 phút**. Người xem là tài khoản nếu có token hợp lệ, không thì là địa chỉ IP. **Chủ tin mở không được tính.** Tải lại trong 30 phút không làm số tăng. Tin không hiển thị công khai (404) thì không được cộng. Nhiều người dùng chung một IP (ký túc xá, quán cà phê) mà không đăng nhập thì tính chung một lượt mỗi 30 phút.
 
@@ -1269,6 +1278,70 @@ Cần nhớ:
 - Thứ tự kiểm lỗi: đăng nhập và quyền (401, 403), rồi `INVALID_ID` (400), rồi tự theo dõi (409), rồi chủ trọ (404). Riêng admin: id sai định dạng nhận 400 chứ không phải 403.
 - **Chưa có** danh sách "đang theo dõi" của người tìm trọ, danh sách người theo dõi cho chủ trọ, hay thông báo khi chủ trọ đăng tin mới (đã hoãn).
 
+### 6.33 Lưu tin yêu thích
+
+`POST /listings/:id/favorite` · cần quyền `favorite:create`
+`DELETE /listings/:id/favorite` · cần quyền `favorite:delete`
+`GET /me/favorites` · cần quyền `favorite:read`
+
+Mặc định chỉ tài khoản **`tenant`** (người tìm trọ) giữ ba quyền này. `:id` là **`id`** của tin (không phải `slug-mã`), lấy từ danh sách và chi tiết tin công khai (6.19, 6.20). `POST` và `DELETE` **không có body** (nếu gửi kèm thì bị bỏ qua): người lưu luôn là người trong access token. Cả ba phản hồi có `Cache-Control: private, no-store`.
+
+#### Lưu và bỏ lưu
+
+**200 OK** (kể cả khi gọi lại): `{ "listingId": "<id ở đường dẫn>", "isFavorite": true }` sau `POST`, và `isFavorite: false` sau `DELETE`. Lưu ý là 200, không phải 201, vì gọi lại không tạo thêm gì. `isFavorite` trong kết quả là hằng theo hành động: FE gán thẳng vào nút tim, **không cần gọi lại `GET`**.
+
+| Lỗi | Khi nào |
+|---|---|
+| 401 `TOKEN_MISSING`, `TOKEN_INVALID`, `TOKEN_EXPIRED` | Chưa đăng nhập hoặc token hết hạn (cả ba API **bắt buộc** đăng nhập, khác với 6.19 và 6.20) |
+| 403 `PERMISSION_DENIED` | Không có quyền: chủ trọ theo mặc định. **Admin giữ mọi quyền nhưng vẫn bị 403**: admin không lưu tin |
+| 400 `INVALID_ID` | `:id` không phải UUID |
+| 404 `LISTING_NOT_FOUND` | Chỉ `POST`: tin không hiện công khai (không có, đã xóa, bị chủ trọ hoặc admin ẩn, chủ trọ bị khóa, chủ trọ hết dùng thử và hết gói, hoặc bị ẩn bớt vì vượt hạn mức). Cùng mã với chi tiết tin, để không ai dò được tin đang ẩn |
+| 429 `RATE_LIMITED` | Quá 120 lần mỗi giờ cho mỗi API theo người dùng (mục 3) |
+
+#### Danh sách tin đã lưu
+
+`GET /me/favorites?page=1&pageSize=20`
+
+**200 OK**: `{ "items": [...], "total": 2, "page": 1, "pageSize": 20 }`, quy ước phân trang ở mục 2. Tin **mới lưu nằm trên**. Không có bộ lọc hay `sort`; gửi tham số lạ là 400. Mỗi phần tử là đúng **tin tóm tắt của 6.19** (cùng các trường, `fullAddress`, `coverImageUrl`, `slug` giống hệt), cộng hai trường:
+
+```json
+{
+  "id": "0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8d9f",
+  "code": "k7m2xq9p",
+  "slug": "phong-dep-co-gac-gan-cho-ben-thanh",
+  "title": "Phòng đẹp có gác gần chợ Bến Thành",
+  "price": 3500000,
+  "areaM2": 22.5,
+  "deposit": 3500000,
+  "availableFrom": "2026-11-01",
+  "coverImageUrl": null,
+  "ward": { "code": "26743", "name": "Phường Bến Thành" },
+  "addressText": "12 Lê Lợi",
+  "fullAddress": "12 Lê Lợi, Phường Bến Thành, Thành phố Hồ Chí Minh",
+  "landlord": { "id": "0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8d01", "name": "Anh Nam" },
+  "createdAt": "2026-10-16T04:20:11.000Z",
+  "favoritedAt": "2026-10-21T03:00:00.000Z",
+  "isFavorite": true
+}
+```
+
+| Trường | Ý nghĩa |
+|---|---|
+| `favoritedAt` | Lúc người dùng lưu tin (ISO 8601, UTC). Danh sách xếp theo trường này, mới nhất trước |
+| `isFavorite` | Luôn `true` |
+
+**Lỗi**: 400 `VALIDATION_FAILED` (`page`, `pageSize` sai hoặc có tham số lạ) · 401 · 403 `PERMISSION_DENIED` (chủ trọ, admin) · 429 `RATE_LIMITED` (quá 300 lần mỗi phút theo IP).
+
+Cần nhớ:
+- **Gọi lại luôn an toàn.** `POST` khi đã lưu vẫn 200 và không thêm dòng; `DELETE` khi chưa lưu vẫn 200. Bấm đúp hay thử lại khi mạng chậm không làm sai, kể cả khi nhiều lần gọi chạy cùng lúc. Mỗi tin chỉ được lưu một lần cho mỗi người. **Không giới hạn số tin được lưu.**
+- **Bỏ lưu không kiểm tin.** `DELETE` trả 200 cả với tin đã bị ẩn hay đã xóa và cả với id không có, nên FE bỏ lưu được một tin đã biến mất nếu còn giữ id của nó.
+- **Tin biến khỏi danh sách đã lưu một cách lặng lẽ khi không còn hiện công khai**: bị ẩn, đã xóa, chủ trọ bị khóa, hết dùng thử và hết gói, hoặc bị ẩn bớt vì vượt hạn mức (luật ở 6.19). `total` cũng chỉ đếm tin đang hiện. **Dòng lưu vẫn còn**, nên tin hiện lại thì quay về đúng chỗ theo lúc lưu. Một tin nằm trong danh sách đã lưu khi và chỉ khi khách mở được nó ở chi tiết công khai. Backend không báo tin nào biến hay vì sao, và không có số tin đang bị ẩn.
+- **Ẩn nút tim** khi `permissions` trong `GET /auth/me` không có `favorite:create` (chủ trọ, admin) và với khách (dẫn tới đăng nhập). Backend vẫn là nơi kiểm cuối: gặp 403 thì báo không đủ quyền.
+- **Cờ `isFavorite`** ở danh sách và chi tiết tin công khai (6.19, 6.20) cho FE tô tim ngay, không cần gọi `GET /me/favorites` để biết từng tin. Sau `POST` hay `DELETE` thì cập nhật cờ bằng chính kết quả trả về.
+- Thứ tự kiểm lỗi của `POST`: đăng nhập và quyền (401, 403), rồi `INVALID_ID` (400), rồi admin (403), rồi tin có hiện công khai không (404), rồi ghi. Riêng admin: id sai định dạng nhận 400 chứ không phải 403. `DELETE` giống vậy nhưng bỏ bước kiểm tin.
+- Chủ trọ được admin cấp quyền `favorite:*` thì lưu được, kể cả tin của chính mình; không có luật riêng.
+- **Chưa có** số lượt lưu cho chủ trọ, ghi chú riêng, thông báo khi tin đã lưu đổi giá hay biến mất, bộ lọc hoặc kiểu sắp xếp cho danh sách đã lưu (đã hoãn).
+
 ---
 
 ## 7. Luồng màn hình gợi ý
@@ -1330,6 +1403,13 @@ Hai ô: mật khẩu hiện tại, mật khẩu mới. Gọi `POST /auth/change-
 2. Hiện `name` (`null` thì ghi "Chủ trọ"), `joinedAt`, `followerCount`, `totalViewCount`, `publicListingCount`.
 3. **Nút theo dõi**: người tìm trọ bấm thì `POST /landlords/:id/follow`, bấm lại thì `DELETE`. Mỗi lần gán thẳng hồ sơ trả về vào trang (có `isFollowing` và `followerCount` mới). Khách thì dẫn tới đăng nhập; chủ trọ, admin và hồ sơ của chính mình thì ẩn nút (mục 6.32).
 
+### Lưu tin yêu thích (người tìm trọ)
+
+1. **Nút tim** trên mỗi thẻ tin (6.19) và trên trang chi tiết (6.20). Tô theo `isFavorite`: `true` là tim đầy, `false` là tim rỗng, `null` (khách) là tim rỗng nhưng bấm thì dẫn tới đăng nhập. Gửi kèm access token khi gọi danh sách và chi tiết để có cờ.
+2. **Bấm tim**: `isFavorite` đang `false` thì gọi `POST /listings/:id/favorite`, đang `true` thì gọi `DELETE`. Khóa nút trong lúc gửi, rồi gán `isFavorite` bằng kết quả trả về. 404 `LISTING_NOT_FOUND` ở `POST` thì báo "tin không còn" và bỏ thẻ khỏi danh sách.
+3. **Trang "Tin đã lưu"**: `GET /me/favorites` (phân trang), vẽ thẻ như danh sách tìm trọ và hiện `favoritedAt` ("đã lưu ngày ..."). Bấm tim trên thẻ thì `DELETE` rồi bỏ thẻ khỏi trang. Danh sách rỗng thì mời đi xem tin.
+4. Chủ trọ và admin không có nút tim (mục 6.33).
+
 ### Bảng giá gói (khách và chủ trọ)
 
 1. **Trang bảng giá**: gọi `GET /plans` (công khai, không cần token), vẽ mỗi gói một thẻ: tên, giá (định dạng đồng), "tối đa N tin", "N ngày". Đã xếp giá tăng dần.
@@ -1370,6 +1450,7 @@ Hai ô: mật khẩu hiện tại, mật khẩu mới. Gọi `POST /auth/change-
 - **Danh mục phường và tiện ích** do admin quản lý (6.30). Xóa chỉ được khi không nhà trọ nào dùng, kể cả nhà trọ đã xóa mềm. Đổi tên phường làm tìm kiếm theo tên mới có hiệu lực ngay.
 - **Lượt xem** tính một lần cho mỗi người xem trong 30 phút, chủ tin không tính (6.20).
 - **Theo dõi chủ trọ** (6.32): chỉ người tìm trọ, mỗi cặp một lần, gọi lại an toàn, admin và chủ trọ mặc định không theo dõi được. Các con số trên hồ sơ (6.31) tính lúc đọc nên luôn khớp với dữ liệu thật; theo dõi chỉ làm tăng một con số, chưa có thông báo hay danh sách.
+- **Lưu tin yêu thích** (6.33): chỉ người tìm trọ, mỗi cặp (người dùng, tin) một lần, gọi lại an toàn, không giới hạn số tin, chỉ lưu được tin đang hiện công khai, bỏ lưu không kiểm tin. Danh sách đã lưu dùng đúng luật hiển thị công khai của 6.19 nên luôn khớp với những gì khách mở được; dòng lưu không bị xóa khi tin biến, nên tin hiện lại là quay về. Admin và chủ trọ mặc định không lưu được.
 - **Khóa tài khoản**: tài khoản bị khóa không đăng nhập, không refresh được và mọi phiên bị hủy lúc khóa. Đăng nhập sai mật khẩu vẫn báo `INVALID_CREDENTIALS` (không lộ tài khoản có bị khóa hay không); chỉ khi đúng mật khẩu mới báo `ACCOUNT_LOCKED`. Admin không tự khóa mình được.
 - **Đổi hoặc đặt lại mật khẩu** hủy phiên: đặt lại hủy **tất cả**; đổi (khi đang đăng nhập) hủy tất cả **trừ phiên đang dùng**.
 - **Mật khẩu mới** có thể trùng mật khẩu cũ (backend không cấm).
@@ -1402,6 +1483,9 @@ Hai ô: mật khẩu hiện tại, mật khẩu mới. Gọi `POST /auth/change-
 - **Số tổng `total` của danh sách** là một phép đếm riêng nên chậm dần khi có hàng chục nghìn tin. Đo thật trên 60 nghìn tin giả lập: phép đếm và các trang sâu mất từ vài trăm mili giây đến vài giây tùy cách tin phân bố giữa các chủ trọ, trong khi dưới vài nghìn tin thì không thấy. Chấp nhận ở bản demo; không phải bản chạy thật.
 - **Số người theo dõi có thể bị tăng ảo** bằng nhiều tài khoản người tìm trọ giả: chỉ có giới hạn đăng ký 10 lần mỗi giờ theo IP và việc admin khóa tài khoản chặn lại, không có chống gian lận nào khác.
 - **Theo dõi chỉ là một con số**: không thông báo cho người theo dõi, không danh sách "đang theo dõi", chủ trọ không xem được ai theo dõi mình, hồ sơ chưa liệt kê tin đang hiện của chủ trọ. Tất cả đã hoãn.
+- **Tin biến khỏi danh sách đã lưu mà không báo gì**: không có số tin đang bị ẩn, không thông báo, và FE không thấy được tin bị ẩn trong danh sách đã lưu để bỏ lưu (chỉ bỏ lưu được nếu còn giữ id). Không giới hạn số tin được lưu, nên người lưu hàng nghìn tin sẽ thấy trang cuối và `total` chậm hơn. Đo thật trên 60 nghìn tin giả lập: người lưu 200 tin mất vài mili giây, người lưu 5 nghìn tin mất khoảng 50 mili giây ở trang cuối và ở phép đếm. Chấp nhận ở bản demo.
+- **`GET /listings` không cache chung được nữa** (từ 2026-10-21): vì có `isFavorite` theo người xem nên phản hồi là `Cache-Control: private, no-store`. Proxy hay CDN không cache chung danh sách công khai.
+- **Chưa có thống kê lượt lưu** cho chủ trọ, nên lưu tin không giúp chủ trọ thấy được mức quan tâm.
 - Ghi phí hoặc tiện ích khi sửa nhà trọ là **thay cả danh sách** (không có API thêm hay bỏ từng khoản), nên hai thiết bị cùng sửa một nhà trọ thì bản gửi sau thắng.
 
 ---
@@ -1414,7 +1498,6 @@ Backend sẽ làm theo thứ tự dưới đây. Mỗi mục khi xong sẽ vào 
 |---|---|---|
 | 9 | **Dùng thử miễn phí và hạn mức tin** cho chủ trọ: dùng thử 30 ngày, tối đa 2 tin đang hiện (admin đổi được hai con số này). Hết kỳ dùng thử mà chưa mua gói thì tin của chủ trọ tự biến khỏi danh sách công khai. **Đã có**: API admin xem và đổi hai tham số (mục 6.24); hạn dùng thử đặt lúc đăng ký (6.1); chặn đăng và hiện lại tin khi hết dùng thử hoặc đủ hạn mức (6.18, 6.23, mã lỗi `MEMBERSHIP_REQUIRED` và `LISTING_QUOTA_REACHED`); tin biến khỏi danh sách và chi tiết công khai khi hết kỳ hoặc vượt hạn mức, ẩn bớt theo thứ tự đăng (6.19, 6.20); `GET /me/membership` và cờ `isPublic` (6.25, 6.18). **Còn lại**: đo tốc độ ở hàng chục nghìn tin | Lỗi chặn đăng hoặc hiện thêm tin kèm gợi ý mua gói; hiện ngày hết hạn dùng thử và số tin còn lại |
 | 10 | **Mua gói và gia hạn theo tháng**, **thanh toán thử** (bấm xác nhận là có gói, không có tiền thật, không chuyển sang cổng thanh toán nào, nên **không có trang VNPay**). **Đã có**: bảng giá công khai và API admin tạo, sửa, tắt, xóa gói (mục 6.26); tạo, xem, hủy đơn, thanh toán thử và kỳ gói nối tiếp (mục 6.27). Gói đổi hạn mức tin và hiển thị công khai, `state = plan` và `subscription` trong `GET /me/membership` (mục 6.25). **Còn lại**: không còn gì ở backend cho mục này | Trang chọn gói, nút thanh toán thử, lịch sử đơn, dải trạng thái gói đang chạy (đều dựng được) |
-| 12 | **Lưu phòng yêu thích** cho người tìm trọ | Nút lưu trên tin, trang danh sách tin đã lưu |
 | sau | API **danh sách người dùng** cho admin, API hồ sơ cá nhân | Màn hình quản lý người dùng, trang hồ sơ |
 
 **Đã bỏ khỏi kế hoạch (2026-10-11), FE đừng làm màn hình cho các phần này:** duyệt tin trước khi hiển thị, thanh toán qua VNPay, xác thực chủ trọ bằng giấy tờ, báo cáo tin xấu, liên hệ chủ trọ có giới hạn mỗi ngày, đẩy tin và tin nổi bật, kiểm tra tại chỗ, quảng cáo, báo cáo thu chi và dashboard, thống kê cho chủ trọ, tìm quanh địa điểm mốc, đổi loại tài khoản.
@@ -1426,6 +1509,24 @@ Backend sẽ làm theo thứ tự dưới đây. Mỗi mục khi xong sẽ vào 
 ## 11. Nhật ký thay đổi
 
 Mới nhất ở trên cùng. Mục nào **phá vỡ** cách FE đang gọi sẽ ghi rõ "ĐỔI KHÁC VỚI TRƯỚC".
+
+### 2026-10-21 · Cờ isFavorite ở danh sách và chi tiết tin công khai (mốc 2 của lưu tin yêu thích; phần lưu tin xong)
+
+- **Thêm trường `isFavorite`** vào mỗi phần tử của `GET /listings` (6.19) và vào `GET /listings/:slugCode` (6.20): `null` với khách, token sai hoặc token hết hạn (không bao giờ 401); `true` hoặc `false` với người đã đăng nhập, theo dòng lưu của chính họ (chủ trọ và admin nhận `false`). Các trường khác giữ nguyên.
+- **Đổi cách đọc**: `GET /listings` từ không đọc token sang **đọc đăng nhập tùy chọn**, và phản hồi giờ có `Cache-Control: private, no-store` (trước đó không có, chi tiết tin vốn đã có). Proxy hay CDN không cache chung danh sách này nữa.
+- Danh sách tin của chủ trọ (`GET /me/listings`, `GET /me/listings/:id`), danh sách kiểm duyệt của admin và danh sách tin đã lưu **không đổi**: hai danh sách đầu không có `isFavorite`, danh sách tin đã lưu luôn `true`.
+- Chỉ **thêm một trường**: không phá FE cũ (FE kiểm chặt danh sách trường của mỗi phần tử thì cần thêm `isFavorite`).
+- **FE cần làm** (tùy chọn): nút tim trên thẻ tin và trang chi tiết, gửi kèm access token khi gọi hai API này nếu đã đăng nhập (mục 7).
+
+### 2026-10-21 · Lưu tin yêu thích: lưu, bỏ lưu và danh sách đã lưu (mốc 1 của lưu tin yêu thích)
+
+- **API mới** (mục 6.33): `POST /listings/:id/favorite` (quyền `favorite:create`), `DELETE /listings/:id/favorite` (quyền `favorite:delete`) và `GET /me/favorites` (quyền `favorite:read`). `POST` và `DELETE` không có body, trả 200 `{ listingId, isFavorite }`, gọi lại an toàn. `GET /me/favorites` trả `{ items, total, page, pageSize }`, tin mới lưu nằm trên, mỗi phần tử là tin tóm tắt công khai cộng `favoritedAt` và `isFavorite: true`.
+- **Không mã lỗi mới**: dùng `LISTING_NOT_FOUND` (lưu tin không hiện công khai), `INVALID_ID`, `PERMISSION_DENIED`, `TOKEN_MISSING`, `RATE_LIMITED`.
+- **Quyền**: mặc định chỉ `tenant` giữ `favorite:*`. **Admin giữ mọi quyền nhưng vẫn nhận 403 `PERMISSION_DENIED`** ở cả ba API (backend kiểm loại tài khoản).
+- **Giới hạn tần suất**: `POST` và `DELETE` mỗi API 120 lần mỗi giờ theo người dùng; `GET /me/favorites` 300 lần mỗi phút theo IP (mục 3).
+- Tin không còn hiện công khai thì biến khỏi danh sách đã lưu nhưng dòng lưu vẫn còn: tin hiện lại thì quay về đúng chỗ.
+- Chỉ thêm đường dẫn mới, **không đổi API đang chạy** ở mốc này (cờ `isFavorite` ở danh sách và chi tiết tin là mốc 2, ngay bên dưới).
+- **FE cần làm** (tùy chọn): nút tim và trang "Tin đã lưu" (mục 7).
 
 ### 2026-10-20 · Theo dõi và bỏ theo dõi chủ trọ (mốc 2 của theo dõi chủ trọ, phần ghi)
 

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { MulterModule } from '@nestjs/platform-express';
 import { AppConfigService } from '../config/app-config.service';
+import { FavoritesDataModule } from '../favorites/favorites-data.module';
 import { MembershipsModule } from '../memberships/memberships.module';
 import { ModerationModule } from '../moderation/moderation.module';
 import { PropertiesModule } from '../properties/properties.module';
@@ -35,6 +36,7 @@ const MAX_FILES_PER_REQUEST = 5;
 @Module({
 	imports: [
 		ListingsDataModule,
+		FavoritesDataModule,
 		PropertiesModule,
 		ModerationModule,
 		MembershipsModule,

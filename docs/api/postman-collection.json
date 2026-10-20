@@ -424,6 +424,41 @@
       "key": "profileFollowerCount",
       "value": "",
       "description": "Số người theo dõi hiện tại của chủ trọ ở folder 18, làm mốc cho các request theo dõi và bỏ theo dõi."
+    },
+    {
+      "key": "favPropertyId",
+      "value": "",
+      "description": "Id nhà trọ của folder 19 (tự lưu)."
+    },
+    {
+      "key": "favListingId",
+      "value": "",
+      "description": "Id tin A của folder 19 (tự lưu)."
+    },
+    {
+      "key": "favListingId2",
+      "value": "",
+      "description": "Id tin B của folder 19 (tự lưu)."
+    },
+    {
+      "key": "favListingCode",
+      "value": "",
+      "description": "Mã ngắn của tin A (tự lưu)."
+    },
+    {
+      "key": "favListingCode2",
+      "value": "",
+      "description": "Mã ngắn của tin B (tự lưu)."
+    },
+    {
+      "key": "favListingSlug",
+      "value": "",
+      "description": "Slug của tin A (tự lưu)."
+    },
+    {
+      "key": "favListingSlug2",
+      "value": "",
+      "description": "Slug của tin B (tự lưu)."
     }
   ],
   "auth": {
@@ -3237,8 +3272,9 @@
                   "pm.test('tin vừa đăng nằm trong danh sách', () => {",
                   "    const item = body.items.find((i) => i.code === pm.collectionVariables.get('listingCode'));",
                   "    pm.expect(item).to.be.an(\"object\");",
-                  "    pm.expect(Object.keys(item).sort()).to.eql(['addressText', 'areaM2', 'availableFrom', 'code', 'coverImageUrl', 'createdAt', 'deposit', 'fullAddress', 'id', 'landlord', 'price', 'slug', 'title', 'ward']);",
+                  "    pm.expect(Object.keys(item).sort()).to.eql(['addressText', 'areaM2', 'availableFrom', 'code', 'coverImageUrl', 'createdAt', 'deposit', 'fullAddress', 'id', 'isFavorite', 'landlord', 'price', 'slug', 'title', 'ward']);",
                   "    pm.expect(Object.keys(item.landlord).sort()).to.eql(['id', 'name']);",
+                  "    pm.expect(item.isFavorite).to.eql(null);",
                   "});",
                   "pm.test('không có số điện thoại ở danh sách', () => pm.expect(JSON.stringify(body)).to.not.match(/\"phone\"/));"
                 ]
@@ -3267,7 +3303,7 @@
                 }
               ]
             },
-            "description": "Công khai. Chỉ tin đang hiện công khai: `status` `visible`, chưa xóa, nhà trọ chưa xóa, chủ trọ đang hoạt động, chủ trọ còn trong kỳ dùng thử, và tin nằm trong hạn mức của chủ trọ (chỉ các tin đăng sớm nhất theo `trial_listing_limit`, xem folder 11). Mới nhất trước. Mỗi dòng là **tin tóm tắt**: không có số điện thoại, không có mô tả. Giới hạn 300 lần mỗi phút theo IP.",
+            "description": "Công khai. Chỉ tin đang hiện công khai: `status` `visible`, chưa xóa, nhà trọ chưa xóa, chủ trọ đang hoạt động, chủ trọ còn trong kỳ dùng thử, và tin nằm trong hạn mức của chủ trọ (chỉ các tin đăng sớm nhất theo `trial_listing_limit`, xem folder 11). Mới nhất trước. Mỗi dòng là **tin tóm tắt**: không có số điện thoại, không có mô tả. Có thêm `isFavorite` (spec 0006): `null` với khách như ở request này; người tìm trọ đã đăng nhập nhận `true` hoặc `false` (xem folder 19). Phản hồi có `Cache-Control: private, no-store`. Giới hạn 300 lần mỗi phút theo IP.",
             "auth": {
               "type": "noauth"
             }
@@ -16871,6 +16907,2029 @@
           }
         ]
       }
+    },
+    {
+      "name": "19 Tin yêu thích",
+      "description": "Lưu tin yêu thích của người tìm trọ (spec 0006). **Chạy sau folder 09** (dùng `userToken`, `tenantToken` và `wardCode`) và từ trên xuống. Request đầu đăng nhập admin và lưu `adminToken`; folder nâng hạn mức dùng thử lên 10 để đăng hai tin, rồi trả về 2 ở cuối, nên nếu chạy dở thì chạy riêng request cuối. Folder tự đăng một nhà trọ và hai tin, lưu, ẩn, hiện, bỏ lưu rồi dọn hết (xóa tin, nhà trọ), nên chạy lại được. Không thêm lần đăng ký nào. Các request `[ghi]` là phần ghi và lỗi. Nửa sau gồm các request kiểm cờ `isFavorite` ở `GET /listings` và chi tiết tin (mốc 2). Giới hạn 120 lần lưu mỗi giờ không được thử ở đây (xem `docs/specs/0006-favorites/verify.md`).",
+      "item": [
+        {
+          "name": "Đăng nhập admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.collectionVariables.set('adminToken', pm.response.json().accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Công khai. Đăng nhập admin do `npm run seed` tạo (điền `adminEmail`, `adminPassword` ở biến của collection). Lưu token vào `adminToken`.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Nâng hạn mức dùng thử lên 10 để dựng tin (PATCH /settings/trial_listing_limit)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('hạn mức dùng thử là 10', () => pm.expect(pm.response.json().value).to.eql(10));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/settings/trial_listing_limit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "settings",
+                "trial_listing_limit"
+              ]
+            },
+            "description": "Cần quyền `setting:update` và phiên mới. Chủ trọ của folder 08 có thể đã dùng hết hạn mức 2 tin; nâng lên 10 để folder này đăng được hai tin. Request cuối trả về 2.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Tạo nhà trọ để đăng tin (POST /properties)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "",
+                  "pm.collectionVariables.set('favPropertyId', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/properties",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties"
+              ]
+            },
+            "description": "Cần đăng nhập chủ trọ (`userToken` của folder 01 và 08). Lưu `favPropertyId`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Nhà trọ thử lưu tin\",\n  \"addressText\": \"5 Đường Thử\",\n  \"wardCode\": \"{{wardCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Đăng tin A (POST /properties/:propertyId/listings)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('favListingId', body.id);",
+                  "pm.collectionVariables.set('favListingCode', body.code);",
+                  "pm.collectionVariables.set('favListingSlug', body.slug);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/properties/{{favPropertyId}}/listings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "{{favPropertyId}}",
+                "listings"
+              ]
+            },
+            "description": "Tin hiện ngay. Lưu `favListingId`, `favListingCode`, `favListingSlug` để lưu tin ở các request sau.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Phòng thử lưu tin A\",\n  \"description\": \"Phòng sạch sẽ thoáng mát giờ giấc tự do\",\n  \"price\": 3000000,\n  \"areaM2\": 20\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Đăng tin B (POST /properties/:propertyId/listings)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('favListingId2', body.id);",
+                  "pm.collectionVariables.set('favListingCode2', body.code);",
+                  "pm.collectionVariables.set('favListingSlug2', body.slug);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/properties/{{favPropertyId}}/listings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "{{favPropertyId}}",
+                "listings"
+              ]
+            },
+            "description": "Tin hiện ngay. Lưu `favListingId2`, `favListingCode2`, `favListingSlug2` để lưu tin ở các request sau.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Phòng thử lưu tin B\",\n  \"description\": \"Phòng sạch sẽ thoáng mát giờ giấc tự do\",\n  \"price\": 3000000,\n  \"areaM2\": 20\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Danh sách đã lưu lúc đầu không có tin A và B (GET /me/favorites)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const ids = pm.response.json().items.map((item) => item.id);",
+                  "pm.test('chưa lưu tin A và B', () => {",
+                  "    pm.expect(ids).to.not.include(pm.collectionVariables.get('favListingId'));",
+                  "    pm.expect(ids).to.not.include(pm.collectionVariables.get('favListingId2'));",
+                  "});",
+                  "pm.test('có đủ bốn trường của trang', () => pm.expect(Object.keys(pm.response.json()).sort()).to.eql(['items', 'page', 'pageSize', 'total']));",
+                  "pm.test('Cache-Control là private, no-store', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('private, no-store'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me/favorites",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "favorites"
+              ]
+            },
+            "description": "Cần quyền `favorite:read` (mặc định chỉ `tenant`, token của folder 09). Trả `{ items, total, page, pageSize }`. Giới hạn 300 lần mỗi phút theo IP.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[ghi] Người tìm trọ lưu tin A (POST /listings/:id/favorite)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('đúng { listingId, isFavorite: true }', () => pm.expect(pm.response.json()).to.eql({ listingId: pm.collectionVariables.get('favListingId'), isFavorite: true }));",
+                  "pm.test('Cache-Control là private, no-store', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('private, no-store'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{favListingId}}/favorite",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{favListingId}}",
+                "favorite"
+              ]
+            },
+            "description": "Cần quyền `favorite:create` (mặc định chỉ `tenant`). Không có body: người lưu luôn là người trong token, nội dung gửi kèm bị bỏ qua. Trả 200 (không phải 201) vì gọi lại không tạo thêm gì. Chỉ lưu được tin đang hiện công khai. Giới hạn 120 lần mỗi giờ theo người dùng, mỗi API đếm riêng.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[ghi] Lưu lặp lại vẫn 200 (POST /listings/:id/favorite)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('đúng { listingId, isFavorite: true }', () => pm.expect(pm.response.json()).to.eql({ listingId: pm.collectionVariables.get('favListingId'), isFavorite: true }));",
+                  "pm.test('Cache-Control là private, no-store', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('private, no-store'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{favListingId}}/favorite",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{favListingId}}",
+                "favorite"
+              ]
+            },
+            "description": "Mỗi cặp (người dùng, tin) chỉ có một dòng. Bấm lại, hoặc nhiều lần gọi cùng lúc, vẫn 200 và không thêm dòng.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[ghi] Người tìm trọ lưu tin B (POST /listings/:id/favorite)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('đúng { listingId, isFavorite: true }', () => pm.expect(pm.response.json()).to.eql({ listingId: pm.collectionVariables.get('favListingId2'), isFavorite: true }));",
+                  "pm.test('Cache-Control là private, no-store', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('private, no-store'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{favListingId2}}/favorite",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{favListingId2}}",
+                "favorite"
+              ]
+            },
+            "description": "Lưu thêm một tin. Không giới hạn số tin được lưu.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[ghi] Danh sách đã lưu: tin mới lưu nằm trên (GET /me/favorites)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const body = pm.response.json();",
+                  "const ids = pm.response.json().items.map((item) => item.id);",
+                  "pm.test('tin B (lưu sau) nằm trên tin A', () => {",
+                  "    pm.expect(ids.indexOf(pm.collectionVariables.get('favListingId2'))).to.be.at.least(0);",
+                  "    pm.expect(ids.indexOf(pm.collectionVariables.get('favListingId2'))).to.be.below(ids.indexOf(pm.collectionVariables.get('favListingId')));",
+                  "});",
+                  "pm.test('total từ 2 trở lên', () => pm.expect(body.total).to.be.at.least(2));",
+                  "const first = body.items[0];",
+                  "pm.test('phần tử có favoritedAt hợp lệ và isFavorite true', () => {",
+                  "    pm.expect(first.isFavorite).to.eql(true);",
+                  "    pm.expect(Number.isNaN(Date.parse(first.favoritedAt))).to.eql(false);",
+                  "});",
+                  "pm.test('có các trường của tin tóm tắt', () => ['id', 'code', 'slug', 'title', 'price', 'areaM2', 'fullAddress', 'landlord', 'ward', 'coverImageUrl', 'createdAt'].forEach((key) => pm.expect(first).to.have.property(key)));",
+                  "pm.test('chủ trọ chỉ có id và name, không số điện thoại', () => pm.expect(Object.keys(first.landlord).sort()).to.eql(['id', 'name']));",
+                  "pm.test('Cache-Control là private, no-store', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('private, no-store'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me/favorites",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "favorites"
+              ]
+            },
+            "description": "Mới lưu trước. Mỗi phần tử là tin tóm tắt công khai (cùng trường với `GET /listings`) cộng `favoritedAt` và `isFavorite: true`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[ghi] Phân trang: pageSize=1 chỉ lấy tin mới lưu nhất (GET /me/favorites)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const body = pm.response.json();",
+                  "pm.test('một phần tử, page 1, pageSize 1', () => {",
+                  "    pm.expect(body.items.length).to.eql(1);",
+                  "    pm.expect(body.page).to.eql(1);",
+                  "    pm.expect(body.pageSize).to.eql(1);",
+                  "});",
+                  "pm.test('đó là tin B', () => pm.expect(body.items[0].id).to.eql(pm.collectionVariables.get('favListingId2')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me/favorites?page=1&pageSize=1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "favorites"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "`page` từ 1, `pageSize` từ 1 đến 50 (mặc định 20), như các danh sách khác.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[ghi] Chủ trọ ẩn tin A (POST /listings/:id/hide)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('tin đã ẩn', () => pm.expect(pm.response.json().status).to.eql('hidden_by_owner'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{favListingId}}/hide",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{favListingId}}",
+                "hide"
+              ]
+            },
+            "description": "Chủ trọ tự ẩn tin. Tin ẩn thì biến khỏi danh sách công khai, nên cũng biến khỏi danh sách đã lưu (dòng lưu vẫn còn).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[ghi] Tin A bị ẩn: biến khỏi danh sách đã lưu, tin B còn (GET /me/favorites)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const ids = pm.response.json().items.map((item) => item.id);",
+                  "pm.test('tin A biến khỏi danh sách', () => pm.expect(ids).to.not.include(pm.collectionVariables.get('favListingId')));",
+                  "pm.test('tin B vẫn còn', () => pm.expect(ids).to.include(pm.collectionVariables.get('favListingId2')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me/favorites",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "favorites"
+              ]
+            },
+            "description": "Danh sách đã lưu dùng đúng luật hiển thị công khai của `GET /listings`, nên chỉ có tin đang hiện ngay lúc đọc. `total` cũng chỉ đếm tin đang hiện.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[ghi] Thử lỗi: lưu tin đang bị ẩn (POST /listings/:id/favorite)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 404 LISTING_NOT_FOUND', () => {",
+                  "    pm.response.to.have.status(404);",
+                  "    pm.expect(pm.response.json().code).to.eql('LISTING_NOT_FOUND');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{favListingId}}/favorite",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{favListingId}}",
+                "favorite"
+              ]
+            },
+            "description": "Tin không hiện công khai (bị chủ trọ hoặc admin ẩn, đã xóa, chủ trọ bị khóa, hết dùng thử và hết gói, vượt hạn mức) trả 404 `LISTING_NOT_FOUND` như chi tiết tin, để không ai dò được tin đang ẩn. Không ghi dòng nào.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[ghi] Chủ trọ hiện lại tin A (POST /listings/:id/show)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('tin đã hiện', () => pm.expect(pm.response.json().status).to.eql('visible'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{favListingId}}/show",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{favListingId}}",
+                "show"
+              ]
+            },
+            "description": "Tin hiện lại thì quay về danh sách đã lưu đúng chỗ theo lúc lưu, vì dòng lưu chưa hề bị xóa.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[ghi] Tin A quay về đúng chỗ, dưới tin B (GET /me/favorites)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const ids = pm.response.json().items.map((item) => item.id);",
+                  "pm.test('tin A đã quay lại, nằm dưới tin B', () => {",
+                  "    pm.expect(ids.indexOf(pm.collectionVariables.get('favListingId'))).to.be.above(ids.indexOf(pm.collectionVariables.get('favListingId2')));",
+                  "    pm.expect(ids.indexOf(pm.collectionVariables.get('favListingId2'))).to.be.at.least(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me/favorites",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "favorites"
+              ]
+            },
+            "description": "Thứ tự theo lúc lưu: B (lưu sau) rồi A.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[ghi] Người tìm trọ bỏ lưu tin A (DELETE /listings/:id/favorite)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('đúng { listingId, isFavorite: false }', () => pm.expect(pm.response.json()).to.eql({ listingId: pm.collectionVariables.get('favListingId'), isFavorite: false }));",
+                  "pm.test('Cache-Control là private, no-store', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('private, no-store'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{favListingId}}/favorite",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{favListingId}}",
+                "favorite"
+              ]
+            },
+            "description": "Cần quyền `favorite:delete`. Không có body. Trả 200 `{ listingId, isFavorite: false }`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[ghi] Bỏ lưu lặp lại vẫn 200 (DELETE /listings/:id/favorite)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('đúng { listingId, isFavorite: false }', () => pm.expect(pm.response.json()).to.eql({ listingId: pm.collectionVariables.get('favListingId'), isFavorite: false }));",
+                  "pm.test('Cache-Control là private, no-store', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('private, no-store'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{favListingId}}/favorite",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{favListingId}}",
+                "favorite"
+              ]
+            },
+            "description": "Chưa lưu mà bỏ lưu vẫn 200.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[ghi] Bỏ lưu một id không có trong hệ thống vẫn 200 (DELETE /listings/:id/favorite)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('listingId là id đã gửi, isFavorite false', () => pm.expect(pm.response.json()).to.eql({ listingId: '0192f1c2-0000-7000-8000-000000000001', isFavorite: false }));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/0192f1c2-0000-7000-8000-000000000001/favorite",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "0192f1c2-0000-7000-8000-000000000001",
+                "favorite"
+              ]
+            },
+            "description": "Bỏ lưu không kiểm tin có tồn tại hay đang hiện công khai, nên bỏ lưu được cả tin đã bị ẩn hay đã xóa, và id lạ cũng 200.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[ghi] Sau khi bỏ lưu A: danh sách chỉ còn B (GET /me/favorites)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const ids = pm.response.json().items.map((item) => item.id);",
+                  "pm.test('tin A không còn', () => pm.expect(ids).to.not.include(pm.collectionVariables.get('favListingId')));",
+                  "pm.test('tin B còn', () => pm.expect(ids).to.include(pm.collectionVariables.get('favListingId2')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me/favorites",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "favorites"
+              ]
+            },
+            "description": "Danh sách phản ánh ngay lần bỏ lưu.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Khách xem danh sách tin: isFavorite là null (GET /listings)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const items = pm.response.json().items;",
+                  "const a = items.find((item) => item.id === pm.collectionVariables.get('favListingId'));",
+                  "const b = items.find((item) => item.id === pm.collectionVariables.get('favListingId2'));",
+                  "pm.test('thấy tin A và tin B trong trang đầu', () => { pm.expect(a).to.not.eql(undefined); pm.expect(b).to.not.eql(undefined); });",
+                  "pm.test('isFavorite của tin A là null', () => pm.expect(a.isFavorite).to.eql(null));",
+                  "pm.test('isFavorite của tin B là null', () => pm.expect(b.isFavorite).to.eql(null));",
+                  "pm.test('Cache-Control là private, no-store', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('private, no-store'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings?pageSize=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings"
+              ],
+              "query": [
+                {
+                  "key": "pageSize",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Mốc 2. Danh sách tin công khai có thêm `isFavorite` mỗi phần tử: `null` với khách, token sai hoặc hết hạn (không bao giờ 401). Phản hồi có `Cache-Control: private, no-store` vì nội dung đổi theo người xem.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Người tìm trọ xem danh sách tin: A false, B true (GET /listings)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const items = pm.response.json().items;",
+                  "const a = items.find((item) => item.id === pm.collectionVariables.get('favListingId'));",
+                  "const b = items.find((item) => item.id === pm.collectionVariables.get('favListingId2'));",
+                  "pm.test('thấy tin A và tin B trong trang đầu', () => { pm.expect(a).to.not.eql(undefined); pm.expect(b).to.not.eql(undefined); });",
+                  "pm.test('isFavorite của tin A là false', () => pm.expect(a.isFavorite).to.eql(false));",
+                  "pm.test('isFavorite của tin B là true', () => pm.expect(b.isFavorite).to.eql(true));",
+                  "pm.test('Cache-Control là private, no-store', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('private, no-store'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings?pageSize=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings"
+              ],
+              "query": [
+                {
+                  "key": "pageSize",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Đã đăng nhập thì `isFavorite` là `true` hoặc `false` theo dòng lưu của chính người đó. Tin A đã bỏ lưu, tin B còn lưu.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Chủ trọ xem danh sách tin: isFavorite là false (GET /listings)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const items = pm.response.json().items;",
+                  "const a = items.find((item) => item.id === pm.collectionVariables.get('favListingId'));",
+                  "const b = items.find((item) => item.id === pm.collectionVariables.get('favListingId2'));",
+                  "pm.test('thấy tin A và tin B trong trang đầu', () => { pm.expect(a).to.not.eql(undefined); pm.expect(b).to.not.eql(undefined); });",
+                  "pm.test('isFavorite của tin A là false', () => pm.expect(a.isFavorite).to.eql(false));",
+                  "pm.test('isFavorite của tin B là false', () => pm.expect(b.isFavorite).to.eql(false));",
+                  "pm.test('Cache-Control là private, no-store', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('private, no-store'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings?pageSize=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings"
+              ],
+              "query": [
+                {
+                  "key": "pageSize",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Người đăng nhập mà không phải người tìm trọ (chủ trọ, admin) nhận `false`, không phải `null`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Token sai vẫn xem được như khách, isFavorite là null (GET /listings)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('mọi phần tử có isFavorite là null', () => pm.response.json().items.forEach((item) => pm.expect(item.isFavorite).to.eql(null)));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings?pageSize=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings"
+              ],
+              "query": [
+                {
+                  "key": "pageSize",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Danh sách công khai không bao giờ 401: token sai hay hết hạn được coi là khách.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "khong-phai-token",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Khách mở chi tiết tin: isFavorite là null (GET /listings/:slugCode)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('isFavorite là null', () => pm.expect(pm.response.json().isFavorite).to.eql(null));",
+                  "pm.test('Cache-Control là private, no-store', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('private, no-store'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{favListingSlug2}}-{{favListingCode2}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{favListingSlug2}}-{{favListingCode2}}"
+              ]
+            },
+            "description": "Chi tiết tin công khai cũng có `isFavorite`, cùng luật với danh sách.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Người tìm trọ mở chi tiết tin B đã lưu: isFavorite là true (GET /listings/:slugCode)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('isFavorite là true', () => pm.expect(pm.response.json().isFavorite).to.eql(true));",
+                  "pm.test('Cache-Control là private, no-store', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('private, no-store'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{favListingSlug2}}-{{favListingCode2}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{favListingSlug2}}-{{favListingCode2}}"
+              ]
+            },
+            "description": "Tin B còn được lưu.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Người tìm trọ mở chi tiết tin A đã bỏ lưu: isFavorite là false (GET /listings/:slugCode)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('isFavorite là false', () => pm.expect(pm.response.json().isFavorite).to.eql(false));",
+                  "pm.test('Cache-Control là private, no-store', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('private, no-store'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{favListingSlug}}-{{favListingCode}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{favListingSlug}}-{{favListingCode}}"
+              ]
+            },
+            "description": "Tin A đã bỏ lưu.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Chủ trọ mở chi tiết tin của mình: isFavorite là false (GET /listings/:slugCode)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('isFavorite là false', () => pm.expect(pm.response.json().isFavorite).to.eql(false));",
+                  "pm.test('Cache-Control là private, no-store', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('private, no-store'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{favListingSlug}}-{{favListingCode}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{favListingSlug}}-{{favListingCode}}"
+              ]
+            },
+            "description": "Chủ trọ (và admin) đã đăng nhập nhận `false`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[ghi] Thử lỗi: lưu tin không có trong hệ thống (POST /listings/:id/favorite)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 404 LISTING_NOT_FOUND', () => {",
+                  "    pm.response.to.have.status(404);",
+                  "    pm.expect(pm.response.json().code).to.eql('LISTING_NOT_FOUND');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/0192f1c2-0000-7000-8000-000000000001/favorite",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "0192f1c2-0000-7000-8000-000000000001",
+                "favorite"
+              ]
+            },
+            "description": "Id đúng dạng UUID nhưng không có tin: 404, không ghi dòng nào.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[ghi] Thử lỗi: id không phải UUID (POST /listings/:id/favorite)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 400 INVALID_ID', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    pm.expect(pm.response.json().code).to.eql('INVALID_ID');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/abc/favorite",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "abc",
+                "favorite"
+              ]
+            },
+            "description": "Id trên đường dẫn phải là UUID.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[ghi] Thử lỗi: khách lưu tin (POST /listings/:id/favorite)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 401 TOKEN_MISSING', () => {",
+                  "    pm.response.to.have.status(401);",
+                  "    pm.expect(pm.response.json().code).to.eql('TOKEN_MISSING');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{favListingId2}}/favorite",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{favListingId2}}",
+                "favorite"
+              ]
+            },
+            "description": "Cả ba API lưu tin bắt buộc đăng nhập.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "[ghi] Thử lỗi: khách bỏ lưu (DELETE /listings/:id/favorite)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 401 TOKEN_MISSING', () => {",
+                  "    pm.response.to.have.status(401);",
+                  "    pm.expect(pm.response.json().code).to.eql('TOKEN_MISSING');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{favListingId2}}/favorite",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{favListingId2}}",
+                "favorite"
+              ]
+            },
+            "description": "Chưa đăng nhập.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "[ghi] Thử lỗi: khách xem danh sách đã lưu (GET /me/favorites)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 401 TOKEN_MISSING', () => {",
+                  "    pm.response.to.have.status(401);",
+                  "    pm.expect(pm.response.json().code).to.eql('TOKEN_MISSING');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me/favorites",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "favorites"
+              ]
+            },
+            "description": "Chưa đăng nhập.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "[ghi] Thử lỗi: chủ trọ không có quyền lưu tin (POST /listings/:id/favorite)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 403 PERMISSION_DENIED', () => {",
+                  "    pm.response.to.have.status(403);",
+                  "    pm.expect(pm.response.json().code).to.eql('PERMISSION_DENIED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{favListingId2}}/favorite",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{favListingId2}}",
+                "favorite"
+              ]
+            },
+            "description": "Chủ trọ mặc định không giữ `favorite:*`. Admin có thể cấp quyền cho loại landlord; khi đó chủ trọ lưu được cả tin của chính mình, không có luật riêng.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[ghi] Thử lỗi: chủ trọ không có quyền bỏ lưu (DELETE /listings/:id/favorite)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 403 PERMISSION_DENIED', () => {",
+                  "    pm.response.to.have.status(403);",
+                  "    pm.expect(pm.response.json().code).to.eql('PERMISSION_DENIED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{favListingId2}}/favorite",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{favListingId2}}",
+                "favorite"
+              ]
+            },
+            "description": "Chủ trọ không có `favorite:delete`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[ghi] Thử lỗi: chủ trọ không có quyền xem danh sách đã lưu (GET /me/favorites)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 403 PERMISSION_DENIED', () => {",
+                  "    pm.response.to.have.status(403);",
+                  "    pm.expect(pm.response.json().code).to.eql('PERMISSION_DENIED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me/favorites",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "favorites"
+              ]
+            },
+            "description": "Chủ trọ không có `favorite:read`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[ghi] Thử lỗi: admin không lưu được (POST /listings/:id/favorite)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 403 PERMISSION_DENIED', () => {",
+                  "    pm.response.to.have.status(403);",
+                  "    pm.expect(pm.response.json().code).to.eql('PERMISSION_DENIED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{favListingId2}}/favorite",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{favListingId2}}",
+                "favorite"
+              ]
+            },
+            "description": "Admin giữ mọi quyền nhưng Service chặn riêng loại tài khoản admin: không dòng nào được ghi cho admin.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[ghi] Thử lỗi: admin không bỏ lưu được (DELETE /listings/:id/favorite)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 403 PERMISSION_DENIED', () => {",
+                  "    pm.response.to.have.status(403);",
+                  "    pm.expect(pm.response.json().code).to.eql('PERMISSION_DENIED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{favListingId2}}/favorite",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{favListingId2}}",
+                "favorite"
+              ]
+            },
+            "description": "Admin bị chặn như ở `POST`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[ghi] Thử lỗi: admin không xem danh sách đã lưu (GET /me/favorites)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 403 PERMISSION_DENIED', () => {",
+                  "    pm.response.to.have.status(403);",
+                  "    pm.expect(pm.response.json().code).to.eql('PERMISSION_DENIED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me/favorites",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "favorites"
+              ]
+            },
+            "description": "Admin bị chặn như ở `POST`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[ghi] Thử lỗi: pageSize quá lớn (GET /me/favorites)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 400 VALIDATION_FAILED', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me/favorites?pageSize=51",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "favorites"
+              ],
+              "query": [
+                {
+                  "key": "pageSize",
+                  "value": "51"
+                }
+              ]
+            },
+            "description": "`pageSize` tối đa 50. Không có bộ lọc hay `sort` cho danh sách đã lưu.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[ghi] Dọn: người tìm trọ bỏ lưu tin B (DELETE /listings/:id/favorite)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('đúng { listingId, isFavorite: false }', () => pm.expect(pm.response.json()).to.eql({ listingId: pm.collectionVariables.get('favListingId2'), isFavorite: false }));",
+                  "pm.test('Cache-Control là private, no-store', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('private, no-store'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{favListingId2}}/favorite",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{favListingId2}}",
+                "favorite"
+              ]
+            },
+            "description": "Đưa người tìm trọ về trạng thái không lưu tin nào của folder này.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Dọn: xóa mềm tin A (DELETE /listings/:id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{favListingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{favListingId}}"
+              ]
+            },
+            "description": "Xóa mềm tin do folder này đăng.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Dọn: xóa mềm tin B (DELETE /listings/:id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{favListingId2}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{favListingId2}}"
+              ]
+            },
+            "description": "Xóa mềm tin do folder này đăng.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Dọn: xóa nhà trọ (DELETE /properties/:id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/properties/{{favPropertyId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "{{favPropertyId}}"
+              ]
+            },
+            "description": "Hết tin thì xóa nhà trọ được.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Dọn: trả hạn mức dùng thử về 2 (PATCH /settings/trial_listing_limit)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('hạn mức dùng thử là 2', () => pm.expect(pm.response.json().value).to.eql(2));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/settings/trial_listing_limit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "settings",
+                "trial_listing_limit"
+              ]
+            },
+            "description": "Trả tham số về mặc định. Nếu chạy dở, chạy riêng request này.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
     }
   ]
 }

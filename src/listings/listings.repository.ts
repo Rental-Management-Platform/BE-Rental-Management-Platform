@@ -68,6 +68,12 @@ export type OwnerDetailRow = Prisma.ListingGetPayload<{
 	include: typeof ownerDetailInclude;
 }>;
 
+/** Một tin trong danh sách đã lưu: hàng đọc của danh sách công khai cộng lúc người gọi lưu tin (spec 0006). */
+export interface SavedListingRow {
+	readonly row: PublicSummaryRow;
+	readonly favoritedAt: Date;
+}
+
 export interface NewListing {
 	readonly propertyId: string;
 	readonly code: string;
@@ -317,6 +323,56 @@ export class ListingsRepository {
 				AND ${publicListingCondition(visibility.now, visibility.trialListingLimit)}
 			LIMIT 1`;
 		return rows.length === 1;
+	}
+
+	/**
+	 * Một trang tin đã lưu của `userId`, mới lưu trước, kèm tổng số (spec 0006 AC-4, AC-5). Đọc hai bước như
+	 * `findPublicPage`. Bước một: hai câu SQL thô chạy song song, dùng đúng `publicListingFrom` và
+	 * `publicListingCondition` (cùng `now` và hạn mức dùng thử) rồi nối thêm `favorites` của người gọi, nên một tin
+	 * nằm trong kết quả khi và chỉ khi khách mở được nó ở chi tiết công khai; tin không còn hiện biến khỏi trang và
+	 * `total` mà dòng `favorites` vẫn nguyên. Thứ tự `favorites.created_at` giảm dần, rồi `listing_id` giảm dần (khớp
+	 * chỉ mục `favorites_user_id_created_at_idx`). Bước hai: Prisma lấy dữ liệu tin theo `id` rồi xếp lại thứ tự.
+	 */
+	async findFavoritePage(
+		userId: string,
+		visibility: PublicVisibility,
+		skip: number,
+		take: number,
+	): Promise<{ rows: SavedListingRow[]; total: number }> {
+		const from = Prisma.sql`${publicListingFrom(visibility.now)}
+			JOIN favorites f ON f.listing_id = l.id AND f.user_id = ${userId}::uuid`;
+		const where = publicListingCondition(
+			visibility.now,
+			visibility.trialListingLimit,
+		);
+		const [pageRows, countRows] = await Promise.all([
+			this.prisma.$queryRaw<{ id: string; favorited_at: Date }[]>`
+				SELECT l.id, f.created_at AS favorited_at ${from}
+				WHERE ${where}
+				ORDER BY f.created_at DESC, f.listing_id DESC
+				LIMIT ${take} OFFSET ${skip}`,
+			this.prisma.$queryRaw<{ total: number }[]>`
+				SELECT count(*)::int AS total ${from}
+				WHERE ${where}`,
+		]);
+		const total = countRows[0]?.total ?? 0;
+		if (pageRows.length === 0) return { rows: [], total };
+
+		const found = await this.prisma.listing.findMany({
+			where: { id: { in: pageRows.map((row) => row.id) } },
+			include: publicSummaryInclude,
+		});
+		const byId = new Map(found.map((row) => [row.id, row]));
+		// Tin bị xóa giữa hai bước thì không còn trong `byId`: bỏ qua, trang ngắn hơn một dòng là chấp nhận được.
+		return {
+			rows: pageRows.flatMap((page) => {
+				const row = byId.get(page.id);
+				return row === undefined
+					? []
+					: [{ row, favoritedAt: page.favorited_at }];
+			}),
+			total,
+		};
 	}
 
 	// ----- số liệu theo chủ trọ (hồ sơ công khai, spec 0005) -----

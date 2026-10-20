@@ -11,9 +11,10 @@ API backend cho nền tảng cho thuê trọ. Chủ trọ tạo nhà trọ và �
 - **Kiểm duyệt**: admin tìm tin, ẩn và gỡ ẩn kèm lý do; admin quản lý danh mục phường và tiện ích.
 - **Dùng thử và hạn mức**: chủ trọ dùng thử vài chục ngày với vài tin đang hiện; hết kỳ thì tin tự biến khỏi công khai. Admin chỉnh hai con số này.
 - **Mua gói (thanh toán thử)**: bảng giá, đơn, thanh toán thử, gói nối tiếp từng kỳ, gói đổi hạn mức tin.
+- **Theo dõi chủ trọ và lưu tin**: hồ sơ công khai của chủ trọ (số người theo dõi, tổng lượt xem, số tin đang hiện); người tìm trọ theo dõi chủ trọ, lưu tin yêu thích và xem danh sách đã lưu.
 - **Giới hạn tần suất** cho đăng nhập, mật khẩu, ghi dữ liệu và các API đọc công khai.
 
-Chi tiết từng API nằm ở [`docs/api/api-for-frontend.md`](docs/api/api-for-frontend.md). Phần chưa làm (theo dõi chủ trọ, lưu phòng) xem [`docs/scope/scope.md`](docs/scope/scope.md).
+Chi tiết từng API nằm ở [`docs/api/api-for-frontend.md`](docs/api/api-for-frontend.md). Các phần đã hoãn khỏi bản MVP xem [`docs/scope/scope.md`](docs/scope/scope.md), mục Deferred.
 
 ## Công nghệ
 
@@ -103,6 +104,7 @@ src/
   properties/  listings/  storage/         Nhà trọ, tin đăng (kèm kiểm duyệt tin), ảnh
   settings/  memberships/                  Tham số hệ thống, dùng thử và hạn mức
   plans/  orders/  subscriptions/          Gói, đơn mua, kỳ gói
+  landlords/  favorites/                   Hồ sơ và theo dõi chủ trọ, tin yêu thích
   mail/                                    Gửi email
 prisma/
   schema.prisma, migrations/               Mô hình dữ liệu và migration

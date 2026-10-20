@@ -1,5 +1,6 @@
 import type { PrismaService } from '../database/prisma.service';
 import type { Prisma } from '../generated/prisma/client';
+import { publicSummaryRow } from './listings.fixtures';
 import {
 	ListingsRepository,
 	publicListingCondition,
@@ -160,6 +161,144 @@ function rawCall(queryRaw: jest.Mock): { text: string; values: unknown[] } {
 		values: call.slice(1),
 	};
 }
+
+describe('ListingsRepository.findFavoritePage (spec 0006 AC-4, AC-5)', () => {
+	const visibility = { now: NOW, trialListingLimit: 2 };
+	const SAVED_AT_A = new Date('2026-10-20T03:00:00.000Z');
+	const SAVED_AT_B = new Date('2026-10-20T04:00:00.000Z');
+
+	function build(options: {
+		pageRows?: { id: string; favorited_at: Date }[];
+		total?: number;
+		found?: ReturnType<typeof publicSummaryRow>[];
+	}) {
+		// Hai câu SQL chạy song song theo thứ tự gọi: trang trước, đếm sau.
+		const queryRaw = jest
+			.fn()
+			.mockResolvedValueOnce(options.pageRows ?? [])
+			.mockResolvedValueOnce([{ total: options.total ?? 0 }]);
+		const findMany = jest.fn(() => Promise.resolve(options.found ?? []));
+		const repository = new ListingsRepository({
+			$queryRaw: queryRaw,
+			listing: { findMany },
+		} as unknown as PrismaService);
+		return { repository, queryRaw, findMany };
+	}
+
+	function rawCallAt(queryRaw: jest.Mock, index: number) {
+		const call =
+			(queryRaw.mock.calls as unknown as unknown[][])[index] ?? [];
+		return {
+			text: (call[0] as readonly string[]).join('?').replace(/\s+/g, ' '),
+			values: call.slice(1),
+		};
+	}
+
+	it('câu lấy trang dùng đúng hai mảnh SQL công khai cùng `now`, nối favorites của người gọi, xếp mới lưu trước', async () => {
+		const { repository, queryRaw } = build({});
+		await repository.findFavoritePage('nguoi-1', visibility, 20, 10);
+		const { text, values } = rawCallAt(queryRaw, 0);
+		expect(text).toContain('SELECT l.id, f.created_at AS favorited_at');
+		expect(text).toContain('ORDER BY f.created_at DESC, f.listing_id DESC');
+		expect(text).toContain('LIMIT ? OFFSET ?');
+		// Thứ tự giá trị chèn: mảnh FROM (đã nối favorites), điều kiện hiển thị, số dòng, số dòng bỏ qua.
+		const [from, condition, take, skip] = values as [
+			Prisma.Sql,
+			Prisma.Sql,
+			number,
+			number,
+		];
+		const fromText = flat(from);
+		expect(fromText).toContain('LEFT JOIN LATERAL');
+		expect(fromText).toContain(
+			'JOIN favorites f ON f.listing_id = l.id AND f.user_id = $2::uuid',
+		);
+		expect(from.values).toEqual([NOW.toISOString(), 'nguoi-1']);
+		expect(flat(condition)).toContain("l.status = 'visible'");
+		expect(condition.values).toEqual([NOW.toISOString(), 2]);
+		expect(take).toBe(10);
+		expect(skip).toBe(20);
+	});
+
+	it('câu đếm dùng cùng mảnh FROM và điều kiện nhưng không xếp thứ tự, không phân trang', async () => {
+		const { repository, queryRaw } = build({ total: 3 });
+		const page = await repository.findFavoritePage(
+			'nguoi-1',
+			visibility,
+			0,
+			20,
+		);
+		const page1 = rawCallAt(queryRaw, 0);
+		const count = rawCallAt(queryRaw, 1);
+		expect(count.text).toContain('SELECT count(*)::int AS total');
+		expect(count.text).not.toContain('ORDER BY');
+		expect(count.text).not.toContain('LIMIT');
+		const [pageFrom, pageWhere] = page1.values as Prisma.Sql[];
+		const [countFrom, countWhere] = count.values as Prisma.Sql[];
+		expect(flat(countFrom)).toBe(flat(pageFrom));
+		expect(countFrom.values).toEqual(pageFrom.values);
+		expect(flat(countWhere)).toBe(flat(pageWhere));
+		expect(page.total).toBe(3);
+	});
+
+	it('bước hai lấy dữ liệu tin theo id rồi xếp lại đúng thứ tự của bước một, kèm lúc lưu của từng dòng', async () => {
+		const a = publicSummaryRow({ id: 'tin-a' });
+		const b = publicSummaryRow({ id: 'tin-b' });
+		const { repository, findMany } = build({
+			pageRows: [
+				{ id: 'tin-b', favorited_at: SAVED_AT_B },
+				{ id: 'tin-a', favorited_at: SAVED_AT_A },
+			],
+			total: 2,
+			// Prisma trả theo thứ tự khác với bước một: Repository phải xếp lại.
+			found: [a, b],
+		});
+		const result = await repository.findFavoritePage(
+			'nguoi-1',
+			visibility,
+			0,
+			20,
+		);
+		expect(findMany).toHaveBeenCalledWith(
+			expect.objectContaining({
+				where: { id: { in: ['tin-b', 'tin-a'] } },
+			}),
+		);
+		expect(result.rows).toEqual([
+			{ row: b, favoritedAt: SAVED_AT_B },
+			{ row: a, favoritedAt: SAVED_AT_A },
+		]);
+		expect(result.total).toBe(2);
+	});
+
+	it('tin bị xóa giữa hai bước thì bỏ qua, trang ngắn đi một dòng; total vẫn là số của bước một', async () => {
+		const a = publicSummaryRow({ id: 'tin-a' });
+		const { repository } = build({
+			pageRows: [
+				{ id: 'tin-b', favorited_at: SAVED_AT_B },
+				{ id: 'tin-a', favorited_at: SAVED_AT_A },
+			],
+			total: 2,
+			found: [a],
+		});
+		const result = await repository.findFavoritePage(
+			'nguoi-1',
+			visibility,
+			0,
+			20,
+		);
+		expect(result.rows).toEqual([{ row: a, favoritedAt: SAVED_AT_A }]);
+		expect(result.total).toBe(2);
+	});
+
+	it('trang rỗng thì không gọi Prisma lần hai và trả total của bước một', async () => {
+		const { repository, findMany } = build({ total: 5 });
+		await expect(
+			repository.findFavoritePage('nguoi-1', visibility, 100, 20),
+		).resolves.toEqual({ rows: [], total: 5 });
+		expect(findMany).not.toHaveBeenCalled();
+	});
+});
 
 describe('ListingsRepository.sumViewCountByLandlord (spec 0005 AC-4)', () => {
 	function build(rows: { total: bigint }[]) {
