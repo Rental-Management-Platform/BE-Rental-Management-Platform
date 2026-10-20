@@ -37,12 +37,21 @@ function toImageUrl(storageKey: string): string {
 	return `/api/v1/media/${storageKey}`;
 }
 
-function toImages(images: PublicDetailRow['images']): ListingImageResponse[] {
-	return images.map((image) => ({
+/** Một ảnh của tin: `{ id, position, url }`. Dùng cả cho kết quả tải ảnh lên (spec 0002 AC-8). */
+export function toListingImage(image: {
+	id: string;
+	position: number;
+	storageKey: string;
+}): ListingImageResponse {
+	return {
 		id: image.id,
 		position: image.position,
 		url: toImageUrl(image.storageKey),
-	}));
+	};
+}
+
+function toImages(images: PublicDetailRow['images']): ListingImageResponse[] {
+	return images.map(toListingImage);
 }
 
 type SummaryFields = Omit<ListingSummaryResponse, 'landlord'>;

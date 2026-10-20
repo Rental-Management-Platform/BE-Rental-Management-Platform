@@ -84,11 +84,12 @@ describe('hasUser', () => {
 describe('giới hạn tần suất: bảng RATE_LIMITS', () => {
 	const groups = Object.keys(RATE_LIMITS) as RateLimitGroup[];
 
-	it('có đủ mười một nhóm: spec đăng nhập AC-10, đổi mật khẩu, nhà trọ AC-15 và đơn mua gói (spec 0004 AC-13)', () => {
+	it('có đủ mười hai nhóm: spec đăng nhập AC-10, đổi mật khẩu, nhà trọ và ảnh tin AC-15 (spec 0002) và đơn mua gói (spec 0004 AC-13)', () => {
 		expect([...groups].sort()).toEqual(
 			[
 				'changePassword',
 				'forgotPassword',
+				'listingImage',
 				'listingWrite',
 				'login',
 				'orderWrite',
@@ -128,6 +129,7 @@ describe('giới hạn tần suất: bảng RATE_LIMITS', () => {
 		expect(Object.keys(RATE_LIMITS.changePassword)).toEqual(['user']);
 		expect(Object.keys(RATE_LIMITS.propertyWrite)).toEqual(['user']);
 		expect(Object.keys(RATE_LIMITS.listingWrite)).toEqual(['user']);
+		expect(Object.keys(RATE_LIMITS.listingImage)).toEqual(['user']);
 		expect(Object.keys(RATE_LIMITS.orderWrite)).toEqual(['user']);
 		expect(Object.keys(RATE_LIMITS.publicRead)).toEqual(['ip']);
 		expect(Object.keys(RATE_LIMITS.publicDetail).sort()).toEqual([
@@ -143,7 +145,7 @@ describe('giới hạn tần suất: bảng RATE_LIMITS', () => {
 		expect(withEmail.sort()).toEqual(['forgotPassword', 'login']);
 	});
 
-	it('con số đúng bảng đã chốt ngày 2026-10-12, cộng nhóm nhà trọ chốt ngày 2026-10-14 và nhóm đơn chốt ngày 2026-10-19', () => {
+	it('con số đúng bảng đã chốt ngày 2026-10-12, cộng nhóm nhà trọ và ảnh tin chốt ngày 2026-10-14 và nhóm đơn chốt ngày 2026-10-19', () => {
 		const minute = 60 * 1000;
 		const hour = 60 * minute;
 		expect(RATE_LIMITS).toEqual({
@@ -161,6 +163,7 @@ describe('giới hạn tần suất: bảng RATE_LIMITS', () => {
 			changePassword: { user: { limit: 10, ttlMs: 15 * minute } },
 			propertyWrite: { user: { limit: 30, ttlMs: hour } },
 			listingWrite: { user: { limit: 60, ttlMs: hour } },
+			listingImage: { user: { limit: 60, ttlMs: hour } },
 			orderWrite: { user: { limit: 30, ttlMs: hour } },
 			publicRead: { ip: { limit: 300, ttlMs: minute } },
 			publicDetail: {

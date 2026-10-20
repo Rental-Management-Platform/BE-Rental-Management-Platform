@@ -104,6 +104,53 @@ describe('publicListingFrom (spec 0004 AC-9)', () => {
 	});
 });
 
+describe('ListingsRepository.isPubliclyVisible (spec 0002 AC-8, spec 0004 AC-9)', () => {
+	function build(rows: { id: string }[]) {
+		const queryRaw = jest.fn(() => Promise.resolve(rows));
+		const repository = new ListingsRepository({
+			$queryRaw: queryRaw,
+		} as unknown as PrismaService);
+		return { repository, queryRaw };
+	}
+
+	it('dùng đúng hai mảnh SQL công khai (phép nối kỳ gói và điều kiện hiển thị) cùng `now`, giới hạn đúng một tin', async () => {
+		const { repository, queryRaw } = build([{ id: 'tin-1' }]);
+		await repository.isPubliclyVisible(
+			'0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8d03',
+			{
+				now: NOW,
+				trialListingLimit: 2,
+			},
+		);
+		// `$queryRaw` là thẻ mẫu: đối số đầu là các đoạn chữ tĩnh, các đối số sau là giá trị (mảnh `Prisma.Sql`, id).
+		const call = (queryRaw.mock.calls as unknown as unknown[][])[0] ?? [];
+		const strings = call[0] as readonly string[];
+		const text = strings.join('?').replace(/\s+/g, ' ');
+		expect(text).toContain('SELECT l.id');
+		expect(text).toContain('WHERE l.id =');
+		expect(text).toContain('::uuid');
+		expect(text).toContain('LIMIT 1');
+		const joined = call
+			.slice(1)
+			.filter((part): part is Prisma.Sql => typeof part === 'object')
+			.map((part) => flat(part))
+			.join(' ');
+		expect(joined).toContain('LEFT JOIN LATERAL');
+		expect(joined).toContain('plan.max_listings');
+		expect(joined).toContain("l.status = 'visible'");
+	});
+
+	it('có dòng trả về thì true, không có thì false', async () => {
+		const visibility = { now: NOW, trialListingLimit: 2 };
+		await expect(
+			build([{ id: 'a' }]).repository.isPubliclyVisible('x', visibility),
+		).resolves.toBe(true);
+		await expect(
+			build([]).repository.isPubliclyVisible('x', visibility),
+		).resolves.toBe(false);
+	});
+});
+
 describe('ListingsRepository.findEarliestVisibleIds (spec 0003 AC-9, AC-11)', () => {
 	it('hỏi N tin visible chưa xóa của chủ trọ, đăng sớm nhất trước, khóa phụ id (cùng thứ tự với luật hạng)', async () => {
 		const findMany = jest.fn(() =>

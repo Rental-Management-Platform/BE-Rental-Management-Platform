@@ -296,6 +296,23 @@ export class ListingsRepository {
 	}
 
 	/**
+	 * Tin có đang hiện công khai không, theo đúng điều kiện của danh sách và chi tiết (`publicListingFrom` cộng
+	 * `publicListingCondition`, cùng `now` và hạn mức dùng thử). Route phục vụ ảnh dùng nó để ảnh của tin bị ẩn,
+	 * bị khóa hay hết hạn mức cũng biến khỏi công khai (spec 0002 AC-8, "Ảnh của tin không hiển thị").
+	 */
+	async isPubliclyVisible(
+		id: string,
+		visibility: PublicVisibility,
+	): Promise<boolean> {
+		const rows = await this.prisma.$queryRaw<{ id: string }[]>`
+			SELECT l.id ${publicListingFrom(visibility.now)}
+			WHERE l.id = ${id}::uuid
+				AND ${publicListingCondition(visibility.now, visibility.trialListingLimit)}
+			LIMIT 1`;
+		return rows.length === 1;
+	}
+
+	/**
 	 * Cộng một lượt xem bằng một câu `UPDATE` nguyên tử (spec 0002 AC-13) và trả số lượt sau khi cộng, hoặc
 	 * `null` nếu tin không còn `visible` (đã bị ẩn hay xóa ngay giữa lúc đọc và lúc cộng: không cộng).
 	 */

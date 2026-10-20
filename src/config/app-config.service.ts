@@ -65,6 +65,16 @@ export class AppConfigService {
 		return this.config.get('PASSWORD_RESET_TTL_MINUTES', { infer: true });
 	}
 
+	/** Thư mục lưu ảnh, như người dùng ghi trong `.env` (chưa giải quyết thành đường dẫn tuyệt đối). */
+	get uploadDir(): string {
+		return this.config.get('UPLOAD_DIR', { infer: true });
+	}
+
+	/** Dung lượng tối đa mỗi ảnh tải lên, tính bằng byte. */
+	get maxUploadBytes(): number {
+		return this.config.get('MAX_UPLOAD_BYTES', { infer: true });
+	}
+
 	get mail(): MailSettings {
 		return {
 			host: this.config.get('MAIL_HOST', { infer: true }),

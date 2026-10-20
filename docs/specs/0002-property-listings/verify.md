@@ -1,4 +1,4 @@
-# Verify: nhà trọ, tin đăng và xem tin · spec 0002 · cập nhật 2026-10-16
+# Verify: nhà trọ, tin đăng và xem tin · spec 0002 · cập nhật 2026-10-19 (thêm mốc 4)
 _Các bước suy ra từ acceptance criteria của spec 0002. `/check verify` chạy lại các bước này; `/test` khóa những bước bền thành test. Mỗi cột mốc build thêm một mục bên dưới._
 
 Chuẩn bị một lần cho mọi mốc: `.env` có đủ biến (xem `verify.md` của spec 0001), DB đã áp migration (`npm run migration:deploy`) và đã seed (`npm run seed`), rồi `npm run start:dev`. Mọi đường dẫn nằm dưới `/api/v1`.
@@ -126,3 +126,70 @@ _Chủ trọ đăng tin vào nhà trọ của mình (hiện ngay, không nháp, 
 - [ ] `moderationReason` = `reason` của dòng `moderation_logs` mới nhất có `target_type = 'listing'`, `target_id` là tin và `action = 'hide_listing'`, chỉ khi `status = 'hidden_by_admin'` → AC-14
 - [ ] `total` = `count` cùng điều kiện hiển thị và cùng bộ lọc; thứ tự `newest` là `created_at DESC, id DESC`, hai kiểu giá có khóa phụ chỉ là `id` → AC-10
 - [ ] từ khóa: `toSearchKey(q)`, cắt 6 từ đầu, mỗi từ cắt 50 ký tự, thoát `\`, `%`, `_` bằng `escapeLike` rồi `contains` nối AND → AC-10
+
+## Mốc 4: ảnh tin (AC-8 và phần tải ảnh của AC-15)
+
+Chuẩn bị: database thử đã `migration:deploy` và `seed`; API chạy với `UPLOAD_DIR` trỏ một thư mục thử và `MAX_UPLOAD_BYTES=1048576` (để thử 413 bằng tệp 1,5 MB). Chủ trọ L1 (đã mua gói 50 tin để đăng nhiều tin), chủ trọ khác O, người tìm trọ T, admin. Phần Postman là folder `15 Ảnh tin` (chạy với `--working-dir docs/api`); phần đồng thời, quá dung lượng, lỗi DB giả và hạ hạn mức do script thử.
+
+### UI / manual
+
+**Tải lên và phục vụ ảnh (AC-8)**
+- [ ] L1 tải PNG thật nhưng khai tên `../../phong.php` và `Content-Type: text/html` → 201 `{ id, position: 0, url }` (đúng ba trường), `url` dạng `/api/v1/media/public/<uuid>.png`, tên gốc không lọt vào khóa → AC-8
+- [ ] Tải JPEG rồi WebP → vị trí 1 và 2, đuôi `.jpg` và `.webp`; ổ đĩa có đúng 3 tệp mới → AC-8
+- [ ] `GET url` không token → 200, đúng từng byte, `Content-Type` đúng loại, `Cache-Control: public, max-age=86400`, `X-Content-Type-Options: nosniff`, `Content-Length` đúng → AC-8
+- [ ] `GET /listings?q=...` có `coverImageUrl` là ảnh vị trí 0; `GET /listings/:slugCode` có `images[]` đủ ba ảnh theo `position`; `GET /me/listings/:id` có `images[]` → AC-8, AC-10, AC-11, AC-14
+
+**Xóa ảnh**
+- [ ] Xóa ảnh vị trí 1 → 204, tệp biến khỏi ổ đĩa, `GET url` 404; tải ảnh mới nhận lại vị trí 1; xóa ảnh bìa (vị trí 0) thì ảnh có vị trí nhỏ nhất còn lại thành `coverImageUrl`; xóa lại ảnh đã xóa → 404 `NOT_FOUND` → AC-8
+
+**Giới hạn 5 ảnh**
+- [ ] Năm ảnh đầu 201; ảnh thứ sáu → 409 `LISTING_IMAGE_LIMIT`, ổ đĩa chỉ tăng 5 tệp, DB có vị trí 0 đến 4; xóa ảnh vị trí 2 rồi tải lại → nhận vị trí 2 → AC-8
+
+**Tệp sai và thứ tự báo lỗi**
+- [ ] Văn bản đặt tên `.png` với `Content-Type: image/png`, GIF, tệp rỗng, sai tên trường (`photo`), hai tệp, form chỉ có trường chữ, thân JSON, không có thân → mỗi ca 400 `IMAGE_INVALID`; không tệp nào còn trên ổ đĩa, không dòng ảnh nào được tạo; sau đó ảnh hợp lệ vẫn tải được → AC-8
+- [ ] Ảnh 1,5 MB khi `MAX_UPLOAD_BYTES` là 1 MiB → 413 `PAYLOAD_TOO_LARGE`; sáu tệp một lần → 400 `BAD_REQUEST` chung (multer chặn sớm, đã ghi ở hướng dẫn FE mục 6.28) → AC-8
+- [ ] Chủ trọ khác gửi tệp văn bản → 403 `NOT_RESOURCE_OWNER` (đến trước 400); chủ trọ khác gửi ảnh 1,5 MB → 413 (multer chạy trước kiểm chủ, đúng thứ tự spec); tin không có → 404 `LISTING_NOT_FOUND`; `:id` không phải UUID → 400 `INVALID_ID`; T → 403 `PERMISSION_DENIED`; chưa đăng nhập → 401; admin tải vào tin người khác → 403 `NOT_RESOURCE_OWNER` → AC-8
+- [ ] Xóa ảnh: chủ trọ khác → 403 `NOT_RESOURCE_OWNER`; ảnh của tin khác dù chủ tin đúng → 404 `NOT_FOUND`; `imageId` không phải UUID → 400 `INVALID_ID`; T → 403 `PERMISSION_DENIED`; ảnh còn nguyên sau mọi lần bị từ chối → AC-8
+
+**Chỉ phục vụ ảnh của tin đang hiện công khai**
+- [ ] Chủ trọ ẩn tin → ảnh 404 `NOT_FOUND`, lỗi 404 không mang `Cache-Control: public`; hiện lại → 200 → AC-8
+- [ ] Đặt `hidden_by_admin` bằng SQL → ảnh 404, nhưng vẫn tải được ảnh vào tin đó (201, đúng spec "mọi trạng thái"); gỡ → 200 → AC-8, AC-9
+- [ ] Khóa tài khoản chủ trọ → ảnh 404; mở khóa → 200 → AC-8, AC-10
+- [ ] Chủ trọ hết dùng thử, chưa có gói → ảnh 404; mua gói → 200 ngay; dời kỳ gói về quá khứ khi dùng thử đã hết → 404; trả lại `trial_ends_at` → 200 → AC-8 (cùng luật hiển thị của 0003 và 0004)
+- [ ] Nhà trọ xóa mềm → 404; xóa mềm tin → 404 nhưng dòng ảnh và tệp còn nguyên → AC-8
+- [ ] Admin hạ `trial_listing_limit` xuống 1: ảnh của tin đăng sớm nhất 200, ảnh của tin sau 404; đặt lại 2 → 200 → AC-8
+
+**Route phục vụ ảnh không lộ gì ngoài ảnh đã tải**
+- [ ] Khóa đúng dạng nhưng không có trong DB, đuôi `.exe`, chữ hoa, `%2e%2e%2f%2e%2e%2f.env`, `..%5C..%5C.env`, `/media/public/`, `/media/private/<tệp>`, thiếu đuôi → mọi ca 404; mọi tên tệp trên ổ đĩa đúng `<uuid>.<jpg|png|webp>`, không có thư mục con → AC-8
+
+**Đồng thời và lỗi giữa chừng**
+- [ ] 8 vòng, mỗi vòng tin có 4 ảnh (chèn bằng SQL) và hai lần tải đồng thời → mỗi vòng đúng một 201 và một 409 `LISTING_IMAGE_LIMIT`, số tệp mới bằng số lần 201 (người thua không để lại tệp), DB có đúng vị trí 0 đến 4 → AC-8
+- [ ] Gắn trigger làm mọi `INSERT` vào `listing_images` ném lỗi: tải ảnh → 500 `INTERNAL_ERROR` không lộ chi tiết, tệp đã ghi bị xóa (ổ đĩa không tăng); gỡ trigger thì tải lại được → AC-8
+
+**Giới hạn tần suất (phần tải ảnh của AC-15)**
+- [ ] 61 lần `POST /listings/:id/images` không kèm tệp: 60 lần đầu 400 `IMAGE_INVALID`, lần 61 → 429 `RATE_LIMITED` kèm `Retry-After` lớn hơn 0; route khác của cùng người không bị chặn cùng; `/media/public` không bị giới hạn → AC-15
+
+### Commands
+- [ ] `npm test` → 906 bài qua; `npx tsc --noEmit` và `npx eslint src` sạch → AC-8, AC-15
+- [ ] Mốc 4 không có migration mới (bảng `listing_images` đã có từ mốc 1) → AC-8
+- [ ] Newman các folder 00 đến 05 và 07 đến 15 từ trên xuống, `--working-dir docs/api`, `MAX_UPLOAD_BYTES` để mặc định → 253 request, 479 assertion, chỉ hai assertion đã biết của folder 02 hỏng (cần token từ email) → AC-8
+
+### Điều khiển âm (đã làm khi build, 2026-10-19)
+- Bỏ `FOR UPDATE` của `lockListing` trong `dist`: cả 8 vòng đồng thời đều ra một 201 cộng một 500 `INTERNAL_ERROR` (ràng buộc `UNIQUE (listing_id, position)` vẫn chặn vị trí trùng nhưng thành 500 thay vì 409). Khôi phục thì 8 trên 8 vòng đúng.
+- Bỏ lệnh xóa tệp khi lỗi trong `dist`: sau lỗi chèn giả còn một tệp mồ côi. Khôi phục thì ổ đĩa không tăng.
+- Bỏ kiểm hiển thị của route ảnh trong `dist`: 8 kiểm tra hỏng (tin ẩn, chủ trọ bị khóa, hết dùng thử, gói hết, nhà trọ xóa mềm, tin xóa mềm, luật hạng).
+- Lỗi thật bắt được nhờ bước kiểm này: decorator `@Header` đặt `Cache-Control: public, max-age=86400` cả trên lỗi 404, nên trình duyệt sẽ nhớ "404" cả ngày dù tin được hiện lại. Đã sửa bằng cách đặt header sau khi tìm thấy ảnh; kiểm lại qua.
+
+### Acceptance-criteria coverage
+- AC-8: mọi nhóm bước ở trên. AC-15: phần tải ảnh (60 lần mỗi giờ theo người dùng) có bước ở mốc này; phần còn lại của AC-15 thuộc mốc 5.
+
+### Value sourcing
+- [ ] `position` = vị trí trống nhỏ nhất từ 0 đến 4, tính trong giao dịch đã khóa dòng tin bằng `SELECT ... FOR UPDATE` → AC-8
+- [ ] `storage_key` = `public/<uuid v4>.<jpg|png|webp>` do Service sinh; đuôi lấy từ loại ảnh nhận ra bằng nội dung, không từ tên tệp hay `Content-Type` → AC-8
+- [ ] Dung lượng tối đa mỗi ảnh = `MAX_UPLOAD_BYTES` (mặc định 5242880, tối đa 10485760); thư mục lưu = `UPLOAD_DIR` (mặc định `uploads`) → AC-8
+- [ ] `Content-Type` khi phục vụ suy từ đuôi của `:file`; tin của ảnh tra bằng `storage_key` → AC-8
+- [ ] Ảnh được phục vụ khi và chỉ khi tin của nó thỏa `publicListingFrom` cộng `publicListingCondition`, với `now` do controller lấy một lần mỗi request và hạn mức dùng thử đọc từ `settings` → AC-8
+
+### Chưa kiểm được ở mốc 4
+- Hai lần xóa đồng thời cùng một ảnh; tiến trình chết đúng giữa lúc ghi tệp và commit (để lại tệp mồ côi, spec đã chấp nhận); `UPLOAD_DIR` không ghi được do quyền; `Cross-Origin-Resource-Policy` khi thêm `helmet` (chưa có `helmet`); Docker Compose với `/data/uploads` (thuộc spec 0006, chưa có `compose.yaml`).
+- Chưa có kiểm cuối do `/check verify` chạy trên bản độc lập; các bước ở trên do người build chạy.

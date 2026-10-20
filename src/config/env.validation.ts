@@ -175,6 +175,19 @@ export class Env extends DatabaseEnv {
 			'$property là địa chỉ email, hoặc dạng Tên hiển thị <địa chỉ email>',
 	})
 	MAIL_FROM: string;
+
+	// ---------- Ảnh tin (spec 0002 AC-8, spec 0006) ----------
+	/** Thư mục lưu ảnh; đường dẫn tương đối tính từ thư mục chạy ứng dụng. Docker Compose đặt `/data/uploads`. */
+	@IsString()
+	@IsNotEmpty()
+	UPLOAD_DIR: string = 'uploads';
+
+	/** Dung lượng tối đa mỗi ảnh, tính bằng byte: từ 1 đến 10 MiB, mặc định 5 MiB. */
+	@Type(() => Number)
+	@IsInt()
+	@Min(1)
+	@Max(10485760)
+	MAX_UPLOAD_BYTES: number = 5242880;
 }
 
 /** Chỉ dùng cho `npm run seed` (ứng dụng không đọc), tách riêng khỏi `Env` (spec 0003 AC-9). */

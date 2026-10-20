@@ -309,6 +309,41 @@
       "key": "planFlowListingCode",
       "value": "",
       "description": "Mã tin đăng sau khi mua gói ở folder 14."
+    },
+    {
+      "key": "imgPropertyId",
+      "value": "",
+      "description": "Id nhà trọ tạo ở folder 15."
+    },
+    {
+      "key": "imgListingId",
+      "value": "",
+      "description": "Id tin tạo ở folder 15 để gắn ảnh."
+    },
+    {
+      "key": "imgListingCode",
+      "value": "",
+      "description": "Mã tin tạo ở folder 15."
+    },
+    {
+      "key": "imgImageId1",
+      "value": "",
+      "description": "Id ảnh thứ nhất tải lên ở folder 15."
+    },
+    {
+      "key": "imgFile1",
+      "value": "",
+      "description": "Tên tệp (phần cuối của url) của ảnh thứ nhất ở folder 15."
+    },
+    {
+      "key": "imgImageId2",
+      "value": "",
+      "description": "Id ảnh thứ hai tải lên ở folder 15."
+    },
+    {
+      "key": "imgFile2",
+      "value": "",
+      "description": "Tên tệp của ảnh thứ hai ở folder 15."
     }
   ],
   "auth": {
@@ -10632,6 +10667,1266 @@
                 {
                   "key": "token",
                   "value": "{{expiredToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "15 Ảnh tin",
+      "description": "Tải lên, xem và xóa ảnh của tin (spec 0002 AC-8, mốc 4). **Chạy sau folder 09** (dùng `userToken` và `otherLandlordToken` của folder 08, `tenantToken` của folder 09, `wardCode` của folder 07) **và từ trên xuống**. Folder tự tạo nhà trọ và tin của nó rồi dọn lại; không đăng ký tài khoản mới. **Cần tệp mẫu**: các request tải ảnh dùng `sample-listing.png` và `sample-not-image.txt` nằm cạnh collection trong `docs/api`. Trong Postman, đặt thư mục làm việc là `docs/api` (Settings > Working directory) hoặc chọn lại tệp ở từng request; trong Newman thêm `--working-dir docs/api`. Mỗi lần chạy tải 7 ảnh (giới hạn 60 lần mỗi giờ cho API tải ảnh). Ảnh đã tải nằm trong `UPLOAD_DIR` và không có API dọn tệp; xóa tin chỉ xóa mềm nên tệp còn đó. Chưa thử được ở đây: ảnh quá `MAX_UPLOAD_BYTES` (413) và hai lần tải đồng thời (thử bằng script).",
+      "item": [
+        {
+          "name": "Tạo nhà trọ để thử ảnh (POST /properties)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('imgPropertyId', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/properties",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties"
+              ]
+            },
+            "description": "Dùng `userToken`. Lưu `imgPropertyId`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Nhà trọ ảnh Postman\",\n  \"addressText\": \"12 Lê Lợi\",\n  \"wardCode\": \"{{wardCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Đăng tin để gắn ảnh (POST /properties/:propertyId/listings)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "const listing = pm.response.json();",
+                  "pm.collectionVariables.set('imgListingId', listing.id);",
+                  "pm.collectionVariables.set('imgListingCode', listing.code);",
+                  "pm.test('chưa có ảnh', () => { pm.expect(listing.images).to.eql([]); pm.expect(listing.coverImageUrl).to.eql(null); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/properties/{{imgPropertyId}}/listings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "{{imgPropertyId}}",
+                "listings"
+              ]
+            },
+            "description": "Tin mới chưa có ảnh. Lưu `imgListingId`, `imgListingCode`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Phòng ảnh Postman gần chợ\",\n  \"description\": \"Phòng sạch sẽ thoáng mát, giờ giấc tự do, gần chợ và trạm xe buýt.\",\n  \"price\": 3300000,\n  \"areaM2\": 25\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Tải ảnh thứ nhất (POST /listings/:id/images)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "const image = pm.response.json();",
+                  "pm.test('đúng ba trường, vị trí 0', () => { pm.expect(Object.keys(image).sort()).to.eql(['id', 'position', 'url']); pm.expect(image.position).to.eql(0); });",
+                  "pm.test('url là /api/v1/media/public/<uuid>.png', () => pm.expect(image.url).to.match(/^\\/api\\/v1\\/media\\/public\\/[0-9a-f-]{36}\\.png$/));",
+                  "pm.collectionVariables.set('imgImageId1', image.id);",
+                  "pm.collectionVariables.set('imgFile1', image.url.split('/').pop());"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{imgListingId}}/images",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{imgListingId}}",
+                "images"
+              ]
+            },
+            "description": "`multipart/form-data` với đúng một tệp ở trường `file`. **Trong Postman**: nếu không thấy tệp, đặt thư mục làm việc của Postman là `docs/api` (Settings > Working directory) hoặc bấm chọn lại tệp `sample-listing.png`. **Trong Newman**: thêm `--working-dir docs/api`. Mong đợi 201 `{ id, position: 0, url }`. Lưu `imgImageId1` và tên tệp `imgFile1`.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "sample-listing.png"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Tải ảnh thứ hai: vị trí 1",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "const image = pm.response.json();",
+                  "pm.test('vị trí 1', () => pm.expect(image.position).to.eql(1));",
+                  "pm.collectionVariables.set('imgImageId2', image.id);",
+                  "pm.collectionVariables.set('imgFile2', image.url.split('/').pop());"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{imgListingId}}/images",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{imgListingId}}",
+                "images"
+              ]
+            },
+            "description": "Ảnh kế tiếp nhận vị trí trống nhỏ nhất. Lưu `imgImageId2`, `imgFile2`.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "sample-listing.png"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Xem ảnh công khai, không cần đăng nhập (GET /media/public/:file)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Content-Type image/png', () => pm.expect(pm.response.headers.get('Content-Type')).to.eql('image/png'));",
+                  "pm.test('cache một ngày và nosniff', () => { pm.expect(pm.response.headers.get('Cache-Control')).to.eql('public, max-age=86400'); pm.expect(pm.response.headers.get('X-Content-Type-Options')).to.eql('nosniff'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/media/public/{{imgFile1}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "media",
+                "public",
+                "{{imgFile1}}"
+              ]
+            },
+            "description": "Công khai. Trả tệp ảnh với `Content-Type` đúng, `Cache-Control: public, max-age=86400` và `X-Content-Type-Options: nosniff`.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Chi tiết tin công khai có ảnh và ảnh bìa (GET /listings/:slugCode)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "const detail = pm.response.json();",
+                  "pm.test('hai ảnh theo position', () => pm.expect(detail.images.map((i) => i.position)).to.eql([0, 1]));",
+                  "pm.test('ảnh bìa là ảnh đầu', () => pm.expect(detail.coverImageUrl).to.eql(detail.images[0].url));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{imgListingCode}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{imgListingCode}}"
+              ]
+            },
+            "description": "Công khai. `images[]` theo `position`; `coverImageUrl` là ảnh vị trí 0.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: tải tệp không phải ảnh",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Lỗi IMAGE_INVALID', () => pm.expect(pm.response.json().code).to.eql('IMAGE_INVALID'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{imgListingId}}/images",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{imgListingId}}",
+                "images"
+              ]
+            },
+            "description": "Tệp văn bản. Mong đợi 400 `IMAGE_INVALID` (kiểm bằng nội dung tệp, không theo đuôi hay `Content-Type`).",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "sample-not-image.txt"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: không chọn tệp",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Lỗi IMAGE_INVALID', () => pm.expect(pm.response.json().code).to.eql('IMAGE_INVALID'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{imgListingId}}/images",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{imgListingId}}",
+                "images"
+              ]
+            },
+            "description": "Form chỉ có trường chữ. Mong đợi 400 `IMAGE_INVALID`.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "ghichu",
+                  "value": "không có tệp",
+                  "type": "text"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: sai tên trường",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Lỗi IMAGE_INVALID', () => pm.expect(pm.response.json().code).to.eql('IMAGE_INVALID'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{imgListingId}}/images",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{imgListingId}}",
+                "images"
+              ]
+            },
+            "description": "Tên trường phải là `file`. Mong đợi 400 `IMAGE_INVALID`.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "photo",
+                  "type": "file",
+                  "src": "sample-listing.png"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: chủ trọ khác tải ảnh vào tin của tôi",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 403', () => pm.response.to.have.status(403));",
+                  "pm.test('Lỗi NOT_RESOURCE_OWNER', () => pm.expect(pm.response.json().code).to.eql('NOT_RESOURCE_OWNER'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{imgListingId}}/images",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{imgListingId}}",
+                "images"
+              ]
+            },
+            "description": "Dùng `otherLandlordToken`. Mong đợi 403 `NOT_RESOURCE_OWNER`.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "sample-listing.png"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{otherLandlordToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: người tìm trọ tải ảnh",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 403', () => pm.response.to.have.status(403));",
+                  "pm.test('Lỗi PERMISSION_DENIED', () => pm.expect(pm.response.json().code).to.eql('PERMISSION_DENIED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{imgListingId}}/images",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{imgListingId}}",
+                "images"
+              ]
+            },
+            "description": "Dùng `tenantToken`. Mong đợi 403 `PERMISSION_DENIED`.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "sample-listing.png"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: chưa đăng nhập tải ảnh",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{imgListingId}}/images",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{imgListingId}}",
+                "images"
+              ]
+            },
+            "description": "Không gửi token. Mong đợi 401.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "sample-listing.png"
+                }
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Tải ảnh thứ ba: vị trí 2",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "pm.test('vị trí 2', () => pm.expect(pm.response.json().position).to.eql(2));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{imgListingId}}/images",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{imgListingId}}",
+                "images"
+              ]
+            },
+            "description": "Cho đủ 5 ảnh để thử giới hạn ở bước kế tiếp.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "sample-listing.png"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Tải ảnh thứ tư: vị trí 3",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "pm.test('vị trí 3', () => pm.expect(pm.response.json().position).to.eql(3));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{imgListingId}}/images",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{imgListingId}}",
+                "images"
+              ]
+            },
+            "description": "Cho đủ 5 ảnh để thử giới hạn ở bước kế tiếp.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "sample-listing.png"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Tải ảnh thứ năm: vị trí 4",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "pm.test('vị trí 4', () => pm.expect(pm.response.json().position).to.eql(4));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{imgListingId}}/images",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{imgListingId}}",
+                "images"
+              ]
+            },
+            "description": "Cho đủ 5 ảnh để thử giới hạn ở bước kế tiếp.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "sample-listing.png"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: ảnh thứ sáu",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Lỗi LISTING_IMAGE_LIMIT', () => pm.expect(pm.response.json().code).to.eql('LISTING_IMAGE_LIMIT'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{imgListingId}}/images",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{imgListingId}}",
+                "images"
+              ]
+            },
+            "description": "Đã đủ 5 ảnh. Mong đợi 409 `LISTING_IMAGE_LIMIT`.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "sample-listing.png"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: chủ trọ khác xóa ảnh của tôi",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 403', () => pm.response.to.have.status(403));",
+                  "pm.test('Lỗi NOT_RESOURCE_OWNER', () => pm.expect(pm.response.json().code).to.eql('NOT_RESOURCE_OWNER'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{imgListingId}}/images/{{imgImageId1}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{imgListingId}}",
+                "images",
+                "{{imgImageId1}}"
+              ]
+            },
+            "description": "Mong đợi 403 `NOT_RESOURCE_OWNER`; ảnh còn nguyên.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{otherLandlordToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: imageId không phải UUID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Lỗi INVALID_ID', () => pm.expect(pm.response.json().code).to.eql('INVALID_ID'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{imgListingId}}/images/khong-phai-uuid",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{imgListingId}}",
+                "images",
+                "khong-phai-uuid"
+              ]
+            },
+            "description": "Mong đợi 400 `INVALID_ID`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Xóa ảnh thứ nhất (DELETE /listings/:id/images/:imageId)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{imgListingId}}/images/{{imgImageId1}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{imgListingId}}",
+                "images",
+                "{{imgImageId1}}"
+              ]
+            },
+            "description": "Chủ tin xóa ảnh vị trí 0. 204, không có thân. Ảnh vị trí nhỏ nhất còn lại thành ảnh bìa.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Sau khi xóa: ảnh không còn phục vụ",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Lỗi NOT_FOUND', () => pm.expect(pm.response.json().code).to.eql('NOT_FOUND'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/media/public/{{imgFile1}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "media",
+                "public",
+                "{{imgFile1}}"
+              ]
+            },
+            "description": "Mong đợi 404 `NOT_FOUND`.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Sau khi xóa: ảnh bìa dời sang ảnh vị trí 1",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "const detail = pm.response.json();",
+                  "pm.test('còn 4 ảnh, ảnh đầu ở vị trí 1', () => { pm.expect(detail.images).to.have.length(4); pm.expect(detail.images[0].position).to.eql(1); });",
+                  "pm.test('ảnh bìa là ảnh đầu', () => pm.expect(detail.coverImageUrl).to.eql(detail.images[0].url));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{imgListingCode}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{imgListingCode}}"
+              ]
+            },
+            "description": "Công khai. Còn 4 ảnh, ảnh bìa là ảnh có `position` nhỏ nhất còn lại (1).",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: xóa lại ảnh đã xóa",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Lỗi NOT_FOUND', () => pm.expect(pm.response.json().code).to.eql('NOT_FOUND'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{imgListingId}}/images/{{imgImageId1}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{imgListingId}}",
+                "images",
+                "{{imgImageId1}}"
+              ]
+            },
+            "description": "Mong đợi 404 `NOT_FOUND`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Ẩn tin: ảnh không còn phục vụ công khai (POST /listings/:id/hide)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{imgListingId}}/hide",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{imgListingId}}",
+                "hide"
+              ]
+            },
+            "description": "Chủ trọ ẩn tin. Bước kế tiếp: ảnh của tin ẩn trả 404.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Tin ẩn: ảnh trả 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Lỗi NOT_FOUND', () => pm.expect(pm.response.json().code).to.eql('NOT_FOUND'));",
+                  "pm.test('lỗi 404 không bị cache', () => pm.expect(pm.response.headers.get('Cache-Control') || '').to.not.include('public'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/media/public/{{imgFile2}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "media",
+                "public",
+                "{{imgFile2}}"
+              ]
+            },
+            "description": "Ảnh chỉ phục vụ khi tin còn hiển thị công khai. Mong đợi 404 `NOT_FOUND`.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Hiện lại tin: ảnh phục vụ lại",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{imgListingId}}/show",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{imgListingId}}",
+                "show"
+              ]
+            },
+            "description": "Hiện lại tin.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Tin hiện lại: ảnh 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/media/public/{{imgFile2}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "media",
+                "public",
+                "{{imgFile2}}"
+              ]
+            },
+            "description": "Ảnh phục vụ lại ngay.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Dọn dẹp: xóa tin (DELETE /listings/:id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{imgListingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{imgListingId}}"
+              ]
+            },
+            "description": "Xóa mềm tin; ảnh của tin vẫn nằm trên ổ đĩa (không có API dọn).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Dọn dẹp: xóa nhà trọ (DELETE /properties/:id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/properties/{{imgPropertyId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "{{imgPropertyId}}"
+              ]
+            },
+            "description": "Xóa mềm nhà trọ.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
                   "type": "string"
                 }
               ]

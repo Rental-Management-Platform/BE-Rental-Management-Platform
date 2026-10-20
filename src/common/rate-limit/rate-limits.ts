@@ -23,6 +23,7 @@ export type RateLimitGroup =
 	| 'changePassword'
 	| 'propertyWrite'
 	| 'listingWrite'
+	| 'listingImage'
 	| 'orderWrite'
 	| 'publicRead'
 	| 'publicDetail';
@@ -63,6 +64,8 @@ export const RATE_LIMITS: Readonly<
 	propertyWrite: { user: { limit: 30, ttlMs: HOUR } },
 	// Cùng bảng đã duyệt: đăng, sửa, xóa, ẩn, hiện tin của chủ trọ.
 	listingWrite: { user: { limit: 60, ttlMs: HOUR } },
+	// Cùng bảng đã duyệt: tải ảnh lên tin. Xóa ảnh và xem ảnh (`/media`) không giới hạn thêm.
+	listingImage: { user: { limit: 60, ttlMs: HOUR } },
 	// Spec mua gói (0004) AC-13: tạo, thanh toán, hủy đơn. Mỗi route đếm riêng, chỉ chung con số.
 	orderWrite: { user: { limit: 30, ttlMs: HOUR } },
 	// Danh sách công khai. 300 lần mỗi phút theo IP đủ rộng cho nhiều sinh viên dùng chung một IP ký túc xá.

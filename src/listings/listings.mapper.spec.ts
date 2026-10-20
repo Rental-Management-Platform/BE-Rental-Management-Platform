@@ -8,6 +8,7 @@ import {
 } from './listings.fixtures';
 import {
 	toListingDetail,
+	toListingImage,
 	toListingSummary,
 	toOwnerDetail,
 	toOwnerSummary,
@@ -88,6 +89,20 @@ describe('toListingSummary (spec 0002, "Tin tóm tắt")', () => {
 	});
 
 	describe('ảnh bìa', () => {
+		it('toListingImage dựng { id, position, url } từ storage_key (kết quả tải ảnh lên)', () => {
+			expect(
+				toListingImage({
+					id: 'anh-1',
+					position: 2,
+					storageKey: `public/${UUID_A}.png`,
+				}),
+			).toEqual({
+				id: 'anh-1',
+				position: 2,
+				url: `/api/v1/media/public/${UUID_A}.png`,
+			});
+		});
+
 		it('chưa có ảnh thì coverImageUrl là null', () => {
 			expect(
 				toListingSummary(publicSummaryRow()).coverImageUrl,

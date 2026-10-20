@@ -43,3 +43,6 @@ tmp/
 
 #db
 generated
+
+# Ảnh tin tải lên (spec 0002 AC-8)
+/uploads

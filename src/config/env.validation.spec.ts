@@ -100,6 +100,47 @@ describe('validateEnv', () => {
 		).toContain('DATABASE_NAME');
 	});
 
+	it('ảnh tin: UPLOAD_DIR mặc định "uploads" và MAX_UPLOAD_BYTES mặc định 5 MiB; đặt thì lấy giá trị đặt (spec 0002 AC-8)', () => {
+		const env = validateEnv(validConfig);
+		expect(env.UPLOAD_DIR).toBe('uploads');
+		expect(env.MAX_UPLOAD_BYTES).toBe(5242880);
+
+		const custom = validateEnv({
+			...validConfig,
+			UPLOAD_DIR: '/data/uploads',
+			MAX_UPLOAD_BYTES: '1048576',
+		});
+		expect(custom.UPLOAD_DIR).toBe('/data/uploads');
+		expect(custom.MAX_UPLOAD_BYTES).toBe(1048576);
+	});
+
+	it.each([['1'], ['10485760']])(
+		'chấp nhận MAX_UPLOAD_BYTES ở hai biên: %s',
+		(bytes) => {
+			expect(
+				validateEnv({ ...validConfig, MAX_UPLOAD_BYTES: bytes })
+					.MAX_UPLOAD_BYTES,
+			).toBe(Number(bytes));
+		},
+	);
+
+	it.each([['0'], ['-5'], ['10485761'], ['5.5'], ['năm triệu'], ['']])(
+		'từ chối MAX_UPLOAD_BYTES = %j và chỉ nêu tên biến',
+		(bytes) => {
+			const message = messageOf(() =>
+				validateEnv({ ...validConfig, MAX_UPLOAD_BYTES: bytes }),
+			);
+			expect(message).toContain('MAX_UPLOAD_BYTES');
+			expect(message).not.toContain(bytes === '' ? 'khong-co' : bytes);
+		},
+	);
+
+	it('từ chối UPLOAD_DIR để trống', () => {
+		expect(
+			messageOf(() => validateEnv({ ...validConfig, UPLOAD_DIR: '' })),
+		).toContain('UPLOAD_DIR');
+	});
+
 	it('điền mặc định 30 phút cho hạn liên kết đặt lại mật khẩu', () => {
 		expect(validateEnv(validConfig).PASSWORD_RESET_TTL_MINUTES).toBe(30);
 		expect(
