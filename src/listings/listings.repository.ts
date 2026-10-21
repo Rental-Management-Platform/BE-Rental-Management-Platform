@@ -97,9 +97,13 @@ export interface ListingChanges {
 	searchKey?: string;
 }
 
-/** Bộ lọc của danh sách công khai; `searchWords` đã qua `toSearchKey` và đã cắt gọn. */
+/**
+ * Bộ lọc của danh sách công khai; `searchWords` đã qua `toSearchKey` và đã cắt gọn. `landlordId` chỉ do danh sách tin
+ * trên hồ sơ chủ trọ đặt (spec 0009); `GET /listings` không đặt nên không đổi.
+ */
 export interface PublicListFilter {
 	readonly searchWords: readonly string[];
+	readonly landlordId?: string;
 	readonly wardCode?: string;
 	readonly minPrice?: number;
 	readonly maxPrice?: number;
@@ -175,11 +179,17 @@ export function publicListingCondition(
 	)`;
 }
 
-/** Bộ lọc `q`, `wardCode`, `minPrice`, `maxPrice` của spec 0002 dưới dạng mảnh SQL (cùng nghĩa với bản Prisma cũ). */
+/**
+ * Bộ lọc `q`, `wardCode`, `minPrice`, `maxPrice` của spec 0002 dưới dạng mảnh SQL (cùng nghĩa với bản Prisma cũ),
+ * cộng điều kiện chủ trọ của spec 0009 khi có.
+ */
 function filterConditions(filter: PublicListFilter): Prisma.Sql[] {
 	const conditions = filter.searchWords.map(
 		(word) => Prisma.sql`l.search_key LIKE ${`%${escapeLike(word)}%`}`,
 	);
+	if (filter.landlordId !== undefined) {
+		conditions.push(Prisma.sql`p.landlord_id = ${filter.landlordId}::uuid`);
+	}
 	if (filter.wardCode !== undefined) {
 		conditions.push(Prisma.sql`p.ward_code = ${filter.wardCode}`);
 	}

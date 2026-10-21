@@ -32,6 +32,7 @@ _Đây là các khuyến nghị để việc làm gọn gàng, không phải yê
 | 13 | Dọn danh mục quyền theo MVP | Release 13 | done |
 | 14 | Admin: danh sách người dùng | Release 14 | done |
 | 15 | Hồ sơ cá nhân | Release 15 | done |
+| 16 | Tin đang hiện trên hồ sơ chủ trọ | Release 16 | done |
 
 ## Foundations (đã có)
 
@@ -210,6 +211,16 @@ Người đã đăng nhập xem và tự sửa hồ sơ của chính mình, dùn
    - [x] Mốc 1: `GET` và `PATCH /me/profile` cho tên và số điện thoại, luật số của chủ trọ, nhóm giới hạn `profileWrite`, tài liệu và kiểm cuối (AC-1 đến AC-9); đã chạy thật trên DB thử 2026-10-21 (119 kiểm tra HTTP và SQL đối chiếu với hàng thô, gồm đua hai chủ trọ cùng một số mười vòng không bao giờ có hai hàng giữ cùng số, ba điều khiển âm đều bị bắt: bỏ vế bỏ qua chính mình, bỏ chặn chủ trọ xóa số, mapper chép nguyên hàng kèm `findById` lấy cả mật khẩu băm; 1212 bài unit; Newman 478 request và 983 assertion với hai assertion đã biết của folder 02, hai lượt liền trên cùng một DB)
 Spec [0008](../specs/0008-personal-profile/index.md) (9 AC, 1 mốc, đã được bạn Accept ngày 2026-10-21; trạng thái spec đi theo tính năng) · code in `src/users/`, `src/common/rate-limit/` · tài liệu in `docs/api/`
 
+## Release 16: tin đang hiện trên hồ sơ chủ trọ
+
+### 16. Tin đang hiện trên hồ sơ chủ trọ · done
+Hồ sơ công khai của chủ trọ (`GET /landlords/:id`, hàng 11) mới chỉ có con số: `publicListingCount` cho biết có bao nhiêu tin đang hiện nhưng không cho xem đó là những tin nào. Thêm đường để người xem mở hồ sơ rồi xem danh sách tin đang hiện công khai của chủ trọ đó, dùng đúng luật hiển thị công khai của hàng 8, 9 và 10. `GET /listings` công khai hiện chưa có bộ lọc theo chủ trọ (chỉ `GET /moderation/listings` của admin có `landlordId`), nên cần thêm một đường riêng. Việc này nằm trong mục hoãn của spec 0005 (2026-10-20), nay đưa vào kế hoạch theo yêu cầu của bạn. Đã thiết kế đầy đủ ở spec 0009 (8 AC, 1 mốc), bạn Accept ngày 2026-10-21: một API đọc mới `GET /landlords/:id/listings` (công khai, đọc đăng nhập tùy chọn), chỉ phân trang, mới đăng trước, không bộ lọc hay `sort`; dùng lại đúng hai mảnh SQL hiển thị công khai nên `total` bằng `publicListingCount` của hồ sơ; phần tử giống hệt tin trong `GET /listings` kể cả `isFavorite`; chủ trọ không hợp lệ hay bị khóa trả 404 `LANDLORD_NOT_FOUND` như hồ sơ; dùng nhóm giới hạn `publicRead` có sẵn; không bảng, không migration, không mã lỗi mới, hồ sơ giữ nguyên bảy trường.
+**Done when:** mở hồ sơ công khai của một chủ trọ thì xem được danh sách tin đang hiện của họ, có phân trang, mỗi phần tử cùng hình dạng với tin trong danh sách tìm trọ (kể cả cờ `isFavorite` cho người đã đăng nhập); số tin trong danh sách bằng `publicListingCount` của hồ sơ; tin bị ẩn, bị xóa, chủ trọ bị khóa, hết dùng thử hoặc vượt hạn mức không hiện; chủ trọ không có hoặc đang bị khóa thì trả cùng lỗi 404 như hồ sơ.
+- [x] Design it (spec): `/architect landlord listings on profile`
+- [x] Build it: `/develop landlord listings on profile`
+   - [x] Mốc 1: danh sách tin đang hiện của chủ trọ: điều kiện `landlordId` ở truy vấn danh sách công khai, `LandlordsService.listListings`, route `GET /landlords/:id/listings`, kiểm thật, tài liệu và kiểm cuối (AC-1 đến AC-8); đã chạy thật trên DB thử 2026-10-21 (159 kiểm tra HTTP và SQL, gồm phép tính độc lập từ dòng thô ở các hạn mức 100, 5, 3, 1, 0 cho hai chủ trọ, so với `GET /listings` và chi tiết công khai, hết dùng thử rồi mua gói, khóa rồi mở khóa, chín loại người xem và đúng 300 lần rồi 429; ba điều khiển âm đều bị bắt: bỏ điều kiện `p.landlord_id` làm 56 kiểm tra sai, bỏ bước tra chủ trọ làm 10 sai, cờ `isFavorite` luôn false làm 5 sai; 1226 bài unit; Newman 493 request và 1037 assertion hai lượt liền với hai assertion đã biết của folder 02); `EXPLAIN` ở 60 nghìn tin đo một lần, không chỉnh (chủ trọ có 300 tin khoảng 12 ms, chủ trọ có 20 tin 0,3 ms, `GET /listings` toàn hệ thống 1038 ms để so)
+Spec [0009](../specs/0009-landlord-profile-listings/index.md) (8 AC, 1 mốc, đã được bạn Accept ngày 2026-10-21; trạng thái spec đi theo tính năng) · code in `src/landlords/`, `src/listings/` · tài liệu in `docs/api/`
+
 ## Deferred
 Ngoài phạm vi bản này, giữ lại để kế hoạch trung thực.
 - **Dịch lỗi PostgreSQL**: trùng giá trị khi đăng ký đồng thời, khóa ngoại, id sai, mất kết nối thành lỗi dễ hiểu · needs a decision
@@ -222,10 +233,11 @@ Ngoài phạm vi bản này, giữ lại để kế hoạch trung thực.
 - **Hoãn khỏi MVP (chốt 2026-10-11)**: xác thực chủ trọ và ảnh giấy tờ, báo cáo tin xấu, liên hệ chủ trọ có giới hạn mỗi ngày, đẩy tin và tin nổi bật, kiểm tra tại chỗ, quảng cáo, thu chi và dashboard doanh thu, thống kê cho chủ trọ, tìm quanh địa điểm mốc, lịch sử giá tin, cổng thanh toán thật (VNPay), hoàn tiền và tặng gói, đổi loại tài khoản. Thêm lại bằng `/scope` khi tới lượt · needs a decision
 - **Hoãn từ spec 0004 (2026-10-19)**: admin xem đơn của mọi người và số liệu doanh thu, email biên nhận và email nhắc sắp hết gói (cần việc nền), đổi sang gói khác có hiệu lực ngay (cắt gói cũ), mua nhiều kỳ trong một đơn, mô tả và thứ tự do admin đặt cho gói, tự hủy đơn chờ quá hạn; cổng thanh toán thật, hoàn tiền và tặng gói đã nằm ở mục hoãn khỏi MVP phía trên · needs a decision
 - **Hoãn từ spec 0003 (2026-10-16)**: email nhắc sắp hết dùng thử (cần việc nền), admin gia hạn dùng thử cho một chủ trọ cụ thể, API công khai cho FE hiện "dùng thử N ngày, M tin" trước khi đăng ký · needs a decision
-- **Hoãn từ spec 0005 (2026-10-20)**: danh sách "đang theo dõi" của người tìm trọ, danh sách tên người theo dõi cho chủ trọ, thông báo khi chủ trọ đăng tin mới (cần việc nền), danh sách tin đang hiện của chủ trọ trên hồ sơ (cần bộ lọc `landlordId`), số người theo dõi trong chi tiết tin, bảng hồ sơ chủ trọ riêng (tên hiển thị, Zalo), chống tăng ảo số người theo dõi · needs a decision
+- **Hoãn từ spec 0005 (2026-10-20)**: danh sách "đang theo dõi" của người tìm trọ, danh sách tên người theo dõi cho chủ trọ, thông báo khi chủ trọ đăng tin mới (cần việc nền), số người theo dõi trong chi tiết tin, bảng hồ sơ chủ trọ riêng (tên hiển thị, Zalo), chống tăng ảo số người theo dõi · needs a decision
 - **Hoãn từ spec 0007 (2026-10-21)**: chi tiết một tài khoản (`GET /users/:id`), tham số `sort`, thời điểm đăng nhập gần nhất, người khóa và lúc khóa, thông tin chủ trọ trên mỗi dòng (hạn dùng thử, số tin, gói), tìm tên không phân biệt dấu (cột `users.search_key`), giới hạn tần suất cho danh sách, nhật ký đọc của admin, đếm theo loại và trạng thái, xuất danh sách · needs a decision
 - **Hoãn từ spec 0008 (2026-10-21)**: đổi email (cần xác thực email mới), ảnh đại diện, xóa tài khoản của chính mình, giới hạn đổi số điện thoại (ví dụ một lần mỗi 30 ngày), đòi mật khẩu hiện tại khi đổi số, giữ lịch sử số cũ để chặn quay vòng dùng thử, trả 409 thay vì 500 khi hai chủ trọ đổi cùng một số cùng lúc, nhật ký thay đổi hồ sơ, luật cho tên hiển thị · needs a decision
 - **Hoãn từ spec 0006 (2026-10-20)**: số lượt lưu cho chủ trọ, ghi chú riêng cho tin đã lưu, thông báo khi tin đã lưu đổi giá hoặc biến mất (cần việc nền), bộ lọc hoặc kiểu sắp xếp cho danh sách đã lưu, báo số tin đã lưu đang bị ẩn, giới hạn số tin được lưu, API riêng trả danh sách id đã lưu · needs a decision
+- **Hoãn từ spec 0009 (2026-10-21)**: bộ lọc hoặc kiểu sắp xếp cho danh sách tin của chủ trọ (giá, phường), lọc theo nhà trọ, nhúng trang đầu vào chính hồ sơ để FE gọi một lần, danh sách rút gọn không có `landlord` · needs a decision
 
 ## Legend
 

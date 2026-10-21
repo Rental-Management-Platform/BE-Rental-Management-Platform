@@ -300,6 +300,110 @@ describe('ListingsRepository.findFavoritePage (spec 0006 AC-4, AC-5)', () => {
 	});
 });
 
+describe('ListingsRepository.findPublicPage, điều kiện chủ trọ (spec 0009 AC-1 đến AC-3)', () => {
+	const visibility = { now: NOW, trialListingLimit: 2 };
+
+	function build(options: { pageIds?: string[]; total?: number } = {}) {
+		// Hai câu SQL chạy song song theo thứ tự gọi: trang trước, đếm sau.
+		const queryRaw = jest
+			.fn()
+			.mockResolvedValueOnce(
+				(options.pageIds ?? []).map((id) => ({ id })),
+			)
+			.mockResolvedValueOnce([{ total: options.total ?? 0 }]);
+		const findMany = jest.fn(() => Promise.resolve([]));
+		const repository = new ListingsRepository({
+			$queryRaw: queryRaw,
+			listing: { findMany },
+		} as unknown as PrismaService);
+		return { repository, queryRaw };
+	}
+
+	/** Giá trị chèn của một lần gọi: câu lấy trang là [FROM, WHERE, ORDER BY, take, skip], câu đếm là [FROM, WHERE]. */
+	function whereOf(queryRaw: jest.Mock, index: number): Prisma.Sql {
+		const call =
+			(queryRaw.mock.calls as unknown as unknown[][])[index] ?? [];
+		return call[2] as Prisma.Sql;
+	}
+
+	it('có `landlordId`: nối `p.landlord_id = <id>::uuid` vào WHERE sau điều kiện hiển thị, id đi vào bằng tham số', async () => {
+		const { repository, queryRaw } = build();
+		await repository.findPublicPage(
+			{ searchWords: [], landlordId: 'chu-tro-1', sort: 'newest' },
+			visibility,
+			0,
+			20,
+		);
+		const where = whereOf(queryRaw, 0);
+		expect(flat(where)).toContain("l.status = 'visible'");
+		expect(flat(where)).toMatch(/\) AND p\.landlord_id = \$3::uuid$/);
+		expect(where.values).toEqual([NOW.toISOString(), 2, 'chu-tro-1']);
+		expect(flat(where)).not.toContain('chu-tro-1');
+	});
+
+	it('vắng `landlordId` (GET /listings): WHERE không có điều kiện chủ trọ nào, chỉ điều kiện hiển thị', async () => {
+		const { repository, queryRaw } = build();
+		await repository.findPublicPage(
+			{ searchWords: [], sort: 'newest' },
+			visibility,
+			0,
+			20,
+		);
+		const where = whereOf(queryRaw, 0);
+		expect(flat(where)).not.toContain('p.landlord_id = $');
+		expect(where.values).toEqual([NOW.toISOString(), 2]);
+	});
+
+	it('câu đếm dùng cùng điều kiện với câu lấy trang, nên total bằng số tin của chủ trọ trong mọi trang', async () => {
+		const { repository, queryRaw } = build({ total: 3 });
+		const result = await repository.findPublicPage(
+			{ searchWords: [], landlordId: 'chu-tro-1', sort: 'newest' },
+			visibility,
+			0,
+			20,
+		);
+		const pageWhere = whereOf(queryRaw, 0);
+		const countWhere = whereOf(queryRaw, 1);
+		expect(flat(countWhere)).toBe(flat(pageWhere));
+		expect(countWhere.values).toEqual(pageWhere.values);
+		expect(result.total).toBe(3);
+	});
+
+	it('xếp mới đăng trước (created_at rồi id giảm dần) khi sort là newest', async () => {
+		const { repository, queryRaw } = build();
+		await repository.findPublicPage(
+			{ searchWords: [], landlordId: 'chu-tro-1', sort: 'newest' },
+			visibility,
+			0,
+			20,
+		);
+		const call = (queryRaw.mock.calls as unknown as unknown[][])[0] ?? [];
+		expect(flat(call[3] as Prisma.Sql)).toBe(
+			'l.created_at DESC, l.id DESC',
+		);
+	});
+
+	it('`landlordId` ghép được với bộ lọc khác bằng AND, không thay chúng', async () => {
+		const { repository, queryRaw } = build();
+		await repository.findPublicPage(
+			{
+				searchWords: ['gan'],
+				landlordId: 'chu-tro-1',
+				wardCode: '26743',
+				sort: 'newest',
+			},
+			visibility,
+			0,
+			20,
+		);
+		const where = whereOf(queryRaw, 0);
+		expect(flat(where)).toContain('l.search_key LIKE $3');
+		expect(flat(where)).toContain('p.landlord_id = $4::uuid');
+		expect(flat(where)).toContain('p.ward_code = $5');
+		expect(where.values.slice(2)).toEqual(['%gan%', 'chu-tro-1', '26743']);
+	});
+});
+
 describe('ListingsRepository.sumViewCountByLandlord (spec 0005 AC-4)', () => {
 	function build(rows: { total: bigint }[]) {
 		const queryRaw = jest.fn(() => Promise.resolve(rows));

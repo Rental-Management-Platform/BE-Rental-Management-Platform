@@ -16216,6 +16216,622 @@
           }
         },
         {
+          "name": "Khách xem tin đang hiện của chủ trọ, không cần đăng nhập (GET /landlords/:id/listings)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const body = pm.response.json();",
+                  "pm.test('đúng bốn khóa items, page, pageSize, total', () => pm.expect(Object.keys(body).sort()).to.eql(['items', 'page', 'pageSize', 'total']));",
+                  "pm.test('Cache-Control là private, no-store', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('private, no-store'));",
+                  "pm.test('mỗi phần tử đúng 15 khóa của phần tử GET /listings', () => body.items.forEach((item) => pm.expect(Object.keys(item).sort()).to.eql(['addressText', 'areaM2', 'availableFrom', 'code', 'coverImageUrl', 'createdAt', 'deposit', 'fullAddress', 'id', 'isFavorite', 'landlord', 'price', 'slug', 'title', 'ward'])));",
+                  "pm.test('mọi phần tử là tin của đúng chủ trọ này', () => body.items.forEach((item) => pm.expect(item.landlord.id).to.eql(pm.collectionVariables.get('profileLandlordId'))));",
+                  "pm.test('mới đăng trước (createdAt không tăng)', () => body.items.forEach((item, index) => { if (index > 0) pm.expect(Date.parse(item.createdAt)).to.be.at.most(Date.parse(body.items[index - 1].createdAt)); }));",
+                  "pm.test('không lộ số điện thoại, email, lượt xem hay trạng thái', () => {",
+                  "    const text = pm.response.text();",
+                  "    ['phone', 'email', 'viewCount', 'moderationReason', 'status'].forEach((key) => pm.expect(text).to.not.include('\"' + key + '\"'));",
+                  "});",
+                  "pm.test('khách: isFavorite là null ở mọi phần tử', () => body.items.forEach((item) => pm.expect(item.isFavorite).to.eql(null)));",
+                  "pm.test('trang 1, pageSize 50, total ít nhất bằng số phần tử', () => {",
+                  "    pm.expect(body.page).to.eql(1);",
+                  "    pm.expect(body.pageSize).to.eql(50);",
+                  "    pm.expect(body.total).to.be.at.least(body.items.length);",
+                  "});",
+                  "const base = pm.variables.get('baseUrl');",
+                  "const landlordId = pm.collectionVariables.get('profileLandlordId');",
+                  "pm.sendRequest(base + '/landlords/' + landlordId, (error, response) => {",
+                  "    pm.test('total bằng publicListingCount của hồ sơ', () => {",
+                  "        pm.expect(error).to.eql(null);",
+                  "        pm.expect(response.json().publicListingCount).to.eql(body.total);",
+                  "    });",
+                  "});",
+                  "if (body.total <= 50) {",
+                  "    const found = [];",
+                  "    const loadPage = (page) => pm.sendRequest(base + '/listings?pageSize=50&page=' + page, (error, response) => {",
+                  "        pm.test('tải được trang ' + page + ' của GET /listings', () => {",
+                  "            pm.expect(error).to.eql(null);",
+                  "            pm.expect(response).to.have.status(200);",
+                  "        });",
+                  "        if (error || response.code !== 200) return;",
+                  "        const items = response.json().items;",
+                  "        found.push(...items.filter((item) => item.landlord.id === landlordId));",
+                  "        if (items.length === 50) {",
+                  "            loadPage(page + 1);",
+                  "            return;",
+                  "        }",
+                  "        pm.test('từng phần tử giống hệt phần tử cùng tin ở GET /listings', () => pm.expect(body.items).to.eql(found));",
+                  "    });",
+                  "    loadPage(1);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{profileLandlordId}}/listings?pageSize=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{profileLandlordId}}",
+                "listings"
+              ],
+              "query": [
+                {
+                  "key": "pageSize",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Công khai, đọc đăng nhập tùy chọn. Chỉ nhận `page` và `pageSize`; xếp mới đăng trước. Mỗi phần tử giống hệt phần tử của `GET /listings` (15 trường, kể cả `landlord` và `isFavorite`). Khách nhận `isFavorite: null`. `total` bằng `publicListingCount` của hồ sơ và phần tử giống hệt tin cùng chủ trọ trong `GET /listings`. Giới hạn 300 lần mỗi phút theo IP, bộ đếm riêng của API này.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Người tìm trọ xem tin đang hiện của chủ trọ (GET /landlords/:id/listings)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const body = pm.response.json();",
+                  "pm.test('đúng bốn khóa items, page, pageSize, total', () => pm.expect(Object.keys(body).sort()).to.eql(['items', 'page', 'pageSize', 'total']));",
+                  "pm.test('Cache-Control là private, no-store', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('private, no-store'));",
+                  "pm.test('mỗi phần tử đúng 15 khóa của phần tử GET /listings', () => body.items.forEach((item) => pm.expect(Object.keys(item).sort()).to.eql(['addressText', 'areaM2', 'availableFrom', 'code', 'coverImageUrl', 'createdAt', 'deposit', 'fullAddress', 'id', 'isFavorite', 'landlord', 'price', 'slug', 'title', 'ward'])));",
+                  "pm.test('mọi phần tử là tin của đúng chủ trọ này', () => body.items.forEach((item) => pm.expect(item.landlord.id).to.eql(pm.collectionVariables.get('profileLandlordId'))));",
+                  "pm.test('mới đăng trước (createdAt không tăng)', () => body.items.forEach((item, index) => { if (index > 0) pm.expect(Date.parse(item.createdAt)).to.be.at.most(Date.parse(body.items[index - 1].createdAt)); }));",
+                  "pm.test('không lộ số điện thoại, email, lượt xem hay trạng thái', () => {",
+                  "    const text = pm.response.text();",
+                  "    ['phone', 'email', 'viewCount', 'moderationReason', 'status'].forEach((key) => pm.expect(text).to.not.include('\"' + key + '\"'));",
+                  "});",
+                  "pm.test('đã đăng nhập: isFavorite là boolean ở mọi phần tử', () => body.items.forEach((item) => pm.expect(item.isFavorite).to.be.a('boolean')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{profileLandlordId}}/listings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{profileLandlordId}}",
+                "listings"
+              ]
+            },
+            "description": "Có token hợp lệ thì mỗi tin có `isFavorite` là `true` hoặc `false` theo dòng lưu của chính người xem. Người tìm trọ ở folder này chưa lưu tin nào của chủ trọ nên là `false`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Chủ trọ xem danh sách của chính mình (GET /landlords/:id/listings)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const body = pm.response.json();",
+                  "pm.test('đúng bốn khóa items, page, pageSize, total', () => pm.expect(Object.keys(body).sort()).to.eql(['items', 'page', 'pageSize', 'total']));",
+                  "pm.test('Cache-Control là private, no-store', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('private, no-store'));",
+                  "pm.test('mỗi phần tử đúng 15 khóa của phần tử GET /listings', () => body.items.forEach((item) => pm.expect(Object.keys(item).sort()).to.eql(['addressText', 'areaM2', 'availableFrom', 'code', 'coverImageUrl', 'createdAt', 'deposit', 'fullAddress', 'id', 'isFavorite', 'landlord', 'price', 'slug', 'title', 'ward'])));",
+                  "pm.test('mọi phần tử là tin của đúng chủ trọ này', () => body.items.forEach((item) => pm.expect(item.landlord.id).to.eql(pm.collectionVariables.get('profileLandlordId'))));",
+                  "pm.test('mới đăng trước (createdAt không tăng)', () => body.items.forEach((item, index) => { if (index > 0) pm.expect(Date.parse(item.createdAt)).to.be.at.most(Date.parse(body.items[index - 1].createdAt)); }));",
+                  "pm.test('không lộ số điện thoại, email, lượt xem hay trạng thái', () => {",
+                  "    const text = pm.response.text();",
+                  "    ['phone', 'email', 'viewCount', 'moderationReason', 'status'].forEach((key) => pm.expect(text).to.not.include('\"' + key + '\"'));",
+                  "});",
+                  "pm.test('chủ trọ đã đăng nhập: isFavorite là false ở mọi phần tử', () => body.items.forEach((item) => pm.expect(item.isFavorite).to.eql(false)));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{profileLandlordId}}/listings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{profileLandlordId}}",
+                "listings"
+              ]
+            },
+            "description": "Chủ trọ xem danh sách của mình như mọi người: chỉ thấy các tin đang hiện công khai, `isFavorite` là `false` (không phải `null`). Tin đang ẩn xem ở `GET /me/listings`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin xem tin đang hiện của chủ trọ (GET /landlords/:id/listings)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const body = pm.response.json();",
+                  "pm.test('đúng bốn khóa items, page, pageSize, total', () => pm.expect(Object.keys(body).sort()).to.eql(['items', 'page', 'pageSize', 'total']));",
+                  "pm.test('Cache-Control là private, no-store', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('private, no-store'));",
+                  "pm.test('mỗi phần tử đúng 15 khóa của phần tử GET /listings', () => body.items.forEach((item) => pm.expect(Object.keys(item).sort()).to.eql(['addressText', 'areaM2', 'availableFrom', 'code', 'coverImageUrl', 'createdAt', 'deposit', 'fullAddress', 'id', 'isFavorite', 'landlord', 'price', 'slug', 'title', 'ward'])));",
+                  "pm.test('mọi phần tử là tin của đúng chủ trọ này', () => body.items.forEach((item) => pm.expect(item.landlord.id).to.eql(pm.collectionVariables.get('profileLandlordId'))));",
+                  "pm.test('mới đăng trước (createdAt không tăng)', () => body.items.forEach((item, index) => { if (index > 0) pm.expect(Date.parse(item.createdAt)).to.be.at.most(Date.parse(body.items[index - 1].createdAt)); }));",
+                  "pm.test('không lộ số điện thoại, email, lượt xem hay trạng thái', () => {",
+                  "    const text = pm.response.text();",
+                  "    ['phone', 'email', 'viewCount', 'moderationReason', 'status'].forEach((key) => pm.expect(text).to.not.include('\"' + key + '\"'));",
+                  "});",
+                  "pm.test('admin: isFavorite là false ở mọi phần tử', () => body.items.forEach((item) => pm.expect(item.isFavorite).to.eql(false)));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{profileLandlordId}}/listings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{profileLandlordId}}",
+                "listings"
+              ]
+            },
+            "description": "Admin xem được như mọi người; `isFavorite` là `false`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Token sai vẫn xem được như khách (GET /landlords/:id/listings)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const body = pm.response.json();",
+                  "pm.test('đúng bốn khóa items, page, pageSize, total', () => pm.expect(Object.keys(body).sort()).to.eql(['items', 'page', 'pageSize', 'total']));",
+                  "pm.test('Cache-Control là private, no-store', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('private, no-store'));",
+                  "pm.test('mỗi phần tử đúng 15 khóa của phần tử GET /listings', () => body.items.forEach((item) => pm.expect(Object.keys(item).sort()).to.eql(['addressText', 'areaM2', 'availableFrom', 'code', 'coverImageUrl', 'createdAt', 'deposit', 'fullAddress', 'id', 'isFavorite', 'landlord', 'price', 'slug', 'title', 'ward'])));",
+                  "pm.test('mọi phần tử là tin của đúng chủ trọ này', () => body.items.forEach((item) => pm.expect(item.landlord.id).to.eql(pm.collectionVariables.get('profileLandlordId'))));",
+                  "pm.test('mới đăng trước (createdAt không tăng)', () => body.items.forEach((item, index) => { if (index > 0) pm.expect(Date.parse(item.createdAt)).to.be.at.most(Date.parse(body.items[index - 1].createdAt)); }));",
+                  "pm.test('không lộ số điện thoại, email, lượt xem hay trạng thái', () => {",
+                  "    const text = pm.response.text();",
+                  "    ['phone', 'email', 'viewCount', 'moderationReason', 'status'].forEach((key) => pm.expect(text).to.not.include('\"' + key + '\"'));",
+                  "});",
+                  "pm.test('token sai: isFavorite là null ở mọi phần tử', () => body.items.forEach((item) => pm.expect(item.isFavorite).to.eql(null)));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{profileLandlordId}}/listings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{profileLandlordId}}",
+                "listings"
+              ]
+            },
+            "description": "Token sai hoặc hết hạn không bao giờ là 401: nhận 200 như khách, `isFavorite` là `null`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "khong.phai.token",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Phân trang pageSize 1 (GET /landlords/:id/listings)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const body = pm.response.json();",
+                  "pm.test('page 1, pageSize 1, tối đa một phần tử', () => {",
+                  "    pm.expect(body.page).to.eql(1);",
+                  "    pm.expect(body.pageSize).to.eql(1);",
+                  "    pm.expect(body.items.length).to.be.at.most(1);",
+                  "    pm.expect(body.total).to.be.at.least(body.items.length);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{profileLandlordId}}/listings?page=1&pageSize=1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{profileLandlordId}}",
+                "listings"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "`page` từ 1, `pageSize` từ 1 đến 50. Mỗi trang đúng một phần tử, `total` là tổng của cả danh sách.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Trang vượt cuối vẫn 200, items rỗng (GET /landlords/:id/listings)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const body = pm.response.json();",
+                  "pm.test('items rỗng, page 9999, total là số nguyên không âm', () => {",
+                  "    pm.expect(body.items).to.eql([]);",
+                  "    pm.expect(body.page).to.eql(9999);",
+                  "    pm.expect(Number.isInteger(body.total)).to.eql(true);",
+                  "    pm.expect(body.total).to.be.at.least(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{profileLandlordId}}/listings?page=9999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{profileLandlordId}}",
+                "listings"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "9999"
+                }
+              ]
+            },
+            "description": "Trang vượt cuối không phải lỗi: 200, `items` rỗng, `total` vẫn là tổng của cả danh sách.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: pageSize 51 (GET /landlords/:id/listings)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 400 VALIDATION_FAILED', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{profileLandlordId}}/listings?pageSize=51",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{profileLandlordId}}",
+                "listings"
+              ],
+              "query": [
+                {
+                  "key": "pageSize",
+                  "value": "51"
+                }
+              ]
+            },
+            "description": "`pageSize` tối đa 50: 400 `VALIDATION_FAILED`.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: tham số sort không được nhận (GET /landlords/:id/listings)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 400 VALIDATION_FAILED', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{profileLandlordId}}/listings?sort=price_asc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{profileLandlordId}}",
+                "listings"
+              ],
+              "query": [
+                {
+                  "key": "sort",
+                  "value": "price_asc"
+                }
+              ]
+            },
+            "description": "Danh sách này chỉ nhận `page` và `pageSize`, luôn xếp mới đăng trước. Tham số khác (`sort`, `q`, `wardCode`...) bị 400 `VALIDATION_FAILED`.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: id của người tìm trọ không phải chủ trọ (GET /landlords/:id/listings)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 404 LANDLORD_NOT_FOUND', () => {",
+                  "    pm.response.to.have.status(404);",
+                  "    pm.expect(pm.response.json().code).to.eql('LANDLORD_NOT_FOUND');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{profileTenantId}}/listings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{profileTenantId}}",
+                "listings"
+              ]
+            },
+            "description": "Cùng định nghĩa \"chủ trọ hợp lệ\" với hồ sơ: 404 `LANDLORD_NOT_FOUND`.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: id của admin không phải chủ trọ (GET /landlords/:id/listings)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 404 LANDLORD_NOT_FOUND', () => {",
+                  "    pm.response.to.have.status(404);",
+                  "    pm.expect(pm.response.json().code).to.eql('LANDLORD_NOT_FOUND');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{profileAdminId}}/listings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{profileAdminId}}",
+                "listings"
+              ]
+            },
+            "description": "Admin không phải chủ trọ: 404 `LANDLORD_NOT_FOUND`.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: id không tồn tại (GET /landlords/:id/listings)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 404 LANDLORD_NOT_FOUND', () => {",
+                  "    pm.response.to.have.status(404);",
+                  "    pm.expect(pm.response.json().code).to.eql('LANDLORD_NOT_FOUND');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/0192f1c2-7a4b-7c3e-9d1a-000000000000/listings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "0192f1c2-7a4b-7c3e-9d1a-000000000000",
+                "listings"
+              ]
+            },
+            "description": "Id đúng dạng UUID nhưng không có: 404 `LANDLORD_NOT_FOUND`.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: id không phải UUID (GET /landlords/:id/listings)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 400 INVALID_ID', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    pm.expect(pm.response.json().code).to.eql('INVALID_ID');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/abc/listings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "abc",
+                "listings"
+              ]
+            },
+            "description": "Id sai định dạng: 400 `INVALID_ID`.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
           "name": "[ghi] Người tìm trọ theo dõi chủ trọ (POST /landlords/:id/follow)",
           "event": [
             {

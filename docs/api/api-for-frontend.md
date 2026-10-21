@@ -68,6 +68,7 @@ Mỗi tài khoản chỉ thuộc **một** loại, chọn lúc đăng ký và **
 | Cờ `isFavorite` ở danh sách và chi tiết tin công khai | Có (mới, 2026-10-21, mục 6.19, 6.20 và 6.33) |
 | Danh sách người dùng cho admin: lọc theo loại tài khoản và trạng thái, tìm theo email, tên, số điện thoại (`GET /users`) | Có (mới, 2026-10-21, mục 6.34) |
 | Hồ sơ cá nhân: xem và sửa tên, số điện thoại của chính mình (`GET` và `PATCH /me/profile`) | Có (mới, 2026-10-21, mục 6.35) |
+| Tin đang hiện trên hồ sơ chủ trọ: danh sách có phân trang, mỗi phần tử như tin ở danh sách tìm trọ, kể cả `isFavorite` (`GET /landlords/:id/listings`) | Có (mới, 2026-10-21, mục 6.36) |
 
 ---
 
@@ -173,7 +174,7 @@ Lưu ý: **một trường có thể xuất hiện nhiều lần** trong `errors
 | `PLAN_INACTIVE` | 409 | Đặt đơn bằng gói đã ngừng bán, hoặc thanh toán đơn mà gói đã bị tắt sau khi đặt (đơn vẫn `pending`) | Cho chọn gói khác rồi tạo đơn mới |
 | `ORDER_NOT_FOUND` | 404 | Đơn không có (xem, thanh toán, hủy) | Quay về lịch sử đơn |
 | `ORDER_STATE_INVALID` | 409 | Thanh toán đơn đã hủy, hoặc hủy đơn đã trả | Tải lại đơn rồi cập nhật nút |
-| `LANDLORD_NOT_FOUND` | 404 | Mở hồ sơ công khai (6.31), theo dõi hoặc bỏ theo dõi (6.32) một id không phải chủ trọ đang hoạt động: không có, là tài khoản người tìm trọ hoặc admin, chủ trọ đang bị khóa hoặc đã xóa | Hiện "không tìm thấy chủ trọ", quay về trang trước. Chủ trọ được mở khóa thì hồ sơ trở lại |
+| `LANDLORD_NOT_FOUND` | 404 | Mở hồ sơ công khai (6.31), danh sách tin của chủ trọ (6.36), theo dõi hoặc bỏ theo dõi (6.32) một id không phải chủ trọ đang hoạt động: không có, là tài khoản người tìm trọ hoặc admin, chủ trọ đang bị khóa hoặc đã xóa | Hiện "không tìm thấy chủ trọ", quay về trang trước. Chủ trọ được mở khóa thì hồ sơ trở lại |
 | `CANNOT_FOLLOW_SELF` | 409 | Theo dõi chính tài khoản của mình (6.32; chỉ gặp khi tài khoản có quyền `follow:create`, ví dụ người tìm trọ gõ id của mình hoặc chủ trọ được admin cấp quyền) | Hiện `message`. Ẩn nút theo dõi trên hồ sơ của chính mình |
 | `CANNOT_LOCK_SELF` | 409 | Admin tự khóa chính mình | Hiện `message` |
 | `ACCOUNT_ALREADY_LOCKED` | 409 | Khóa tài khoản đang bị khóa | Làm mới trạng thái trên giao diện |
@@ -205,6 +206,7 @@ Chỉ **sáu API đăng nhập và mật khẩu, các API ghi nhà trọ, tin, t
 | `GET /listings` (công khai) | 300 lần mỗi phút | không | 1 phút |
 | `GET /plans` (công khai) | 300 lần mỗi phút | không | 1 phút |
 | `GET /landlords/:id` (công khai, hồ sơ chủ trọ) | 300 lần mỗi phút | không | 1 phút |
+| `GET /landlords/:id/listings` (công khai, tin đang hiện của chủ trọ) | 300 lần mỗi phút (bộ đếm riêng của API này, không chung với hồ sơ) | không | 1 phút |
 | `GET /me/favorites` (tin đã lưu, cần đăng nhập) | 300 lần mỗi phút | không | 1 phút |
 | `GET /listings/:slugCode` (công khai) | 300 lần mỗi phút | 60 lần mỗi phút, **chỉ khi request có access token hợp lệ** (khách không bị bộ đếm này, chỉ chịu giới hạn theo IP) | 1 phút |
 
@@ -1256,6 +1258,7 @@ Cần nhớ:
 - **Các số tính lúc mở hồ sơ**, không lưu sẵn, nên đổi ngay khi có người theo dõi bị khóa, tin bị ẩn hay xóa, chủ trọ hết gói. Ba số được đọc không cùng một thời điểm chính xác, nên có thể lệch nhau vài mili giây.
 - **`totalViewCount` khác tổng `viewCount` trong `GET /me/listings`**, vì tổng này gồm cả tin đã ẩn và đã xóa. FE đừng tự cộng để đối chiếu.
 - **Nút theo dõi** gọi `POST` hoặc `DELETE /landlords/:id/follow` (mục 6.32); hai API đó trả luôn hồ sơ mới.
+- **Danh sách tin đang hiện của chủ trọ** là API riêng, `GET /landlords/:id/listings` (mục 6.36). Hồ sơ vẫn đúng bảy trường, không nhúng danh sách; `publicListingCount` luôn bằng `total` của API kia.
 
 ### 6.32 Theo dõi và bỏ theo dõi chủ trọ
 
@@ -1468,6 +1471,64 @@ Cần nhớ:
 - Người tìm trọ muốn xóa số thì gửi `"phone": null`. Đừng gửi chuỗi rỗng.
 - **Chưa có** đổi email, ảnh đại diện, xóa tài khoản, giới hạn tần suất đổi số, lịch sử số cũ (đã hoãn).
 
+### 6.36 Tin đang hiện của chủ trọ
+
+`GET /landlords/:id/listings` · công khai, **đọc đăng nhập tùy chọn**
+
+Danh sách các tin đang hiện công khai của một chủ trọ, để đặt dưới hồ sơ chủ trọ (6.31). `:id` là id của chủ trọ, lấy từ `landlord.id`. **Gửi kèm `Authorization: Bearer <accessToken>` nếu người dùng đã đăng nhập** để mỗi tin có cờ `isFavorite`. Khách, token sai hoặc token hết hạn vẫn nhận 200 và `isFavorite` là `null`, **không bao giờ 401**. Phản hồi có `Cache-Control: private, no-store` (cờ `isFavorite` đổi theo người xem).
+
+| Query | Kiểu | Mặc định | Luật |
+|---|---|---|---|
+| `page`, `pageSize` | số nguyên | 1 và 20 | Quy ước phân trang ở mục 2 (`page` từ 1, `pageSize` từ 1 đến 50) |
+
+**Chỉ có hai tham số này.** Danh sách luôn xếp **mới đăng trước**; không có `sort`, `q`, `wardCode`, `minPrice`, `maxPrice`. Gửi tham số nào khác là 400 `VALIDATION_FAILED`.
+
+**200 OK**: `{ "items": [...], "total": 2, "page": 1, "pageSize": 20 }`. Mỗi phần tử **giống hệt phần tử của `GET /listings`** (6.19), cùng 15 trường, kể cả `landlord` và `isFavorite`, nên FE dùng lại đúng một thẻ tin cho cả hai danh sách:
+
+```json
+{
+  "items": [
+    {
+      "id": "0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8d11",
+      "code": "k3m9x2ab",
+      "slug": "phong-tro-gan-dai-hoc",
+      "title": "Phòng trọ gần đại học",
+      "price": 3000000,
+      "areaM2": 20,
+      "deposit": null,
+      "availableFrom": null,
+      "coverImageUrl": "/api/v1/media/public/0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8d21.jpg",
+      "ward": { "code": "26734", "name": "Phường Bến Thành" },
+      "addressText": "5 Đường Thử",
+      "fullAddress": "5 Đường Thử, Phường Bến Thành, Thành phố Hồ Chí Minh",
+      "landlord": { "id": "0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8d01", "name": "Anh Nam" },
+      "createdAt": "2026-10-05T03:00:00.000Z",
+      "isFavorite": false
+    }
+  ],
+  "total": 2,
+  "page": 1,
+  "pageSize": 20
+}
+```
+
+**Lỗi**:
+
+| Mã | Khi nào |
+|---|---|
+| 400 `INVALID_ID` | `:id` không phải UUID |
+| 400 `VALIDATION_FAILED` | `page` hay `pageSize` ngoài biên hoặc không phải số nguyên; có tham số lạ (ví dụ `sort`, `q`). Kiểm trước khi tra chủ trọ, nên id đúng dạng nhưng không phải chủ trọ kèm query sai vẫn nhận 400 |
+| 404 `LANDLORD_NOT_FOUND` | `:id` không phải chủ trọ đang hoạt động (không có, là người tìm trọ hoặc admin, chủ trọ bị khóa hoặc đã xóa mềm). Cùng định nghĩa và cùng mã lỗi với hồ sơ (6.31); chủ trọ được mở khóa thì danh sách trở lại như cũ |
+| 429 `RATE_LIMITED` | Quá 300 lần mỗi phút theo IP cho API này. Bộ đếm riêng, không chung với hồ sơ hay `GET /listings`. Đọc `Retry-After` |
+
+Cần nhớ:
+- **Cùng luật hiển thị với `GET /listings`** (mục 6.19 và 8): tin bị chủ trọ hay admin ẩn, đã xóa, nhà trọ đã xóa, chủ trọ hết dùng thử và hết gói, hoặc bị ẩn bớt vì vượt hạn mức đều không có trong danh sách. Một tin nằm trong danh sách khi và chỉ khi khách mở được nó ở chi tiết (6.20). Chủ trọ đổi hạn mức hay mua gói thì danh sách đổi ngay.
+- **`total` luôn bằng `publicListingCount`** của hồ sơ cùng chủ trọ (6.31) tại cùng một thời điểm. Hai API đọc ở hai lúc nên có thể lệch vài mili giây nếu dữ liệu vừa đổi.
+- **Chủ trọ hết dùng thử và chưa có gói**: vẫn 200, `items` rỗng, `total` 0 (hồ sơ vẫn xem được). FE hiện "Chủ trọ chưa có tin nào đang hiện". Trang vượt cuối cũng 200 với `items` rỗng và `total` đúng.
+- **Không có số điện thoại, email, `viewCount` hay trạng thái** trong phần tử. Mở danh sách **không cộng lượt xem** cho tin nào; lượt xem chỉ tính khi mở chi tiết tin.
+- **Chủ trọ và admin đã đăng nhập** xem được danh sách này như mọi người; `isFavorite` của họ luôn là `false`, không phải `null`. Chủ trọ xem danh sách của chính mình cũng chỉ thấy các tin đang hiện công khai (tin đang ẩn xem ở `GET /me/listings`, 6.21).
+- Hồ sơ vẫn đúng bảy trường (6.31). Để dựng trang hồ sơ, FE gọi hai API: hồ sơ, rồi danh sách (có thể gọi song song).
+
 ---
 
 ## 7. Luồng màn hình gợi ý
@@ -1528,6 +1589,7 @@ Hai ô: mật khẩu hiện tại, mật khẩu mới. Gọi `POST /auth/change-
 1. **Mở từ tên chủ trọ** ở danh sách và chi tiết tin (`landlord.id`): gọi `GET /landlords/:id`, **gửi kèm access token nếu đã đăng nhập** để biết `isFollowing`. 404 thì báo "không tìm thấy chủ trọ".
 2. Hiện `name` (`null` thì ghi "Chủ trọ"), `joinedAt`, `followerCount`, `totalViewCount`, `publicListingCount`.
 3. **Nút theo dõi**: người tìm trọ bấm thì `POST /landlords/:id/follow`, bấm lại thì `DELETE`. Mỗi lần gán thẳng hồ sơ trả về vào trang (có `isFollowing` và `followerCount` mới). Khách thì dẫn tới đăng nhập; chủ trọ, admin và hồ sơ của chính mình thì ẩn nút (mục 6.32).
+4. **Danh sách tin dưới hồ sơ**: gọi `GET /landlords/:id/listings` (phân trang, **gửi kèm access token nếu đã đăng nhập** để có `isFavorite`), vẽ bằng đúng thẻ tin của trang tìm trọ, kể cả nút tim (mục 6.19 và 6.33). Đây là API riêng nên có thể gọi song song với hồ sơ; hai lệnh cùng nhận 404 `LANDLORD_NOT_FOUND` thì báo "không tìm thấy chủ trọ". `total` bằng `publicListingCount`, nên dùng làm tiêu đề "N tin đang hiện". Danh sách rỗng thì hiện "Chủ trọ chưa có tin nào đang hiện". Không có bộ lọc hay sắp xếp ở trang này.
 
 ### Lưu tin yêu thích (người tìm trọ)
 
@@ -1618,7 +1680,8 @@ Hai ô: mật khẩu hiện tại, mật khẩu mới. Gọi `POST /auth/change-
 - **Tìm kiếm** chỉ khớp theo từng từ (không sửa lỗi chính tả, không tìm gần đúng). Từ ngắn dưới 3 ký tự vẫn tìm được nhưng chậm hơn khi có hàng chục nghìn tin.
 - **Số tổng `total` của danh sách** là một phép đếm riêng nên chậm dần khi có hàng chục nghìn tin. Đo thật trên 60 nghìn tin giả lập: phép đếm và các trang sâu mất từ vài trăm mili giây đến vài giây tùy cách tin phân bố giữa các chủ trọ, trong khi dưới vài nghìn tin thì không thấy. Chấp nhận ở bản demo; không phải bản chạy thật.
 - **Số người theo dõi có thể bị tăng ảo** bằng nhiều tài khoản người tìm trọ giả: chỉ có giới hạn đăng ký 10 lần mỗi giờ theo IP và việc admin khóa tài khoản chặn lại, không có chống gian lận nào khác.
-- **Theo dõi chỉ là một con số**: không thông báo cho người theo dõi, không danh sách "đang theo dõi", chủ trọ không xem được ai theo dõi mình, hồ sơ chưa liệt kê tin đang hiện của chủ trọ. Tất cả đã hoãn.
+- **Theo dõi chỉ là một con số**: không thông báo cho người theo dõi, không danh sách "đang theo dõi", chủ trọ không xem được ai theo dõi mình. Tất cả đã hoãn.
+- **Danh sách tin trên hồ sơ chủ trọ** (6.36) chỉ có phân trang, xếp mới đăng trước: chưa có sắp xếp theo giá, lọc theo phường hay theo nhà trọ, và chưa nhúng trang đầu vào chính hồ sơ (FE gọi hai API). Mỗi phần tử vẫn mang `landlord` giống nhau. Mỗi lần mở chạy hai câu đếm và lấy trang qua luật xếp hạng; đo thật ở 60 nghìn tin giả lập cho chủ trọ có 300 tin thì khoảng 12 mili giây (chủ trọ có 20 tin thì dưới 1 mili giây), nhanh hơn nhiều so với `GET /listings` toàn hệ thống nhờ thu hẹp theo chủ trọ. Chấp nhận ở bản demo.
 - **Tin biến khỏi danh sách đã lưu mà không báo gì**: không có số tin đang bị ẩn, không thông báo, và FE không thấy được tin bị ẩn trong danh sách đã lưu để bỏ lưu (chỉ bỏ lưu được nếu còn giữ id). Không giới hạn số tin được lưu, nên người lưu hàng nghìn tin sẽ thấy trang cuối và `total` chậm hơn. Đo thật trên 60 nghìn tin giả lập: người lưu 200 tin mất vài mili giây, người lưu 5 nghìn tin mất khoảng 50 mili giây ở trang cuối và ở phép đếm. Chấp nhận ở bản demo.
 - **`GET /listings` không cache chung được nữa** (từ 2026-10-21): vì có `isFavorite` theo người xem nên phản hồi là `Cache-Control: private, no-store`. Proxy hay CDN không cache chung danh sách công khai.
 - **Chưa có thống kê lượt lưu** cho chủ trọ, nên lưu tin không giúp chủ trọ thấy được mức quan tâm.
@@ -1644,6 +1707,15 @@ Backend sẽ làm theo thứ tự dưới đây. Mỗi mục khi xong sẽ vào 
 ## 11. Nhật ký thay đổi
 
 Mới nhất ở trên cùng. Mục nào **phá vỡ** cách FE đang gọi sẽ ghi rõ "ĐỔI KHÁC VỚI TRƯỚC".
+
+### 2026-10-21 · Tin đang hiện trên hồ sơ chủ trọ
+
+- **API mới** (mục 6.36): `GET /landlords/:id/listings`, công khai, đọc đăng nhập tùy chọn. Chỉ nhận `page` và `pageSize`; xếp mới đăng trước; trả `{ items, total, page, pageSize }`. Mỗi phần tử **giống hệt phần tử của `GET /listings`** (15 trường, kể cả `landlord` và `isFavorite`), nên dùng lại một thẻ tin.
+- **Cùng luật hiển thị với `GET /listings`**, nên `total` luôn bằng `publicListingCount` của hồ sơ cùng chủ trọ. Chủ trọ hết dùng thử và hết gói thì 200 với `items` rỗng và `total` 0.
+- **Không mã lỗi mới**: dùng `LANDLORD_NOT_FOUND` (cùng định nghĩa với hồ sơ: chủ trọ bị khóa, đã xóa hay không phải chủ trọ đều 404), `INVALID_ID`, `VALIDATION_FAILED` (tham số lạ như `sort` hay `q` cũng bị 400), `RATE_LIMITED`.
+- **Giới hạn tần suất**: 300 lần mỗi phút theo IP, bộ đếm riêng của API này (mục 3).
+- Hồ sơ `GET /landlords/:id` **giữ nguyên bảy trường**, `GET /listings` không đổi. Chỉ thêm một đường dẫn mới, **không phá FE đang chạy**.
+- **FE cần làm** (tùy chọn): đặt danh sách tin dưới trang hồ sơ chủ trọ, gọi song song với hồ sơ (mục 7).
 
 ### 2026-10-21 · Hồ sơ cá nhân
 

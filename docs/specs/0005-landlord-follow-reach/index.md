@@ -181,7 +181,7 @@ Hướng build theo Skateboard (bản mỏng nhất dùng được trước, r�
 
 ## Follow-up
 
-- [ ] Hoãn, thêm lại bằng `/scope` khi cần: danh sách "đang theo dõi" của người tìm trọ (`GET /me/following`), danh sách tên người theo dõi cho chủ trọ, thông báo cho người theo dõi khi chủ trọ đăng tin mới, danh sách tin đang hiện của chủ trọ trên hồ sơ (cần bộ lọc `landlordId` ở `GET /listings`), số người theo dõi trong chi tiết tin, bảng `landlord_profiles` (tên hiển thị riêng, Zalo), chống tăng ảo số người theo dõi.
+- [ ] Hoãn, thêm lại bằng `/scope` khi cần: danh sách "đang theo dõi" của người tìm trọ (`GET /me/following`), danh sách tên người theo dõi cho chủ trọ, thông báo cho người theo dõi khi chủ trọ đăng tin mới, danh sách tin đang hiện của chủ trọ trên hồ sơ (đã chuyển sang [spec 0009](../0009-landlord-profile-listings/index.md), làm bằng route lồng `GET /landlords/:id/listings`, không cần bộ lọc `landlordId` ở `GET /listings`), số người theo dõi trong chi tiết tin, bảng `landlord_profiles` (tên hiển thị riêng, Zalo), chống tăng ảo số người theo dõi.
 - [x] Đồng bộ `0001/0005-postgres-data-conventions.md`: dòng `landlord_profiles` ghi rõ spec theo dõi chủ trọ đã quyết chưa tạo bảng; dòng `follows` khớp spec này (xong ngày 2026-10-20).
 - [ ] Sau khi build, `/sync` ghi bảng `follows` và nhóm `followWrite` vào các spec nền móng nếu còn lệch.
 

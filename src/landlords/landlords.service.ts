@@ -2,6 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { AppException } from '../common/errors/app.exception';
 import { ErrorCode } from '../common/errors/error-code';
 import type { RequestUser } from '../common/http/authenticated-request';
+import type { Page, PaginationQueryDto } from '../common/pagination/pagination';
+import { skipOf, toPage } from '../common/pagination/pagination';
+import { FavoritesRepository } from '../favorites/favorites.repository';
+import type { PublicListingSummaryResponse } from '../listings/dto/listing.response';
+import { toPublicSummary } from '../listings/listings.mapper';
 import { ListingsRepository } from '../listings/listings.repository';
 import { SettingsService } from '../settings/settings.service';
 import type { LandlordProfileResponse } from './dto/landlord-profile.response';
@@ -15,6 +20,7 @@ export class LandlordsService {
 		private readonly repository: LandlordsRepository,
 		private readonly listings: ListingsRepository,
 		private readonly settings: SettingsService,
+		private readonly favorites: FavoritesRepository,
 	) {}
 
 	/**
@@ -52,6 +58,55 @@ export class LandlordsService {
 			landlord,
 			{ followerCount, totalViewCount, publicListingCount },
 			isFollowing,
+		);
+	}
+
+	/**
+	 * Các tin đang hiện công khai của một chủ trọ hợp lệ, mới đăng trước (spec 0009 AC-1 đến AC-5). Thứ tự kiểm lỗi:
+	 * chủ trọ hợp lệ (404 `LANDLORD_NOT_FOUND`, đúng hàm của hồ sơ) rồi mới đọc `settings`, trang tin và cờ yêu
+	 * thích; chủ trọ không hợp lệ thì không đọc gì thêm. Trang và `total` đi qua `findPublicPage` với `landlordId`,
+	 * nên cùng hai mảnh SQL hiển thị công khai với `GET /listings` và với `publicListingCount` của hồ sơ. Thứ tự cố
+	 * định `newest`, client không chọn được. `isFavorite` đúng quy tắc của `ListingsService.listPublic`: khách `null`
+	 * và không đọc `favorites`; người đăng nhập nhận `true` hoặc `false` từ một truy vấn cho cả trang (trang rỗng
+	 * thì không truy vấn).
+	 */
+	async listListings(
+		landlordId: string,
+		query: PaginationQueryDto,
+		viewerId: string | undefined,
+		now: Date,
+	): Promise<Page<PublicListingSummaryResponse>> {
+		await this.assertActiveLandlord(landlordId);
+
+		const { rows, total } = await this.listings.findPublicPage(
+			{ searchWords: [], landlordId, sort: 'newest' },
+			{
+				now,
+				trialListingLimit: await this.settings.getValue(
+					'trial_listing_limit',
+				),
+			},
+			skipOf(query),
+			query.pageSize,
+		);
+		const saved =
+			viewerId === undefined || rows.length === 0
+				? undefined
+				: await this.favorites.findSavedIds(
+						viewerId,
+						rows.map((row) => row.id),
+					);
+		return toPage(
+			rows.map((row) =>
+				toPublicSummary(
+					row,
+					viewerId === undefined
+						? null
+						: (saved?.has(row.id) ?? false),
+				),
+			),
+			total,
+			query,
 		);
 	}
 

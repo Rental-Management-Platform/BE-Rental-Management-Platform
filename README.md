@@ -104,7 +104,7 @@ src/
   properties/  listings/  storage/         Nhà trọ, tin đăng (kèm kiểm duyệt tin), ảnh
   settings/  memberships/                  Tham số hệ thống, dùng thử và hạn mức
   plans/  orders/  subscriptions/          Gói, đơn mua, kỳ gói
-  landlords/  favorites/                   Hồ sơ và theo dõi chủ trọ, tin yêu thích
+  landlords/  favorites/                   Hồ sơ, theo dõi và tin đang hiện của chủ trọ, tin yêu thích
   mail/                                    Gửi email
 prisma/
   schema.prisma, migrations/               Mô hình dữ liệu và migration

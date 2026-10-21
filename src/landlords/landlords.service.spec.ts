@@ -2,7 +2,13 @@ import type { AccountType } from '../common/auth/account-type';
 import { AppException } from '../common/errors/app.exception';
 import { ErrorCode } from '../common/errors/error-code';
 import type { RequestUser } from '../common/http/authenticated-request';
-import type { ListingsRepository } from '../listings/listings.repository';
+import type { FavoritesRepository } from '../favorites/favorites.repository';
+import { publicSummaryRow } from '../listings/listings.fixtures';
+import { toPublicSummary } from '../listings/listings.mapper';
+import type {
+	ListingsRepository,
+	PublicSummaryRow,
+} from '../listings/listings.repository';
 import type { SettingsService } from '../settings/settings.service';
 import { LandlordsService } from './landlords.service';
 import type { LandlordRow, LandlordsRepository } from './landlords.repository';
@@ -24,6 +30,9 @@ const ADMIN = userOf(ADMIN_ID, 'admin');
 function build(options: {
 	landlord?: LandlordRow | null;
 	following?: boolean;
+	rows?: PublicSummaryRow[];
+	total?: number;
+	saved?: string[];
 }) {
 	const repository = {
 		findActiveLandlord: jest.fn(() =>
@@ -41,14 +50,26 @@ function build(options: {
 	const listings = {
 		sumViewCountByLandlord: jest.fn(() => Promise.resolve(1840)),
 		countPublicByLandlord: jest.fn(() => Promise.resolve(2)),
+		findPublicPage: jest.fn(() =>
+			Promise.resolve({
+				rows: options.rows ?? [],
+				total: options.total ?? options.rows?.length ?? 0,
+			}),
+		),
 	};
 	const settings = { getValue: jest.fn(() => Promise.resolve(3)) };
+	const favorites = {
+		findSavedIds: jest.fn(() =>
+			Promise.resolve(new Set(options.saved ?? [])),
+		),
+	};
 	const service = new LandlordsService(
 		repository as unknown as LandlordsRepository,
 		listings as unknown as ListingsRepository,
 		settings as unknown as SettingsService,
+		favorites as unknown as FavoritesRepository,
 	);
-	return { service, repository, listings, settings };
+	return { service, repository, listings, settings, favorites };
 }
 
 describe('LandlordsService.getProfile (spec 0005 AC-1 đến AC-5)', () => {
@@ -247,6 +268,143 @@ describe('LandlordsService.unfollow (spec 0005 AC-7, AC-8)', () => {
 		const { service, repository } = build({ landlord: null });
 		const error = await errorOf(service.unfollow(TENANT, LANDLORD_ID, NOW));
 		expect(error.code).toBe(ErrorCode.LANDLORD_NOT_FOUND);
+		expect(repository.removeFollow).not.toHaveBeenCalled();
+	});
+});
+
+describe('LandlordsService.listListings (spec 0009 AC-1 đến AC-6)', () => {
+	const FIRST = '0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8d11';
+	const SECOND = '0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8d12';
+	const QUERY = { page: 1, pageSize: 20 };
+	const rows = [
+		publicSummaryRow({ id: FIRST }),
+		publicSummaryRow({ id: SECOND }),
+	];
+
+	it('đọc trang bằng đúng bộ lọc cố định: chỉ chủ trọ ở đường dẫn, không từ khóa, mới đăng trước, cùng `now` và hạn mức dùng thử từ settings', async () => {
+		const { service, listings, settings } = build({ rows });
+		await service.listListings(LANDLORD_ID, QUERY, undefined, NOW);
+		expect(settings.getValue).toHaveBeenCalledWith('trial_listing_limit');
+		expect(listings.findPublicPage).toHaveBeenCalledWith(
+			{ searchWords: [], landlordId: LANDLORD_ID, sort: 'newest' },
+			{ now: NOW, trialListingLimit: 3 },
+			0,
+			20,
+		);
+	});
+
+	it('phân trang: bỏ qua (page - 1) * pageSize dòng và lấy pageSize dòng', async () => {
+		const { service, listings } = build({ rows });
+		await service.listListings(
+			LANDLORD_ID,
+			{ page: 3, pageSize: 10 },
+			undefined,
+			NOW,
+		);
+		expect(listings.findPublicPage).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.anything(),
+			20,
+			10,
+		);
+	});
+
+	it('trả { items, total, page, pageSize }; phần tử đúng như phần tử của GET /listings, total lấy từ truy vấn', async () => {
+		const { service } = build({ rows, total: 7 });
+		const page = await service.listListings(
+			LANDLORD_ID,
+			{ page: 2, pageSize: 2 },
+			undefined,
+			NOW,
+		);
+		expect(page).toEqual({
+			items: [
+				toPublicSummary(rows[0], null),
+				toPublicSummary(rows[1], null),
+			],
+			total: 7,
+			page: 2,
+			pageSize: 2,
+		});
+	});
+
+	it('khách: isFavorite là null cho mọi phần tử và không đọc bảng favorites', async () => {
+		const { service, favorites } = build({ rows, saved: [FIRST] });
+		const page = await service.listListings(
+			LANDLORD_ID,
+			QUERY,
+			undefined,
+			NOW,
+		);
+		expect(page.items.map((item) => item.isFavorite)).toEqual([null, null]);
+		expect(favorites.findSavedIds).not.toHaveBeenCalled();
+	});
+
+	it('người đã đăng nhập: một truy vấn cho cả trang, tin đã lưu là true, tin chưa lưu là false', async () => {
+		const { service, favorites } = build({ rows, saved: [SECOND] });
+		const page = await service.listListings(
+			LANDLORD_ID,
+			QUERY,
+			VIEWER_ID,
+			NOW,
+		);
+		expect(favorites.findSavedIds).toHaveBeenCalledTimes(1);
+		expect(favorites.findSavedIds).toHaveBeenCalledWith(VIEWER_ID, [
+			FIRST,
+			SECOND,
+		]);
+		expect(page.items.map((item) => item.isFavorite)).toEqual([
+			false,
+			true,
+		]);
+	});
+
+	it('chủ trọ xem chính danh sách của mình nhận false như mọi người đã đăng nhập chưa lưu tin', async () => {
+		const { service } = build({ rows });
+		const page = await service.listListings(
+			LANDLORD_ID,
+			QUERY,
+			LANDLORD_ID,
+			NOW,
+		);
+		expect(page.items.map((item) => item.isFavorite)).toEqual([
+			false,
+			false,
+		]);
+	});
+
+	it('trang rỗng (vượt cuối, hoặc chủ trọ hết hạn mức): 200 với items rỗng, total của truy vấn, không đọc favorites', async () => {
+		const { service, favorites } = build({ rows: [], total: 4 });
+		await expect(
+			service.listListings(
+				LANDLORD_ID,
+				{ page: 9, pageSize: 20 },
+				VIEWER_ID,
+				NOW,
+			),
+		).resolves.toEqual({ items: [], total: 4, page: 9, pageSize: 20 });
+		expect(favorites.findSavedIds).not.toHaveBeenCalled();
+	});
+
+	it('id không phải chủ trọ đang hoạt động: 404 LANDLORD_NOT_FOUND và không đọc settings, trang hay cờ yêu thích', async () => {
+		const { service, repository, listings, settings, favorites } = build({
+			landlord: null,
+			rows,
+		});
+		const error = await errorOf(
+			service.listListings(LANDLORD_ID, QUERY, VIEWER_ID, NOW),
+		);
+		expect(error.code).toBe(ErrorCode.LANDLORD_NOT_FOUND);
+		expect(repository.findActiveLandlord).toHaveBeenCalledWith(LANDLORD_ID);
+		expect(settings.getValue).not.toHaveBeenCalled();
+		expect(listings.findPublicPage).not.toHaveBeenCalled();
+		expect(favorites.findSavedIds).not.toHaveBeenCalled();
+	});
+
+	it('chỉ đọc: không ghi hay xóa dòng theo dõi nào', async () => {
+		const { service, repository } = build({ rows });
+		await service.listListings(LANDLORD_ID, QUERY, VIEWER_ID, NOW);
+		expect(repository.addFollow).not.toHaveBeenCalled();
 		expect(repository.removeFollow).not.toHaveBeenCalled();
 	});
 });

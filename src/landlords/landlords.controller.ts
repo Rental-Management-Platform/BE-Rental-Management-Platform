@@ -7,6 +7,7 @@ import {
 	HttpStatus,
 	Param,
 	Post,
+	Query,
 } from '@nestjs/common';
 import {
 	CurrentUser,
@@ -16,7 +17,10 @@ import { OptionalAuth } from '../common/auth/optional-auth.decorator';
 import { RequirePermissions } from '../common/auth/require-permissions.decorator';
 import { uuidParam } from '../common/errors/create-validation-pipe';
 import type { RequestUser } from '../common/http/authenticated-request';
+import type { Page } from '../common/pagination/pagination';
+import { PaginationQueryDto } from '../common/pagination/pagination';
 import { RateLimited } from '../common/rate-limit/rate-limited.decorator';
+import type { PublicListingSummaryResponse } from '../listings/dto/listing.response';
 import type { LandlordProfileResponse } from './dto/landlord-profile.response';
 import { LandlordsService } from './landlords.service';
 
@@ -38,6 +42,23 @@ export class LandlordsController {
 		@OptionalUser() user: RequestUser | undefined,
 	): Promise<LandlordProfileResponse> {
 		return this.landlords.getProfile(id, user?.userId, new Date());
+	}
+
+	/**
+	 * Tin đang hiện công khai của chủ trọ (spec 0009), cùng cách đọc đăng nhập tùy chọn như hồ sơ: khách, token sai hay
+	 * hết hạn nhận 200 với `isFavorite: null`, không bao giờ 401. Chỉ nhận `page` và `pageSize`: tham số khác bị
+	 * 400. `now` lấy một lần mỗi request, dùng chung cho điều kiện hiển thị.
+	 */
+	@OptionalAuth()
+	@RateLimited('publicRead')
+	@Header('Cache-Control', 'private, no-store')
+	@Get(':id/listings')
+	listListings(
+		@Param('id', uuidParam()) id: string,
+		@Query() query: PaginationQueryDto,
+		@OptionalUser() user: RequestUser | undefined,
+	): Promise<Page<PublicListingSummaryResponse>> {
+		return this.landlords.listListings(id, query, user?.userId, new Date());
 	}
 
 	/**
