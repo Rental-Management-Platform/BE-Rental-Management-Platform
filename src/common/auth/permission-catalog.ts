@@ -64,9 +64,9 @@ export const PERMISSION_CATALOG = {
 		adminActions: ['read', 'create', 'update', 'delete'],
 	},
 	order: {
-		actions: ['create', 'read', 'cancel'],
+		actions: ['create', 'read', 'cancel', 'report'],
 		ownerScoped: true,
-		adminActions: [],
+		adminActions: ['report'],
 	},
 	subscription: {
 		actions: ['read'],

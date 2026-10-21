@@ -1,8 +1,11 @@
 import { Injectable } from '@nestjs/common';
+import { APP_TIME_ZONE, toSqlTimestamp } from '../common/time/app-time-zone';
 import { PrismaService } from '../database/prisma.service';
 import { Prisma } from '../generated/prisma/client';
+import type { OrderSummary } from './dto/admin-order.response';
+import type { RevenueByPlan, RevenuePeriod } from './dto/revenue.response';
 import { OrderCodeTakenError } from './order-code';
-import type { OrderStatus } from './order-status';
+import type { OrderStatus, RevenueGroupBy } from './order-status';
 
 /** Kỳ gói của đơn `paid` đi kèm mọi lần đọc đơn (`null` khi đơn chưa trả hoặc đã hủy). */
 const periodInclude = {
@@ -12,6 +15,129 @@ const periodInclude = {
 export type OrderWithPeriod = Prisma.OrderGetPayload<{
 	include: typeof periodInclude;
 }>;
+
+/** Một đơn kèm kỳ gói mà không cần `userId` và `updatedAt`: đủ để dựng `OrderResponse` (cả đọc đầy đủ lẫn `select`). */
+export type OrderRowShape = Omit<OrderWithPeriod, 'userId' | 'updatedAt'>;
+
+/**
+ * Cột của danh sách admin (spec 0010 AC-5): đúng cột của một đơn, kỳ gói, và ba cột `id`, `name`, `email` của chủ trọ.
+ * `select` liệt kê từng cột nên `phone`, `passwordHash`, `trialEndsAt` không bao giờ được đọc ra khỏi database.
+ */
+const adminSelect = {
+	id: true,
+	code: true,
+	planId: true,
+	planName: true,
+	price: true,
+	maxListings: true,
+	durationDays: true,
+	status: true,
+	paidAt: true,
+	cancelledAt: true,
+	createdAt: true,
+	subscription: { select: { startsAt: true, endsAt: true } },
+	user: { select: { id: true, name: true, email: true } },
+} satisfies Prisma.OrderSelect;
+
+export type AdminOrderRow = Prisma.OrderGetPayload<{
+	select: typeof adminSelect;
+}>;
+
+/** Bộ lọc của `GET /orders/all`; mọi bộ lọc đều tùy chọn và có mặt thì phải thỏa cả. */
+export interface AdminOrderFilter {
+	readonly status?: OrderStatus;
+	/** Khớp `orders.user_id`. */
+	readonly landlordId?: string;
+	readonly planId?: string;
+	/** Gồm: `created_at >= createdFrom`. */
+	readonly createdFrom?: Date;
+	/** Không gồm: `created_at < createdBefore`. */
+	readonly createdBefore?: Date;
+}
+
+function adminWhere(filter: AdminOrderFilter): Prisma.OrderWhereInput {
+	const created: Prisma.DateTimeFilter = {
+		...(filter.createdFrom === undefined
+			? {}
+			: { gte: filter.createdFrom }),
+		...(filter.createdBefore === undefined
+			? {}
+			: { lt: filter.createdBefore }),
+	};
+	return {
+		...(filter.status === undefined ? {} : { status: filter.status }),
+		...(filter.landlordId === undefined
+			? {}
+			: { userId: filter.landlordId }),
+		...(filter.planId === undefined ? {} : { planId: filter.planId }),
+		...(Object.keys(created).length === 0 ? {} : { createdAt: created }),
+	};
+}
+
+/** Khoảng thời điểm `paid_at` của thống kê: `from` gồm, `before` không gồm; thiếu phía nào là không chặn phía đó. */
+export interface RevenueRange {
+	readonly from?: Date;
+	readonly before?: Date;
+}
+
+/** Hai kiểu dòng của câu thống kê: gom theo gói hoặc gom theo ngày hay tháng. */
+export interface RevenueRows {
+	readonly byPlan: RevenueByPlan[];
+	readonly series: RevenuePeriod[];
+}
+
+interface RevenueRawRow {
+	readonly kind: 'plan' | 'period';
+	readonly key: string;
+	readonly label: string | null;
+	readonly paidCount: number;
+	/** `SUM(...)::bigint`: Prisma trả `bigint` cho cột int8, nên đổi sang `number` ở `findRevenue`. */
+	readonly paidAmount: bigint | number;
+}
+
+/** Mẫu `to_char` của từng cách gom. Đây là danh sách trắng: mẫu không bao giờ đến từ chuỗi người dùng. */
+const PERIOD_FORMATS: Readonly<Record<RevenueGroupBy, string>> = {
+	day: 'YYYY-MM-DD',
+	month: 'YYYY-MM',
+};
+
+/**
+ * Một câu SQL cho cả hai phép gom (spec 0010 AC-6 đến AC-8): CTE `paid` chọn các đơn `paid` có `paid_at` trong
+ * khoảng, rồi `UNION ALL` gom theo gói (nối `plans` lấy tên hiện tại) và gom theo `period`. Cùng một câu nên cùng một
+ * ảnh chụp dữ liệu, ba con số tổng luôn bằng nhau dù có thanh toán đang diễn ra. `period` đổi sang giờ Việt Nam bằng
+ * `AT TIME ZONE`, không phụ thuộc múi giờ phiên của database. Cận ngày đi vào dưới dạng chuỗi ISO có `Z` (bài học múi
+ * giờ của tham số `Date`); múi giờ và mẫu định dạng là tham số ràng buộc. `SUM(...)::bigint` không bao giờ ép về
+ * `int4`: tổng vượt 2,1 tỷ đồng vẫn đúng.
+ */
+export function revenueQuery(
+	range: RevenueRange,
+	groupBy: RevenueGroupBy,
+): Prisma.Sql {
+	const lower =
+		range.from === undefined
+			? Prisma.empty
+			: Prisma.sql`AND o.paid_at >= ${toSqlTimestamp(range.from)}::timestamptz`;
+	const upper =
+		range.before === undefined
+			? Prisma.empty
+			: Prisma.sql`AND o.paid_at < ${toSqlTimestamp(range.before)}::timestamptz`;
+	return Prisma.sql`
+		WITH paid AS (
+			SELECT o.plan_id, o.price,
+			       to_char(o.paid_at AT TIME ZONE ${APP_TIME_ZONE}::text, ${PERIOD_FORMATS[groupBy]}::text) AS period
+			FROM orders o
+			WHERE o.status = 'paid' ${lower} ${upper}
+		)
+		SELECT 'plan' AS kind, p.plan_id::text AS key, pl.name AS label,
+		       count(*)::int AS "paidCount", sum(p.price)::bigint AS "paidAmount"
+		FROM paid p JOIN plans pl ON pl.id = p.plan_id
+		GROUP BY p.plan_id, pl.name
+		UNION ALL
+		SELECT 'period' AS kind, period AS key, NULL AS label,
+		       count(*)::int AS "paidCount", sum(price)::bigint AS "paidAmount"
+		FROM paid
+		GROUP BY period`;
+}
 
 /** Mới nhất trước; `id` (uuidv7) phá thế hòa nên thứ tự luôn xác định. */
 const NEWEST_FIRST = [
@@ -161,5 +287,79 @@ export class OrdersRepository {
 			this.prisma.order.count({ where }),
 		]);
 		return { rows, total };
+	}
+
+	/**
+	 * Một trang đơn của MỌI chủ trọ cho admin (spec 0010 AC-1 đến AC-5), mới nhất trước. Ba truy vấn cùng `where` chạy
+	 * song song: các dòng, `total`, và `summary` (số đơn `paid` cùng tổng `price` của đúng tập lọc). `summary` thêm
+	 * `status = 'paid'` bằng `AND` chứ không ghi đè `status`, nên lọc `status=pending` cho `summary` bằng 0.
+	 */
+	async findAdminPage(
+		filter: AdminOrderFilter,
+		skip: number,
+		take: number,
+	): Promise<{
+		rows: AdminOrderRow[];
+		total: number;
+		summary: OrderSummary;
+	}> {
+		const where = adminWhere(filter);
+		const [rows, total, paid] = await Promise.all([
+			this.prisma.order.findMany({
+				where,
+				select: adminSelect,
+				orderBy: NEWEST_FIRST,
+				skip,
+				take,
+			}),
+			this.prisma.order.count({ where }),
+			this.prisma.order.aggregate({
+				where: { AND: [where, { status: 'paid' }] },
+				_count: { _all: true },
+				_sum: { price: true },
+			}),
+		]);
+		return {
+			rows,
+			total,
+			summary: {
+				paidCount: paid._count._all,
+				paidAmount: paid._sum.price ?? 0,
+			},
+		};
+	}
+
+	/**
+	 * Thống kê doanh thu của các đơn `paid` có `paid_at` trong khoảng (spec 0010 AC-6 đến AC-8), từ MỘT câu SQL (xem
+	 * `revenueQuery`). Trả các dòng chưa sắp xếp; Service sắp xếp và cộng tổng. `paidAmount` đổi từ `bigint` sang
+	 * `number` bằng `Number()` (an toàn: tổng đồng của một demo xa dưới 2^53).
+	 */
+	async findRevenue(
+		range: RevenueRange,
+		groupBy: RevenueGroupBy,
+	): Promise<RevenueRows> {
+		const raw = await this.prisma.$queryRaw<RevenueRawRow[]>(
+			revenueQuery(range, groupBy),
+		);
+		const byPlan: RevenueByPlan[] = [];
+		const series: RevenuePeriod[] = [];
+		for (const row of raw) {
+			const paidAmount = Number(row.paidAmount);
+			if (row.kind === 'plan') {
+				byPlan.push({
+					planId: row.key,
+					planName: row.label ?? '',
+					paidCount: row.paidCount,
+					paidAmount,
+				});
+			} else {
+				series.push({
+					period: row.key,
+					paidCount: row.paidCount,
+					paidAmount,
+				});
+			}
+		}
+		return { byPlan, series };
 	}
 }

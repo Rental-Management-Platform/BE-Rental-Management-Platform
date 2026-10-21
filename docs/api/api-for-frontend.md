@@ -25,7 +25,7 @@ Quy ước đọc file: phần nào ghi **Chưa có** nghĩa là đã lên kế 
 
 ## 1. Hệ thống làm gì
 
-Nền tảng quản lý và cho thuê nhà trọ. Hiện backend đã có phần **tài khoản và phân quyền**, danh mục địa chỉ và tiện ích, **nhà trọ của chủ trọ** (tạo, xem, sửa, xóa mềm) và **tin đăng** (đăng, sửa, ẩn, hiện, xóa; khách xem danh sách và chi tiết); **bảng giá gói** cùng phần admin quản lý gói (mục 6.26), **đơn mua gói và thanh toán thử** (mục 6.27); **gói đổi hạn mức tin** (mục 6.25); **ảnh của tin** (tải lên, xóa và xem ảnh, mục 6.28); **admin kiểm duyệt tin** (tìm, ẩn, gỡ ẩn kèm lý do, mục 6.29) và **admin quản lý danh mục phường và tiện ích** (mục 6.30); **hồ sơ công khai của chủ trọ** với số người theo dõi, tổng lượt xem và số tin đang hiện (mục 6.31), **theo dõi và bỏ theo dõi chủ trọ** (mục 6.32), **lưu tin yêu thích** của người tìm trọ (mục 6.33), cùng **danh sách người dùng cho admin** để tìm tài khoản cần khóa hay mở khóa (mục 6.34), và **hồ sơ cá nhân** để xem và sửa tên, số điện thoại của chính mình (mục 6.35).
+Nền tảng quản lý và cho thuê nhà trọ. Hiện backend đã có phần **tài khoản và phân quyền**, danh mục địa chỉ và tiện ích, **nhà trọ của chủ trọ** (tạo, xem, sửa, xóa mềm) và **tin đăng** (đăng, sửa, ẩn, hiện, xóa; khách xem danh sách và chi tiết); **bảng giá gói** cùng phần admin quản lý gói (mục 6.26), **đơn mua gói và thanh toán thử** (mục 6.27); **gói đổi hạn mức tin** (mục 6.25); **ảnh của tin** (tải lên, xóa và xem ảnh, mục 6.28); **admin kiểm duyệt tin** (tìm, ẩn, gỡ ẩn kèm lý do, mục 6.29) và **admin quản lý danh mục phường và tiện ích** (mục 6.30); **hồ sơ công khai của chủ trọ** với số người theo dõi, tổng lượt xem và số tin đang hiện (mục 6.31), **theo dõi và bỏ theo dõi chủ trọ** (mục 6.32), **lưu tin yêu thích** của người tìm trọ (mục 6.33), cùng **danh sách người dùng cho admin** để tìm tài khoản cần khóa hay mở khóa (mục 6.34), và **hồ sơ cá nhân** để xem và sửa tên, số điện thoại của chính mình (mục 6.35), cùng **danh sách đơn mua gói của mọi chủ trọ** cho admin để kiểm tra ai đã mua gói nào và cộng tiền đã trả (mục 6.37), và **thống kê doanh thu** theo gói, theo ngày hoặc tháng (mục 6.38).
 
 ### Ba loại tài khoản
 
@@ -69,6 +69,8 @@ Mỗi tài khoản chỉ thuộc **một** loại, chọn lúc đăng ký và **
 | Danh sách người dùng cho admin: lọc theo loại tài khoản và trạng thái, tìm theo email, tên, số điện thoại (`GET /users`) | Có (mới, 2026-10-21, mục 6.34) |
 | Hồ sơ cá nhân: xem và sửa tên, số điện thoại của chính mình (`GET` và `PATCH /me/profile`) | Có (mới, 2026-10-21, mục 6.35) |
 | Tin đang hiện trên hồ sơ chủ trọ: danh sách có phân trang, mỗi phần tử như tin ở danh sách tìm trọ, kể cả `isFavorite` (`GET /landlords/:id/listings`) | Có (mới, 2026-10-21, mục 6.36) |
+| Admin xem đơn mua gói của mọi chủ trọ: lọc theo trạng thái, chủ trọ, gói, ngày tạo, kèm số đơn và tổng tiền đã trả của đúng tập lọc (`GET /orders/all`) | Có (mới, 2026-10-21, mục 6.37) |
+| Admin xem thống kê doanh thu theo ngày trả: tổng, theo gói, theo ngày hoặc tháng giờ Việt Nam (`GET /orders/revenue`) | Có (mới, 2026-10-21, mục 6.38) |
 
 ---
 
@@ -288,7 +290,7 @@ Quyền admin chỉnh được **chỉ gồm hành động lẻ** của các mod
 | `favorite` | read, create, delete | có | | chưa |
 | `follow` | create, delete | có | | có (mục 6.32): `create` cho `POST`, `delete` cho `DELETE`. Admin giữ cả hai nhưng vẫn bị 403 |
 | `plan` | read, create, update, delete | | tất cả | chưa |
-| `order` | create, read, cancel | có | | chưa |
+| `order` | create, read, cancel, report | có | `report` | `create`, `read`, `cancel` (mục 6.27); `report` (mục 6.37 và 6.38) |
 | `subscription` | read | có | | chưa |
 
 Danh mục chỉ có **12 module** của bản MVP. Các module `contact`, `report`, `verification`, `boost`, `product`, `inspection`, `ad`, `expense`, `finance`, `dashboard`, `stats` và hai hành động `order:refund`, `order:gift` đã bị gỡ (xem nhật ký 2026-10-12). Khóa của chúng không còn hợp lệ: gửi lên `PATCH /account-types/:key` sẽ nhận 400 `PERMISSION_UNKNOWN`.
@@ -1014,7 +1016,7 @@ Chủ trọ chọn một gói ở bảng giá (6.26), tạo đơn, rồi bấm t
 
 > **Gói đã đổi hạn mức tin (từ 2026-10-19).** Thanh toán xong, kỳ gói thay hạn mức dùng thử: `GET /me/membership` có `state = plan` và `subscription` (6.25), chủ trọ hết dùng thử đăng được ngay (hết 403 `MEMBERSHIP_REQUIRED`) và tin của họ hiện lại trong `GET /listings` ngay, không cần chờ gì.
 
-**Ai gọi được.** Chỉ tài khoản **chủ trọ** (`landlord`) tạo được đơn. Người tìm trọ không có quyền đơn nên mọi API đơn trả 403 `PERMISSION_DENIED`. Admin tạo đơn cũng bị 403 `PERMISSION_DENIED` (admin không mua gói); admin xem, thanh toán hay hủy đơn của người khác bị 403 `NOT_RESOURCE_OWNER`, và `GET /orders` của admin luôn rỗng. Chưa đăng nhập là 401.
+**Ai gọi được.** Chỉ tài khoản **chủ trọ** (`landlord`) tạo được đơn. Người tìm trọ không có quyền đơn nên mọi API đơn trả 403 `PERMISSION_DENIED`. Admin tạo đơn cũng bị 403 `PERMISSION_DENIED` (admin không mua gói); admin xem, thanh toán hay hủy đơn của người khác bị 403 `NOT_RESOURCE_OWNER`, và `GET /orders` của admin luôn rỗng. **Admin muốn xem đơn của mọi chủ trọ thì dùng `GET /orders/all` (mục 6.37).** Chưa đăng nhập là 401.
 
 **Hình dạng một đơn** (dùng chung cho cả năm API):
 
@@ -1529,6 +1531,141 @@ Cần nhớ:
 - **Chủ trọ và admin đã đăng nhập** xem được danh sách này như mọi người; `isFavorite` của họ luôn là `false`, không phải `null`. Chủ trọ xem danh sách của chính mình cũng chỉ thấy các tin đang hiện công khai (tin đang ẩn xem ở `GET /me/listings`, 6.21).
 - Hồ sơ vẫn đúng bảy trường (6.31). Để dựng trang hồ sơ, FE gọi hai API: hồ sơ, rồi danh sách (có thể gọi song song).
 
+### 6.37 Đơn của mọi chủ trọ (admin)
+
+`GET /orders/all` · quyền `order:report`
+
+Chỉ **admin** giữ `order:report`, và quyền này không cấp được cho `landlord` hay `tenant` (cấp thử thì 400 `PERMISSION_ADMIN_ONLY`). Admin dùng API này để biết ai đã mua gói nào, đơn nào còn chờ hay đã hủy, và cộng tiền các đơn đã trả để đối chiếu. API chỉ đọc. Phản hồi có `Cache-Control: private, no-store` vì có tên, email chủ trọ và số tiền họ trả.
+
+> **Tiền ở đây là tiền của thanh toán thử** (6.27): `paid` chỉ nghĩa là chủ trọ tự bấm xác nhận, không có tiền thật đi qua. Đừng đặt nhãn "doanh thu thật" lên các con số này.
+
+Query, mọi tham số đều tùy chọn:
+
+| Tham số | Kiểu | Mặc định | Luật |
+|---|---|---|---|
+| `page`, `pageSize` | số nguyên | 1 và 20 | Quy ước phân trang ở mục 2 (`pageSize` tối đa 50) |
+| `status` | chuỗi | không lọc | `pending`, `paid` hoặc `cancelled`. Mỗi lần một giá trị |
+| `landlordId` | UUID | không lọc | Chỉ đơn của chủ trọ này (lấy từ `landlord.id` của một dòng, hoặc `id` ở `GET /users`) |
+| `planId` | UUID | không lọc | Chỉ đơn của gói này (id ở `GET /plans/all`) |
+| `from`, `to` | `YYYY-MM-DD` | không lọc | Khoảng ngày **tạo đơn** (`createdAt`), tính theo **giờ Việt Nam**. Xem ngay bên dưới |
+
+Dùng nhiều bộ lọc cùng lúc thì dòng phải thỏa tất cả. Giá trị ngoài danh sách, id không phải UUID, ngày sai hay tham số lạ (như `sort`, `q`) là 400 `VALIDATION_FAILED` kèm tên trường sai. UUID đúng dạng nhưng không có thật (kể cả `landlordId` của một tài khoản không phải chủ trọ) **không phải lỗi**: 200 với danh sách rỗng.
+
+**Ngày `from` và `to`**: mỗi ngày là một ngày theo giờ Việt Nam (`Asia/Ho_Chi_Minh`, UTC+7). `from` tính từ 00:00:00.000 của ngày đó, `to` tính hết ngày đó: đơn tạo lúc 23:59:59.999 của ngày `to` vẫn vào, đơn tạo lúc 00:00:00.000 của ngày kế thì không. Vì tính theo giờ Việt Nam, đơn tạo lúc 17:30 UTC ngày 31/10 (tức 00:30 ngày 01/11) thuộc ngày 01/11. Chỉ gửi một trong hai cũng được. Ngày phải có thật trên lịch (30 tháng 2 bị từ chối) và năm từ 2000 đến 2100. `from` lớn hơn `to` bị từ chối và **lỗi báo ở trường `to`**.
+
+**200 OK**: `{ "items": [...], "total": 31, "page": 1, "pageSize": 20, "summary": { "paidCount": 30, "paidAmount": 5970000 } }`. Đơn **mới nhất nằm trên** (cố định, không có `sort`). Mỗi phần tử là **một đơn đúng như ở 6.27, thêm `landlord`**:
+
+```json
+{
+  "id": "0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8d01",
+  "code": "k7m2xq9p",
+  "planId": "0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8d02",
+  "planName": "Nâng cao",
+  "price": 199000,
+  "maxListings": 15,
+  "durationDays": 30,
+  "status": "paid",
+  "paidAt": "2026-10-19T03:00:00.000Z",
+  "cancelledAt": null,
+  "startsAt": "2026-10-19T03:00:00.000Z",
+  "endsAt": "2026-11-18T03:00:00.000Z",
+  "createdAt": "2026-10-19T02:59:30.000Z",
+  "landlord": { "id": "0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8d03", "name": "Nguyễn Văn Nam", "email": "nam@example.com" }
+}
+```
+
+| Trường | Ý nghĩa |
+|---|---|
+| mười ba trường của đơn | Đúng nghĩa như 6.27. `planName`, `price`, `maxListings`, `durationDays` là **bản chốt lúc tạo đơn**: admin sửa gói về sau không đổi dòng nào. `startsAt`, `endsAt` là kỳ gói của đơn `paid`, `null` khi đơn chờ hay đã hủy |
+| `landlord.id`, `landlord.email` | Chủ trọ của đơn. Vẫn hiện khi chủ trọ đã bị khóa hay xóa mềm |
+| `landlord.name` | Có thể `null` |
+| `summary.paidCount` | Số đơn `paid` trong **đúng tập đang lọc** |
+| `summary.paidAmount` | Tổng `price` (đồng, số nguyên) của các đơn `paid` đó |
+
+`summary` tính trên mọi dòng khớp bộ lọc (cả `status`, `landlordId`, `planId`, `from`, `to`), **không phụ thuộc trang đang xem**: cộng tay `price` của các dòng `paid` qua mọi trang ra đúng `paidAmount`. Lọc `status=pending` hoặc `cancelled` thì cả hai bằng 0; không có dòng nào thì cũng bằng 0. Tổng lớn hơn 2,1 tỷ đồng vẫn đúng. Phản hồi không bao giờ có số điện thoại, mật khẩu, hạn dùng thử hay `userId`: từ tài khoản chủ trọ chỉ có `id`, `name`, `email`.
+
+**Lỗi**:
+
+| Lỗi | Khi nào |
+|---|---|
+| 400 `VALIDATION_FAILED` | Tham số sai hoặc có tham số lạ; `errors[].field` nêu trường sai (`from` lớn hơn `to` báo ở `to`) |
+| 401 `TOKEN_MISSING`, `TOKEN_INVALID`, `TOKEN_EXPIRED` | Chưa đăng nhập, token sai hoặc hết hạn. Admin đã bị xóa mềm nhận 401 `TOKEN_INVALID` dù token còn hạn |
+| 403 `PERMISSION_DENIED` | Không phải admin. Quyền được kiểm **trước** tham số: người tìm trọ hay chủ trọ gửi tham số sai vẫn nhận 403, không phải 400. Chủ trọ mang token cấp trước 2026-10-21 (có `order:manage`) cũng bị 403 |
+| 403 `ACCOUNT_LOCKED` | Admin vừa bị khóa. API này **đọc lại admin trong database mỗi lần gọi**, không tin token, nên mất đường đọc ngay dù token còn hạn |
+
+Cần nhớ:
+- **Ngày lọc là ngày tạo đơn, không phải ngày trả.** Đơn tạo cuối tháng nhưng trả đầu tháng sau nằm ở tháng trước khi lọc ở đây. Số theo **ngày trả** (thống kê doanh thu) ở một API riêng, `GET /orders/revenue` (mục 6.38), và có thể khác `summary` cho cùng khoảng ngày.
+- `items`, `total` và `summary` là ba lần đọc riêng, nên khi có người vừa bấm thanh toán đúng lúc thì chúng có thể lệch nhau một đơn trong khoảnh khắc đó; tải lại là khớp.
+- Đơn chờ không tự hết hạn (6.27), nên đơn `pending` cũ vẫn nằm trong danh sách cho đến khi chủ trọ hủy hoặc tạo đơn mới.
+- Không có giới hạn tần suất riêng và chưa có nhật ký ghi ai đã xem danh sách.
+- Đo ở khoảng 50 nghìn đơn giả lập: mở trang đầu khoảng 30 mili giây, trang sâu (trang 1000, 50 dòng) khoảng 56 mili giây, có lọc dưới 20 mili giây (trung vị, đo bằng đồng hồ phía gọi). Không có chỉ mục riêng cho ngày tạo đơn; chấp nhận ở bản demo.
+- **Chưa có** tìm đơn theo mã hay email chủ trọ, tham số `sort`, xuất CSV (đã hoãn).
+
+### 6.38 Doanh thu (admin)
+
+`GET /orders/revenue` · quyền `order:report`
+
+Thống kê tiền của các đơn **đã trả** theo **ngày trả**, để admin biết gói nào bán tốt và doanh thu đi lên hay đi xuống. Cùng quyền, cùng cách đọc lại admin mỗi lần gọi và cùng các lỗi xác thực với danh sách đơn (6.37). API chỉ đọc. Phản hồi có `Cache-Control: private, no-store`.
+
+> **Tiền ở đây là tiền của thanh toán thử** (6.27): `paid` chỉ nghĩa là chủ trọ tự bấm xác nhận. Màn hình đừng gọi các con số này là "doanh thu thật".
+
+Query, mọi tham số đều tùy chọn:
+
+| Tham số | Kiểu | Mặc định | Luật |
+|---|---|---|---|
+| `from`, `to` | `YYYY-MM-DD` | không chặn | Khoảng ngày **trả** (`paidAt`) theo **giờ Việt Nam**, luật y hệt mục 6.37: `from` tính từ 00:00:00.000 của ngày đó, `to` tính hết ngày đó, ngày phải có thật và năm từ 2000 đến 2100, `from` lớn hơn `to` báo lỗi ở trường `to`. Không gửi một đầu là không chặn phía đó |
+| `groupBy` | chuỗi | `month` | `day` hoặc `month`. Giá trị khác là 400 |
+
+**Không có** `page`, `pageSize` hay `status`: gửi các tham số đó (hoặc tham số lạ nào khác) là 400 `VALIDATION_FAILED` kèm tên trường sai.
+
+**200 OK**:
+
+```json
+{
+  "from": "2026-10-01",
+  "to": "2026-10-31",
+  "groupBy": "day",
+  "timeZone": "Asia/Ho_Chi_Minh",
+  "paidCount": 30,
+  "paidAmount": 5970000,
+  "byPlan": [
+    { "planId": "0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8d02", "planName": "Nâng cao", "paidCount": 20, "paidAmount": 3980000 }
+  ],
+  "series": [
+    { "period": "2026-10-03", "paidCount": 2, "paidAmount": 398000 }
+  ]
+}
+```
+
+| Trường | Ý nghĩa |
+|---|---|
+| `from`, `to` | Trả lại đúng chuỗi đã gửi, hoặc `null` khi không gửi |
+| `groupBy` | `day` hoặc `month` (mặc định `month`) |
+| `timeZone` | Luôn `Asia/Ho_Chi_Minh`: ngày và tháng ở đây là ngày và tháng theo giờ Việt Nam |
+| `paidCount`, `paidAmount` | Số đơn `paid` và tổng giá đã chốt (đồng) của các đơn có `paidAt` trong khoảng |
+| `byPlan[]` | Mỗi gói có ít nhất một đơn `paid` trong khoảng là một phần tử `{ planId, planName, paidCount, paidAmount }`. `planName` là tên **hiện tại** của gói; `paidAmount` cộng **giá đã chốt trên từng đơn**. Xếp `paidAmount` giảm dần, rồi `planName` tăng dần, rồi `planId` |
+| `series[]` | Mỗi ngày (`YYYY-MM-DD`) hoặc tháng (`YYYY-MM`) theo giờ Việt Nam có ít nhất một đơn `paid` là một phần tử `{ period, paidCount, paidAmount }`. Xếp `period` tăng dần |
+
+**Ba tổng luôn bằng nhau**: `paidAmount` ngoài cùng, tổng `paidAmount` của `byPlan` và tổng của `series` (tổng `paidCount` cũng vậy), kể cả khi có người bấm thanh toán đúng lúc gọi, vì ba số đến từ một câu truy vấn. Chỉ đơn `paid` có `paidAt` trong khoảng được tính; đơn chờ và đơn hủy không bao giờ tính. Không có đơn nào trong khoảng thì `paidCount: 0`, `paidAmount: 0`, `byPlan: []`, `series: []`. Tổng vượt 2,1 tỷ đồng vẫn đúng. Phản hồi không có thông tin của chủ trọ.
+
+**Lỗi**:
+
+| Lỗi | Khi nào |
+|---|---|
+| 400 `VALIDATION_FAILED` | `groupBy`, `from` hay `to` sai, hoặc có tham số lạ (kể cả `status`, `page`, `pageSize`); `errors[].field` nêu trường sai (`from` lớn hơn `to` báo ở `to`) |
+| 401 `TOKEN_MISSING`, `TOKEN_INVALID`, `TOKEN_EXPIRED` | Chưa đăng nhập, token sai hoặc hết hạn. Admin đã bị xóa mềm nhận 401 `TOKEN_INVALID` dù token còn hạn |
+| 403 `PERMISSION_DENIED` | Không phải admin. Quyền được kiểm **trước** tham số. Chủ trọ mang token cấp trước 2026-10-21 (có `order:manage`) cũng bị 403 |
+| 403 `ACCOUNT_LOCKED` | Admin vừa bị khóa (đọc lại admin trong database mỗi lần gọi) |
+
+Cần nhớ:
+- **Ngày trả khác ngày tạo.** Danh sách đơn (6.37) lọc theo ngày **tạo**, thống kê này lọc theo ngày **trả**. Cùng một khoảng ngày có thể cho `summary.paidAmount` của 6.37 khác `paidAmount` ở đây, nhất là đơn tạo cuối tháng rồi trả đầu tháng sau (đơn chờ không tự hết hạn nên khoảng cách có thể dài). Khi **không** lọc ngày, hai con số bằng nhau vì cùng là mọi đơn đã trả. Nên ghi chú ngay trên màn hình.
+- **Chuỗi `series` thưa.** Ngày hay tháng không có đơn thì không có phần tử. Muốn vẽ biểu đồ liền, FE tự điền ô trống bằng 0 từ `from` đến `to` (không gửi `from` hay `to` thì lấy `period` đầu và cuối của chính `series`).
+- **Ranh giới giờ Việt Nam.** Đơn trả lúc 17:30 UTC ngày 31/10 (00:30 ngày 01/11 giờ Việt Nam) thuộc `period` `2026-11-01` khi gom theo ngày và `2026-11` khi gom theo tháng, có mặt khi `from=2026-11-01` và vắng khi `to=2026-10-31`. Kết quả chỉ phụ thuộc giờ Việt Nam, không phụ thuộc múi giờ của máy hay của trình duyệt.
+- **`byPlan` dùng tên hiện tại của gói.** Gói đổi tên thì mọi đơn cũ của nó hiện dưới tên mới, trong khi từng dòng đơn ở 6.37 giữ tên lúc bán. Khi hai gói cùng số tiền, tên được so theo thứ tự ký tự (không theo bảng chữ cái tiếng Việt).
+- Không có giới hạn tần suất riêng và chưa có nhật ký ghi ai đã xem.
+- Đo ở khoảng 50 nghìn đơn giả lập: toàn bộ thời gian gom theo tháng khoảng 47 mili giây, gom theo ngày khoảng 53 mili giây, một khoảng ngày khoảng 31 mili giây (trung vị, đo bằng đồng hồ phía gọi). Không có chỉ mục riêng cho ngày trả; chấp nhận ở bản demo.
+- **Chưa có** doanh thu theo từng chủ trọ, đếm đơn chờ và đơn hủy, so sánh với kỳ trước, xuất CSV, múi giờ chọn được (đã hoãn).
+
 ---
 
 ## 7. Luồng màn hình gợi ý
@@ -1624,6 +1761,8 @@ Hai ô: mật khẩu hiện tại, mật khẩu mới. Gọi `POST /auth/change-
 - **Tham số hệ thống**: một trang nhỏ với hai ô số: lấy `GET /settings`, mỗi dòng một ô nhập có giới hạn `min` và `max` lấy từ phản hồi, nút lưu gọi `PATCH /settings/:key` cho từng khóa (mục 6.24). Hiện `updatedAt` và `updatedBy` để biết ai sửa lần cuối. Nên ghi chú: đổi số ngày chỉ áp cho chủ trọ đăng ký sau đó.
 - **Kiểm duyệt tin**: bảng lấy từ `GET /moderation/listings` (phân trang) với ô tìm kiếm `q`, bộ lọc `status` và `landlordId` (mục 6.29). Mỗi dòng hiện ảnh bìa, tiêu đề, tên chủ trọ, `fullAddress`, `viewCount` và nhãn trạng thái. Tin `visible` hoặc `hidden_by_owner` có nút "Ẩn"; tin `hidden_by_admin` có nút "Gỡ ẩn" và hiện `moderationReason`. Cả hai nút mở hộp nhập **lý do bắt buộc** (1 đến 500 ký tự) trước khi gửi. Sau khi gọi, thay dòng bằng Mục kiểm duyệt trả về; gặp 409 `LISTING_STATE_INVALID` thì tải lại dòng (có thể chủ trọ hoặc admin khác vừa đổi). Nhắc admin: gỡ ẩn **không** tự hiện tin, chủ trọ phải bấm "Hiện". Chưa có màn hình lịch sử kiểm duyệt (mục 9).
 - **Danh mục phường, xã và tiện ích**: hai bảng nhỏ lấy từ `GET /wards` và `GET /amenities`, mỗi bảng có nút thêm, đổi tên và xóa (mục 6.30). Ô mã phường đúng 5 chữ số, mã tỉnh đúng 2 chữ số, khóa tiện ích chữ thường, số, gạch dưới; **không có ô quận huyện**. Mã và khóa chỉ nhập lúc tạo, sau đó chỉ cho đổi tên. Tạo gặp 409 `CATALOG_CODE_TAKEN` thì báo ở ô mã; xóa gặp 409 `CATALOG_IN_USE` thì báo "đang có nhà trọ dùng, không xóa được" (gợi ý đổi tên thay vì xóa).
+- **Đơn mua gói của mọi chủ trọ**: bảng lấy từ `GET /orders/all` (phân trang, mục 6.37) với bộ lọc trạng thái (`status`), chủ trọ (`landlordId`, chọn từ danh sách người dùng ở 6.34), gói (`planId`, chọn từ `GET /plans/all`) và hai ô ngày `from`, `to` (ngày tạo đơn, giờ Việt Nam). Mỗi dòng hiện mã đơn (`code`), tên gói, giá đã chốt, trạng thái, ngày tạo, ngày trả, kỳ gói, cùng tên và email chủ trọ (`name` có thể `null`: hiện email). Đặt hai ô lấy từ `summary` phía trên bảng: "Số đơn đã trả" và "Tổng tiền đã trả" của **đúng bộ lọc đang chọn** (không phải của riêng trang đang xem), kèm nhãn "thanh toán thử". Đổi bộ lọc thì về trang 1. Gặp 403 `ACCOUNT_LOCKED` hay 401 thì đưa về trang đăng nhập.
+- **Doanh thu**: một trang nhỏ lấy từ `GET /orders/revenue` (mục 6.38) với hai ô ngày `from`, `to` (ngày **trả**, giờ Việt Nam) và công tắc "Theo ngày" hay "Theo tháng" (`groupBy`). Đặt ba phần: ô tổng (`paidAmount`, `paidCount`) kèm nhãn "thanh toán thử"; bảng hoặc biểu đồ cột "theo gói" từ `byPlan`; biểu đồ "theo thời gian" từ `series`. `series` thưa, nên điền ngày hay tháng không có đơn bằng 0 trước khi vẽ. Số ở đây có thể khác ô tổng của màn hình đơn (6.37) vì hai API lọc theo hai loại ngày khác nhau (ngày trả và ngày tạo); ghi chú ngay trên màn hình. Đổi khoảng ngày hay cách gom thì gọi lại API.
 
 ### Hiển thị theo quyền
 
@@ -1648,6 +1787,8 @@ Hai ô: mật khẩu hiện tại, mật khẩu mới. Gọi `POST /auth/change-
 - **Lượt xem** tính một lần cho mỗi người xem trong 30 phút, chủ tin không tính (6.20).
 - **Theo dõi chủ trọ** (6.32): chỉ người tìm trọ, mỗi cặp một lần, gọi lại an toàn, admin và chủ trọ mặc định không theo dõi được. Các con số trên hồ sơ (6.31) tính lúc đọc nên luôn khớp với dữ liệu thật; theo dõi chỉ làm tăng một con số, chưa có thông báo hay danh sách.
 - **Lưu tin yêu thích** (6.33): chỉ người tìm trọ, mỗi cặp (người dùng, tin) một lần, gọi lại an toàn, không giới hạn số tin, chỉ lưu được tin đang hiện công khai, bỏ lưu không kiểm tin. Danh sách đã lưu dùng đúng luật hiển thị công khai của 6.19 nên luôn khớp với những gì khách mở được; dòng lưu không bị xóa khi tin biến, nên tin hiện lại là quay về. Admin và chủ trọ mặc định không lưu được.
+- **Đơn của mọi chủ trọ (admin)** (từ 2026-10-21, 6.37). Chỉ admin xem được (`order:report`); chủ trọ chỉ thấy đơn của mình (6.27). `summary.paidAmount` là tổng giá đã chốt của các đơn `paid` trong đúng tập lọc, tính lúc đọc nên luôn bằng phép cộng tay các dòng. Đó là tiền của thanh toán thử, chưa phải tiền thật.
+- **Thống kê doanh thu (admin)** (từ 2026-10-21, 6.38). Chỉ tính đơn `paid`, theo giá đã chốt trên đơn và theo **ngày trả**. Một ngày hay một tháng ở mọi nơi trong API là ngày hay tháng theo giờ Việt Nam. Ba tổng của phản hồi (ngoài cùng, `byPlan`, `series`) luôn bằng nhau. Là tiền của thanh toán thử.
 - **Khóa tài khoản**: tài khoản bị khóa không đăng nhập, không refresh được và mọi phiên bị hủy lúc khóa. Đăng nhập sai mật khẩu vẫn báo `INVALID_CREDENTIALS` (không lộ tài khoản có bị khóa hay không); chỉ khi đúng mật khẩu mới báo `ACCOUNT_LOCKED`. Admin không tự khóa mình được.
 - **Đổi hoặc đặt lại mật khẩu** hủy phiên: đặt lại hủy **tất cả**; đổi (khi đang đăng nhập) hủy tất cả **trừ phiên đang dùng**.
 - **Mật khẩu mới** có thể trùng mật khẩu cũ (backend không cấm).
@@ -1658,16 +1799,18 @@ Hai ô: mật khẩu hiện tại, mật khẩu mới. Gọi `POST /auth/change-
 
 ## 9. Giới hạn đã biết
 
-- **Quyền trong access token có thể cũ tối đa 15 phút.** Khi admin đổi quyền một loại hoặc khóa một tài khoản, với API thường người đó dùng được quyền cũ đến khi token hết hạn. Các thao tác nhạy cảm (sửa quyền loại, khóa, mở khóa, thu hồi phiên, xem danh sách người dùng) luôn kiểm lại cơ sở dữ liệu nên có hiệu lực ngay. `GET /auth/me` cũng luôn mới.
+- **Quyền trong access token có thể cũ tối đa 15 phút.** Khi admin đổi quyền một loại hoặc khóa một tài khoản, với API thường người đó dùng được quyền cũ đến khi token hết hạn. Các thao tác nhạy cảm (sửa quyền loại, khóa, mở khóa, thu hồi phiên, xem danh sách người dùng, xem đơn của mọi chủ trọ, xem thống kê doanh thu) luôn kiểm lại cơ sở dữ liệu nên có hiệu lực ngay. `GET /auth/me` cũng luôn mới.
 - **Cookie phụ thuộc host.** FE và API phải cùng dùng `localhost` (khác cổng thì được). Dùng `127.0.0.1` cho một bên thì refresh lỗi âm thầm.
 - **Email quên mật khẩu** gửi qua Gmail SMTP của backend; backend chạy thiếu cấu hình mail sẽ không khởi động. Gửi email lỗi không báo cho người gọi API.
 - **Giới hạn tần suất nằm trong bộ nhớ** của backend: khởi động lại là về 0, và nếu sau này chạy nhiều bản backend thì mỗi bản đếm riêng. Chạy localhost không qua proxy thì mọi client cùng một IP.
 - Người xấu có thể cố ý gọi đăng nhập dồn bằng email của người khác để **khóa đăng nhập email đó trong 15 phút** (đánh đổi của việc giới hạn theo email). Tương tự, người ta có thể gọi dồn quên mật khẩu bằng email đó để chặn việc xin liên kết mới trong 1 giờ. Liên kết đặt lại đã gửi trước đó vẫn dùng được.
 - **Danh sách người dùng của admin** (6.34) tìm tên phải gõ đúng dấu (`nguyen` không ra `Nguyễn`); chưa có chi tiết một tài khoản, `sort`, đếm theo loại hay trạng thái, và chưa có nhật ký ghi ai đã xem danh sách. API không có giới hạn tần suất riêng.
+- **Danh sách đơn của admin** (6.37) lọc theo ngày tạo đơn; chưa có tìm theo mã đơn hay email chủ trọ, `sort`, xuất file; không có giới hạn tần suất riêng và chưa có nhật ký ghi ai đã xem. Mọi tổng tiền là tiền của thanh toán thử. Không có chỉ mục riêng cho ngày tạo đơn: đo thật ở khoảng 50 nghìn đơn giả lập thì trang đầu mất khoảng 30 mili giây và trang sâu khoảng 56 mili giây (trung vị). Chấp nhận ở bản demo.
+- **Thống kê doanh thu của admin** (6.38) chỉ có hai cách gom (ngày, tháng) và một khoảng ngày trả; chưa có doanh thu theo từng chủ trọ, đếm đơn chờ hay đơn hủy, so sánh với kỳ trước, xuất file, múi giờ chọn được. Chuỗi `series` thưa nên FE tự điền ô trống. Mọi con số là tiền của thanh toán thử. Không có chỉ mục riêng cho ngày trả: đo thật ở khoảng 50 nghìn đơn giả lập thì toàn bộ thời gian mất khoảng 47 đến 53 mili giây (trung vị). Chấp nhận ở bản demo.
 - **Hồ sơ cá nhân** (6.35) chỉ sửa tên và số điện thoại; chưa đổi email, ảnh đại diện, xóa tài khoản. Số điện thoại không được xác thực bằng mã, và đổi số giải phóng số cũ cho người khác đăng ký. Hai người đăng bài đặt cùng một số cùng lúc: chỉ một người được lưu, người kia thường nhận 409 nhưng hiếm khi nhận 500.
 - **Lượt xem tính trong bộ nhớ** của backend: khởi động lại thì mọi người xem được tính lại từ đầu (cộng dư vài lượt), và nếu sau này chạy nhiều bản backend thì mỗi bản tính riêng. Nhiều người không đăng nhập dùng chung một IP chỉ tính một lượt mỗi 30 phút.
 - **Số điện thoại với tài khoản vừa bị khóa**: access token còn hạn (tối đa 15 phút) vẫn được coi là đã đăng nhập ở trang chi tiết tin, nên tài khoản vừa bị khóa còn thấy số điện thoại đến khi token hết hạn. Mọi phiên của tài khoản đã bị hủy nên không refresh được.
-- **Thanh toán là thanh toán thử**: `paid` chỉ nghĩa là chủ trọ tự bấm, không thu tiền, không biên lai, không hoàn tiền và không đổi gói giữa kỳ (mua gói mới luôn nối vào cuối). Admin chưa xem được đơn của mọi người. Đơn chờ không tự hết hạn. Tin không tự hết hạn: phòng đã cho thuê mà chủ trọ quên ẩn thì tin vẫn nằm đó.
+- **Thanh toán là thanh toán thử**: `paid` chỉ nghĩa là chủ trọ tự bấm, không thu tiền, không biên lai, không hoàn tiền và không đổi gói giữa kỳ (mua gói mới luôn nối vào cuối). Admin xem được đơn của mọi chủ trọ ở `GET /orders/all` (6.37), nhưng tổng tiền ở đó cũng chỉ là tiền của thanh toán thử. Đơn chờ không tự hết hạn. Tin không tự hết hạn: phòng đã cho thuê mà chủ trọ quên ẩn thì tin vẫn nằm đó.
 - **Phép nối kỳ gói ở đọc công khai chưa đo riêng** ở hàng chục nghìn tin; nó cộng thêm vào chi phí đã nói ở trên. Chấp nhận ở bản demo.
 - **`isPublic` và `GET /me/membership` chỉ nhìn tin và hạn mức**, không nhìn tài khoản đã bị khóa hay nhà trọ đã xóa: `isPublic` là `true` nghĩa là tin nằm trong hạn mức, còn khóa tài khoản chặn tin ở API công khai theo luật ở mục 8. Chủ trọ vừa bị khóa chỉ còn gọi được trong tối đa 15 phút (token còn hạn). Đừng tự tính hạn dùng thử hay hạn mức ở FE, luôn lấy từ `GET /me/membership`.
 - **Chủ trọ đăng ký trước 2026-10-16** nhận hạn dùng thử bằng thời điểm chạy migration cộng 30 ngày (không phải thời điểm họ đăng ký).
@@ -1700,6 +1843,8 @@ Backend sẽ làm theo thứ tự dưới đây. Mỗi mục khi xong sẽ vào 
 
 **Đã bỏ khỏi kế hoạch (2026-10-11), FE đừng làm màn hình cho các phần này:** duyệt tin trước khi hiển thị, thanh toán qua VNPay, xác thực chủ trọ bằng giấy tờ, báo cáo tin xấu, liên hệ chủ trọ có giới hạn mỗi ngày, đẩy tin và tin nổi bật, kiểm tra tại chỗ, quảng cáo, báo cáo thu chi và dashboard, thống kê cho chủ trọ, tìm quanh địa điểm mốc, đổi loại tài khoản.
 
+**Một ngoại lệ nhỏ (2026-10-21):** admin đã có hai API đọc để kiểm tra tiền của thanh toán thử: danh sách đơn của mọi chủ trọ (mục 6.37) và thống kê doanh thu theo gói, theo ngày hoặc tháng (mục 6.38). Đó chỉ là dữ liệu thô: **vẫn không có** dashboard dựng sẵn, biểu đồ, xuất file, báo cáo thu chi hay thống kê cho chủ trọ; FE tự vẽ nếu cần.
+
 **Về danh sách quyền ở mục 5:** từ 2026-10-12 danh mục quyền chỉ còn 12 module của MVP, khớp với các tính năng ở bảng trên. Các module thuộc phần đã bỏ đã được gỡ khỏi backend (xem nhật ký 2026-10-12).
 
 ---
@@ -1707,6 +1852,26 @@ Backend sẽ làm theo thứ tự dưới đây. Mỗi mục khi xong sẽ vào 
 ## 11. Nhật ký thay đổi
 
 Mới nhất ở trên cùng. Mục nào **phá vỡ** cách FE đang gọi sẽ ghi rõ "ĐỔI KHÁC VỚI TRƯỚC".
+
+### 2026-10-21 · Admin xem thống kê doanh thu (mốc 2 của đơn và doanh thu cho admin; phần đơn và doanh thu xong)
+
+- **API mới** (mục 6.38): `GET /orders/revenue`, cùng quyền `order:report` (chỉ admin giữ). Query tùy chọn: `from`, `to` (ngày **trả**, giờ Việt Nam, luật y hệt `GET /orders/all`) và `groupBy` (`day` hoặc `month`, mặc định `month`). Không có phân trang hay `status`: tham số lạ là 400. Trả `{ from, to, groupBy, timeZone, paidCount, paidAmount, byPlan, series }`.
+- `byPlan` có một phần tử cho mỗi gói có đơn `paid` trong khoảng: `{ planId, planName, paidCount, paidAmount }`, `planName` là tên hiện tại của gói, `paidAmount` cộng giá đã chốt trên từng đơn, xếp tiền giảm dần. `series` có một phần tử cho mỗi ngày (`YYYY-MM-DD`) hoặc tháng (`YYYY-MM`) giờ Việt Nam có đơn, xếp tăng dần; **chuỗi thưa**, FE tự điền ô trống.
+- **Ba tổng luôn bằng nhau** (`paidAmount` ngoài cùng, tổng `byPlan`, tổng `series`) vì cùng một câu truy vấn, kể cả khi có thanh toán đang diễn ra. Đơn chờ và đơn hủy không bao giờ tính. Tổng vượt 2,1 tỷ đồng vẫn đúng.
+- **Hai API dùng hai loại ngày khác nhau**: `GET /orders/all` lọc theo ngày tạo, `GET /orders/revenue` lọc theo ngày trả, nên cùng khoảng ngày có thể cho hai tổng khác nhau (mục 6.38). Không lọc ngày thì hai tổng bằng nhau.
+- **Không mã lỗi mới, không giới hạn tần suất.** Kiểm lại admin mỗi lần gọi (`@FreshAuth`) như `GET /orders/all`. Chỉ **thêm đường dẫn mới**, không phá FE đang chạy. Tiền là tiền của thanh toán thử.
+- **FE cần làm** (tùy chọn): trang doanh thu cho admin (mục 7, Màn hình admin).
+
+### 2026-10-21 · Admin xem đơn mua gói của mọi chủ trọ (mốc 1 của đơn và doanh thu cho admin)
+
+- **API mới** (mục 6.37): `GET /orders/all`, quyền `order:report` (chỉ admin giữ). Phân trang như mục 2, bộ lọc `status`, `landlordId`, `planId` và hai ngày `from`, `to` (ngày **tạo** đơn, tính theo giờ Việt Nam). Trả `{ items, total, page, pageSize, summary }`, đơn mới nhất nằm trên. Mỗi phần tử là **một đơn đúng như ở 6.27 (mười ba trường) thêm `landlord: { id, name, email }`**. `summary` là `{ paidCount, paidAmount }`: số đơn `paid` và tổng giá đã chốt của đúng tập đang lọc.
+- **Quyền mới `order:report`** (hành động chỉ admin của module `order`): `GET /permissions` liệt kê nó; cấp cho `landlord` hay `tenant` qua `PATCH /account-types/:key` là 400 `PERMISSION_ADMIN_ONLY`. Quyền mặc định của chủ trọ **không đổi** (`order:create`, `order:read`, `order:cancel`).
+- **Không mã lỗi mới**: dùng `VALIDATION_FAILED`, `TOKEN_MISSING`, `TOKEN_INVALID`, `PERMISSION_DENIED`, `ACCOUNT_LOCKED`.
+- **Kiểm lại admin mỗi lần gọi** (`@FreshAuth`): admin vừa bị khóa nhận 403 `ACCOUNT_LOCKED`, admin đã bị xóa nhận 401 `TOKEN_INVALID`, chủ trọ mang token cấp từ trước vẫn bị 403, dù token còn hạn.
+- **Token mới của chủ trọ có ba khóa lẻ** `order:create`, `order:read`, `order:cancel` thay cho khóa gộp `order:manage` (vì module `order` giờ có một hành động chỉ admin nên không gộp được nữa). FE đọc quyền ở `GET /auth/me` (đã mở rộng từng hành động) nên **không bị ảnh hưởng**; chỉ ai tự giải mã token mới thấy khác. Token cũ vẫn dùng được cho các API đơn của chủ trọ cho đến khi hết hạn.
+- `GET /orders` và `GET /orders/:id` **giữ nguyên** (chỉ đơn của chính người gọi, admin vẫn bị 403 `NOT_RESOURCE_OWNER` khi mở đơn người khác). Phản hồi mới có `Cache-Control: private, no-store`. Chỉ **thêm đường dẫn mới**, không phá FE đang chạy.
+- Thống kê doanh thu theo gói và theo ngày hoặc tháng được làm ở mốc 2, ngay bên dưới (mục 6.38).
+- **FE cần làm** (tùy chọn): màn hình đơn mua gói cho admin (mục 7, Màn hình admin).
 
 ### 2026-10-21 · Tin đang hiện trên hồ sơ chủ trọ
 

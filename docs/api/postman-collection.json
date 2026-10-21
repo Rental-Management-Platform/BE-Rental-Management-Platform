@@ -527,6 +527,41 @@
     {
       "key": "meLongName",
       "value": ""
+    },
+    {
+      "key": "orderLandlordId",
+      "value": "",
+      "description": "Id chủ trọ thử (userToken), lấy ở folder 22."
+    },
+    {
+      "key": "allOrdersTotal",
+      "value": "",
+      "description": "total của GET /orders/all không lọc, lưu ở folder 22."
+    },
+    {
+      "key": "allOrdersPaidCount",
+      "value": "",
+      "description": "summary.paidCount của GET /orders/all không lọc, lưu ở folder 22."
+    },
+    {
+      "key": "allOrdersPaidAmount",
+      "value": "",
+      "description": "summary.paidAmount của GET /orders/all không lọc, lưu ở folder 22."
+    },
+    {
+      "key": "orderToday",
+      "value": "",
+      "description": "Ngày hôm nay theo giờ Việt Nam (YYYY-MM-DD), folder 22 tự tính."
+    },
+    {
+      "key": "revenuePaidAmount",
+      "value": "",
+      "description": "paidAmount của GET /orders/revenue mặc định, lưu ở folder 22."
+    },
+    {
+      "key": "revenuePaidCount",
+      "value": "",
+      "description": "paidCount của GET /orders/revenue mặc định, lưu ở folder 22."
     }
   ],
   "auth": {
@@ -22924,6 +22959,2064 @@
                   "language": "json"
                 }
               }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "22 Đơn của mọi chủ trọ (admin)",
+      "description": "Admin xem đơn mua gói của mọi chủ trọ và thống kê doanh thu (spec 0010): `GET /orders/all` (mốc 1) và `GET /orders/revenue` (mốc 2), cả hai chỉ đọc. **Chạy sau folder 20** (hoặc sau folder 13) vì dùng lại `adminToken`, và sau folder 08, 09, 13 (dùng `userToken`, `otherLandlordToken`, `tenantToken`, `orderPlanId`); từ trên xuống. Folder **không đăng nhập admin** (giới hạn 10 lần mỗi 15 phút cho email admin, cả bộ đã dùng gần hết) và **không đăng ký tài khoản mới**. Bộ lọc `status`, `landlordId`, `planId` và hai ngày `from`, `to` (theo ngày tạo đơn, giờ Việt Nam). Thống kê doanh thu (`GET /orders/revenue`) lọc theo ngày TRẢ, gom theo `day` hoặc `month` giờ Việt Nam, kèm `byPlan` và `series` thưa. Quyền cần là `order:report` (chỉ admin); route đọc lại admin trong database mỗi lần gọi (`@FreshAuth`), nên admin vừa bị khóa với token còn hạn bị 403 `ACCOUNT_LOCKED` và chủ trọ mang token cũ có `order:manage` vẫn bị 403: hai ca này cần dựng tài khoản và token riêng nên kiểm ở `docs/specs/0010-admin-order-list-revenue/verify.md`, cùng cận ngày đúng từng mili giây, ranh giới 17:30 UTC, tổng vượt 2,1 tỷ và thanh toán đồng thời trong lúc đọc thống kê. Tiền ở đây là tiền của thanh toán thử.",
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{adminToken}}",
+            "type": "string"
+          }
+        ]
+      },
+      "item": [
+        {
+          "name": "Lấy id của chủ trọ thử (GET /auth/me)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.collectionVariables.set('orderLandlordId', pm.response.json().user.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            },
+            "description": "Chỉ để lấy `id` của chủ trọ thử (`userToken`, đã đăng ký ở folder 08) vào `orderLandlordId`, dùng cho các bộ lọc ở dưới.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Danh sách mặc định (GET /orders/all)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('Cache-Control là private, no-store', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('private, no-store'));",
+                  "",
+                  "pm.test('có đúng năm khóa items, page, pageSize, summary, total', () => pm.expect(Object.keys(pm.response.json()).sort()).to.eql(['items', 'page', 'pageSize', 'summary', 'total']));",
+                  "",
+                  "pm.test('mặc định trang 1, 20 dòng', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.page).to.eql(1);",
+                  "    pm.expect(body.pageSize).to.eql(20);",
+                  "    pm.expect(body.items.length).to.be.at.most(20);",
+                  "});",
+                  "",
+                  "pm.test('mỗi dòng đúng mười bốn khóa, landlord chỉ có id, name, email', () => pm.response.json().items.forEach((o) => {",
+                  "    pm.expect(Object.keys(o).sort()).to.eql(['cancelledAt', 'code', 'createdAt', 'durationDays', 'endsAt', 'id', 'landlord', 'maxListings', 'paidAt', 'planId', 'planName', 'price', 'startsAt', 'status']);",
+                  "    pm.expect(Object.keys(o.landlord).sort()).to.eql(['email', 'id', 'name']);",
+                  "}));",
+                  "",
+                  "pm.test('mới nhất trước', () => {",
+                  "    const times = pm.response.json().items.map((o) => o.createdAt);",
+                  "    pm.expect(times).to.eql([...times].sort().reverse());",
+                  "});",
+                  "",
+                  "pm.test('summary có paidCount và paidAmount là số nguyên không âm', () => {",
+                  "    const s = pm.response.json().summary;",
+                  "    pm.expect(Object.keys(s).sort()).to.eql(['paidAmount', 'paidCount']);",
+                  "    pm.expect(Number.isInteger(s.paidCount) && s.paidCount >= 0).to.eql(true);",
+                  "    pm.expect(Number.isInteger(s.paidAmount) && s.paidAmount >= 0).to.eql(true);",
+                  "});",
+                  "",
+                  "pm.test('không lộ số điện thoại, mật khẩu hay hạn dùng thử của chủ trọ', () => {",
+                  "    const text = pm.response.text().toLowerCase();",
+                  "    ['phone', 'passwordhash', 'password', 'argon2', 'trialendsat', 'accounttype', 'userid'].forEach((word) => pm.expect(text).to.not.include(word));",
+                  "});",
+                  "",
+                  "pm.collectionVariables.set('allOrdersTotal', String(pm.response.json().total));",
+                  "pm.collectionVariables.set('allOrdersPaidCount', String(pm.response.json().summary.paidCount));",
+                  "pm.collectionVariables.set('allOrdersPaidAmount', String(pm.response.json().summary.paidAmount));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "all"
+              ]
+            },
+            "description": "Cần quyền `order:report` (chỉ admin) và phiên mới (`@FreshAuth`). **Dùng lại `adminToken` của folder trước** (chạy sau folder 20 hoặc folder 13), không đăng nhập admin lần nữa. Đơn của MỌI chủ trọ ở mọi trạng thái, mới nhất trước. `summary` là số đơn `paid` và tổng `price` của đúng tập đang lọc, không phụ thuộc trang. Không bao giờ có số điện thoại hay mật khẩu của chủ trọ. Lưu `allOrdersTotal`, `allOrdersPaidCount`, `allOrdersPaidAmount` cho các request sau."
+          }
+        },
+        {
+          "name": "Trang 2, mỗi trang 1 dòng",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('trang 2, tối đa một dòng, total và summary không đổi', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.page).to.eql(2);",
+                  "    pm.expect(body.pageSize).to.eql(1);",
+                  "    pm.expect(body.items.length).to.be.at.most(1);",
+                  "    pm.expect(String(body.total)).to.eql(pm.collectionVariables.get('allOrdersTotal'));",
+                  "    pm.expect(String(body.summary.paidAmount)).to.eql(pm.collectionVariables.get('allOrdersPaidAmount'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/all?page=2&pageSize=1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "all"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "2"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "`total` và `summary` tính trên mọi dòng khớp bộ lọc, không phụ thuộc trang."
+          }
+        },
+        {
+          "name": "Trang quá cuối vẫn 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('items rỗng, total và summary vẫn đúng', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.items).to.eql([]);",
+                  "    pm.expect(String(body.total)).to.eql(pm.collectionVariables.get('allOrdersTotal'));",
+                  "    pm.expect(String(body.summary.paidCount)).to.eql(pm.collectionVariables.get('allOrdersPaidCount'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/all?page=1000000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "all"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1000000"
+                }
+              ]
+            },
+            "description": "Trang quá cuối không phải lỗi: 200 với `items: []`, còn `total` và `summary` vẫn đúng."
+          }
+        },
+        {
+          "name": "pageSize tối đa 50",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('pageSize là 50', () => pm.expect(pm.response.json().pageSize).to.eql(50));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/all?pageSize=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "all"
+              ],
+              "query": [
+                {
+                  "key": "pageSize",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "`pageSize` từ 1 đến 50."
+          }
+        },
+        {
+          "name": "Lọc status=paid",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test(\"mọi dòng trả về đều thỏa bộ lọc\", () => {",
+                  "    const body = pm.response.json();",
+                  "    body.items.forEach((o) => { pm.expect(o.status).to.eql('paid'); });",
+                  "});",
+                  "",
+                  "pm.test('paidCount bằng total (mọi dòng đều đã trả)', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.summary.paidCount).to.eql(body.total);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/all?status=paid",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "all"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "paid"
+                }
+              ]
+            },
+            "description": "Lọc `status=paid`: mọi dòng đã trả nên `summary.paidCount` bằng `total`."
+          }
+        },
+        {
+          "name": "Lọc status=pending: summary bằng 0",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test(\"mọi dòng trả về đều thỏa bộ lọc\", () => {",
+                  "    const body = pm.response.json();",
+                  "    body.items.forEach((o) => { pm.expect(o.status).to.eql('pending'); });",
+                  "});",
+                  "",
+                  "pm.test('summary bằng 0 (không có đơn paid trong tập chờ)', () => pm.expect(pm.response.json().summary).to.eql({ paidCount: 0, paidAmount: 0 }));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/all?status=pending",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "all"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "pending"
+                }
+              ]
+            },
+            "description": "`summary` thêm điều kiện `status = paid` bằng AND, nên lọc `pending` cho `summary` bằng 0."
+          }
+        },
+        {
+          "name": "Lọc status=cancelled: summary bằng 0",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test(\"mọi dòng trả về đều thỏa bộ lọc\", () => {",
+                  "    const body = pm.response.json();",
+                  "    body.items.forEach((o) => { pm.expect(o.status).to.eql('cancelled'); });",
+                  "});",
+                  "",
+                  "pm.test('summary bằng 0', () => pm.expect(pm.response.json().summary).to.eql({ paidCount: 0, paidAmount: 0 }));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/all?status=cancelled",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "all"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "cancelled"
+                }
+              ]
+            },
+            "description": "Như trên, với đơn đã hủy."
+          }
+        },
+        {
+          "name": "Lọc theo chủ trọ (landlordId)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test(\"mọi dòng trả về đều thỏa bộ lọc\", () => {",
+                  "    const body = pm.response.json();",
+                  "    body.items.forEach((o) => { pm.expect(o.landlord.id).to.eql(pm.collectionVariables.get('orderLandlordId')); });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/all?landlordId={{orderLandlordId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "all"
+              ],
+              "query": [
+                {
+                  "key": "landlordId",
+                  "value": "{{orderLandlordId}}"
+                }
+              ]
+            },
+            "description": "Khớp chủ trọ của đơn. Chủ trọ thử của folder 08 (`orderLandlordId`) có đơn từ folder 13."
+          }
+        },
+        {
+          "name": "Lọc theo gói (planId)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('orderPlanId')) pm.collectionVariables.set('orderPlanId', '00000000-0000-7000-8000-000000000000');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test(\"mọi dòng trả về đều thỏa bộ lọc\", () => {",
+                  "    const body = pm.response.json();",
+                  "    body.items.forEach((o) => { pm.expect(o.planId).to.eql(pm.collectionVariables.get('orderPlanId')); });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/all?planId={{orderPlanId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "all"
+              ],
+              "query": [
+                {
+                  "key": "planId",
+                  "value": "{{orderPlanId}}"
+                }
+              ]
+            },
+            "description": "Khớp gói của đơn. `orderPlanId` được chọn ở folder 13 (gói rẻ nhất); chưa có thì dùng một UUID không tồn tại và danh sách rỗng."
+          }
+        },
+        {
+          "name": "Ba bộ lọc cùng lúc",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test(\"mọi dòng trả về đều thỏa bộ lọc\", () => {",
+                  "    const body = pm.response.json();",
+                  "    body.items.forEach((o) => { pm.expect(o.status).to.eql('paid'); pm.expect(o.landlord.id).to.eql(pm.collectionVariables.get('orderLandlordId')); pm.expect(o.planId).to.eql(pm.collectionVariables.get('orderPlanId')); });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/all?status=paid&landlordId={{orderLandlordId}}&planId={{orderPlanId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "all"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "paid"
+                },
+                {
+                  "key": "landlordId",
+                  "value": "{{orderLandlordId}}"
+                },
+                {
+                  "key": "planId",
+                  "value": "{{orderPlanId}}"
+                }
+              ]
+            },
+            "description": "Dùng cùng lúc thì dòng phải thỏa cả ba."
+          }
+        },
+        {
+          "name": "UUID không có thật: 200, rỗng, summary 0",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('items rỗng, total 0, summary 0', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.items).to.eql([]);",
+                  "    pm.expect(body.total).to.eql(0);",
+                  "    pm.expect(body.summary).to.eql({ paidCount: 0, paidAmount: 0 });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/all?landlordId=00000000-0000-7000-8000-000000000000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "all"
+              ],
+              "query": [
+                {
+                  "key": "landlordId",
+                  "value": "00000000-0000-7000-8000-000000000000"
+                }
+              ]
+            },
+            "description": "UUID hợp lệ nhưng không có thật (kể cả id của tài khoản không phải chủ trọ) là 200 với danh sách rỗng, không phải 404."
+          }
+        },
+        {
+          "name": "Khoảng ngày rất rộng (from=2000-01-01, to=2100-12-31)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('lấy đủ mọi đơn: total bằng danh sách không lọc', () => pm.expect(String(pm.response.json().total)).to.eql(pm.collectionVariables.get('allOrdersTotal')));",
+                  "",
+                  "pm.test('summary bằng danh sách không lọc', () => pm.expect(String(pm.response.json().summary.paidAmount)).to.eql(pm.collectionVariables.get('allOrdersPaidAmount')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/all?from=2000-01-01&to=2100-12-31",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "all"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "2000-01-01"
+                },
+                {
+                  "key": "to",
+                  "value": "2100-12-31"
+                }
+              ]
+            },
+            "description": "`from` và `to` là ngày theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), lọc theo ngày TẠO đơn. `from` tính từ 00:00:00.000 của ngày đó, `to` tính hết ngày đó. Khoảng này phủ mọi đơn."
+          }
+        },
+        {
+          "name": "Chỉ gửi from",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('total bằng danh sách không lọc', () => pm.expect(String(pm.response.json().total)).to.eql(pm.collectionVariables.get('allOrdersTotal')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/all?from=2000-01-01",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "all"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "2000-01-01"
+                }
+              ]
+            },
+            "description": "Chỉ gửi một trong hai ngày cũng được."
+          }
+        },
+        {
+          "name": "Chỉ gửi to",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('total bằng danh sách không lọc', () => pm.expect(String(pm.response.json().total)).to.eql(pm.collectionVariables.get('allOrdersTotal')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/all?to=2100-12-31",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "all"
+              ],
+              "query": [
+                {
+                  "key": "to",
+                  "value": "2100-12-31"
+                }
+              ]
+            },
+            "description": "Chỉ gửi một trong hai ngày cũng được."
+          }
+        },
+        {
+          "name": "Khoảng ngày không có đơn: rỗng, summary 0",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('items rỗng, total 0, summary 0', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.items).to.eql([]);",
+                  "    pm.expect(body.total).to.eql(0);",
+                  "    pm.expect(body.summary).to.eql({ paidCount: 0, paidAmount: 0 });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/all?from=2099-01-01&to=2099-12-31",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "all"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "2099-01-01"
+                },
+                {
+                  "key": "to",
+                  "value": "2099-12-31"
+                }
+              ]
+            },
+            "description": "Khoảng ngày không có đơn nào vẫn là 200."
+          }
+        },
+        {
+          "name": "Đơn vừa tạo nằm trong ngày hôm nay (giờ Việt Nam)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Hôm nay theo giờ Việt Nam (UTC+7), dạng YYYY-MM-DD.",
+                  "pm.collectionVariables.set('orderToday', new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 10));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('mọi dòng có createdAt trong ngày hôm nay giờ Việt Nam', () => {",
+                  "    pm.response.json().items.forEach((o) => {",
+                  "        const day = new Date(Date.parse(o.createdAt) + 7 * 3600 * 1000).toISOString().slice(0, 10);",
+                  "        pm.expect(day).to.eql(pm.collectionVariables.get('orderToday'));",
+                  "    });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/all?from={{orderToday}}&to={{orderToday}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "all"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "{{orderToday}}"
+                },
+                {
+                  "key": "to",
+                  "value": "{{orderToday}}"
+                }
+              ]
+            },
+            "description": "Cận ngày tính theo giờ Việt Nam: một đơn tạo lúc 23:59:59.999 của ngày `to` vẫn vào, một đơn tạo lúc 00:00:00.000 của ngày kế thì không. Thử đúng từng mili giây ở bước kiểm thật (xem `verify.md`); ở đây chỉ kiểm mọi dòng trả về đều thuộc ngày hôm nay."
+          }
+        },
+        {
+          "name": "Lỗi: status lạ",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "",
+                  "pm.test('mã lỗi VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));",
+                  "",
+                  "pm.test('nêu đúng trường sai status', () => pm.expect([...new Set(pm.response.json().errors.map((e) => e.field))].sort()).to.eql(['status']));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/all?status=x",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "all"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "x"
+                }
+              ]
+            },
+            "description": "`status` chỉ nhận `pending`, `paid` hoặc `cancelled`."
+          }
+        },
+        {
+          "name": "Lỗi: landlordId không phải UUID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "",
+                  "pm.test('mã lỗi VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));",
+                  "",
+                  "pm.test('nêu đúng trường sai landlordId', () => pm.expect([...new Set(pm.response.json().errors.map((e) => e.field))].sort()).to.eql(['landlordId']));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/all?landlordId=abc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "all"
+              ],
+              "query": [
+                {
+                  "key": "landlordId",
+                  "value": "abc"
+                }
+              ]
+            },
+            "description": "`landlordId` phải là UUID."
+          }
+        },
+        {
+          "name": "Lỗi: planId không phải UUID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "",
+                  "pm.test('mã lỗi VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));",
+                  "",
+                  "pm.test('nêu đúng trường sai planId', () => pm.expect([...new Set(pm.response.json().errors.map((e) => e.field))].sort()).to.eql(['planId']));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/all?planId=123",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "all"
+              ],
+              "query": [
+                {
+                  "key": "planId",
+                  "value": "123"
+                }
+              ]
+            },
+            "description": "`planId` phải là UUID."
+          }
+        },
+        {
+          "name": "Lỗi: tham số lạ sort",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "",
+                  "pm.test('mã lỗi VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));",
+                  "",
+                  "pm.test('nêu đúng trường sai sort', () => pm.expect([...new Set(pm.response.json().errors.map((e) => e.field))].sort()).to.eql(['sort']));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/all?sort=asc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "all"
+              ],
+              "query": [
+                {
+                  "key": "sort",
+                  "value": "asc"
+                }
+              ]
+            },
+            "description": "Không có `sort`: thứ tự luôn là mới nhất trước."
+          }
+        },
+        {
+          "name": "Lỗi: tham số lạ q",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "",
+                  "pm.test('mã lỗi VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));",
+                  "",
+                  "pm.test('nêu đúng trường sai q', () => pm.expect([...new Set(pm.response.json().errors.map((e) => e.field))].sort()).to.eql(['q']));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/all?q=k7m2xq9p",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "all"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "k7m2xq9p"
+                }
+              ]
+            },
+            "description": "Chưa có tìm theo mã đơn hay email chủ trọ (đã hoãn)."
+          }
+        },
+        {
+          "name": "Lỗi: pageSize 51",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "",
+                  "pm.test('mã lỗi VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));",
+                  "",
+                  "pm.test('nêu đúng trường sai pageSize', () => pm.expect([...new Set(pm.response.json().errors.map((e) => e.field))].sort()).to.eql(['pageSize']));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/all?pageSize=51",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "all"
+              ],
+              "query": [
+                {
+                  "key": "pageSize",
+                  "value": "51"
+                }
+              ]
+            },
+            "description": "`pageSize` tối đa 50."
+          }
+        },
+        {
+          "name": "Lỗi: from là 30 tháng 2",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "",
+                  "pm.test('mã lỗi VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));",
+                  "",
+                  "pm.test('nêu đúng trường sai from', () => pm.expect([...new Set(pm.response.json().errors.map((e) => e.field))].sort()).to.eql(['from']));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/all?from=2026-02-30",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "all"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "2026-02-30"
+                }
+              ]
+            },
+            "description": "Ngày phải có thật trên lịch."
+          }
+        },
+        {
+          "name": "Lỗi: from sai dạng ngày/tháng/năm",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "",
+                  "pm.test('mã lỗi VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));",
+                  "",
+                  "pm.test('nêu đúng trường sai from', () => pm.expect([...new Set(pm.response.json().errors.map((e) => e.field))].sort()).to.eql(['from']));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/all?from=21/10/2026",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "all"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "21/10/2026"
+                }
+              ]
+            },
+            "description": "Chỉ nhận `YYYY-MM-DD`."
+          }
+        },
+        {
+          "name": "Lỗi: from năm 1999",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "",
+                  "pm.test('mã lỗi VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));",
+                  "",
+                  "pm.test('nêu đúng trường sai from', () => pm.expect([...new Set(pm.response.json().errors.map((e) => e.field))].sort()).to.eql(['from']));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/all?from=1999-12-31",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "all"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "1999-12-31"
+                }
+              ]
+            },
+            "description": "Năm từ 2000 đến 2100."
+          }
+        },
+        {
+          "name": "Lỗi: from lớn hơn to báo ở to",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "",
+                  "pm.test('mã lỗi VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));",
+                  "",
+                  "pm.test('nêu đúng trường sai to', () => pm.expect([...new Set(pm.response.json().errors.map((e) => e.field))].sort()).to.eql(['to']));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/all?from=2026-10-21&to=2026-10-20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "all"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "2026-10-21"
+                },
+                {
+                  "key": "to",
+                  "value": "2026-10-20"
+                }
+              ]
+            },
+            "description": "`from` lớn hơn `to` thì lỗi nằm ở trường `to`."
+          }
+        },
+        {
+          "name": "Không đăng nhập: 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 401', () => pm.response.to.have.status(401));",
+                  "",
+                  "pm.test('mã lỗi TOKEN_MISSING', () => pm.expect(pm.response.json().code).to.eql('TOKEN_MISSING'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "all"
+              ]
+            },
+            "description": "Chưa đăng nhập là 401 `TOKEN_MISSING`.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Người tìm trọ: 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 403', () => pm.response.to.have.status(403));",
+                  "",
+                  "pm.test('mã lỗi PERMISSION_DENIED', () => pm.expect(pm.response.json().code).to.eql('PERMISSION_DENIED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "all"
+              ]
+            },
+            "description": "Người tìm trọ không có `order:report`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Chủ trọ: 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 403', () => pm.response.to.have.status(403));",
+                  "",
+                  "pm.test('mã lỗi PERMISSION_DENIED', () => pm.expect(pm.response.json().code).to.eql('PERMISSION_DENIED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "all"
+              ]
+            },
+            "description": "Chủ trọ không có `order:report`, cũng không cấp được.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Chủ trọ gửi tham số sai vẫn 403 (quyền kiểm trước tham số)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 403', () => pm.response.to.have.status(403));",
+                  "",
+                  "pm.test('mã lỗi PERMISSION_DENIED', () => pm.expect(pm.response.json().code).to.eql('PERMISSION_DENIED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/all?status=x&from=2026-02-30",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "all"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "x"
+                },
+                {
+                  "key": "from",
+                  "value": "2026-02-30"
+                }
+              ]
+            },
+            "description": "Quyền được kiểm TRƯỚC tham số: không phải admin thì luôn 403, không lộ gì về tham số.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{otherLandlordToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin xem đơn của chính mình vẫn rỗng (GET /orders)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('đơn của admin: rỗng (admin không mua gói)', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.items).to.eql([]);",
+                  "    pm.expect(body.total).to.eql(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            },
+            "description": "`GET /orders` giữ nguyên: chỉ trả đơn của chính người gọi. Admin muốn xem đơn của mọi chủ trọ thì dùng `GET /orders/all`."
+          }
+        },
+        {
+          "name": "Danh mục quyền: order có hành động report chỉ admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('module order có create, read, cancel, report và adminActions là report', () => {",
+                  "    const list = pm.response.json();",
+                  "    const order = (Array.isArray(list) ? list : list.items).find((m) => m.module === 'order');",
+                  "    pm.expect(order.actions).to.eql(['create', 'read', 'cancel', 'report']);",
+                  "    pm.expect(order.adminActions).to.eql(['report']);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/permissions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "permissions"
+              ]
+            },
+            "description": "`GET /permissions` liệt kê `order:report` trong cột \"chỉ admin\"."
+          }
+        },
+        {
+          "name": "Cấp order:report cho chủ trọ bị từ chối",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "",
+                  "pm.test('mã lỗi PERMISSION_ADMIN_ONLY', () => pm.expect(pm.response.json().code).to.eql('PERMISSION_ADMIN_ONLY'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/account-types/landlord",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-types",
+                "landlord"
+              ]
+            },
+            "description": "`order:report` là hành động chỉ admin nên không cấp được cho `landlord` hay `tenant`: 400 `PERMISSION_ADMIN_ONLY` và quyền của chủ trọ không đổi (lỗi trả về trước khi ghi).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"permissions\": [\"order:report\"]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thống kê mặc định (GET /orders/revenue)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('Cache-Control là private, no-store', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('private, no-store'));",
+                  "",
+                  "pm.test('có đúng tám khóa', () => pm.expect(Object.keys(pm.response.json()).sort()).to.eql(['byPlan', 'from', 'groupBy', 'paidAmount', 'paidCount', 'series', 'timeZone', 'to']));",
+                  "",
+                  "pm.test('mặc định: from và to là null, groupBy là month, timeZone là Asia/Ho_Chi_Minh', () => {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.from).to.eql(null);",
+                  "    pm.expect(b.to).to.eql(null);",
+                  "    pm.expect(b.groupBy).to.eql('month');",
+                  "    pm.expect(b.timeZone).to.eql('Asia/Ho_Chi_Minh');",
+                  "});",
+                  "",
+                  "pm.test('mỗi phần tử byPlan đúng bốn khóa, series đúng ba khóa', () => {",
+                  "    pm.response.json().byPlan.forEach((p) => pm.expect(Object.keys(p).sort()).to.eql(['paidAmount', 'paidCount', 'planId', 'planName']));",
+                  "    pm.response.json().series.forEach((s) => pm.expect(Object.keys(s).sort()).to.eql(['paidAmount', 'paidCount', 'period']));",
+                  "});",
+                  "",
+                  "pm.test('series gom theo tháng: period dạng YYYY-MM, tăng dần, không có tháng rỗng', () => {",
+                  "    const periods = pm.response.json().series.map((s) => s.period);",
+                  "    periods.forEach((p) => pm.expect(p).to.match(/^\\d{4}-\\d{2}$/));",
+                  "    pm.expect(periods).to.eql([...periods].sort());",
+                  "    pm.response.json().series.forEach((s) => pm.expect(s.paidCount).to.be.at.least(1));",
+                  "});",
+                  "",
+                  "pm.test('byPlan xếp paidAmount giảm dần', () => {",
+                  "    const amounts = pm.response.json().byPlan.map((p) => p.paidAmount);",
+                  "    pm.expect(amounts).to.eql([...amounts].sort((a, b) => b - a));",
+                  "});",
+                  "",
+                  "pm.test('ba tổng bằng nhau: ngoài cùng, cộng byPlan, cộng series', () => {",
+                  "    const b = pm.response.json();",
+                  "    const add = (rows) => rows.reduce((t, r) => ({ paidCount: t.paidCount + r.paidCount, paidAmount: t.paidAmount + r.paidAmount }), { paidCount: 0, paidAmount: 0 });",
+                  "    pm.expect(add(b.byPlan)).to.eql({ paidCount: b.paidCount, paidAmount: b.paidAmount });",
+                  "    pm.expect(add(b.series)).to.eql({ paidCount: b.paidCount, paidAmount: b.paidAmount });",
+                  "});",
+                  "",
+                  "pm.test('không lộ dữ liệu cá nhân của chủ trọ', () => {",
+                  "    const text = pm.response.text().toLowerCase();",
+                  "    ['phone', 'passwordhash', 'password', 'email', 'trialendsat', 'userid', 'landlord'].forEach((word) => pm.expect(text).to.not.include(word));",
+                  "});",
+                  "",
+                  "pm.test('tổng bằng summary.paidAmount của danh sách không lọc ở request đầu folder (cùng là mọi đơn đã trả)', () => pm.expect(String(pm.response.json().paidAmount)).to.eql(pm.collectionVariables.get('allOrdersPaidAmount')));",
+                  "",
+                  "pm.collectionVariables.set('revenuePaidAmount', String(pm.response.json().paidAmount));",
+                  "pm.collectionVariables.set('revenuePaidCount', String(pm.response.json().paidCount));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/revenue",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "revenue"
+              ]
+            },
+            "description": "Cần quyền `order:report` (chỉ admin) và phiên mới (`@FreshAuth`); dùng lại `adminToken`. Thống kê doanh thu theo ngày TRẢ của các đơn `paid` (đơn chờ và đơn hủy không bao giờ tính). Mặc định gom theo tháng giờ Việt Nam. `paidCount` và `paidAmount` ngoài cùng, tổng của `byPlan` và tổng của `series` đến từ một câu SQL nên luôn bằng nhau. Chuỗi `series` thưa: tháng không có đơn thì không có phần tử (FE tự điền ô trống). **Tiền ở đây là tiền của thanh toán thử.** Lưu `revenuePaidAmount`, `revenuePaidCount` cho các request sau."
+          }
+        },
+        {
+          "name": "Gom theo ngày (groupBy=day)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('groupBy là day, period dạng YYYY-MM-DD và tăng dần', () => {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.groupBy).to.eql('day');",
+                  "    b.series.forEach((s) => pm.expect(s.period).to.match(/^\\d{4}-\\d{2}-\\d{2}$/));",
+                  "    const periods = b.series.map((s) => s.period);",
+                  "    pm.expect(periods).to.eql([...periods].sort());",
+                  "});",
+                  "",
+                  "pm.test('ba tổng bằng nhau: ngoài cùng, cộng byPlan, cộng series', () => {",
+                  "    const b = pm.response.json();",
+                  "    const add = (rows) => rows.reduce((t, r) => ({ paidCount: t.paidCount + r.paidCount, paidAmount: t.paidAmount + r.paidAmount }), { paidCount: 0, paidAmount: 0 });",
+                  "    pm.expect(add(b.byPlan)).to.eql({ paidCount: b.paidCount, paidAmount: b.paidAmount });",
+                  "    pm.expect(add(b.series)).to.eql({ paidCount: b.paidCount, paidAmount: b.paidAmount });",
+                  "});",
+                  "",
+                  "pm.test('tổng không đổi so với gom theo tháng (cùng tập đơn)', () => pm.expect(String(pm.response.json().paidAmount)).to.eql(pm.collectionVariables.get('revenuePaidAmount')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/revenue?groupBy=day",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "revenue"
+              ],
+              "query": [
+                {
+                  "key": "groupBy",
+                  "value": "day"
+                }
+              ]
+            },
+            "description": "`groupBy=day`: `period` là ngày `YYYY-MM-DD` theo giờ Việt Nam của `paid_at`. Đổi cách gom không đổi tập đơn nên tổng không đổi."
+          }
+        },
+        {
+          "name": "Khoảng ngày trả (from, to) trả lại đúng như đã gửi",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('from và to được trả lại đúng chuỗi đã gửi', () => {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.from).to.eql('2000-01-01');",
+                  "    pm.expect(b.to).to.eql('2100-12-31');",
+                  "});",
+                  "",
+                  "pm.test('khoảng phủ mọi đơn nên tổng bằng thống kê mặc định', () => pm.expect(String(pm.response.json().paidAmount)).to.eql(pm.collectionVariables.get('revenuePaidAmount')));",
+                  "",
+                  "pm.test('ba tổng bằng nhau: ngoài cùng, cộng byPlan, cộng series', () => {",
+                  "    const b = pm.response.json();",
+                  "    const add = (rows) => rows.reduce((t, r) => ({ paidCount: t.paidCount + r.paidCount, paidAmount: t.paidAmount + r.paidAmount }), { paidCount: 0, paidAmount: 0 });",
+                  "    pm.expect(add(b.byPlan)).to.eql({ paidCount: b.paidCount, paidAmount: b.paidAmount });",
+                  "    pm.expect(add(b.series)).to.eql({ paidCount: b.paidCount, paidAmount: b.paidAmount });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/revenue?from=2000-01-01&to=2100-12-31&groupBy=month",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "revenue"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "2000-01-01"
+                },
+                {
+                  "key": "to",
+                  "value": "2100-12-31"
+                },
+                {
+                  "key": "groupBy",
+                  "value": "month"
+                }
+              ]
+            },
+            "description": "`from` và `to` có luật y hệt danh sách đơn nhưng lọc theo ngày TRẢ (`paid_at`), tính theo giờ Việt Nam: `from` từ 00:00:00.000 của ngày đó, `to` hết ngày đó. Đơn trả lúc 17:30 UTC ngày 31/10 (00:30 ngày 01/11 giờ Việt Nam) thuộc `2026-11-01` và `2026-11`; thử đúng từng mili giây ở bước kiểm thật (xem `verify.md`)."
+          }
+        },
+        {
+          "name": "Chỉ gửi from",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('from có, to là null, tổng bằng thống kê mặc định', () => {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.from).to.eql('2000-01-01');",
+                  "    pm.expect(b.to).to.eql(null);",
+                  "    pm.expect(String(b.paidAmount)).to.eql(pm.collectionVariables.get('revenuePaidAmount'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/revenue?from=2000-01-01",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "revenue"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "2000-01-01"
+                }
+              ]
+            },
+            "description": "Không gửi `to` là không chặn phía đó."
+          }
+        },
+        {
+          "name": "Chỉ gửi to",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('to có, from là null, tổng bằng thống kê mặc định', () => {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.from).to.eql(null);",
+                  "    pm.expect(b.to).to.eql('2100-12-31');",
+                  "    pm.expect(String(b.paidAmount)).to.eql(pm.collectionVariables.get('revenuePaidAmount'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/revenue?to=2100-12-31",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "revenue"
+              ],
+              "query": [
+                {
+                  "key": "to",
+                  "value": "2100-12-31"
+                }
+              ]
+            },
+            "description": "Không gửi `from` là không chặn phía đó."
+          }
+        },
+        {
+          "name": "Khoảng không có đơn: 0, 0, [], []",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('paidCount 0, paidAmount 0, byPlan và series rỗng', () => {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.paidCount).to.eql(0);",
+                  "    pm.expect(b.paidAmount).to.eql(0);",
+                  "    pm.expect(b.byPlan).to.eql([]);",
+                  "    pm.expect(b.series).to.eql([]);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/revenue?from=2099-01-01&to=2099-12-31",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "revenue"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "2099-01-01"
+                },
+                {
+                  "key": "to",
+                  "value": "2099-12-31"
+                }
+              ]
+            },
+            "description": "Khoảng không có đơn `paid` nào vẫn là 200."
+          }
+        },
+        {
+          "name": "Lỗi: groupBy lạ",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "",
+                  "pm.test('mã lỗi VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));",
+                  "",
+                  "pm.test('nêu đúng trường sai groupBy', () => pm.expect([...new Set(pm.response.json().errors.map((e) => e.field))].sort()).to.eql(['groupBy']));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/revenue?groupBy=week",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "revenue"
+              ],
+              "query": [
+                {
+                  "key": "groupBy",
+                  "value": "week"
+                }
+              ]
+            },
+            "description": "`groupBy` chỉ nhận `day` hoặc `month`."
+          }
+        },
+        {
+          "name": "Lỗi: tham số của danh sách (status, page)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "",
+                  "pm.test('mã lỗi VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));",
+                  "",
+                  "pm.test('nêu đúng trường sai page, status', () => pm.expect([...new Set(pm.response.json().errors.map((e) => e.field))].sort()).to.eql(['page','status']));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/revenue?status=paid&page=2",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "revenue"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "paid"
+                },
+                {
+                  "key": "page",
+                  "value": "2"
+                }
+              ]
+            },
+            "description": "Thống kê không có phân trang hay `status`: tham số lạ là 400."
+          }
+        },
+        {
+          "name": "Lỗi: from là 30 tháng 2",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "",
+                  "pm.test('mã lỗi VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));",
+                  "",
+                  "pm.test('nêu đúng trường sai from', () => pm.expect([...new Set(pm.response.json().errors.map((e) => e.field))].sort()).to.eql(['from']));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/revenue?from=2026-02-30",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "revenue"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "2026-02-30"
+                }
+              ]
+            },
+            "description": "Ngày phải có thật trên lịch, năm từ 2000 đến 2100."
+          }
+        },
+        {
+          "name": "Lỗi: from lớn hơn to báo ở to",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "",
+                  "pm.test('mã lỗi VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));",
+                  "",
+                  "pm.test('nêu đúng trường sai to', () => pm.expect([...new Set(pm.response.json().errors.map((e) => e.field))].sort()).to.eql(['to']));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/revenue?from=2026-10-21&to=2026-10-20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "revenue"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "2026-10-21"
+                },
+                {
+                  "key": "to",
+                  "value": "2026-10-20"
+                }
+              ]
+            },
+            "description": "`from` lớn hơn `to` thì lỗi nằm ở trường `to`."
+          }
+        },
+        {
+          "name": "Không đăng nhập: 401 (thống kê)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 401', () => pm.response.to.have.status(401));",
+                  "",
+                  "pm.test('mã lỗi TOKEN_MISSING', () => pm.expect(pm.response.json().code).to.eql('TOKEN_MISSING'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/revenue",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "revenue"
+              ]
+            },
+            "description": "Chưa đăng nhập là 401 `TOKEN_MISSING`.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Người tìm trọ: 403 (thống kê)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 403', () => pm.response.to.have.status(403));",
+                  "",
+                  "pm.test('mã lỗi PERMISSION_DENIED', () => pm.expect(pm.response.json().code).to.eql('PERMISSION_DENIED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/revenue",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "revenue"
+              ]
+            },
+            "description": "Người tìm trọ không có `order:report`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Chủ trọ gửi tham số sai vẫn 403 (thống kê)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 403', () => pm.response.to.have.status(403));",
+                  "",
+                  "pm.test('mã lỗi PERMISSION_DENIED', () => pm.expect(pm.response.json().code).to.eql('PERMISSION_DENIED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/revenue?groupBy=week&from=2026-02-30",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "revenue"
+              ],
+              "query": [
+                {
+                  "key": "groupBy",
+                  "value": "week"
+                },
+                {
+                  "key": "from",
+                  "value": "2026-02-30"
+                }
+              ]
+            },
+            "description": "Quyền được kiểm TRƯỚC tham số: không phải admin thì luôn 403.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{otherLandlordToken}}",
+                  "type": "string"
+                }
+              ]
             }
           }
         }

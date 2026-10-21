@@ -104,20 +104,57 @@ describe('permission catalog', () => {
 			expect(isAdminOnly('plan:create')).toBe(true);
 			expect(isAdminOnly('setting:update')).toBe(true);
 			expect(isAdminOnly('account_type:update')).toBe(true);
+			expect(isAdminOnly('order:report')).toBe(true);
 		});
 
 		it('hành động thường thì không', () => {
 			expect(isAdminOnly('listing:read')).toBe(false);
 			expect(isAdminOnly('order:create')).toBe(false);
+			expect(isAdminOnly('order:read')).toBe(false);
+			expect(isAdminOnly('order:cancel')).toBe(false);
 		});
 
 		it('manage của module có hành động chỉ admin cũng là chỉ admin (lỗ hổng listing:manage)', () => {
 			expect(isAdminOnly('listing:manage')).toBe(true);
 			expect(isAdminOnly('plan:manage')).toBe(true);
 			expect(isAdminOnly('profile:manage')).toBe(false);
-			expect(isAdminOnly('order:manage')).toBe(false);
+			expect(isAdminOnly('order:manage')).toBe(true);
 			expect(isManageKey('listing:manage')).toBe(true);
 			expect(isManageKey('listing:read')).toBe(false);
+		});
+
+		it('order:report là của admin (spec 0010 AC-10): chủ trọ giữ ba khóa lẻ nên token không còn gộp thành order:manage', () => {
+			const landlordOrderKeys = [
+				'order:create',
+				'order:read',
+				'order:cancel',
+			] as const;
+			expect(compressPermissions(landlordOrderKeys).sort()).toEqual([
+				'order:cancel',
+				'order:create',
+				'order:read',
+			]);
+			expect(hasPermissions(landlordOrderKeys, ['order:report'])).toBe(
+				false,
+			);
+			// Token cấp trước thay đổi này mang order:manage: nay bung ra cả order:report. Hai route admin chỉ an toàn nhờ @FreshAuth().
+			expect(hasPermissions(['order:manage'], ['order:report'])).toBe(
+				true,
+			);
+			expect(ADMIN_PERMISSIONS).toContain('order:report');
+		});
+
+		it('GET /permissions liệt kê order:report là hành động chỉ admin', () => {
+			const order = describeCatalog().find(
+				(entry) => entry.module === 'order',
+			);
+			expect(order?.actions).toEqual([
+				'create',
+				'read',
+				'cancel',
+				'report',
+			]);
+			expect(order?.adminActions).toEqual(['report']);
 		});
 	});
 
