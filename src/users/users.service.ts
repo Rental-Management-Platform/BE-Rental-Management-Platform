@@ -2,7 +2,13 @@ import { Injectable } from '@nestjs/common';
 import type { SelfRegisterType } from '../common/auth/account-type';
 import { AppException } from '../common/errors/app.exception';
 import { ErrorCode } from '../common/errors/error-code';
+import type { Page } from '../common/pagination/pagination';
+import { skipOf, toPage } from '../common/pagination/pagination';
+import { toPhoneNeedle } from '../common/phone';
 import type { Prisma, User } from '../generated/prisma/client';
+import type { ListUsersQueryDto } from './dto/list-users-query.dto';
+import { toAdminUserItem } from './users.mapper';
+import type { AdminUserListItem } from './users.mapper';
 import { UsersRepository } from './users.repository';
 import type { UserWithoutPassword } from './users.repository';
 
@@ -86,6 +92,29 @@ export class UsersService {
 		tx?: Prisma.TransactionClient,
 	): Promise<UserWithoutPassword | null> {
 		return this.usersRepository.findById(id, tx);
+	}
+
+	/**
+	 * Danh sách tài khoản cho admin (spec 0007). `q` đã được DTO cắt khoảng trắng; rỗng thì không lọc chữ. Chuỗi số
+	 * điện thoại suy ra từ `q` (`toPhoneNeedle`), không phải từ cột nào khác.
+	 */
+	async listForAdmin(
+		query: ListUsersQueryDto,
+	): Promise<Page<AdminUserListItem>> {
+		const text = query.q ?? '';
+		const { rows, total } = await this.usersRepository.findAdminPage(
+			{
+				accountType: query.accountType,
+				status: query.status,
+				search:
+					text === ''
+						? undefined
+						: { text, phone: toPhoneNeedle(text) },
+			},
+			skipOf(query),
+			query.pageSize,
+		);
+		return toPage(rows.map(toAdminUserItem), total, query);
 	}
 
 	/** Khóa dòng của một người dùng đến hết giao dịch `tx` (đăng và hiện tin, spec 0003). */

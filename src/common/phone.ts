@@ -11,3 +11,17 @@ export function normalizePhone(raw: string): string {
 	if (compact.startsWith('84')) return `0${compact.slice(2)}`;
 	return compact;
 }
+
+/** Dạng quốc tế đầy đủ: `+84` hoặc `84` cộng đúng 9 chữ số. */
+const INTERNATIONAL_PATTERN = /^\+?84\d{9}$/;
+
+/**
+ * Chuỗi chữ số để tìm trong cột số điện thoại từ ô tìm kiếm (spec 0007 AC-4). Bỏ dấu cách, chấm, gạch; dạng quốc
+ * tế đầy đủ đổi về `0` cộng 9 chữ số; dạng khác giữ nguyên nếu chỉ gồm chữ số, nên `84` vẫn tìm chuỗi `84`. Có chữ
+ * cái hay ký tự khác thì `null`: ô tìm kiếm không so với cột số điện thoại.
+ */
+export function toPhoneNeedle(raw: string): string | null {
+	const compact = raw.replace(/[\s.-]/g, '');
+	if (INTERNATIONAL_PATTERN.test(compact)) return normalizePhone(compact);
+	return /^\d+$/.test(compact) ? compact : null;
+}

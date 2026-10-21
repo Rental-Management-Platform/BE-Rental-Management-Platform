@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
+import type { AccountType } from '../common/auth/account-type';
+import { escapeLike } from '../common/text/escape-like';
 import { PrismaService } from '../database/prisma.service';
 import type { Prisma, User } from '../generated/prisma/client';
+import type { UserStatus } from './user-status';
 
 export type NewUser = Pick<
 	User,
@@ -8,11 +11,46 @@ export type NewUser = Pick<
 >;
 export type UserWithoutPassword = Omit<User, 'passwordHash'>;
 
+/** Một dòng của danh sách cho admin: đúng tám cột, không `passwordHash` (spec 0007 AC-1, AC-6). */
+export type AdminUserRow = Pick<
+	User,
+	| 'id'
+	| 'email'
+	| 'name'
+	| 'phone'
+	| 'accountType'
+	| 'status'
+	| 'lockedReason'
+	| 'createdAt'
+>;
+
+/**
+ * Điều kiện của danh sách cho admin. `search` có mặt khi `q` không rỗng: `text` đưa vào email và tên, `phone` là
+ * chuỗi chữ số cho cột số điện thoại hoặc `null` khi `q` không phải số (spec 0007 AC-3, AC-4).
+ */
+export interface AdminUserFilter {
+	readonly accountType?: AccountType;
+	readonly status?: UserStatus;
+	readonly search?: { readonly text: string; readonly phone: string | null };
+}
+
 /** Xóa mềm (spec 0005): mọi phương thức đọc `users` đều thêm điều kiện này, trừ tên có `IncludingDeleted`. */
 const notDeleted = { deletedAt: null } satisfies Prisma.UserWhereInput;
 
 /** `passwordHash` mặc định không được trả; chỉ đăng nhập mới cần đọc nó. */
 const withoutPassword = { passwordHash: true } satisfies Prisma.UserOmit;
+
+/** Danh sách trắng cho danh sách của admin: thêm cột vào `users` sau này cũng không tự lộ ra (spec 0007 AC-6). */
+const adminListSelect = {
+	id: true,
+	email: true,
+	name: true,
+	phone: true,
+	accountType: true,
+	status: true,
+	lockedReason: true,
+	createdAt: true,
+} satisfies Prisma.UserSelect;
 
 /** Nơi duy nhất của module users chạm vào Prisma (spec 0001 con). */
 @Injectable()
@@ -119,6 +157,58 @@ export class UsersRepository {
 	 */
 	async lockById(id: string, tx: Prisma.TransactionClient): Promise<void> {
 		await tx.$queryRaw`SELECT id FROM users WHERE id = ${id}::uuid FOR UPDATE`;
+	}
+
+	/**
+	 * Một trang tài khoản cho admin (spec 0007 AC-1 đến AC-4): mọi loại và trạng thái, bỏ tài khoản đã xóa mềm,
+	 * mới đăng ký trước. Mỗi vế của `q` là `contains` không phân biệt hoa thường (`ILIKE`), chuỗi đã qua `escapeLike`
+	 * vì Prisma không tự thoát `%`, `_`, `\`. Số điện thoại là chữ số nên không cần `mode`. `total` đếm bằng cùng `where`.
+	 */
+	async findAdminPage(
+		filter: AdminUserFilter,
+		skip: number,
+		take: number,
+	): Promise<{ rows: AdminUserRow[]; total: number }> {
+		const { search } = filter;
+		const where: Prisma.UserWhereInput = {
+			...notDeleted,
+			...(filter.accountType === undefined
+				? {}
+				: { accountType: filter.accountType }),
+			...(filter.status === undefined ? {} : { status: filter.status }),
+			...(search === undefined
+				? {}
+				: {
+						OR: [
+							{
+								email: {
+									contains: escapeLike(search.text),
+									mode: 'insensitive',
+								},
+							},
+							{
+								name: {
+									contains: escapeLike(search.text),
+									mode: 'insensitive',
+								},
+							},
+							...(search.phone === null
+								? []
+								: [{ phone: { contains: search.phone } }]),
+						],
+					}),
+		};
+		const [rows, total] = await Promise.all([
+			this.prisma.user.findMany({
+				where,
+				select: adminListSelect,
+				orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+				skip,
+				take,
+			}),
+			this.prisma.user.count({ where }),
+		]);
+		return { rows, total };
 	}
 
 	/** Khóa bằng một câu cập nhật có điều kiện: hai người khóa cùng lúc thì chỉ một người thắng. */

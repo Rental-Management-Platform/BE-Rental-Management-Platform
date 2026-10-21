@@ -30,6 +30,7 @@ _Đây là các khuyến nghị để việc làm gọn gàng, không phải yê
 | 11 | Theo dõi chủ trọ và số người biết đến | Release 11 | done |
 | 12 | Lưu phòng yêu thích | Release 12 | done |
 | 13 | Dọn danh mục quyền theo MVP | Release 13 | done |
+| 14 | Admin: danh sách người dùng | Release 14 | done |
 
 ## Foundations (đã có)
 
@@ -188,6 +189,16 @@ Thu danh mục quyền trong code về đúng bảng ở spec 0003 (bỏ các mo
 Đã chạy thật trên hai DB thử (một DB có khóa thừa thêm tay, một DB dựng từ đầu): landlord 14 quyền, tenant 7, `migrate diff` không lệch, Newman 27 request không lỗi, 136 test qua. DB dev của bạn cần `npm run migration:deploy` một lần.
 Spec [0003](../specs/0001-backend-foundation/0003-authorization-rbac.md) · code in `src/common/auth/permission-catalog.ts`, `prisma/migrations/20261011090000_mvp_permission_cleanup/` · tài liệu in `docs/api/`
 
+## Release 14: danh sách người dùng cho admin
+
+### 14. Admin: danh sách người dùng · done
+Admin xem, tìm và lọc danh sách tài khoản để tìm đúng người cần khóa hoặc mở khóa mà không phải biết sẵn id. Chỉ đọc: hàng này không thêm cách sửa hay xóa tài khoản.
+**Done when:** admin mở được danh sách tài khoản có phân trang, lọc theo loại tài khoản và trạng thái, tìm theo email, tên hoặc số điện thoại, và mỗi dòng có id dùng được với khóa và mở khóa; người không phải admin bị từ chối; không bao giờ lộ mật khẩu hay mã băm.
+- [x] Design it (spec): `/architect admin user list`
+- [x] Build it: `/develop admin user list`
+   - [x] Mốc 1: `GET /users` cho admin: bộ lọc loại và trạng thái, tìm theo email, tên, số điện thoại, kiểm lại admin mỗi lần gọi, tài liệu và kiểm cuối, không migration (AC-1 đến AC-8); đã chạy thật trên DB thử 2026-10-21 (108 kiểm tra HTTP và SQL đối chiếu với dòng thô, ba điều khiển âm đều bị bắt: bỏ `escapeLike`, bỏ điều kiện xóa mềm, `select` lấy mọi cột kèm mapper chép nguyên dòng; riêng đổi `select` một mình không lộ ra phản hồi vì mapper là lớp chắn thứ hai, test đơn vị của Repository bắt nó; 1145 bài unit; Newman folder 01, 03, 07, 08, 09 và 20: 105 request, 209 assertion không lỗi); `EXPLAIN` ở 50 nghìn người dùng đo một lần, không chỉnh (trang đầu 12 ms, `status=locked` 6 ms, `q` giữa email 44 ms, `q` số điện thoại 47 ms, đều quét cả bảng); DB thử có locale `English_United States.1252` mã hóa UTF8 và `ILIKE` gập đúng chữ Việt có dấu
+Spec [0007](../specs/0007-admin-user-list/index.md) (8 AC, 1 mốc, đã được bạn Accept ngày 2026-10-21; trạng thái spec đi theo tính năng) · code in `src/users/` · tài liệu in `docs/api/`
+
 ## Deferred
 Ngoài phạm vi bản này, giữ lại để kế hoạch trung thực.
 - **Dịch lỗi PostgreSQL**: trùng giá trị khi đăng ký đồng thời, khóa ngoại, id sai, mất kết nối thành lỗi dễ hiểu · needs a decision
@@ -201,6 +212,7 @@ Ngoài phạm vi bản này, giữ lại để kế hoạch trung thực.
 - **Hoãn từ spec 0004 (2026-10-19)**: admin xem đơn của mọi người và số liệu doanh thu, email biên nhận và email nhắc sắp hết gói (cần việc nền), đổi sang gói khác có hiệu lực ngay (cắt gói cũ), mua nhiều kỳ trong một đơn, mô tả và thứ tự do admin đặt cho gói, tự hủy đơn chờ quá hạn; cổng thanh toán thật, hoàn tiền và tặng gói đã nằm ở mục hoãn khỏi MVP phía trên · needs a decision
 - **Hoãn từ spec 0003 (2026-10-16)**: email nhắc sắp hết dùng thử (cần việc nền), admin gia hạn dùng thử cho một chủ trọ cụ thể, API công khai cho FE hiện "dùng thử N ngày, M tin" trước khi đăng ký · needs a decision
 - **Hoãn từ spec 0005 (2026-10-20)**: danh sách "đang theo dõi" của người tìm trọ, danh sách tên người theo dõi cho chủ trọ, thông báo khi chủ trọ đăng tin mới (cần việc nền), danh sách tin đang hiện của chủ trọ trên hồ sơ (cần bộ lọc `landlordId`), số người theo dõi trong chi tiết tin, bảng hồ sơ chủ trọ riêng (tên hiển thị, Zalo), chống tăng ảo số người theo dõi · needs a decision
+- **Hoãn từ spec 0007 (2026-10-21)**: chi tiết một tài khoản (`GET /users/:id`), tham số `sort`, thời điểm đăng nhập gần nhất, người khóa và lúc khóa, thông tin chủ trọ trên mỗi dòng (hạn dùng thử, số tin, gói), tìm tên không phân biệt dấu (cột `users.search_key`), giới hạn tần suất cho danh sách, nhật ký đọc của admin, đếm theo loại và trạng thái, xuất danh sách · needs a decision
 - **Hoãn từ spec 0006 (2026-10-20)**: số lượt lưu cho chủ trọ, ghi chú riêng cho tin đã lưu, thông báo khi tin đã lưu đổi giá hoặc biến mất (cần việc nền), bộ lọc hoặc kiểu sắp xếp cho danh sách đã lưu, báo số tin đã lưu đang bị ẩn, giới hạn số tin được lưu, API riêng trả danh sách id đã lưu · needs a decision
 
 ## Legend

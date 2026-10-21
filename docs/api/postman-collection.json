@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Rental Management Platform API",
-    "description": "Bộ request để thử API backend. Cập nhật cùng mỗi thay đổi API (xem docs/api/api-for-frontend.md, mục Nhật ký thay đổi).\n\nCách dùng:\n1. Import file này vào Postman.\n2. Mở tab Variables của collection, điền `adminEmail` và `adminPassword` theo ADMIN_SEED_* trong .env (không commit mật khẩu thật).\n3. Chạy API (`npm run start:dev`), rồi chạy lần lượt folder 00, 01, 02, 03, 04, 05, rồi 07 đến 17 (folder 15 cần thư mục làm việc `docs/api` vì có tải tệp mẫu). Folder 06 (giới hạn tần suất, lỗi 429) chạy riêng, đừng chạy cả bộ nhiều lần liên tiếp: bộ đếm nằm trong bộ nhớ backend, muốn chạy lại ngay thì khởi động lại backend.\n4. Các request tự lưu token vào biến `userToken` và `adminToken`.\n\nCookie refresh (`rt`) có Path `/api/v1/auth`, Postman tự giữ và tự gửi cho các request dưới đường dẫn đó.",
+    "description": "Bộ request để thử API backend. Cập nhật cùng mỗi thay đổi API (xem docs/api/api-for-frontend.md, mục Nhật ký thay đổi).\n\nCách dùng:\n1. Import file này vào Postman.\n2. Mở tab Variables của collection, điền `adminEmail` và `adminPassword` theo ADMIN_SEED_* trong .env (không commit mật khẩu thật).\n3. Chạy API (`npm run start:dev`), rồi chạy lần lượt folder 00, 01, 02, 03, 04, 05, rồi 07 đến 20 (folder 15 cần thư mục làm việc `docs/api` vì có tải tệp mẫu). Folder 06 (giới hạn tần suất, lỗi 429) chạy riêng, đừng chạy cả bộ nhiều lần liên tiếp: bộ đếm nằm trong bộ nhớ backend, muốn chạy lại ngay thì khởi động lại backend.\n4. Các request tự lưu token vào biến `userToken` và `adminToken`.\n\nCookie refresh (`rt`) có Path `/api/v1/auth`, Postman tự giữ và tự gửi cho các request dưới đường dẫn đó.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -459,6 +459,46 @@
       "key": "favListingSlug2",
       "value": "",
       "description": "Slug của tin B (tự lưu)."
+    },
+    {
+      "key": "listTotal",
+      "value": ""
+    },
+    {
+      "key": "listedUserId",
+      "value": ""
+    },
+    {
+      "key": "listNameTotal",
+      "value": ""
+    },
+    {
+      "key": "listLongQ",
+      "value": ""
+    },
+    {
+      "key": "listUserEmailUpper",
+      "value": ""
+    },
+    {
+      "key": "listUserNameUpper",
+      "value": ""
+    },
+    {
+      "key": "listUserNameNoMarks",
+      "value": ""
+    },
+    {
+      "key": "listUserPhoneSpaced",
+      "value": ""
+    },
+    {
+      "key": "listUserPhoneTail",
+      "value": ""
+    },
+    {
+      "key": "listLockReason",
+      "value": ""
     }
   ],
   "auth": {
@@ -18927,6 +18967,1622 @@
                 }
               }
             }
+          }
+        }
+      ]
+    },
+    {
+      "name": "20 Danh sách người dùng (admin)",
+      "description": "Danh sách tài khoản cho admin (spec 0007): `GET /users`, chỉ đọc. **Chạy sau folder 01, 08 và 09** (dùng `userEmail`, `userName`, `userPhone`, `otherLandlordToken`, `tenantToken`) và từ trên xuống. Request đầu đăng nhập admin. Folder không thêm lần đăng ký nào, không đổi dữ liệu cuối cùng (khóa rồi mở khóa lại tài khoản thử). Bộ lọc `accountType`, `status`; tìm `q` theo email, tên, số điện thoại; phân trang như các danh sách khác. Mỗi lần gọi đọc lại admin trong database (`@FreshAuth`), nên admin vừa bị khóa hay bị xóa mềm với token còn hạn bị 403 `ACCOUNT_LOCKED` hay 401 `TOKEN_INVALID`; hai ca này cần hai tài khoản admin nên kiểm trong `docs/specs/0007-admin-user-list/verify.md`, không có ở đây.",
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{adminToken}}",
+            "type": "string"
+          }
+        ]
+      },
+      "item": [
+        {
+          "name": "Đăng nhập admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.collectionVariables.set('adminToken', pm.response.json().accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Công khai. Đăng nhập admin do `npm run seed` tạo (điền `adminEmail`, `adminPassword` ở biến của collection). Lưu token vào `adminToken`.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Danh sách mặc định (GET /users)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('Cache-Control là private, no-store', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('private, no-store'));",
+                  "",
+                  "pm.test('có đúng bốn khóa items, page, pageSize, total', () => pm.expect(Object.keys(pm.response.json()).sort()).to.eql(['items', 'page', 'pageSize', 'total']));",
+                  "",
+                  "pm.test('mặc định trang 1, 20 dòng', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.page).to.eql(1);",
+                  "    pm.expect(body.pageSize).to.eql(20);",
+                  "    pm.expect(body.items.length).to.be.at.most(20);",
+                  "});",
+                  "",
+                  "pm.test('mỗi dòng đúng tám trường', () => pm.response.json().items.forEach((u) => pm.expect(Object.keys(u).sort()).to.eql(['accountType', 'createdAt', 'email', 'id', 'lockedReason', 'name', 'phone', 'status'])));",
+                  "",
+                  "pm.test('mới nhất trước', () => {",
+                  "    const times = pm.response.json().items.map((u) => u.createdAt);",
+                  "    pm.expect(times).to.eql([...times].sort().reverse());",
+                  "});",
+                  "",
+                  "pm.test('không lộ mật khẩu hay mã băm', () => {",
+                  "    const text = pm.response.text().toLowerCase();",
+                  "    ['passwordhash', 'password_hash', 'argon2', 'trialendsat'].forEach((word) => pm.expect(text).to.not.include(word));",
+                  "});",
+                  "",
+                  "pm.collectionVariables.set('listTotal', String(pm.response.json().total));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ]
+            },
+            "description": "Cần quyền `user:read` (chỉ admin) và phiên mới (`@FreshAuth`). Mặc định trang 1, 20 dòng, người đăng ký mới nhất trước. Mỗi dòng có đúng tám trường; không bao giờ có mật khẩu hay mã băm. Phản hồi có `Cache-Control: private, no-store`. Lưu `listTotal` cho các request sau."
+          }
+        },
+        {
+          "name": "Trang 2, mỗi trang 1 dòng",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('trang 2, một dòng, total không đổi', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.page).to.eql(2);",
+                  "    pm.expect(body.pageSize).to.eql(1);",
+                  "    pm.expect(body.items.length).to.be.at.most(1);",
+                  "    pm.expect(String(body.total)).to.eql(pm.collectionVariables.get('listTotal'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users?page=2&pageSize=1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "2"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "`total` đếm mọi dòng khớp, không phụ thuộc trang, nên bằng `listTotal`."
+          }
+        },
+        {
+          "name": "Trang quá cuối vẫn 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('items rỗng, total đúng', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.items).to.eql([]);",
+                  "    pm.expect(String(body.total)).to.eql(pm.collectionVariables.get('listTotal'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users?page=1000000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1000000"
+                }
+              ]
+            },
+            "description": "Trang quá cuối không phải lỗi: 200 với `items: []` và `total` đúng."
+          }
+        },
+        {
+          "name": "pageSize tối đa 50",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('pageSize là 50', () => pm.expect(pm.response.json().pageSize).to.eql(50));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users?pageSize=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "pageSize",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "`pageSize` từ 1 đến 50."
+          }
+        },
+        {
+          "name": "[lỗi] pageSize 51",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "",
+                  "pm.test('VALIDATION_FAILED nêu đúng trường pageSize', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.code).to.eql('VALIDATION_FAILED');",
+                  "    pm.expect(body.errors.map((e) => e.field)).to.include('pageSize');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users?pageSize=51",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "pageSize",
+                  "value": "51"
+                }
+              ]
+            },
+            "description": "Quá 50 là 400 `VALIDATION_FAILED`, `errors[].field` là `pageSize`."
+          }
+        },
+        {
+          "name": "Lọc theo loại tài khoản: landlord",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('mọi dòng là landlord', () => pm.response.json().items.forEach((u) => pm.expect(u.accountType).to.eql('landlord')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users?accountType=landlord&pageSize=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "accountType",
+                  "value": "landlord"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "`accountType` nhận `admin`, `landlord` hoặc `tenant`, mỗi lần một giá trị. `total` cũng theo bộ lọc."
+          }
+        },
+        {
+          "name": "Lọc theo trạng thái: locked",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('mọi dòng bị khóa và có lý do', () => pm.response.json().items.forEach((u) => {",
+                  "    pm.expect(u.status).to.eql('locked');",
+                  "    pm.expect(u.lockedReason).to.be.a(\"string\").and.not.empty;",
+                  "}));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users?status=locked&pageSize=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "locked"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "`status` nhận `active` hoặc `locked`. Dòng bị khóa luôn có `lockedReason`."
+          }
+        },
+        {
+          "name": "Lọc cả hai: tenant đang hoạt động",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('mọi dòng là tenant, active, lockedReason null', () => pm.response.json().items.forEach((u) => {",
+                  "    pm.expect(u.accountType).to.eql('tenant');",
+                  "    pm.expect(u.status).to.eql('active');",
+                  "    pm.expect(u.lockedReason).to.eql(null);",
+                  "}));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users?accountType=tenant&status=active&pageSize=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "accountType",
+                  "value": "tenant"
+                },
+                {
+                  "key": "status",
+                  "value": "active"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Dùng cả hai bộ lọc thì dòng phải thỏa cả hai. Tài khoản đang hoạt động có `lockedReason: null`."
+          }
+        },
+        {
+          "name": "[lỗi] accountType lạ",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "",
+                  "pm.test('VALIDATION_FAILED nêu đúng trường accountType', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.code).to.eql('VALIDATION_FAILED');",
+                  "    pm.expect(body.errors.map((e) => e.field)).to.include('accountType');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users?accountType=root",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "accountType",
+                  "value": "root"
+                }
+              ]
+            },
+            "description": "Giá trị ngoài danh sách: 400 `VALIDATION_FAILED`, trường `accountType`."
+          }
+        },
+        {
+          "name": "[lỗi] status lạ",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "",
+                  "pm.test('VALIDATION_FAILED nêu đúng trường status', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.code).to.eql('VALIDATION_FAILED');",
+                  "    pm.expect(body.errors.map((e) => e.field)).to.include('status');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users?status=x",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "x"
+                }
+              ]
+            },
+            "description": "Giá trị ngoài danh sách: 400 `VALIDATION_FAILED`, trường `status`."
+          }
+        },
+        {
+          "name": "[lỗi] tham số lạ sort",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "",
+                  "pm.test('VALIDATION_FAILED nêu đúng trường sort', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.code).to.eql('VALIDATION_FAILED');",
+                  "    pm.expect(body.errors.map((e) => e.field)).to.include('sort');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users?sort=asc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "sort",
+                  "value": "asc"
+                }
+              ]
+            },
+            "description": "Danh sách chưa có `sort` (thứ tự cố định). Tham số lạ bị từ chối: 400 `VALIDATION_FAILED`, trường `sort`."
+          }
+        },
+        {
+          "name": "[lỗi] q dài 255 ký tự",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('listLongQ', 'a'.repeat(255));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "",
+                  "pm.test('VALIDATION_FAILED nêu đúng trường q', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.code).to.eql('VALIDATION_FAILED');",
+                  "    pm.expect(body.errors.map((e) => e.field)).to.include('q');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users?q={{listLongQ}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "{{listLongQ}}"
+                }
+              ]
+            },
+            "description": "`q` tối đa 254 ký tự sau khi cắt khoảng trắng. 255 ký tự: 400 `VALIDATION_FAILED`, trường `q`."
+          }
+        },
+        {
+          "name": "Tìm theo email đầy đủ",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('đúng một tài khoản, đúng email', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.total).to.eql(1);",
+                  "    pm.expect(body.items[0].email).to.eql(pm.collectionVariables.get('userEmail').toLowerCase());",
+                  "});",
+                  "",
+                  "pm.collectionVariables.set('listedUserId', pm.response.json().items[0].id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users?q={{userEmail}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "{{userEmail}}"
+                }
+              ]
+            },
+            "description": "Cần chạy folder 01 trước (đăng ký chủ trọ lưu `userEmail`). `q` khớp khi email, tên hoặc số điện thoại chứa nguyên chuỗi, không phân biệt hoa thường. Lưu `listedUserId`: chính là id mà `lock` và `unlock` nhận."
+          }
+        },
+        {
+          "name": "Tìm theo email viết hoa",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('listUserEmailUpper', pm.collectionVariables.get('userEmail').toUpperCase());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('ra đúng tài khoản', () => pm.expect(pm.response.json().items.map((u) => u.id)).to.eql([pm.collectionVariables.get('listedUserId')]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users?q={{listUserEmailUpper}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "{{listUserEmailUpper}}"
+                }
+              ]
+            },
+            "description": "Không phân biệt hoa thường: ra đúng tài khoản ở request trên."
+          }
+        },
+        {
+          "name": "Tìm theo tên có dấu",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const needle = pm.collectionVariables.get('userName').toLowerCase();",
+                  "pm.test('mọi dòng có chuỗi tìm trong email, tên hoặc số điện thoại', () => {",
+                  "    pm.response.json().items.forEach((u) => pm.expect([u.email, u.name || '', u.phone || ''].join('\\n').toLowerCase()).to.include(needle));",
+                  "});",
+                  "",
+                  "pm.test('tìm ra tài khoản vừa đăng ký', () => pm.expect(pm.response.json().total).to.be.at.least(1));",
+                  "",
+                  "pm.collectionVariables.set('listNameTotal', String(pm.response.json().total));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users?q={{userName}}&pageSize=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "{{userName}}"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Tên tìm theo chuỗi chứa nguyên cụm, kể cả chữ Việt có dấu. Lưu `listNameTotal`."
+          }
+        },
+        {
+          "name": "Tìm theo tên viết hoa toàn bộ",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('listUserNameUpper', pm.collectionVariables.get('userName').toUpperCase());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('cùng số kết quả với bản viết thường', () => pm.expect(String(pm.response.json().total)).to.eql(pm.collectionVariables.get('listNameTotal')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users?q={{listUserNameUpper}}&pageSize=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "{{listUserNameUpper}}"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Viết hoa hay viết thường, có dấu, ra cùng một tập (cần database dùng bộ ký tự UTF-8)."
+          }
+        },
+        {
+          "name": "Tìm tên bỏ dấu không ra tên có dấu",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const noMarks = pm.collectionVariables.get('userName').normalize('NFD').replace(/\\p{M}/gu, '').replace(/đ/g, 'd').replace(/Đ/g, 'D');",
+                  "pm.collectionVariables.set('listUserNameNoMarks', noMarks);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const needle = pm.collectionVariables.get('listUserNameNoMarks').toLowerCase();",
+                  "pm.test('mọi dòng có chuỗi tìm trong email, tên hoặc số điện thoại', () => {",
+                  "    pm.response.json().items.forEach((u) => pm.expect([u.email, u.name || '', u.phone || ''].join('\\n').toLowerCase()).to.include(needle));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users?q={{listUserNameNoMarks}}&pageSize=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "{{listUserNameNoMarks}}"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Dấu phải khớp: `Nguoi` không tìm ra `Người`. Muốn không phân biệt dấu cần cột tìm kiếm riêng, đã hoãn."
+          }
+        },
+        {
+          "name": "Tìm theo số điện thoại",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('ra đúng tài khoản', () => pm.expect(pm.response.json().items.map((u) => u.id)).to.include(pm.collectionVariables.get('listedUserId')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users?q={{userPhone}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "{{userPhone}}"
+                }
+              ]
+            },
+            "description": "Số lưu dạng `0xxxxxxxxx`. Ra tài khoản chủ trọ vừa đăng ký."
+          }
+        },
+        {
+          "name": "Tìm theo số điện thoại có khoảng trắng",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('listUserPhoneSpaced', pm.collectionVariables.get('userPhone').replace(/^(\\d{4})(\\d{3})(\\d{3})$/, '$1 $2 $3'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('ra đúng tài khoản', () => pm.expect(pm.response.json().items.map((u) => u.id)).to.include(pm.collectionVariables.get('listedUserId')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users?q={{listUserPhoneSpaced}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "{{listUserPhoneSpaced}}"
+                }
+              ]
+            },
+            "description": "Khoảng trắng, dấu chấm và dấu gạch trong số không làm hỏng việc tìm: `0912 345 678` tìm ra số lưu là `0912345678`."
+          }
+        },
+        {
+          "name": "Tìm theo số dạng quốc tế +84",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('listUserPhoneTail', pm.collectionVariables.get('userPhone').slice(1));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('ra đúng tài khoản', () => pm.expect(pm.response.json().items.map((u) => u.id)).to.include(pm.collectionVariables.get('listedUserId')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users?q=%2B84{{listUserPhoneTail}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "%2B84{{listUserPhoneTail}}"
+                }
+              ]
+            },
+            "description": "Dạng quốc tế đầy đủ (`+84` hoặc `84` cộng 9 chữ số) được đổi về `0` cộng 9 chữ số trước khi so. Dấu `+` trên URL phải mã hóa thành `%2B`, nếu không máy chủ đọc nó là khoảng trắng (kết quả vẫn đúng vì khoảng trắng đầu bị cắt)."
+          }
+        },
+        {
+          "name": "Tìm theo số dạng 84 không dấu cộng",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('ra đúng tài khoản', () => pm.expect(pm.response.json().items.map((u) => u.id)).to.include(pm.collectionVariables.get('listedUserId')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users?q=84{{listUserPhoneTail}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "84{{listUserPhoneTail}}"
+                }
+              ]
+            },
+            "description": "Như trên nhưng không có dấu `+`."
+          }
+        },
+        {
+          "name": "q = 84 vẫn tìm chuỗi 84",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const needle = '84';",
+                  "pm.test('mọi dòng có chuỗi tìm trong email, tên hoặc số điện thoại', () => {",
+                  "    pm.response.json().items.forEach((u) => pm.expect([u.email, u.name || '', u.phone || ''].join('\\n').toLowerCase()).to.include(needle));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users?q=84&pageSize=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "84"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Chỉ đổi `84` thành `0` khi đủ 9 chữ số theo sau. `84` đứng một mình vẫn tìm chuỗi `84`."
+          }
+        },
+        {
+          "name": "q = % chỉ khớp ký tự % thật",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const needle = '%';",
+                  "pm.test('mọi dòng có chuỗi tìm trong email, tên hoặc số điện thoại', () => {",
+                  "    pm.response.json().items.forEach((u) => pm.expect([u.email, u.name || '', u.phone || ''].join('\\n').toLowerCase()).to.include(needle));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users?q=%25&pageSize=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "%25"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "`%`, `_` và `\\` trong `q` là chính chúng, không phải ký tự đại diện: `q=%` không khớp mọi dòng."
+          }
+        },
+        {
+          "name": "q = _ chỉ khớp ký tự _ thật",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const needle = '_';",
+                  "pm.test('mọi dòng có chuỗi tìm trong email, tên hoặc số điện thoại', () => {",
+                  "    pm.response.json().items.forEach((u) => pm.expect([u.email, u.name || '', u.phone || ''].join('\\n').toLowerCase()).to.include(needle));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users?q=_&pageSize=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "_"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Như trên với `_`."
+          }
+        },
+        {
+          "name": "q toàn khoảng trắng như không có q",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('total bằng danh sách không lọc', () => pm.expect(String(pm.response.json().total)).to.eql(pm.collectionVariables.get('listTotal')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users?q=%20%20%20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "%20%20%20"
+                }
+              ]
+            },
+            "description": "`q` được cắt khoảng trắng hai đầu; rỗng sau khi cắt thì không lọc chữ."
+          }
+        },
+        {
+          "name": "q kết hợp bộ lọc: đúng trạng thái",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('còn đúng một dòng', () => pm.expect(pm.response.json().total).to.eql(1));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users?q={{userEmail}}&status=active",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "{{userEmail}}"
+                },
+                {
+                  "key": "status",
+                  "value": "active"
+                }
+              ]
+            },
+            "description": "`q` kết hợp với bộ lọc bằng AND. Tài khoản thử đang hoạt động nên còn một dòng."
+          }
+        },
+        {
+          "name": "q kết hợp bộ lọc: sai trạng thái",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('không còn dòng nào', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.items).to.eql([]);",
+                  "    pm.expect(body.total).to.eql(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users?q={{userEmail}}&status=locked",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "{{userEmail}}"
+                },
+                {
+                  "key": "status",
+                  "value": "locked"
+                }
+              ]
+            },
+            "description": "Cùng `q` nhưng lọc `locked` thì không còn dòng nào."
+          }
+        },
+        {
+          "name": "[lỗi] không đăng nhập",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 401', () => pm.response.to.have.status(401));",
+                  "",
+                  "pm.test('TOKEN_MISSING', () => pm.expect(pm.response.json().code).to.eql('TOKEN_MISSING'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ]
+            },
+            "description": "Không gửi token: 401 `TOKEN_MISSING`.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "[lỗi] người tìm trọ gọi",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 403', () => pm.response.to.have.status(403));",
+                  "",
+                  "pm.test('PERMISSION_DENIED', () => pm.expect(pm.response.json().code).to.eql('PERMISSION_DENIED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ]
+            },
+            "description": "Cần folder 09 (`tenantToken`). `user:read` chỉ admin giữ: 403 `PERMISSION_DENIED`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[lỗi] chủ trọ gọi",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 403', () => pm.response.to.have.status(403));",
+                  "",
+                  "pm.test('PERMISSION_DENIED', () => pm.expect(pm.response.json().code).to.eql('PERMISSION_DENIED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ]
+            },
+            "description": "Cần folder 08 (`otherLandlordToken`). 403 `PERMISSION_DENIED`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{otherLandlordToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[lỗi] người tìm trọ gửi bộ lọc sai vẫn bị 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 403', () => pm.response.to.have.status(403));",
+                  "",
+                  "pm.test('PERMISSION_DENIED', () => pm.expect(pm.response.json().code).to.eql('PERMISSION_DENIED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users?accountType=root&pageSize=999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "accountType",
+                  "value": "root"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "999"
+                }
+              ]
+            },
+            "description": "Quyền được kiểm trước tham số nên người không phải admin không dò được tham số: vẫn 403, không phải 400.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[lỗi] không cấp được user:read cho chủ trọ",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "",
+                  "pm.test('PERMISSION_ADMIN_ONLY', () => pm.expect(pm.response.json().code).to.eql('PERMISSION_ADMIN_ONLY'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/account-types/landlord",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account-types",
+                "landlord"
+              ]
+            },
+            "description": "`user:read` là hành động chỉ admin nên không cấp được cho loại khác (spec 0003): 400 `PERMISSION_ADMIN_ONLY`. Request bị từ chối nên không đổi gì.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"permissions\": [\n    \"user:read\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Khóa bằng id lấy từ danh sách",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('listLockReason', 'Kiểm thử danh sách ' + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('status là locked', () => pm.expect(pm.response.json().status).to.eql('locked'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{listedUserId}}/lock",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{listedUserId}}",
+                "lock"
+              ]
+            },
+            "description": "Cần quyền `user:lock`. `listedUserId` lấy từ danh sách ở trên. Phản hồi vẫn là sáu trường (không có `lockedReason`, `createdAt`): tải lại danh sách để thấy lý do.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"{{listLockReason}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Đọc lại danh sách: dòng đã khóa kèm lý do",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('locked và lockedReason là lý do vừa nhập', () => {",
+                  "    const user = pm.response.json().items[0];",
+                  "    pm.expect(user.id).to.eql(pm.collectionVariables.get('listedUserId'));",
+                  "    pm.expect(user.status).to.eql('locked');",
+                  "    pm.expect(user.lockedReason).to.eql(pm.collectionVariables.get('listLockReason'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users?q={{userEmail}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "{{userEmail}}"
+                }
+              ]
+            },
+            "description": "Danh sách luôn là trạng thái trong database lúc gọi."
+          }
+        },
+        {
+          "name": "Mở khóa bằng id lấy từ danh sách",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('status là active', () => pm.expect(pm.response.json().status).to.eql('active'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{listedUserId}}/unlock",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{listedUserId}}",
+                "unlock"
+              ]
+            },
+            "description": "Cần quyền `user:lock`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Đã xác minh lại\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Đọc lại danh sách: dòng đã mở khóa",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('active và lockedReason null', () => {",
+                  "    const user = pm.response.json().items[0];",
+                  "    pm.expect(user.status).to.eql('active');",
+                  "    pm.expect(user.lockedReason).to.eql(null);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users?q={{userEmail}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "{{userEmail}}"
+                }
+              ]
+            },
+            "description": "Mở khóa đặt `status` về `active` và `lockedReason` về `null`."
           }
         }
       ]

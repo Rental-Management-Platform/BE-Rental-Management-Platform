@@ -25,7 +25,7 @@ Quy ước đọc file: phần nào ghi **Chưa có** nghĩa là đã lên kế 
 
 ## 1. Hệ thống làm gì
 
-Nền tảng quản lý và cho thuê nhà trọ. Hiện backend đã có phần **tài khoản và phân quyền**, danh mục địa chỉ và tiện ích, **nhà trọ của chủ trọ** (tạo, xem, sửa, xóa mềm) và **tin đăng** (đăng, sửa, ẩn, hiện, xóa; khách xem danh sách và chi tiết); **bảng giá gói** cùng phần admin quản lý gói (mục 6.26), **đơn mua gói và thanh toán thử** (mục 6.27); **gói đổi hạn mức tin** (mục 6.25); **ảnh của tin** (tải lên, xóa và xem ảnh, mục 6.28); **admin kiểm duyệt tin** (tìm, ẩn, gỡ ẩn kèm lý do, mục 6.29) và **admin quản lý danh mục phường và tiện ích** (mục 6.30); **hồ sơ công khai của chủ trọ** với số người theo dõi, tổng lượt xem và số tin đang hiện (mục 6.31), **theo dõi và bỏ theo dõi chủ trọ** (mục 6.32), cùng **lưu tin yêu thích** của người tìm trọ (mục 6.33).
+Nền tảng quản lý và cho thuê nhà trọ. Hiện backend đã có phần **tài khoản và phân quyền**, danh mục địa chỉ và tiện ích, **nhà trọ của chủ trọ** (tạo, xem, sửa, xóa mềm) và **tin đăng** (đăng, sửa, ẩn, hiện, xóa; khách xem danh sách và chi tiết); **bảng giá gói** cùng phần admin quản lý gói (mục 6.26), **đơn mua gói và thanh toán thử** (mục 6.27); **gói đổi hạn mức tin** (mục 6.25); **ảnh của tin** (tải lên, xóa và xem ảnh, mục 6.28); **admin kiểm duyệt tin** (tìm, ẩn, gỡ ẩn kèm lý do, mục 6.29) và **admin quản lý danh mục phường và tiện ích** (mục 6.30); **hồ sơ công khai của chủ trọ** với số người theo dõi, tổng lượt xem và số tin đang hiện (mục 6.31), **theo dõi và bỏ theo dõi chủ trọ** (mục 6.32), **lưu tin yêu thích** của người tìm trọ (mục 6.33), cùng **danh sách người dùng cho admin** để tìm tài khoản cần khóa hay mở khóa (mục 6.34).
 
 ### Ba loại tài khoản
 
@@ -66,6 +66,7 @@ Mỗi tài khoản chỉ thuộc **một** loại, chọn lúc đăng ký và **
 | Theo dõi và bỏ theo dõi chủ trọ (`POST` và `DELETE /landlords/:id/follow`) | Có (mới, 2026-10-20, mục 6.32) |
 | Lưu tin yêu thích: lưu, bỏ lưu, danh sách đã lưu (`POST` và `DELETE /listings/:id/favorite`, `GET /me/favorites`) | Có (mới, 2026-10-21, mục 6.33) |
 | Cờ `isFavorite` ở danh sách và chi tiết tin công khai | Có (mới, 2026-10-21, mục 6.19, 6.20 và 6.33) |
+| Danh sách người dùng cho admin: lọc theo loại tài khoản và trạng thái, tìm theo email, tên, số điện thoại (`GET /users`) | Có (mới, 2026-10-21, mục 6.34) |
 
 ---
 
@@ -274,7 +275,7 @@ Quyền admin chỉnh được **chỉ gồm hành động lẻ** của các mod
 | Module | Hành động | Chủ sở hữu | Chỉ admin | Đã có API |
 |---|---|---|---|---|
 | `profile` | read, update | có | | chưa |
-| `user` | read, lock, revoke | | tất cả | `lock`, `revoke` |
+| `user` | read, lock, revoke | | tất cả | `read` (mục 6.34), `lock`, `revoke` |
 | `account_type` | read, update | | tất cả | có |
 | `catalog` | read, create, update, delete | | tất cả | chưa |
 | `setting` | read, update | | tất cả | có (mục 6.24) |
@@ -1342,6 +1343,67 @@ Cần nhớ:
 - Chủ trọ được admin cấp quyền `favorite:*` thì lưu được, kể cả tin của chính mình; không có luật riêng.
 - **Chưa có** số lượt lưu cho chủ trọ, ghi chú riêng, thông báo khi tin đã lưu đổi giá hay biến mất, bộ lọc hoặc kiểu sắp xếp cho danh sách đã lưu (đã hoãn).
 
+### 6.34 Danh sách người dùng (admin)
+
+`GET /users` · quyền `user:read`
+
+Chỉ **admin** giữ `user:read`, và quyền này không cấp được cho `landlord` hay `tenant` (cấp thử thì 400 `PERMISSION_ADMIN_ONLY`). Admin dùng danh sách này để tìm đúng người cần khóa hay mở khóa mà không phải biết sẵn id. API chỉ đọc. Phản hồi có `Cache-Control: private, no-store` vì có email và số điện thoại của người khác.
+
+Query, mọi tham số đều tùy chọn:
+
+| Tham số | Kiểu | Mặc định | Luật |
+|---|---|---|---|
+| `page`, `pageSize` | số nguyên | 1 và 20 | Quy ước phân trang ở mục 2 (`pageSize` tối đa 50) |
+| `accountType` | chuỗi | không lọc | `admin`, `landlord` hoặc `tenant`. Mỗi lần một giá trị |
+| `status` | chuỗi | không lọc | `active` hoặc `locked`. Mỗi lần một giá trị |
+| `q` | chuỗi | không lọc | Tối đa 254 ký tự sau khi cắt khoảng trắng hai đầu (đủ dán một email). Rỗng sau khi cắt thì không lọc chữ. Một dòng khớp khi **email, tên hoặc số điện thoại chứa nguyên chuỗi** ở bất kỳ vị trí nào |
+
+Dùng cả hai bộ lọc và `q` thì dòng phải thỏa tất cả. Giá trị ngoài danh sách, `q` quá dài hay tham số lạ (như `sort`) là 400 `VALIDATION_FAILED` kèm tên trường sai.
+
+**200 OK**: `{ "items": [...], "total": 37, "page": 1, "pageSize": 20 }`. Người **mới đăng ký nằm trên** (cố định, không có `sort`). Mỗi phần tử có đúng tám trường:
+
+```json
+{
+  "id": "0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8d01",
+  "email": "nam@example.com",
+  "name": "Nguyễn Văn Nam",
+  "phone": "0901234567",
+  "accountType": "landlord",
+  "status": "locked",
+  "lockedReason": "Đăng tin giả mạo",
+  "createdAt": "2026-10-05T03:00:00.000Z"
+}
+```
+
+| Trường | Ý nghĩa |
+|---|---|
+| `id` | Chính là `:id` của `POST /users/:id/lock` và `POST /users/:id/unlock` (6.10, 6.11) |
+| `name`, `phone` | Có thể `null` (người tìm trọ không bắt buộc hai trường này). Số điện thoại lưu dạng `0xxxxxxxxx` |
+| `accountType` | `admin`, `landlord` hoặc `tenant` |
+| `status` | `active` hoặc `locked` |
+| `lockedReason` | Lý do lúc khóa; `null` khi tài khoản đang `active` (mở khóa xóa lý do) |
+| `createdAt` | Lúc đăng ký (ISO 8601, UTC) |
+
+Không bao giờ có mật khẩu, mã băm, hạn dùng thử hay thông tin phiên. Danh sách gồm **mọi loại tài khoản, kể cả admin và tài khoản đang bị khóa**; tài khoản đã xóa mềm không hiện.
+
+**Lỗi**:
+
+| Lỗi | Khi nào |
+|---|---|
+| 400 `VALIDATION_FAILED` | `page`, `pageSize`, `accountType`, `status` hay `q` sai, hoặc có tham số lạ; `errors[].field` nêu trường sai |
+| 401 `TOKEN_MISSING`, `TOKEN_INVALID`, `TOKEN_EXPIRED` | Chưa đăng nhập, token sai hoặc hết hạn. Admin đã bị xóa nhận 401 `TOKEN_INVALID` dù token còn hạn |
+| 403 `PERMISSION_DENIED` | Không phải admin. Quyền được kiểm **trước** tham số: người tìm trọ hay chủ trọ gửi bộ lọc sai vẫn nhận 403, không phải 400 |
+| 403 `ACCOUNT_LOCKED` | Admin vừa bị khóa. API này **đọc lại admin trong database mỗi lần gọi**, không tin token, nên mất đường đọc ngay dù token còn hạn |
+
+Cần nhớ:
+- **Tìm số điện thoại không bị khoảng trắng, dấu chấm hay dấu gạch làm hỏng**: `0901 234 567` tìm ra số lưu là `0901234567`. `q` dạng quốc tế đầy đủ (`+84901234567` hoặc `84901234567`, tức `84` cộng 9 chữ số) được đổi về `0901234567` trước khi so. Dạng khác giữ nguyên chữ số đã gõ, nên `q=84` vẫn tìm chuỗi `84`; `q` có chữ cái thì chỉ so với email và tên. **Dấu `+` trên URL phải mã hóa thành `%2B`** (`URLSearchParams` hay tham số `params` của axios tự lo); không mã hóa thì máy chủ đọc nó là khoảng trắng và vẫn ra đúng kết quả nhờ cắt khoảng trắng đầu.
+- **Không phân biệt hoa thường, kể cả chữ Việt có dấu** (`NGUYỄN` và `nguyễn` ra cùng một người). **Dấu phải khớp**: `nguyen` không tìm ra `Nguyễn`. Tìm bằng email hoặc số điện thoại không bị ảnh hưởng.
+- **`%`, `_` và `\` trong `q` là chính chúng**, không phải ký tự đại diện: `q=%` chỉ ra tài khoản có dấu `%` thật trong email hay tên.
+- **Phản hồi của `lock` và `unlock` (6.10, 6.11) vẫn chỉ có sáu trường**, không có `lockedReason` và `createdAt`. Sau khi khóa hay mở khóa, FE hoặc tải lại danh sách (luôn là trạng thái trong database lúc gọi), hoặc tự ghép trường `status` mới và lý do vừa nhập vào dòng đang hiện.
+- Có `total` đúng ở mọi trang; trang quá cuối trả 200 với `items: []`.
+- Không có giới hạn tần suất riêng cho API này (chỉ admin gọi được).
+- **Chưa có** chi tiết một tài khoản (`GET /users/:id`), tham số `sort`, thời điểm đăng nhập gần nhất, người khóa và lúc khóa, thông tin chủ trọ trên mỗi dòng (hạn dùng thử, số tin, gói), tìm tên không phân biệt dấu, đếm theo loại và trạng thái, xuất danh sách (đã hoãn).
+
 ---
 
 ## 7. Luồng màn hình gợi ý
@@ -1422,7 +1484,8 @@ Hai ô: mật khẩu hiện tại, mật khẩu mới. Gọi `POST /auth/change-
 ### Màn hình admin
 
 - **Chỉnh quyền loại tài khoản**: lấy `GET /permissions` (danh mục) và `GET /account-types` (quyền hiện tại). Vẽ ma trận hành động theo module cho `landlord` và `tenant`. Tắt (không cho chọn) mọi hành động trong `adminActions`. Khi lưu, gửi **toàn bộ** danh sách đang chọn bằng `PATCH /account-types/:key`. Nên ghi chú: người dùng đang đăng nhập nhận quyền mới trong tối đa 15 phút hoặc khi họ refresh.
-- **Khóa, mở khóa**: bắt nhập **lý do** (bắt buộc cả khóa lẫn mở khóa). Khóa xong thì người đó mất phiên ngay. Hiện tại **chưa có API danh sách người dùng** để tìm id; xem mục 10.
+- **Danh sách người dùng**: bảng lấy từ `GET /users` (phân trang, mục 6.34) với ô tìm kiếm `q` (email, tên hoặc số điện thoại, gõ tên phải đúng dấu), bộ lọc loại tài khoản (`accountType`) và trạng thái (`status`). Mỗi dòng hiện tên, email, số điện thoại, loại, ngày đăng ký, nhãn `active` hoặc `locked` và, khi bị khóa, `lockedReason`. Dòng đang `active` có nút "Khóa", dòng `locked` có nút "Mở khóa"; cả hai mở hộp nhập **lý do bắt buộc** rồi gọi `POST /users/:id/lock` hay `unlock` bằng `id` của dòng (6.10, 6.11). Phản hồi của hai API này **không có `lockedReason` và `createdAt`** nên sau khi gọi, tải lại danh sách hoặc tự ghép `status` mới và lý do vừa nhập vào dòng. Tài khoản admin cũng hiện trong danh sách; khóa chính mình là 409 `CANNOT_LOCK_SELF`, nên ẩn nút ở dòng của chính admin đang đăng nhập. API này kiểm lại admin mỗi lần gọi: gặp 403 `ACCOUNT_LOCKED` hay 401 thì đưa về trang đăng nhập.
+- **Khóa, mở khóa**: bắt nhập **lý do** (bắt buộc cả khóa lẫn mở khóa). Khóa xong thì người đó mất phiên ngay. Id của người cần khóa lấy từ danh sách người dùng ngay phía trên (6.34).
 - **Quản lý gói**: bảng lấy từ `GET /plans/all` (phân trang), hiện cả gói đã tắt với nhãn "Đã ngừng bán". Biểu mẫu tạo và sửa dùng chung: tên, giá, số tin, số ngày, công tắc "Đang bán"; giới hạn ô nhập theo mục 6.26. Công tắc đổi `isActive` bằng `PATCH`. Nút xóa hỏi xác nhận; gặp 409 `PLAN_IN_USE` thì báo "gói đã có đơn, hãy tắt thay vì xóa". Gặp 409 `PLAN_NAME_TAKEN` thì báo ở ô tên (mục 6.26).
 - **Tham số hệ thống**: một trang nhỏ với hai ô số: lấy `GET /settings`, mỗi dòng một ô nhập có giới hạn `min` và `max` lấy từ phản hồi, nút lưu gọi `PATCH /settings/:key` cho từng khóa (mục 6.24). Hiện `updatedAt` và `updatedBy` để biết ai sửa lần cuối. Nên ghi chú: đổi số ngày chỉ áp cho chủ trọ đăng ký sau đó.
 - **Kiểm duyệt tin**: bảng lấy từ `GET /moderation/listings` (phân trang) với ô tìm kiếm `q`, bộ lọc `status` và `landlordId` (mục 6.29). Mỗi dòng hiện ảnh bìa, tiêu đề, tên chủ trọ, `fullAddress`, `viewCount` và nhãn trạng thái. Tin `visible` hoặc `hidden_by_owner` có nút "Ẩn"; tin `hidden_by_admin` có nút "Gỡ ẩn" và hiện `moderationReason`. Cả hai nút mở hộp nhập **lý do bắt buộc** (1 đến 500 ký tự) trước khi gửi. Sau khi gọi, thay dòng bằng Mục kiểm duyệt trả về; gặp 409 `LISTING_STATE_INVALID` thì tải lại dòng (có thể chủ trọ hoặc admin khác vừa đổi). Nhắc admin: gỡ ẩn **không** tự hiện tin, chủ trọ phải bấm "Hiện". Chưa có màn hình lịch sử kiểm duyệt (mục 9).
@@ -1461,12 +1524,12 @@ Hai ô: mật khẩu hiện tại, mật khẩu mới. Gọi `POST /auth/change-
 
 ## 9. Giới hạn đã biết
 
-- **Quyền trong access token có thể cũ tối đa 15 phút.** Khi admin đổi quyền một loại hoặc khóa một tài khoản, với API thường người đó dùng được quyền cũ đến khi token hết hạn. Các thao tác nhạy cảm (sửa quyền loại, khóa, mở khóa, thu hồi phiên) luôn kiểm lại cơ sở dữ liệu nên có hiệu lực ngay. `GET /auth/me` cũng luôn mới.
+- **Quyền trong access token có thể cũ tối đa 15 phút.** Khi admin đổi quyền một loại hoặc khóa một tài khoản, với API thường người đó dùng được quyền cũ đến khi token hết hạn. Các thao tác nhạy cảm (sửa quyền loại, khóa, mở khóa, thu hồi phiên, xem danh sách người dùng) luôn kiểm lại cơ sở dữ liệu nên có hiệu lực ngay. `GET /auth/me` cũng luôn mới.
 - **Cookie phụ thuộc host.** FE và API phải cùng dùng `localhost` (khác cổng thì được). Dùng `127.0.0.1` cho một bên thì refresh lỗi âm thầm.
 - **Email quên mật khẩu** gửi qua Gmail SMTP của backend; backend chạy thiếu cấu hình mail sẽ không khởi động. Gửi email lỗi không báo cho người gọi API.
 - **Giới hạn tần suất nằm trong bộ nhớ** của backend: khởi động lại là về 0, và nếu sau này chạy nhiều bản backend thì mỗi bản đếm riêng. Chạy localhost không qua proxy thì mọi client cùng một IP.
 - Người xấu có thể cố ý gọi đăng nhập dồn bằng email của người khác để **khóa đăng nhập email đó trong 15 phút** (đánh đổi của việc giới hạn theo email). Tương tự, người ta có thể gọi dồn quên mật khẩu bằng email đó để chặn việc xin liên kết mới trong 1 giờ. Liên kết đặt lại đã gửi trước đó vẫn dùng được.
-- **Chưa có API danh sách người dùng** nên màn hình admin chưa tìm được người để khóa ngoài việc biết sẵn id.
+- **Danh sách người dùng của admin** (6.34) tìm tên phải gõ đúng dấu (`nguyen` không ra `Nguyễn`); chưa có chi tiết một tài khoản, `sort`, đếm theo loại hay trạng thái, và chưa có nhật ký ghi ai đã xem danh sách. API không có giới hạn tần suất riêng.
 - **Lượt xem tính trong bộ nhớ** của backend: khởi động lại thì mọi người xem được tính lại từ đầu (cộng dư vài lượt), và nếu sau này chạy nhiều bản backend thì mỗi bản tính riêng. Nhiều người không đăng nhập dùng chung một IP chỉ tính một lượt mỗi 30 phút.
 - **Số điện thoại với tài khoản vừa bị khóa**: access token còn hạn (tối đa 15 phút) vẫn được coi là đã đăng nhập ở trang chi tiết tin, nên tài khoản vừa bị khóa còn thấy số điện thoại đến khi token hết hạn. Mọi phiên của tài khoản đã bị hủy nên không refresh được.
 - **Thanh toán là thanh toán thử**: `paid` chỉ nghĩa là chủ trọ tự bấm, không thu tiền, không biên lai, không hoàn tiền và không đổi gói giữa kỳ (mua gói mới luôn nối vào cuối). Admin chưa xem được đơn của mọi người. Đơn chờ không tự hết hạn. Tin không tự hết hạn: phòng đã cho thuê mà chủ trọ quên ẩn thì tin vẫn nằm đó.
@@ -1498,7 +1561,7 @@ Backend sẽ làm theo thứ tự dưới đây. Mỗi mục khi xong sẽ vào 
 |---|---|---|
 | 9 | **Dùng thử miễn phí và hạn mức tin** cho chủ trọ: dùng thử 30 ngày, tối đa 2 tin đang hiện (admin đổi được hai con số này). Hết kỳ dùng thử mà chưa mua gói thì tin của chủ trọ tự biến khỏi danh sách công khai. **Đã có**: API admin xem và đổi hai tham số (mục 6.24); hạn dùng thử đặt lúc đăng ký (6.1); chặn đăng và hiện lại tin khi hết dùng thử hoặc đủ hạn mức (6.18, 6.23, mã lỗi `MEMBERSHIP_REQUIRED` và `LISTING_QUOTA_REACHED`); tin biến khỏi danh sách và chi tiết công khai khi hết kỳ hoặc vượt hạn mức, ẩn bớt theo thứ tự đăng (6.19, 6.20); `GET /me/membership` và cờ `isPublic` (6.25, 6.18). **Còn lại**: đo tốc độ ở hàng chục nghìn tin | Lỗi chặn đăng hoặc hiện thêm tin kèm gợi ý mua gói; hiện ngày hết hạn dùng thử và số tin còn lại |
 | 10 | **Mua gói và gia hạn theo tháng**, **thanh toán thử** (bấm xác nhận là có gói, không có tiền thật, không chuyển sang cổng thanh toán nào, nên **không có trang VNPay**). **Đã có**: bảng giá công khai và API admin tạo, sửa, tắt, xóa gói (mục 6.26); tạo, xem, hủy đơn, thanh toán thử và kỳ gói nối tiếp (mục 6.27). Gói đổi hạn mức tin và hiển thị công khai, `state = plan` và `subscription` trong `GET /me/membership` (mục 6.25). **Còn lại**: không còn gì ở backend cho mục này | Trang chọn gói, nút thanh toán thử, lịch sử đơn, dải trạng thái gói đang chạy (đều dựng được) |
-| sau | API **danh sách người dùng** cho admin, API hồ sơ cá nhân | Màn hình quản lý người dùng, trang hồ sơ |
+| sau | API hồ sơ cá nhân | Trang hồ sơ |
 
 **Đã bỏ khỏi kế hoạch (2026-10-11), FE đừng làm màn hình cho các phần này:** duyệt tin trước khi hiển thị, thanh toán qua VNPay, xác thực chủ trọ bằng giấy tờ, báo cáo tin xấu, liên hệ chủ trọ có giới hạn mỗi ngày, đẩy tin và tin nổi bật, kiểm tra tại chỗ, quảng cáo, báo cáo thu chi và dashboard, thống kê cho chủ trọ, tìm quanh địa điểm mốc, đổi loại tài khoản.
 
@@ -1509,6 +1572,17 @@ Backend sẽ làm theo thứ tự dưới đây. Mỗi mục khi xong sẽ vào 
 ## 11. Nhật ký thay đổi
 
 Mới nhất ở trên cùng. Mục nào **phá vỡ** cách FE đang gọi sẽ ghi rõ "ĐỔI KHÁC VỚI TRƯỚC".
+
+### 2026-10-21 · Danh sách người dùng cho admin
+
+- **API mới** (mục 6.34): `GET /users`, quyền `user:read` (chỉ admin giữ). Phân trang như mục 2, bộ lọc `accountType` và `status`, tìm `q` theo email, tên hoặc số điện thoại. Trả `{ items, total, page, pageSize }`, người mới đăng ký nằm trên; mỗi phần tử có tám trường `id`, `email`, `name`, `phone`, `accountType`, `status`, `lockedReason`, `createdAt`.
+- **Tìm kiếm**: không phân biệt hoa thường kể cả chữ Việt có dấu, nhưng dấu phải khớp (`nguyen` không ra `Nguyễn`). Số điện thoại tìm được dù gõ có khoảng trắng, dấu chấm, dấu gạch hay dạng `+84`. `%`, `_` và `\` là chính chúng.
+- **Không mã lỗi mới**: dùng `VALIDATION_FAILED`, `TOKEN_MISSING`, `TOKEN_INVALID`, `PERMISSION_DENIED`, `ACCOUNT_LOCKED`.
+- **Kiểm lại admin mỗi lần gọi** (`@FreshAuth`): vì danh sách có email và số điện thoại của mọi người, admin vừa bị khóa nhận 403 `ACCOUNT_LOCKED` ngay và admin đã bị xóa nhận 401 `TOKEN_INVALID`, dù token còn hạn. Đây là API đọc đầu tiên áp dụng việc này.
+- Phản hồi có `Cache-Control: private, no-store`. Quyền `user:read` đã có trong danh mục quyền, giờ có API thật (mục 5); quyền mặc định của các loại tài khoản **không đổi**.
+- Phản hồi của `POST /users/:id/lock` và `unlock` **không đổi** (sáu trường, không có `lockedReason` và `createdAt`): FE tải lại danh sách hoặc tự ghép.
+- Chỉ **thêm đường dẫn mới**, không đổi API đang chạy.
+- **FE cần làm** (tùy chọn): màn hình quản lý người dùng cho admin (mục 7, Màn hình admin).
 
 ### 2026-10-21 · Cờ isFavorite ở danh sách và chi tiết tin công khai (mốc 2 của lưu tin yêu thích; phần lưu tin xong)
 

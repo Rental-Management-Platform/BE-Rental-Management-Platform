@@ -1,4 +1,4 @@
-import { normalizePhone, PHONE_PATTERN } from './phone';
+import { normalizePhone, PHONE_PATTERN, toPhoneNeedle } from './phone';
 
 describe('normalizePhone', () => {
 	it.each([
@@ -39,5 +39,44 @@ describe('PHONE_PATTERN', () => {
 		'',
 	])('từ chối %j', (phone) => {
 		expect(PHONE_PATTERN.test(phone)).toBe(false);
+	});
+});
+
+describe('toPhoneNeedle (spec 0007 AC-4)', () => {
+	it.each([
+		['0901234567', '0901234567'],
+		['0901 234 567', '0901234567'],
+		['0901.234.567', '0901234567'],
+		['090-123-4567', '0901234567'],
+		['+84901234567', '0901234567'],
+		['84901234567', '0901234567'],
+		['+84 901 234 567', '0901234567'],
+	])('%j thành %j', (raw, expected) => {
+		expect(toPhoneNeedle(raw)).toBe(expected);
+	});
+
+	it.each([
+		['84', '84'], // chưa đủ 9 chữ số sau 84: vẫn là chuỗi 84
+		['8490', '8490'],
+		['841234567', '841234567'], // 84 cộng 7 chữ số
+		['0901', '0901'],
+		['12', '12'],
+		['849012345678', '849012345678'], // 84 cộng 10 chữ số: không phải dạng quốc tế đầy đủ
+	])('%j giữ nguyên chữ số đã gõ: %j', (raw, expected) => {
+		expect(toPhoneNeedle(raw)).toBe(expected);
+	});
+
+	it.each([
+		'nam',
+		'nam@example.com',
+		'0901abc',
+		'+84',
+		'+84abc901234567',
+		'%',
+		'_',
+		'',
+		'   ',
+	])('%j không so với cột số điện thoại: null', (raw) => {
+		expect(toPhoneNeedle(raw)).toBeNull();
 	});
 });
