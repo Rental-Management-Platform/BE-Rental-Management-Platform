@@ -158,3 +158,91 @@ describe('UsersRepository.findAdminPage (spec 0007 AC-1 đến AC-4, AC-6)', () 
 		});
 	});
 });
+
+describe('UsersRepository.updateProfile (spec 0008 AC-2, AC-4, AC-6)', () => {
+	function build(count = 1) {
+		const updateMany = jest.fn(() => Promise.resolve({ count }));
+		const findFirst = jest.fn(() => Promise.resolve({ id: 'u1' }));
+		const repository = new UsersRepository({
+			user: { updateMany, findFirst },
+		} as unknown as PrismaService);
+		return { repository, updateMany, findFirst };
+	}
+
+	it('một câu updateMany cho đúng hàng của id, chưa xóa mềm, chỉ với các cột được gửi', async () => {
+		const { repository, updateMany } = build();
+		await repository.updateProfile('u1', {
+			name: 'Lan',
+			phone: '0912345678',
+		});
+		expect(updateMany).toHaveBeenCalledTimes(1);
+		expect(updateMany).toHaveBeenCalledWith({
+			where: { id: 'u1', deletedAt: null },
+			data: { name: 'Lan', phone: '0912345678' },
+		});
+	});
+
+	it('null được ghi nguyên là null (xóa giá trị), không bị bỏ qua', async () => {
+		const { repository, updateMany } = build();
+		await repository.updateProfile('u1', { phone: null });
+		expect(updateMany).toHaveBeenCalledWith({
+			where: { id: 'u1', deletedAt: null },
+			data: { phone: null },
+		});
+	});
+
+	it('đọc lại hàng sau khi sửa, không lấy passwordHash', async () => {
+		const { repository, findFirst } = build();
+		await expect(
+			repository.updateProfile('u1', { name: 'Lan' }),
+		).resolves.toEqual({ id: 'u1' });
+		expect(findFirst).toHaveBeenCalledWith({
+			where: { id: 'u1', deletedAt: null },
+			omit: { passwordHash: true },
+		});
+	});
+
+	it('không còn hàng (xóa mềm giữa hai lần đọc): trả null và không đọc lại', async () => {
+		const { repository, findFirst } = build(0);
+		await expect(
+			repository.updateProfile('u1', { name: 'Lan' }),
+		).resolves.toBeNull();
+		expect(findFirst).not.toHaveBeenCalled();
+	});
+});
+
+describe('UsersRepository.landlordPhoneExistsIncludingDeleted (spec 0002 AC-13, spec 0008 AC-4)', () => {
+	function build(found: unknown) {
+		const findFirst = jest.fn(() => Promise.resolve(found));
+		const repository = new UsersRepository({
+			user: { findFirst },
+		} as unknown as PrismaService);
+		return { repository, findFirst };
+	}
+
+	it('đăng ký (không truyền id): chỉ so số và loại landlord, không lọc xóa mềm', async () => {
+		const { repository, findFirst } = build({ id: 'u9' });
+		await expect(
+			repository.landlordPhoneExistsIncludingDeleted('0912345678'),
+		).resolves.toBe(true);
+		expect(findFirst).toHaveBeenCalledWith({
+			where: { phone: '0912345678', accountType: 'landlord' },
+			select: { id: true },
+		});
+	});
+
+	it('đổi số (có id): bỏ qua đúng hàng của người gọi, vẫn tính cả xóa mềm', async () => {
+		const { repository, findFirst } = build(null);
+		await expect(
+			repository.landlordPhoneExistsIncludingDeleted('0912345678', 'u1'),
+		).resolves.toBe(false);
+		expect(findFirst).toHaveBeenCalledWith({
+			where: {
+				phone: '0912345678',
+				accountType: 'landlord',
+				id: { not: 'u1' },
+			},
+			select: { id: true },
+		});
+	});
+});

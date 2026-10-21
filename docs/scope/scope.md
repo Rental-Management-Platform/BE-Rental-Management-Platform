@@ -31,6 +31,7 @@ _Đây là các khuyến nghị để việc làm gọn gàng, không phải yê
 | 12 | Lưu phòng yêu thích | Release 12 | done |
 | 13 | Dọn danh mục quyền theo MVP | Release 13 | done |
 | 14 | Admin: danh sách người dùng | Release 14 | done |
+| 15 | Hồ sơ cá nhân | Release 15 | done |
 
 ## Foundations (đã có)
 
@@ -199,6 +200,16 @@ Admin xem, tìm và lọc danh sách tài khoản để tìm đúng người c�
    - [x] Mốc 1: `GET /users` cho admin: bộ lọc loại và trạng thái, tìm theo email, tên, số điện thoại, kiểm lại admin mỗi lần gọi, tài liệu và kiểm cuối, không migration (AC-1 đến AC-8); đã chạy thật trên DB thử 2026-10-21 (108 kiểm tra HTTP và SQL đối chiếu với dòng thô, ba điều khiển âm đều bị bắt: bỏ `escapeLike`, bỏ điều kiện xóa mềm, `select` lấy mọi cột kèm mapper chép nguyên dòng; riêng đổi `select` một mình không lộ ra phản hồi vì mapper là lớp chắn thứ hai, test đơn vị của Repository bắt nó; 1145 bài unit; Newman folder 01, 03, 07, 08, 09 và 20: 105 request, 209 assertion không lỗi); `EXPLAIN` ở 50 nghìn người dùng đo một lần, không chỉnh (trang đầu 12 ms, `status=locked` 6 ms, `q` giữa email 44 ms, `q` số điện thoại 47 ms, đều quét cả bảng); DB thử có locale `English_United States.1252` mã hóa UTF8 và `ILIKE` gập đúng chữ Việt có dấu
 Spec [0007](../specs/0007-admin-user-list/index.md) (8 AC, 1 mốc, đã được bạn Accept ngày 2026-10-21; trạng thái spec đi theo tính năng) · code in `src/users/` · tài liệu in `docs/api/`
 
+## Release 15: hồ sơ cá nhân
+
+### 15. Hồ sơ cá nhân · done
+Người đã đăng nhập xem và tự sửa hồ sơ của chính mình, dùng hai quyền `profile:read` và `profile:update` đã có trong danh mục quyền từ hàng 5 nhưng chưa route nào dùng. Hiện chỉ có `GET /auth/me` cho biết mình là ai, chưa có chỗ nào để sửa tên hay số điện thoại. Luật số điện thoại của chủ trọ (bắt buộc, không trùng giữa các chủ trọ) phải còn đúng sau khi sửa. Đã thiết kế đầy đủ ở spec 0008 (9 AC, 1 mốc), bạn Accept ngày 2026-10-21: chỉ sửa tên và số điện thoại (đổi email, ảnh đại diện, xóa tài khoản để sau); hai API `GET` và `PATCH /me/profile`, không bảng hay migration; chủ trọ đổi số với đúng luật lúc đăng ký (một dòng của spec 0002 đã sửa cho khớp); admin dùng chung API cho chính mình; `PATCH` bị giới hạn 30 lần mỗi giờ theo người dùng.
+**Done when:** người tìm trọ và chủ trọ xem được hồ sơ của mình và sửa được tên và số điện thoại; chủ trọ không xóa được số điện thoại và không đặt trùng số của chủ trọ khác; mỗi người chỉ xem và sửa được hồ sơ của chính mình; hồ sơ không bao giờ lộ mật khẩu hay mã băm và không đổi được loại tài khoản hay trạng thái khóa.
+- [x] Design it (spec): `/architect personal profile`
+- [x] Build it: `/develop personal profile`
+   - [x] Mốc 1: `GET` và `PATCH /me/profile` cho tên và số điện thoại, luật số của chủ trọ, nhóm giới hạn `profileWrite`, tài liệu và kiểm cuối (AC-1 đến AC-9); đã chạy thật trên DB thử 2026-10-21 (119 kiểm tra HTTP và SQL đối chiếu với hàng thô, gồm đua hai chủ trọ cùng một số mười vòng không bao giờ có hai hàng giữ cùng số, ba điều khiển âm đều bị bắt: bỏ vế bỏ qua chính mình, bỏ chặn chủ trọ xóa số, mapper chép nguyên hàng kèm `findById` lấy cả mật khẩu băm; 1212 bài unit; Newman 478 request và 983 assertion với hai assertion đã biết của folder 02, hai lượt liền trên cùng một DB)
+Spec [0008](../specs/0008-personal-profile/index.md) (9 AC, 1 mốc, đã được bạn Accept ngày 2026-10-21; trạng thái spec đi theo tính năng) · code in `src/users/`, `src/common/rate-limit/` · tài liệu in `docs/api/`
+
 ## Deferred
 Ngoài phạm vi bản này, giữ lại để kế hoạch trung thực.
 - **Dịch lỗi PostgreSQL**: trùng giá trị khi đăng ký đồng thời, khóa ngoại, id sai, mất kết nối thành lỗi dễ hiểu · needs a decision
@@ -213,6 +224,7 @@ Ngoài phạm vi bản này, giữ lại để kế hoạch trung thực.
 - **Hoãn từ spec 0003 (2026-10-16)**: email nhắc sắp hết dùng thử (cần việc nền), admin gia hạn dùng thử cho một chủ trọ cụ thể, API công khai cho FE hiện "dùng thử N ngày, M tin" trước khi đăng ký · needs a decision
 - **Hoãn từ spec 0005 (2026-10-20)**: danh sách "đang theo dõi" của người tìm trọ, danh sách tên người theo dõi cho chủ trọ, thông báo khi chủ trọ đăng tin mới (cần việc nền), danh sách tin đang hiện của chủ trọ trên hồ sơ (cần bộ lọc `landlordId`), số người theo dõi trong chi tiết tin, bảng hồ sơ chủ trọ riêng (tên hiển thị, Zalo), chống tăng ảo số người theo dõi · needs a decision
 - **Hoãn từ spec 0007 (2026-10-21)**: chi tiết một tài khoản (`GET /users/:id`), tham số `sort`, thời điểm đăng nhập gần nhất, người khóa và lúc khóa, thông tin chủ trọ trên mỗi dòng (hạn dùng thử, số tin, gói), tìm tên không phân biệt dấu (cột `users.search_key`), giới hạn tần suất cho danh sách, nhật ký đọc của admin, đếm theo loại và trạng thái, xuất danh sách · needs a decision
+- **Hoãn từ spec 0008 (2026-10-21)**: đổi email (cần xác thực email mới), ảnh đại diện, xóa tài khoản của chính mình, giới hạn đổi số điện thoại (ví dụ một lần mỗi 30 ngày), đòi mật khẩu hiện tại khi đổi số, giữ lịch sử số cũ để chặn quay vòng dùng thử, trả 409 thay vì 500 khi hai chủ trọ đổi cùng một số cùng lúc, nhật ký thay đổi hồ sơ, luật cho tên hiển thị · needs a decision
 - **Hoãn từ spec 0006 (2026-10-20)**: số lượt lưu cho chủ trọ, ghi chú riêng cho tin đã lưu, thông báo khi tin đã lưu đổi giá hoặc biến mất (cần việc nền), bộ lọc hoặc kiểu sắp xếp cho danh sách đã lưu, báo số tin đã lưu đang bị ẩn, giới hạn số tin được lưu, API riêng trả danh sách id đã lưu · needs a decision
 
 ## Legend

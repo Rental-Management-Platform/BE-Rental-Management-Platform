@@ -22,6 +22,33 @@ export function toUserResponse(user: UserWithoutPassword): UserResponse {
 }
 
 /**
+ * Hồ sơ của chính người gọi (spec 0008 AC-1): bảy trường. Khác `UserResponse` (sáu trường, dùng ở đăng ký,
+ * `/auth/me`, khóa và mở khóa) ở chỗ có thêm `createdAt`, nên là kiểu riêng để không đổi hình dạng bốn nơi kia.
+ */
+export interface ProfileResponse {
+	readonly id: string;
+	readonly email: string;
+	readonly name: string | null;
+	readonly phone: string | null;
+	readonly accountType: string;
+	readonly status: string;
+	readonly createdAt: Date;
+}
+
+/** Danh sách trắng: cột nào không liệt kê ở đây (`passwordHash`, `trialEndsAt`...) không bao giờ ra phản hồi. */
+export function toProfileResponse(user: UserWithoutPassword): ProfileResponse {
+	return {
+		id: user.id,
+		email: user.email,
+		name: user.name,
+		phone: user.phone,
+		accountType: user.accountType,
+		status: user.status,
+		createdAt: user.createdAt,
+	};
+}
+
+/**
  * Một dòng của danh sách người dùng cho admin (spec 0007 AC-1): đúng tám trường, đủ để bấm khóa hay mở khóa ngay.
  * Khác `UserResponse` (sáu trường, là phản hồi của `lock` và `unlock`).
  */

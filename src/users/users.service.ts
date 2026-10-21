@@ -7,10 +7,11 @@ import { skipOf, toPage } from '../common/pagination/pagination';
 import { toPhoneNeedle } from '../common/phone';
 import type { Prisma, User } from '../generated/prisma/client';
 import type { ListUsersQueryDto } from './dto/list-users-query.dto';
-import { toAdminUserItem } from './users.mapper';
-import type { AdminUserListItem } from './users.mapper';
+import type { UpdateProfileDto } from './dto/update-profile.dto';
+import { toAdminUserItem, toProfileResponse } from './users.mapper';
+import type { AdminUserListItem, ProfileResponse } from './users.mapper';
 import { UsersRepository } from './users.repository';
-import type { UserWithoutPassword } from './users.repository';
+import type { ProfileChanges, UserWithoutPassword } from './users.repository';
 
 /** Dùng chung cho đăng ký và seed để email luôn ở một dạng (chữ thường, cắt khoảng trắng). */
 export function normalizeEmail(email: string): string {
@@ -30,7 +31,10 @@ export interface NewUserInput {
 	readonly trialEndsAt: Date | null;
 }
 
-/** Luật nghiệp vụ của "người dùng": chuẩn hóa email, tạo, tìm, khóa và mở khóa. */
+/** Cùng câu với `RegisterDto`: chủ trọ không bao giờ có số điện thoại rỗng (spec 0008 AC-4). */
+const LANDLORD_PHONE_REQUIRED = 'Người đăng bài phải có số điện thoại.';
+
+/** Luật nghiệp vụ của "người dùng": chuẩn hóa email, tạo, tìm, sửa hồ sơ, khóa và mở khóa. */
 @Injectable()
 export class UsersService {
 	constructor(private readonly usersRepository: UsersRepository) {}
@@ -83,8 +87,15 @@ export class UsersService {
 		);
 	}
 
-	landlordPhoneExists(phone: string): Promise<boolean> {
-		return this.usersRepository.landlordPhoneExistsIncludingDeleted(phone);
+	/** `exceptUserId`: bỏ qua hàng của chính người đang đổi số (spec 0008); đăng ký không truyền. */
+	landlordPhoneExists(
+		phone: string,
+		exceptUserId?: string,
+	): Promise<boolean> {
+		return this.usersRepository.landlordPhoneExistsIncludingDeleted(
+			phone,
+			exceptUserId,
+		);
 	}
 
 	findById(
@@ -92,6 +103,42 @@ export class UsersService {
 		tx?: Prisma.TransactionClient,
 	): Promise<UserWithoutPassword | null> {
 		return this.usersRepository.findById(id, tx);
+	}
+
+	/** Hồ sơ của chính người gọi (spec 0008 AC-1). Bị khóa thì 403, đã xóa mềm hoặc không còn thì 401 (như `getMe`). */
+	async getProfile(userId: string): Promise<ProfileResponse> {
+		return toProfileResponse(await this.requireActiveUser(userId));
+	}
+
+	/**
+	 * Sửa tên và số điện thoại của chính người gọi (spec 0008 AC-2 đến AC-4). Thứ tự: đọc người gọi (khóa hoặc
+	 * xóa mềm bị chặn ngay) → không có trường nào thì trả hồ sơ hiện tại, không ghi → luật số điện thoại → một
+	 * câu ghi. Mọi kiểm tra chạy trước câu ghi nên `name` gửi kèm một số bị từ chối không bao giờ được lưu một nửa.
+	 * Loại tài khoản lấy từ hàng vừa đọc, không từ token.
+	 */
+	async updateProfile(
+		userId: string,
+		dto: UpdateProfileDto,
+	): Promise<ProfileResponse> {
+		const user = await this.requireActiveUser(userId);
+		if (dto.name === undefined && dto.phone === undefined) {
+			return toProfileResponse(user);
+		}
+		if (dto.phone !== undefined) {
+			await this.assertPhoneAllowed(user, dto.phone);
+		}
+		const changes: ProfileChanges = {
+			...(dto.name === undefined
+				? {}
+				: { name: dto.name?.trim() || null }),
+			...(dto.phone === undefined ? {} : { phone: dto.phone }),
+		};
+		const updated = await this.usersRepository.updateProfile(
+			userId,
+			changes,
+		);
+		if (updated === null) throw new AppException(ErrorCode.TOKEN_INVALID);
+		return toProfileResponse(updated);
 	}
 
 	/**
@@ -143,5 +190,42 @@ export class UsersService {
 		const user = await this.usersRepository.findById(id, tx);
 		if (user === null) throw new AppException(ErrorCode.USER_NOT_FOUND);
 		throw new AppException(ErrorCode.ACCOUNT_NOT_LOCKED);
+	}
+
+	/** Người gọi hồ sơ còn dùng được không: đã xóa mềm hoặc không còn thì 401 `TOKEN_INVALID`, bị khóa thì 403 (spec 0008 AC-7). */
+	private async requireActiveUser(
+		userId: string,
+	): Promise<UserWithoutPassword> {
+		const user = await this.usersRepository.findById(userId);
+		if (user === null) throw new AppException(ErrorCode.TOKEN_INVALID);
+		if (user.status === 'locked') {
+			throw new AppException(ErrorCode.ACCOUNT_LOCKED);
+		}
+		return user;
+	}
+
+	/**
+	 * Luật số điện thoại khi sửa hồ sơ (spec 0008 AC-3, AC-4). Chỉ chủ trọ bị ràng buộc: không được xóa số (400
+	 * như đăng ký) và số mới không được thuộc chủ trọ khác, kể cả tài khoản đã xóa mềm (409). Hàng của chính
+	 * người gọi bị bỏ qua khi kiểm trùng, nên gửi lại số của mình vẫn qua. Chỉ mục duy nhất ở database là chốt
+	 * chặn cuối; hai chủ trọ đặt cùng số cùng lúc thì người chậm hơn nhận 500, như đăng ký (spec 0004 không dịch lỗi DB).
+	 */
+	private async assertPhoneAllowed(
+		user: UserWithoutPassword,
+		phone: string | null,
+	): Promise<void> {
+		if (user.accountType !== 'landlord') return;
+		if (phone === null) {
+			throw new AppException(ErrorCode.VALIDATION_FAILED, [
+				{
+					field: 'phone',
+					code: 'isDefined',
+					message: LANDLORD_PHONE_REQUIRED,
+				},
+			]);
+		}
+		if (await this.landlordPhoneExists(phone, user.id)) {
+			throw new AppException(ErrorCode.PHONE_TAKEN);
+		}
 	}
 }

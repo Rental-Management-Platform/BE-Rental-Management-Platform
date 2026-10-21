@@ -11,6 +11,12 @@ export type NewUser = Pick<
 >;
 export type UserWithoutPassword = Omit<User, 'passwordHash'>;
 
+/** Hai cột hồ sơ sửa được (spec 0008): trường vắng mặt thì giữ nguyên, `null` xóa giá trị. */
+export interface ProfileChanges {
+	readonly name?: string | null;
+	readonly phone?: string | null;
+}
+
 /** Một dòng của danh sách cho admin: đúng tám cột, không `passwordHash` (spec 0007 AC-1, AC-6). */
 export type AdminUserRow = Pick<
 	User,
@@ -128,13 +134,24 @@ export class UsersRepository {
 		return found !== null;
 	}
 
-	/** Kiểm số điện thoại trùng giữa các tài khoản landlord, tính cả tài khoản đã xóa mềm (spec 0002 AC-13). */
+	/**
+	 * Kiểm số điện thoại trùng giữa các tài khoản landlord, tính cả tài khoản đã xóa mềm (spec 0002 AC-13).
+	 * `exceptUserId` bỏ qua hàng của chính người đang đổi số, để chủ trọ gửi lại số của mình không bị báo trùng
+	 * (spec 0008 AC-4); đăng ký không truyền.
+	 */
 	async landlordPhoneExistsIncludingDeleted(
 		phone: string,
+		exceptUserId?: string,
 		tx?: Prisma.TransactionClient,
 	): Promise<boolean> {
 		const found = await this.client(tx).user.findFirst({
-			where: { phone, accountType: 'landlord' },
+			where: {
+				phone,
+				accountType: 'landlord',
+				...(exceptUserId === undefined
+					? {}
+					: { id: { not: exceptUserId } }),
+			},
 			select: { id: true },
 		});
 		return found !== null;
@@ -209,6 +226,25 @@ export class UsersRepository {
 			this.prisma.user.count({ where }),
 		]);
 		return { rows, total };
+	}
+
+	/**
+	 * Sửa `name` và `phone` của đúng một hàng chưa xóa mềm bằng một câu cập nhật, nên hai cột đổi cùng nhau hoặc
+	 * không đổi gì (spec 0008 AC-2, AC-4). Chỉ hai cột này nằm trong `ProfileChanges`: không có đường ghi
+	 * `email`, `accountType`, `status` hay `passwordHash` từ đây. Trả hàng sau khi sửa (không có `passwordHash`),
+	 * hoặc `null` nếu hàng không còn (bị xóa mềm giữa hai lần đọc).
+	 */
+	async updateProfile(
+		id: string,
+		changes: ProfileChanges,
+		tx?: Prisma.TransactionClient,
+	): Promise<UserWithoutPassword | null> {
+		const result = await this.client(tx).user.updateMany({
+			where: { id, ...notDeleted },
+			data: changes,
+		});
+		if (result.count !== 1) return null;
+		return this.findById(id, tx);
 	}
 
 	/** Khóa bằng một câu cập nhật có điều kiện: hai người khóa cùng lúc thì chỉ một người thắng. */

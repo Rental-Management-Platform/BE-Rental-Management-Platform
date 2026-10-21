@@ -25,7 +25,7 @@ Quy ước đọc file: phần nào ghi **Chưa có** nghĩa là đã lên kế 
 
 ## 1. Hệ thống làm gì
 
-Nền tảng quản lý và cho thuê nhà trọ. Hiện backend đã có phần **tài khoản và phân quyền**, danh mục địa chỉ và tiện ích, **nhà trọ của chủ trọ** (tạo, xem, sửa, xóa mềm) và **tin đăng** (đăng, sửa, ẩn, hiện, xóa; khách xem danh sách và chi tiết); **bảng giá gói** cùng phần admin quản lý gói (mục 6.26), **đơn mua gói và thanh toán thử** (mục 6.27); **gói đổi hạn mức tin** (mục 6.25); **ảnh của tin** (tải lên, xóa và xem ảnh, mục 6.28); **admin kiểm duyệt tin** (tìm, ẩn, gỡ ẩn kèm lý do, mục 6.29) và **admin quản lý danh mục phường và tiện ích** (mục 6.30); **hồ sơ công khai của chủ trọ** với số người theo dõi, tổng lượt xem và số tin đang hiện (mục 6.31), **theo dõi và bỏ theo dõi chủ trọ** (mục 6.32), **lưu tin yêu thích** của người tìm trọ (mục 6.33), cùng **danh sách người dùng cho admin** để tìm tài khoản cần khóa hay mở khóa (mục 6.34).
+Nền tảng quản lý và cho thuê nhà trọ. Hiện backend đã có phần **tài khoản và phân quyền**, danh mục địa chỉ và tiện ích, **nhà trọ của chủ trọ** (tạo, xem, sửa, xóa mềm) và **tin đăng** (đăng, sửa, ẩn, hiện, xóa; khách xem danh sách và chi tiết); **bảng giá gói** cùng phần admin quản lý gói (mục 6.26), **đơn mua gói và thanh toán thử** (mục 6.27); **gói đổi hạn mức tin** (mục 6.25); **ảnh của tin** (tải lên, xóa và xem ảnh, mục 6.28); **admin kiểm duyệt tin** (tìm, ẩn, gỡ ẩn kèm lý do, mục 6.29) và **admin quản lý danh mục phường và tiện ích** (mục 6.30); **hồ sơ công khai của chủ trọ** với số người theo dõi, tổng lượt xem và số tin đang hiện (mục 6.31), **theo dõi và bỏ theo dõi chủ trọ** (mục 6.32), **lưu tin yêu thích** của người tìm trọ (mục 6.33), cùng **danh sách người dùng cho admin** để tìm tài khoản cần khóa hay mở khóa (mục 6.34), và **hồ sơ cá nhân** để xem và sửa tên, số điện thoại của chính mình (mục 6.35).
 
 ### Ba loại tài khoản
 
@@ -67,6 +67,7 @@ Mỗi tài khoản chỉ thuộc **một** loại, chọn lúc đăng ký và **
 | Lưu tin yêu thích: lưu, bỏ lưu, danh sách đã lưu (`POST` và `DELETE /listings/:id/favorite`, `GET /me/favorites`) | Có (mới, 2026-10-21, mục 6.33) |
 | Cờ `isFavorite` ở danh sách và chi tiết tin công khai | Có (mới, 2026-10-21, mục 6.19, 6.20 và 6.33) |
 | Danh sách người dùng cho admin: lọc theo loại tài khoản và trạng thái, tìm theo email, tên, số điện thoại (`GET /users`) | Có (mới, 2026-10-21, mục 6.34) |
+| Hồ sơ cá nhân: xem và sửa tên, số điện thoại của chính mình (`GET` và `PATCH /me/profile`) | Có (mới, 2026-10-21, mục 6.35) |
 
 ---
 
@@ -184,7 +185,7 @@ Lưu ý: **một trường có thể xuất hiện nhiều lần** trong `errors
 
 ### Lỗi 429 `RATE_LIMITED`: gọi quá nhanh
 
-Chỉ **sáu API đăng nhập và mật khẩu, các API ghi nhà trọ, tin, tải ảnh, đơn, theo dõi chủ trọ và lưu tin, và năm API đọc (hai của tin, một của bảng giá, một của hồ sơ chủ trọ, một của tin đã lưu)** có giới hạn (các API đọc khác thì chưa). Body lỗi cùng dạng như mọi lỗi khác (có `requestId`), kèm header **`Retry-After`**: số giây còn phải đợi (số nguyên, ít nhất 1). Mỗi API đếm riêng, nên bị chặn đăng nhập không làm hỏng việc đọc `GET /auth/me` hay đăng xuất.
+Chỉ **sáu API đăng nhập và mật khẩu, các API ghi nhà trọ, tin, tải ảnh, đơn, theo dõi chủ trọ, lưu tin và sửa hồ sơ, và năm API đọc (hai của tin, một của bảng giá, một của hồ sơ chủ trọ, một của tin đã lưu)** có giới hạn (các API đọc khác thì chưa). Body lỗi cùng dạng như mọi lỗi khác (có `requestId`), kèm header **`Retry-After`**: số giây còn phải đợi (số nguyên, ít nhất 1). Mỗi API đếm riêng, nên bị chặn đăng nhập không làm hỏng việc đọc `GET /auth/me` hay đăng xuất.
 
 | API | Giới hạn theo IP | Giới hạn theo email (hoặc người dùng) | Bị chặn trong |
 |---|---|---|---|
@@ -200,6 +201,7 @@ Chỉ **sáu API đăng nhập và mật khẩu, các API ghi nhà trọ, tin, t
 | `POST /orders`, `POST /orders/:id/pay`, `POST /orders/:id/cancel` | không | 30 lần mỗi giờ **cho mỗi API** (ba API đếm riêng, theo người dùng đang đăng nhập) | 1 giờ |
 | `POST /landlords/:id/follow`, `DELETE /landlords/:id/follow` | không | 60 lần mỗi giờ **cho mỗi API** (hai API đếm riêng, theo người dùng đang đăng nhập) | 1 giờ |
 | `POST /listings/:id/favorite`, `DELETE /listings/:id/favorite` | không | 120 lần mỗi giờ **cho mỗi API** (hai API đếm riêng, theo người dùng đang đăng nhập) | 1 giờ |
+| `PATCH /me/profile` | không | 30 lần mỗi giờ (theo người dùng đang đăng nhập). `GET /me/profile` không bị giới hạn | 1 giờ |
 | `GET /listings` (công khai) | 300 lần mỗi phút | không | 1 phút |
 | `GET /plans` (công khai) | 300 lần mỗi phút | không | 1 phút |
 | `GET /landlords/:id` (công khai, hồ sơ chủ trọ) | 300 lần mỗi phút | không | 1 phút |
@@ -274,7 +276,7 @@ Quyền admin chỉnh được **chỉ gồm hành động lẻ** của các mod
 
 | Module | Hành động | Chủ sở hữu | Chỉ admin | Đã có API |
 |---|---|---|---|---|
-| `profile` | read, update | có | | chưa |
+| `profile` | read, update | có | | có (mục 6.35) |
 | `user` | read, lock, revoke | | tất cả | `read` (mục 6.34), `lock`, `revoke` |
 | `account_type` | read, update | | tất cả | có |
 | `catalog` | read, create, update, delete | | tất cả | chưa |
@@ -317,7 +319,7 @@ Ký hiệu cột **Cần**: "công khai" = không cần đăng nhập; "đăng n
 | `accountType` | chuỗi | có | Đúng `landlord` hoặc `tenant`. Không có giá trị mặc định. `admin` bị từ chối |
 | `phone` | chuỗi | `landlord`: có. `tenant`: không | Xem luật số điện thoại bên dưới |
 
-**Luật số điện thoại.** Backend chuẩn hóa trước khi kiểm: bỏ dấu cách, dấu chấm, dấu gạch; đầu số `+84` hoặc `84` đổi thành `0`. Kết quả phải là số di động Việt Nam đúng dạng `0` + (`3`, `5`, `7`, `8` hoặc `9`) + 8 chữ số. Ví dụ `+84 912.345.678` lưu thành `0912345678`. Tenant không bắt buộc số, nhưng nếu gửi thì cũng bị kiểm định dạng như trên. Chỉ kiểm định dạng và trùng, **không có SMS hay mã xác thực**.
+**Luật số điện thoại.** Backend chuẩn hóa trước khi kiểm: bỏ dấu cách, dấu chấm, dấu gạch; đầu số `+84` hoặc `84` đổi thành `0`. Kết quả phải là số di động Việt Nam đúng dạng `0` + (`3`, `5`, `7`, `8` hoặc `9`) + 8 chữ số. Ví dụ `+84 912.345.678` lưu thành `0912345678`. Tenant không bắt buộc số, nhưng nếu gửi thì cũng bị kiểm định dạng như trên. Chỉ kiểm định dạng và trùng, **không có SMS hay mã xác thực**. Người đăng bài đổi được số sau đó ở `PATCH /me/profile` (mục 6.35) với đúng luật này.
 
 Thứ tự kiểm trùng: email trước, số điện thoại sau.
 
@@ -398,6 +400,8 @@ Trình duyệt tự gửi header `Origin`; backend từ chối nếu origin củ
 ```
 
 Đọc thẳng từ cơ sở dữ liệu mỗi lần gọi nên luôn mới nhất. **Lỗi**: 401 `TOKEN_*` · 403 `ACCOUNT_LOCKED` (tài khoản bị khóa) · 401 `TOKEN_INVALID` (tài khoản đã bị xóa).
+
+Tên và số điện thoại sửa ở `PATCH /me/profile` (mục 6.35). Sửa xong, dùng thẳng phản hồi của `PATCH` hoặc gọi lại API này; access token không mang tên hay số nên **không cần đăng nhập lại hay refresh**.
 
 ### 6.7 Quên mật khẩu
 
@@ -1404,6 +1408,66 @@ Cần nhớ:
 - Không có giới hạn tần suất riêng cho API này (chỉ admin gọi được).
 - **Chưa có** chi tiết một tài khoản (`GET /users/:id`), tham số `sort`, thời điểm đăng nhập gần nhất, người khóa và lúc khóa, thông tin chủ trọ trên mỗi dòng (hạn dùng thử, số tin, gói), tìm tên không phân biệt dấu, đếm theo loại và trạng thái, xuất danh sách (đã hoãn).
 
+### 6.35 Hồ sơ cá nhân
+
+`GET /me/profile` · quyền `profile:read`
+
+`PATCH /me/profile` · quyền `profile:update`
+
+Người đã đăng nhập xem và sửa hồ sơ của **chính mình**. Cả ba loại tài khoản dùng được: người tìm trọ và chủ trọ giữ hai quyền này theo mặc định, admin giữ qua `profile:manage`. **Không có tham số id**: hồ sơ luôn là của người trong token, nên không có cách nào xem hay sửa hồ sơ người khác (gửi `id` trong body cũng bị 400). Cả hai phản hồi có `Cache-Control: private, no-store` vì có email và số điện thoại.
+
+**GET 200 OK** và phản hồi của `PATCH` có cùng đúng bảy trường:
+
+```json
+{
+  "id": "0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8d01",
+  "email": "nam@example.com",
+  "name": "Nguyễn Văn Nam",
+  "phone": "0901234567",
+  "accountType": "landlord",
+  "status": "active",
+  "createdAt": "2026-10-05T03:00:00.000Z"
+}
+```
+
+| Trường | Ý nghĩa |
+|---|---|
+| `email`, `accountType`, `status`, `id` | Chỉ đọc, không sửa được ở đây |
+| `name`, `phone` | Có thể `null`. Số điện thoại lưu dạng `0xxxxxxxxx` |
+| `createdAt` | Ngày tham gia (ISO 8601, UTC) |
+
+Không bao giờ có mật khẩu, mã băm, hạn dùng thử hay lý do khóa. Khác `user` của `GET /auth/me` (sáu trường) ở chỗ có thêm `createdAt`.
+
+**PATCH**: body JSON, mọi trường tùy chọn:
+
+| Trường | Kiểu | Luật |
+|---|---|---|
+| `name` | chuỗi hoặc `null` | Cắt khoảng trắng hai đầu, tối đa 100 ký tự. `null`, chuỗi rỗng hoặc chỉ khoảng trắng thì **xóa tên** (lưu `null`) |
+| `phone` | chuỗi hoặc `null` | Chuẩn hóa như lúc đăng ký (bỏ dấu cách, chấm, gạch; đầu `+84` hoặc `84` đổi thành `0`), rồi phải là số di động Việt Nam (xem 6.1). `null` xóa số, **nhưng chỉ người tìm trọ và admin**. Chuỗi rỗng là 400, không phải cách xóa số |
+
+Trường vắng mặt thì giữ nguyên. Body `{}` trả 200 hồ sơ hiện tại và không ghi gì. **Trường nào khác `name` và `phone`** (`email`, `accountType`, `status`, `id`, `password`...) bị 400 `VALIDATION_FAILED` kèm tên trường, không bị lờ đi. `name` và `phone` đổi cùng nhau hoặc không đổi gì: số bị từ chối thì tên gửi kèm cũng không được lưu.
+
+**Luật số điện thoại của người đăng bài** (giống lúc đăng ký): luôn phải có số, đúng định dạng, và không trùng số của người đăng bài khác (tính cả tài khoản đã xóa). Gửi lại đúng số hiện tại của chính mình, viết khác đi cũng được (`+84 912 345 678` cho số `0912345678`), là hợp lệ. Người tìm trọ và admin có thể trùng số hoặc không có số.
+
+**Lỗi**:
+
+| Lỗi | Khi nào |
+|---|---|
+| 400 `VALIDATION_FAILED` | `name` dài quá 100 ký tự; `phone` sai định dạng hoặc là chuỗi rỗng; có trường không được sửa hay trường lạ; người đăng bài gửi `phone: null` (`errors[0].field` là `phone`, câu "Người đăng bài phải có số điện thoại.") |
+| 409 `PHONE_TAKEN` | Người đăng bài đặt số đang thuộc một người đăng bài khác. Không ghi gì, kể cả `name` gửi kèm. Báo ở ô số điện thoại |
+| 401 `TOKEN_MISSING`, `TOKEN_INVALID`, `TOKEN_EXPIRED` | Chưa đăng nhập, token sai hoặc hết hạn. Tài khoản đã bị xóa nhận 401 `TOKEN_INVALID` dù token còn hạn |
+| 403 `PERMISSION_DENIED` | Loại tài khoản không còn quyền `profile:read` hoặc `profile:update` (admin gỡ; có hiệu lực ở lần refresh kế tiếp) |
+| 403 `ACCOUNT_LOCKED` | Tài khoản vừa bị khóa. Hai API này **đọc lại tài khoản trong database mỗi lần gọi**, nên bị chặn ngay dù token còn hạn, và `PATCH` không ghi gì |
+| 429 `RATE_LIMITED` | `PATCH` quá 30 lần trong một giờ (theo người dùng). `GET` không bị giới hạn. Đọc `Retry-After` |
+
+Cần nhớ:
+- **Sửa xong không cần đăng nhập lại.** Access token không mang tên hay số. Dùng phản hồi của `PATCH` để cập nhật giao diện.
+- **Tên và số mới hiện ngay ở nơi khác** vì chúng đọc từ bảng người dùng lúc gọi: `GET /auth/me` (6.6), hồ sơ công khai của chủ trọ (tên, 6.31) và chi tiết tin cho người đã đăng nhập (tên và số của chủ trọ, 6.20). Chủ trọ đổi số là đổi **số liên hệ ở mọi tin của họ cùng lúc**, kể cả tin cũ và tin đang ẩn; kỳ dùng thử, tin đăng và gói không đổi.
+- Thứ tự kiểm lỗi của `PATCH`: đăng nhập và quyền (401, 403 `PERMISSION_DENIED`), rồi kiểm body (400), rồi trạng thái tài khoản (403 `ACCOUNT_LOCKED`, 401), rồi luật số điện thoại (400, 409). Nên tài khoản bị khóa gửi body sai nhận 400, không phải 403.
+- **Số điện thoại không được xác thực bằng mã**: backend chỉ chặn trùng và kiểm định dạng, không chứng minh số là của người đó. Hai người đăng bài đặt cùng một số cùng lúc: chỉ một người được lưu, người kia thường nhận 409 `PHONE_TAKEN` và hiếm khi nhận 500 `INTERNAL_ERROR` (database chặn bản trùng, backend chưa dịch lỗi này). FE xử lý 500 như lỗi chung và cho thử lại.
+- Người tìm trọ muốn xóa số thì gửi `"phone": null`. Đừng gửi chuỗi rỗng.
+- **Chưa có** đổi email, ảnh đại diện, xóa tài khoản, giới hạn tần suất đổi số, lịch sử số cũ (đã hoãn).
+
 ---
 
 ## 7. Luồng màn hình gợi ý
@@ -1481,6 +1545,14 @@ Hai ô: mật khẩu hiện tại, mật khẩu mới. Gọi `POST /auth/change-
 5. Chỗ dẫn tới trang này: nút "Mua gói" ở lỗi `MEMBERSHIP_REQUIRED` (6.18) và dải trạng thái khi `state` là `expired` (6.25). Chủ trọ đang có gói cũng có thể vào để gia hạn: kỳ mới nối vào cuối, nên bước xác nhận đơn hiện "gói mới bắt đầu sau khi gói hiện tại hết, vào <`paidUntil`>".
 6. **Gói đang chạy** (trang tài khoản hoặc dải trạng thái): đọc `subscription` của `GET /me/membership` (6.25), hiện `planName`, "còn `daysLeft` ngày", "đã trả đến `paidUntil`" và hạn mức `listingLimit`.
 
+### Trang hồ sơ cá nhân (mọi người đã đăng nhập)
+
+1. **Mở trang**: gọi `GET /me/profile` (6.35) để điền biểu mẫu: tên và số điện thoại sửa được; email, loại tài khoản và ngày tham gia (`createdAt`) chỉ đọc.
+2. **Lưu**: gọi `PATCH /me/profile` với các ô đã đổi. Thành công thì dùng thẳng phản hồi để cập nhật giao diện (tên ở thanh trên cùng...); không cần đăng nhập lại.
+3. **Người đăng bài**: ô số điện thoại bắt buộc, không có nút xóa số. Gặp 409 `PHONE_TAKEN` thì báo ở ô số ("số này đã có người đăng bài khác dùng"). Nhắc rằng số này là số liên hệ hiện trên mọi tin của họ. **Người tìm trọ**: ô số không bắt buộc; muốn xóa số thì gửi `null`.
+4. Gặp 400 `VALIDATION_FAILED` thì báo theo `errors[].field`. Gặp 403 `ACCOUNT_LOCKED` hoặc 401 thì đưa về trang đăng nhập. Gặp 429 thì đọc `Retry-After`.
+5. Chưa có đổi email, ảnh đại diện, xóa tài khoản: đừng làm nút cho các việc này.
+
 ### Màn hình admin
 
 - **Chỉnh quyền loại tài khoản**: lấy `GET /permissions` (danh mục) và `GET /account-types` (quyền hiện tại). Vẽ ma trận hành động theo module cho `landlord` và `tenant`. Tắt (không cho chọn) mọi hành động trong `adminActions`. Khi lưu, gửi **toàn bộ** danh sách đang chọn bằng `PATCH /account-types/:key`. Nên ghi chú: người dùng đang đăng nhập nhận quyền mới trong tối đa 15 phút hoặc khi họ refresh.
@@ -1500,7 +1572,7 @@ Hai ô: mật khẩu hiện tại, mật khẩu mới. Gọi `POST /auth/change-
 ## 8. Quy tắc nghiệp vụ cần nhớ
 
 - **Email** duy nhất toàn hệ thống, không phân biệt hoa thường; tài khoản đã xóa vẫn giữ email của nó (đăng ký lại bằng email đó vẫn báo `EMAIL_TAKEN`).
-- **Số điện thoại** của người đăng bài duy nhất toàn hệ thống (kể cả tài khoản đã xóa) và người đăng bài không tự đổi số sau khi đăng ký. Mục đích: mỗi số chỉ nhận một lần dùng thử miễn phí (sẽ làm sau). Người tìm trọ có thể trùng số.
+- **Số điện thoại** của người đăng bài duy nhất toàn hệ thống (kể cả tài khoản đã xóa). Người đăng bài **đổi được số** ở `PATCH /me/profile` (mục 6.35) với đúng luật lúc đăng ký, và không bao giờ để trống. Mục đích của luật duy nhất: mỗi số chỉ nhận một lần dùng thử miễn phí; số không được xác thực bằng mã nên đây chỉ là rào cản nhẹ. Người tìm trọ và admin có thể trùng số hoặc không có số.
 - **Loại tài khoản không đổi.** Không có API đổi loại.
 - **Địa chỉ hai cấp.** Mọi địa chỉ trong hệ thống theo đơn vị hành chính mới sau sáp nhập: số nhà và đường, phường hoặc xã (`GET /wards`), tỉnh hoặc thành phố. Không có quận huyện. Xem mục 6.15.
 - **Nhà trọ** thuộc đúng một chủ trọ (không đổi chủ). Mỗi nhà trọ có tối đa một khoản phí cho mỗi loại trong 6 loại, tiện ích chọn từ danh mục. Xóa nhà trọ là xóa mềm và chỉ được khi không còn tin chưa xóa. Mọi thao tác chỉ trên nhà trọ của chính mình (403 `NOT_RESOURCE_OWNER` nếu khác), kể cả admin.
@@ -1530,6 +1602,7 @@ Hai ô: mật khẩu hiện tại, mật khẩu mới. Gọi `POST /auth/change-
 - **Giới hạn tần suất nằm trong bộ nhớ** của backend: khởi động lại là về 0, và nếu sau này chạy nhiều bản backend thì mỗi bản đếm riêng. Chạy localhost không qua proxy thì mọi client cùng một IP.
 - Người xấu có thể cố ý gọi đăng nhập dồn bằng email của người khác để **khóa đăng nhập email đó trong 15 phút** (đánh đổi của việc giới hạn theo email). Tương tự, người ta có thể gọi dồn quên mật khẩu bằng email đó để chặn việc xin liên kết mới trong 1 giờ. Liên kết đặt lại đã gửi trước đó vẫn dùng được.
 - **Danh sách người dùng của admin** (6.34) tìm tên phải gõ đúng dấu (`nguyen` không ra `Nguyễn`); chưa có chi tiết một tài khoản, `sort`, đếm theo loại hay trạng thái, và chưa có nhật ký ghi ai đã xem danh sách. API không có giới hạn tần suất riêng.
+- **Hồ sơ cá nhân** (6.35) chỉ sửa tên và số điện thoại; chưa đổi email, ảnh đại diện, xóa tài khoản. Số điện thoại không được xác thực bằng mã, và đổi số giải phóng số cũ cho người khác đăng ký. Hai người đăng bài đặt cùng một số cùng lúc: chỉ một người được lưu, người kia thường nhận 409 nhưng hiếm khi nhận 500.
 - **Lượt xem tính trong bộ nhớ** của backend: khởi động lại thì mọi người xem được tính lại từ đầu (cộng dư vài lượt), và nếu sau này chạy nhiều bản backend thì mỗi bản tính riêng. Nhiều người không đăng nhập dùng chung một IP chỉ tính một lượt mỗi 30 phút.
 - **Số điện thoại với tài khoản vừa bị khóa**: access token còn hạn (tối đa 15 phút) vẫn được coi là đã đăng nhập ở trang chi tiết tin, nên tài khoản vừa bị khóa còn thấy số điện thoại đến khi token hết hạn. Mọi phiên của tài khoản đã bị hủy nên không refresh được.
 - **Thanh toán là thanh toán thử**: `paid` chỉ nghĩa là chủ trọ tự bấm, không thu tiền, không biên lai, không hoàn tiền và không đổi gói giữa kỳ (mua gói mới luôn nối vào cuối). Admin chưa xem được đơn của mọi người. Đơn chờ không tự hết hạn. Tin không tự hết hạn: phòng đã cho thuê mà chủ trọ quên ẩn thì tin vẫn nằm đó.
@@ -1561,7 +1634,6 @@ Backend sẽ làm theo thứ tự dưới đây. Mỗi mục khi xong sẽ vào 
 |---|---|---|
 | 9 | **Dùng thử miễn phí và hạn mức tin** cho chủ trọ: dùng thử 30 ngày, tối đa 2 tin đang hiện (admin đổi được hai con số này). Hết kỳ dùng thử mà chưa mua gói thì tin của chủ trọ tự biến khỏi danh sách công khai. **Đã có**: API admin xem và đổi hai tham số (mục 6.24); hạn dùng thử đặt lúc đăng ký (6.1); chặn đăng và hiện lại tin khi hết dùng thử hoặc đủ hạn mức (6.18, 6.23, mã lỗi `MEMBERSHIP_REQUIRED` và `LISTING_QUOTA_REACHED`); tin biến khỏi danh sách và chi tiết công khai khi hết kỳ hoặc vượt hạn mức, ẩn bớt theo thứ tự đăng (6.19, 6.20); `GET /me/membership` và cờ `isPublic` (6.25, 6.18). **Còn lại**: đo tốc độ ở hàng chục nghìn tin | Lỗi chặn đăng hoặc hiện thêm tin kèm gợi ý mua gói; hiện ngày hết hạn dùng thử và số tin còn lại |
 | 10 | **Mua gói và gia hạn theo tháng**, **thanh toán thử** (bấm xác nhận là có gói, không có tiền thật, không chuyển sang cổng thanh toán nào, nên **không có trang VNPay**). **Đã có**: bảng giá công khai và API admin tạo, sửa, tắt, xóa gói (mục 6.26); tạo, xem, hủy đơn, thanh toán thử và kỳ gói nối tiếp (mục 6.27). Gói đổi hạn mức tin và hiển thị công khai, `state = plan` và `subscription` trong `GET /me/membership` (mục 6.25). **Còn lại**: không còn gì ở backend cho mục này | Trang chọn gói, nút thanh toán thử, lịch sử đơn, dải trạng thái gói đang chạy (đều dựng được) |
-| sau | API hồ sơ cá nhân | Trang hồ sơ |
 
 **Đã bỏ khỏi kế hoạch (2026-10-11), FE đừng làm màn hình cho các phần này:** duyệt tin trước khi hiển thị, thanh toán qua VNPay, xác thực chủ trọ bằng giấy tờ, báo cáo tin xấu, liên hệ chủ trọ có giới hạn mỗi ngày, đẩy tin và tin nổi bật, kiểm tra tại chỗ, quảng cáo, báo cáo thu chi và dashboard, thống kê cho chủ trọ, tìm quanh địa điểm mốc, đổi loại tài khoản.
 
@@ -1572,6 +1644,15 @@ Backend sẽ làm theo thứ tự dưới đây. Mỗi mục khi xong sẽ vào 
 ## 11. Nhật ký thay đổi
 
 Mới nhất ở trên cùng. Mục nào **phá vỡ** cách FE đang gọi sẽ ghi rõ "ĐỔI KHÁC VỚI TRƯỚC".
+
+### 2026-10-21 · Hồ sơ cá nhân
+
+- **API mới** (mục 6.35): `GET /me/profile` (quyền `profile:read`) và `PATCH /me/profile` (quyền `profile:update`). Chỉ sửa được `name` và `phone`. Phản hồi có đúng bảy trường: `id`, `email`, `name`, `phone`, `accountType`, `status`, `createdAt`. Không có tham số id: luôn là hồ sơ của người trong token.
+- **ĐỔI KHÁC VỚI TRƯỚC**: người đăng bài **đổi được số điện thoại** (trước đây không đổi được sau khi đăng ký). Luật như lúc đăng ký: bắt buộc, đúng định dạng, không trùng số người đăng bài khác (tính cả tài khoản đã xóa); gửi lại đúng số của mình là hợp lệ. Người đăng bài gửi `phone: null` bị 400. Mục 8 đã sửa theo.
+- **Không mã lỗi mới**: dùng `VALIDATION_FAILED` (kể cả câu "Người đăng bài phải có số điện thoại." ở trường `phone`), `PHONE_TAKEN`, `TOKEN_MISSING`, `TOKEN_INVALID`, `PERMISSION_DENIED`, `ACCOUNT_LOCKED`, `RATE_LIMITED`.
+- **Giới hạn tần suất mới**: `PATCH /me/profile` 30 lần mỗi giờ theo người dùng; `GET` không giới hạn (mục 3).
+- Hai API **đọc lại tài khoản trong database mỗi lần gọi**: tài khoản bị khóa nhận 403 `ACCOUNT_LOCKED`, tài khoản đã xóa nhận 401 `TOKEN_INVALID`, dù token còn hạn.
+- Quyền `profile:read` và `profile:update` đã có trong danh mục và trong quyền mặc định của người tìm trọ và chủ trọ từ trước; giờ có API thật (mục 5). Quyền mặc định **không đổi**. `GET /auth/me` giữ nguyên.
 
 ### 2026-10-21 · Danh sách người dùng cho admin
 

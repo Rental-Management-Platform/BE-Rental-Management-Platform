@@ -499,6 +499,34 @@
     {
       "key": "listLockReason",
       "value": ""
+    },
+    {
+      "key": "meLandlordId",
+      "value": ""
+    },
+    {
+      "key": "meLandlordName",
+      "value": ""
+    },
+    {
+      "key": "meLandlordPhone",
+      "value": ""
+    },
+    {
+      "key": "meOtherPhone",
+      "value": ""
+    },
+    {
+      "key": "meNewPhone",
+      "value": ""
+    },
+    {
+      "key": "meTenantPatched",
+      "value": ""
+    },
+    {
+      "key": "meLongName",
+      "value": ""
     }
   ],
   "auth": {
@@ -20583,6 +20611,1704 @@
               ]
             },
             "description": "Mở khóa đặt `status` về `active` và `lockedReason` về `null`."
+          }
+        }
+      ]
+    },
+    {
+      "name": "21 Hồ sơ cá nhân",
+      "description": "Xem và sửa hồ sơ của chính mình (spec 0008): `GET` và `PATCH /me/profile`, quyền `profile:read` và `profile:update`. **Chạy sau folder 01, 08 và 09** (dùng `userToken` chủ trọ, `otherLandlordToken` chủ trọ thứ hai, `tenantToken` người tìm trọ) và từ trên xuống. Admin dùng `adminToken` đã lưu: **chạy ngay sau folder 20 hoặc sau `Đăng nhập admin` của folder 03** (access token chỉ sống 15 phút), vì mỗi email chỉ đăng nhập được 10 lần mỗi 15 phút nên folder này không đăng nhập lại. Chỉ sửa được `name` và `phone`; chủ trọ không xóa được số và không đặt trùng số chủ trọ khác. Folder không thêm lần đăng ký nào: đổi tên và số của tài khoản thử rồi **khôi phục tên và số của chủ trọ ở request cuối** (khóa rồi mở khóa tài khoản đó ở giữa). Giới hạn tần suất của `PATCH` (30 lần mỗi giờ theo người dùng) và các ca cần nhiều tài khoản (quyền bị gỡ, tài khoản xóa mềm) kiểm trong `docs/specs/0008-personal-profile/verify.md`, không có ở đây.",
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{userToken}}",
+            "type": "string"
+          }
+        ]
+      },
+      "item": [
+        {
+          "name": "Người tìm trọ xem hồ sơ",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('Cache-Control là private, no-store', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('private, no-store'));",
+                  "",
+                  "pm.test('đúng bảy trường', () => pm.expect(Object.keys(pm.response.json()).sort()).to.eql(['accountType', 'createdAt', 'email', 'id', 'name', 'phone', 'status']));",
+                  "",
+                  "pm.test('là hồ sơ của người tìm trọ', () => pm.expect(pm.response.json().accountType).to.eql('tenant'));",
+                  "",
+                  "pm.test('không lộ mật khẩu, mã băm, kỳ dùng thử hay lý do khóa', () => {",
+                  "    const text = pm.response.text().toLowerCase();",
+                  "    ['passwordhash', 'password_hash', 'argon2', 'trialendsat', 'lockedreason', 'passwordchangedat', 'deletedat'].forEach((word) => pm.expect(text).to.not.include(word));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "profile"
+              ]
+            },
+            "description": "Cần quyền `profile:read` (người tìm trọ và chủ trọ giữ theo mặc định). Cần folder 09 (`tenantToken`). Trả đúng bảy trường của chính người gọi; không bao giờ có mật khẩu hay mã băm. Có `Cache-Control: private, no-store`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Chủ trọ xem hồ sơ",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('Cache-Control là private, no-store', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('private, no-store'));",
+                  "",
+                  "pm.test('đúng bảy trường', () => pm.expect(Object.keys(pm.response.json()).sort()).to.eql(['accountType', 'createdAt', 'email', 'id', 'name', 'phone', 'status']));",
+                  "",
+                  "pm.test('là hồ sơ của chủ trọ, có số điện thoại', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.accountType).to.eql('landlord');",
+                  "    pm.expect(body.phone).to.be.a(\"string\").and.not.empty;",
+                  "});",
+                  "",
+                  "pm.test('không lộ mật khẩu, mã băm, kỳ dùng thử hay lý do khóa', () => {",
+                  "    const text = pm.response.text().toLowerCase();",
+                  "    ['passwordhash', 'password_hash', 'argon2', 'trialendsat', 'lockedreason', 'passwordchangedat', 'deletedat'].forEach((word) => pm.expect(text).to.not.include(word));",
+                  "});",
+                  "",
+                  "pm.collectionVariables.set('meLandlordId', pm.response.json().id);",
+                  "pm.collectionVariables.set('meLandlordName', pm.response.json().name || '');",
+                  "pm.collectionVariables.set('meLandlordPhone', pm.response.json().phone);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "profile"
+              ]
+            },
+            "description": "Cần folder 01 (`userToken`, chủ trọ). Lưu `meLandlordId`, `meLandlordName`, `meLandlordPhone` để các request sau kiểm và để khôi phục cuối folder.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin xem hồ sơ của chính mình",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('là hồ sơ của admin', () => pm.expect(pm.response.json().accountType).to.eql('admin'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "profile"
+              ]
+            },
+            "description": "Cần `adminToken` còn hạn (đăng nhập admin ở folder 03 hoặc 20 ngay trước). Admin giữ `profile:*` qua `manage`, nên dùng cùng API cho chính mình.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[lỗi] xem hồ sơ khi chưa đăng nhập",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 401', () => pm.response.to.have.status(401));",
+                  "",
+                  "pm.test('TOKEN_MISSING', () => pm.expect(pm.response.json().code).to.eql('TOKEN_MISSING'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "profile"
+              ]
+            },
+            "description": "Không gửi token: 401 `TOKEN_MISSING`.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "[lỗi] sửa hồ sơ khi chưa đăng nhập",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 401', () => pm.response.to.have.status(401));",
+                  "",
+                  "pm.test('TOKEN_MISSING', () => pm.expect(pm.response.json().code).to.eql('TOKEN_MISSING'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "profile"
+              ]
+            },
+            "description": "Không gửi token: 401 `TOKEN_MISSING`.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Không đăng nhập\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Người tìm trọ sửa tên và số (cắt khoảng trắng, chuẩn hóa +84)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('Cache-Control là private, no-store', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('private, no-store'));",
+                  "",
+                  "pm.test('đúng bảy trường', () => pm.expect(Object.keys(pm.response.json()).sort()).to.eql(['accountType', 'createdAt', 'email', 'id', 'name', 'phone', 'status']));",
+                  "",
+                  "pm.test('tên đã cắt, số đã chuẩn hóa', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.name).to.eql('Tên Mới Của Tenant');",
+                  "    pm.expect(body.phone).to.eql('0905123456');",
+                  "});",
+                  "",
+                  "pm.collectionVariables.set('meTenantPatched', pm.response.text());"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "profile"
+              ]
+            },
+            "description": "Cần quyền `profile:update`. `name` được cắt khoảng trắng hai đầu (tối đa 100 ký tự). `phone` được chuẩn hóa như lúc đăng ký: `+84 905.123.456` thành `0905123456`. Phản hồi là hồ sơ sau khi sửa, cùng bảy trường. Số của người tìm trọ không cần duy nhất. Lưu kết quả để request sau so với `GET`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"  Tên Mới Của Tenant  \",\n  \"phone\": \"+84 905.123.456\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Đọc lại hồ sơ người tìm trọ",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('giống hệt phản hồi của PATCH', () => pm.expect(pm.response.json()).to.eql(JSON.parse(pm.collectionVariables.get('meTenantPatched'))));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "profile"
+              ]
+            },
+            "description": "`GET` ngay sau `PATCH` trả đúng nội dung `PATCH` vừa trả.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Body rỗng: trả hồ sơ hiện tại, không ghi",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('vẫn là hồ sơ vừa sửa', () => pm.expect(pm.response.json()).to.eql(JSON.parse(pm.collectionVariables.get('meTenantPatched'))));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "profile"
+              ]
+            },
+            "description": "Không có trường nào thì 200 với hồ sơ hiện tại và không ghi gì (`updated_at` không đổi).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Xóa số điện thoại của người tìm trọ (null)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('phone là null, tên giữ nguyên', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.phone).to.eql(null);",
+                  "    pm.expect(body.name).to.eql('Tên Mới Của Tenant');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "profile"
+              ]
+            },
+            "description": "`null` xóa số của người tìm trọ (và admin). Chủ trọ thì không xóa được, xem request sau. Tên giữ nguyên.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Xóa tên (chuỗi toàn khoảng trắng)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('name là null', () => pm.expect(pm.response.json().name).to.eql(null));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "profile"
+              ]
+            },
+            "description": "`name` là `null`, chuỗi rỗng hay chỉ khoảng trắng đều xóa tên (lưu `null`).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"   \"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "[lỗi] phone là chuỗi rỗng",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "",
+                  "pm.test('VALIDATION_FAILED nêu đúng trường phone', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.code).to.eql('VALIDATION_FAILED');",
+                  "    pm.expect(body.errors.map((e) => e.field)).to.eql(['phone']);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "profile"
+              ]
+            },
+            "description": "Chuỗi rỗng không phải cách xóa số (như lúc đăng ký): 400 `VALIDATION_FAILED`, trường `phone`. Muốn xóa thì gửi `null`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "[lỗi] phone sai định dạng",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "",
+                  "pm.test('VALIDATION_FAILED nêu đúng trường phone', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.code).to.eql('VALIDATION_FAILED');",
+                  "    pm.expect(body.errors.map((e) => e.field)).to.eql(['phone']);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "profile"
+              ]
+            },
+            "description": "Số di động Việt Nam là `0` cộng 9 chữ số, đầu số 3, 5, 7, 8 hoặc 9. Sai thì 400 `VALIDATION_FAILED`, trường `phone`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"12345\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "[lỗi] name dài 101 ký tự",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('meLongName', 'a'.repeat(101));",
+                  "pm.request.body.update({ mode: 'raw', raw: JSON.stringify({ name: pm.collectionVariables.get('meLongName') }) });"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "",
+                  "pm.test('VALIDATION_FAILED nêu đúng trường name', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.code).to.eql('VALIDATION_FAILED');",
+                  "    pm.expect(body.errors.map((e) => e.field)).to.eql(['name']);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "profile"
+              ]
+            },
+            "description": "`name` tối đa 100 ký tự sau khi cắt khoảng trắng. 101 ký tự: 400 `VALIDATION_FAILED`, trường `name`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "[lỗi] gửi email",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "",
+                  "pm.test('VALIDATION_FAILED nêu đúng trường email', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.code).to.eql('VALIDATION_FAILED');",
+                  "    pm.expect(body.errors.map((e) => e.field)).to.eql(['email']);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "profile"
+              ]
+            },
+            "description": "Chỉ `name` và `phone` sửa được. Trường khác bị từ chối chứ không bị lờ đi: 400 `VALIDATION_FAILED`, trường `email`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"doi.email@example.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "[lỗi] gửi accountType",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "",
+                  "pm.test('VALIDATION_FAILED nêu đúng trường accountType', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.code).to.eql('VALIDATION_FAILED');",
+                  "    pm.expect(body.errors.map((e) => e.field)).to.eql(['accountType']);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "profile"
+              ]
+            },
+            "description": "Loại tài khoản không đổi được: 400 `VALIDATION_FAILED`, trường `accountType`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accountType\": \"admin\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "[lỗi] gửi id của người khác",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "",
+                  "pm.test('VALIDATION_FAILED nêu đúng trường id', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.code).to.eql('VALIDATION_FAILED');",
+                  "    pm.expect(body.errors.map((e) => e.field)).to.eql(['id']);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "profile"
+              ]
+            },
+            "description": "Hồ sơ luôn là của người trong token; `id` trong body bị từ chối: 400 `VALIDATION_FAILED`, trường `id`. Hồ sơ của chủ trọ không đổi.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{meLandlordId}}\",\n  \"name\": \"Chiếm hồ sơ\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Chủ trọ đổi tên",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('tên mới, số giữ nguyên', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.name).to.eql('Chủ Trọ Hồ Sơ');",
+                  "    pm.expect(body.phone).to.eql(pm.collectionVariables.get('meLandlordPhone'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "profile"
+              ]
+            },
+            "description": "Chủ trọ sửa tên như người tìm trọ. Số điện thoại giữ nguyên.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Chủ Trọ Hồ Sơ\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Chủ trọ đổi sang số tự do",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const phone = '098' + Math.floor(1000000 + Math.random() * 9000000);",
+                  "pm.collectionVariables.set('meNewPhone', phone);",
+                  "pm.request.body.update({ mode: 'raw', raw: JSON.stringify({ phone }) });"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('số mới', () => pm.expect(pm.response.json().phone).to.eql(pm.collectionVariables.get('meNewPhone')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "profile"
+              ]
+            },
+            "description": "Chủ trọ được đổi số với đúng luật lúc đăng ký: đúng định dạng và không trùng số của chủ trọ khác (kể cả tài khoản đã xóa mềm). Số mới có hiệu lực ngay, kể cả số liên hệ trên mọi tin của chủ trọ.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Chủ trọ gửi lại đúng số của mình (dạng +84)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const phone = '+84 ' + pm.collectionVariables.get('meNewPhone').slice(1);",
+                  "pm.request.body.update({ mode: 'raw', raw: JSON.stringify({ phone }) });"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('số giữ nguyên dạng chuẩn', () => pm.expect(pm.response.json().phone).to.eql(pm.collectionVariables.get('meNewPhone')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "profile"
+              ]
+            },
+            "description": "Gửi lại số hiện tại của chính mình, viết khác đi, là 200 chứ không phải `PHONE_TAKEN`: kiểm trùng bỏ qua hàng của chính người gọi.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "[lỗi] chủ trọ xóa số điện thoại (null)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "",
+                  "pm.test('VALIDATION_FAILED nêu đúng trường phone', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.code).to.eql('VALIDATION_FAILED');",
+                  "    pm.expect(body.errors.map((e) => e.field)).to.eql(['phone']);",
+                  "});",
+                  "",
+                  "pm.test('câu giống lúc đăng ký', () => pm.expect(pm.response.json().errors[0].message).to.eql('Người đăng bài phải có số điện thoại.'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "profile"
+              ]
+            },
+            "description": "Chủ trọ luôn phải có số: 400 `VALIDATION_FAILED`, trường `phone`, cùng câu với lúc đăng ký, và không ghi gì (tên gửi kèm cũng không đổi).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Không được đổi\",\n  \"phone\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "[lỗi] chủ trọ gửi phone là chuỗi rỗng",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "",
+                  "pm.test('VALIDATION_FAILED nêu đúng trường phone', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.code).to.eql('VALIDATION_FAILED');",
+                  "    pm.expect(body.errors.map((e) => e.field)).to.eql(['phone']);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "profile"
+              ]
+            },
+            "description": "400 `VALIDATION_FAILED`, trường `phone`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Chủ trọ thứ hai xem hồ sơ (lấy số của họ)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.collectionVariables.set('meOtherPhone', pm.response.json().phone);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "profile"
+              ]
+            },
+            "description": "Cần folder 08 (`otherLandlordToken`). Lưu số của chủ trọ thứ hai vào `meOtherPhone` để thử đặt trùng.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{otherLandlordToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[lỗi] chủ trọ đặt số của chủ trọ khác",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.request.body.update({ mode: 'raw', raw: JSON.stringify({ name: 'Không được đổi', phone: pm.collectionVariables.get('meOtherPhone') }) });"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 409', () => pm.response.to.have.status(409));",
+                  "",
+                  "pm.test('PHONE_TAKEN', () => pm.expect(pm.response.json().code).to.eql('PHONE_TAKEN'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "profile"
+              ]
+            },
+            "description": "409 `PHONE_TAKEN` và không ghi gì, kể cả `name` gửi kèm: tên hiện tại giữ nguyên (request sau kiểm).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Sau lỗi trùng số, hồ sơ chủ trọ không đổi",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('tên và số không đổi', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.name).to.eql('Chủ Trọ Hồ Sơ');",
+                  "    pm.expect(body.phone).to.eql(pm.collectionVariables.get('meNewPhone'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "profile"
+              ]
+            },
+            "description": "Tên vẫn là `Chủ Trọ Hồ Sơ` và số vẫn là số mới.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Tên và số mới hiện ở hồ sơ công khai và /auth/me",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('tên mới ở hồ sơ công khai', () => pm.expect(pm.response.json().name).to.eql('Chủ Trọ Hồ Sơ'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{meLandlordId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{meLandlordId}}"
+              ]
+            },
+            "description": "Tên đọc từ bảng người dùng lúc gọi nên hồ sơ công khai hiện tên mới ngay. Không cần cấp lại token.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "GET /auth/me hiện tên và số mới",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('tên và số mới', () => {",
+                  "    const user = pm.response.json().user;",
+                  "    pm.expect(user.name).to.eql('Chủ Trọ Hồ Sơ');",
+                  "    pm.expect(user.phone).to.eql(pm.collectionVariables.get('meNewPhone'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            },
+            "description": "`GET /auth/me` đọc từ database nên cũng hiện giá trị mới; access token cũ vẫn dùng được.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin khóa chủ trọ",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('status là locked', () => pm.expect(pm.response.json().status).to.eql('locked'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{meLandlordId}}/lock",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{meLandlordId}}",
+                "lock"
+              ]
+            },
+            "description": "Khóa tài khoản chủ trọ thử để xem hồ sơ bị chặn dù access token còn hạn. Folder mở khóa lại ngay sau đó.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Kiểm thử hồ sơ cá nhân\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "[lỗi] tài khoản bị khóa xem hồ sơ",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 403', () => pm.response.to.have.status(403));",
+                  "",
+                  "pm.test('ACCOUNT_LOCKED', () => pm.expect(pm.response.json().code).to.eql('ACCOUNT_LOCKED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "profile"
+              ]
+            },
+            "description": "Access token còn hạn nhưng API đọc lại tài khoản trong database: 403 `ACCOUNT_LOCKED`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[lỗi] tài khoản bị khóa sửa hồ sơ",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 403', () => pm.response.to.have.status(403));",
+                  "",
+                  "pm.test('ACCOUNT_LOCKED', () => pm.expect(pm.response.json().code).to.eql('ACCOUNT_LOCKED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "profile"
+              ]
+            },
+            "description": "403 `ACCOUNT_LOCKED` và không ghi gì.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Người bị khóa đổi tên\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Admin mở khóa chủ trọ",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('status là active', () => pm.expect(pm.response.json().status).to.eql('active'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{meLandlordId}}/unlock",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{meLandlordId}}",
+                "unlock"
+              ]
+            },
+            "description": "Mở khóa lại để các request sau dùng được.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Hết kiểm thử hồ sơ cá nhân\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Khôi phục tên và số ban đầu của chủ trọ",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const name = pm.collectionVariables.get('meLandlordName');",
+                  "pm.request.body.update({ mode: 'raw', raw: JSON.stringify({ name: name === '' ? null : name, phone: pm.collectionVariables.get('meLandlordPhone') }) });"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('về đúng số ban đầu', () => pm.expect(pm.response.json().phone).to.eql(pm.collectionVariables.get('meLandlordPhone')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "profile"
+              ]
+            },
+            "description": "Trả tên và số về như trước folder này (số cũ đã tự do vì không ai khác giữ). Sau khi mở khóa, hồ sơ dùng được trở lại.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
           }
         }
       ]

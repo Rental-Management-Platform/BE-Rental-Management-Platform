@@ -125,7 +125,7 @@ Xoay token là một câu `UPDATE auth_sessions SET token_hash = $mới, previou
 - Người dùng `locked` không đăng nhập, không refresh được, và mọi phiên của họ bị hủy lúc khóa.
 - Đặt lại mật khẩu hủy mọi phiên; đổi mật khẩu hủy mọi phiên khác.
 - Đăng ký công khai không bao giờ tạo tài khoản `admin`; loại chỉ nhận `tenant` hoặc `landlord`.
-- Một số điện thoại chỉ thuộc về một tài khoản `landlord`, kể cả khi tài khoản đó bị xóa mềm; `landlord` không tự đổi số.
+- Một số điện thoại chỉ thuộc về một tài khoản `landlord`, kể cả khi tài khoản đó bị xóa mềm; `landlord` được đổi số qua `PATCH /me/profile` với đúng luật của đăng ký (bắt buộc, đúng định dạng, không trùng chủ trọ khác; spec [0008](../0008-personal-profile/index.md)).
 - Xác minh access token không đọc DB, trừ endpoint gắn `@FreshAuth()` (spec 0003).
 - Login luôn chạy một lần argon2 verify, kể cả khi email không tồn tại.
 - Một phiên hết hạn không bao giờ được chấp nhận, dù dòng của nó chưa bị dọn.
