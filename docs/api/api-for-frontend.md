@@ -1,6 +1,6 @@
 # Tài liệu API và nghiệp vụ cho Frontend
 
-Cập nhật lần cuối: 2026-10-21 (xem mục [Nhật ký thay đổi](#11-nhật-ký-thay-đổi) để biết thay đổi gần nhất).
+Cập nhật lần cuối: 2026-10-22 (xem mục [Nhật ký thay đổi](#11-nhật-ký-thay-đổi) để biết thay đổi gần nhất).
 
 File này do đội backend giữ và **cập nhật cùng mỗi thay đổi API**. Mục đích: để bên FE hiểu hệ thống làm gì, mỗi màn hình cần gọi API nào, và xử lý lỗi ra sao. Đi kèm file này là bộ request thử trong Postman: [`postman-collection.json`](postman-collection.json) (import vào Postman để gọi thử từng API).
 
@@ -90,10 +90,18 @@ Mỗi tài khoản chỉ thuộc **một** loại, chọn lúc đăng ký và **
 | Trường lạ | Gửi trường không có trong mô tả bị từ chối 400 `VALIDATION_FAILED` (không âm thầm bỏ qua) |
 | Ngôn ngữ | Mọi `message` trả về là tiếng Việt, hiển thị thẳng cho người dùng được. `code` là hằng số tiếng Anh, FE dùng `code` để rẽ nhánh, không so chuỗi `message` |
 | Truy vết | Mỗi response có header `X-Request-Id` (trùng `requestId` trong body lỗi). Gửi kèm khi báo lỗi cho backend |
-| Phân trang | Query `page` (từ 1, mặc định 1) và `pageSize` (1 đến 50, mặc định 20). Trả `{ "items": [...], "total": 37, "page": 1, "pageSize": 20 }`. `total` là tổng số dòng thỏa điều kiện, không phải số dòng của trang này. Trang quá cuối trả `items` rỗng (không phải lỗi). `pageSize` quá 50, `page` nhỏ hơn 1 hoặc không phải số nguyên là 400 `VALIDATION_FAILED`. Hiện có `GET /properties`, `GET /listings`, `GET /me/listings`, `GET /plans` và `GET /plans/all` phân trang |
+| Phân trang | Query `page` (từ 1, mặc định 1) và `pageSize` (1 đến 50, mặc định 20). Trả `{ "items": [...], "total": 37, "page": 1, "pageSize": 20 }`. `total` là tổng số dòng thỏa điều kiện, không phải số dòng của trang này. Trang quá cuối trả `items` rỗng (không phải lỗi). `pageSize` quá 50, `page` nhỏ hơn 1 hoặc không phải số nguyên là 400 `VALIDATION_FAILED`. Các API phân trang: `GET /properties`, `GET /listings`, `GET /me/listings`, `GET /plans`, `GET /plans/all`, `GET /orders`, `GET /orders/all`, `GET /users`, `GET /moderation/listings`, `GET /me/favorites` và `GET /landlords/:id/listings` |
 | Đọc đăng nhập tùy chọn | `GET /listings/:slugCode` là route công khai nhưng **nên gửi `Authorization: Bearer ...` nếu người dùng đã đăng nhập**: có token hợp lệ thì thấy số điện thoại chủ trọ; không có, sai hoặc hết hạn thì coi như khách (`phone: null`) và vẫn 200, **không bao giờ 401**. Xem 6.20 |
 
 Email được chuẩn hóa: cắt khoảng trắng đầu cuối và đổi thành chữ thường. `An@Example.com` và `an@example.com` là cùng một tài khoản.
+
+### Chạy thử với backend trên máy
+
+1. **Chạy backend.** Lần đầu: `npm run db:create`, `npm run migration:deploy`, `npm run seed`; các lần sau: `npm run start:dev`. API ở `http://localhost:3000/api/v1` (đổi cổng bằng biến `PORT`). Các bước đầy đủ nằm trong `README.md` của backend.
+2. **Cổng và origin của FE.** Origin của FE phải nằm trong `ALLOWED_ORIGINS` của backend (mặc định `http://localhost:5173`), nếu không trình duyệt bị chặn CORS và `refresh` trả 403 `ORIGIN_NOT_ALLOWED`. Cẩn thận khi FE là Next.js: `next dev` mặc định chiếm cổng 3000, **trùng cổng mặc định của API**. Chạy FE ở cổng khác (ví dụ `next dev -p 5173`) hoặc đổi `PORT` của API, rồi sửa `ALLOWED_ORIGINS` và `APP_BASE_URL` (địa chỉ trong email đặt lại mật khẩu) cho khớp origin của FE.
+3. **Dữ liệu có sẵn sau `seed`**: một tài khoản admin (email và mật khẩu lấy từ `ADMIN_SEED_EMAIL`, `ADMIN_SEED_PASSWORD` trong `.env` của backend), 168 phường, xã, đặc khu của Thành phố Hồ Chí Minh, 13 tiện ích, ba gói mẫu và hai tham số dùng thử. **Chưa có chủ trọ, người tìm trọ, nhà trọ hay tin nào**: tạo bằng màn hình đăng ký của FE, hoặc chạy folder **23 Kịch bản demo** của Postman để có sẵn một chủ trọ, một người tìm trọ và vài tin.
+4. **Gọi thử không cần FE.** Import `postman-collection.json`, điền `adminEmail` và `adminPassword` ở tab Variables. Folder 23 chạy một lèo cả kịch bản demo (mục "Kịch bản demo" ở mục 7).
+5. **Giới hạn tần suất khi thử tay** nằm trong bộ nhớ của backend (đăng ký 10 lần mỗi giờ theo IP, đăng nhập 10 lần mỗi 15 phút theo email, xem mục 3): bị chặn 429 thì khởi động lại backend thay vì đợi.
 
 ---
 
@@ -142,10 +150,11 @@ Lưu ý: **một trường có thể xuất hiện nhiều lần** trong `errors
 | `REFRESH_TOKEN_MISSING` | 401 | Gọi refresh mà không có cookie | Chuyển trang đăng nhập |
 | `SESSION_REVOKED` | 401 | Phiên đã bị hủy (đăng xuất, đổi hoặc đặt lại mật khẩu, bị khóa, bị thu hồi, hoặc phát hiện dùng lại token) | Chuyển trang đăng nhập |
 | `SESSION_EXPIRED` | 401 | Phiên hết hạn (30 ngày sau lần đăng nhập) | Chuyển trang đăng nhập |
+| `UNAUTHORIZED` | 401 | Lỗi 401 chung do thư viện sinh, không thuộc các mã token ở trên (hiếm gặp) | Coi như chưa đăng nhập, chuyển trang đăng nhập |
 | `ACCOUNT_LOCKED` | 403 | Tài khoản bị admin khóa | Hiện `message`, không cho dùng tiếp |
 | `ORIGIN_NOT_ALLOWED` | 403 | `Origin` của request không nằm trong danh sách cho phép (chỉ ở refresh và logout) | Báo backend thêm origin của FE |
 | `PERMISSION_DENIED` | 403 | Đã đăng nhập nhưng không có quyền làm việc này | Hiện thông báo không đủ quyền |
-| `NOT_RESOURCE_OWNER` | 403 | Thao tác trên dữ liệu của người khác (hiện: nhà trọ của chủ trọ khác) | Hiện `message`, quay về danh sách của mình |
+| `NOT_RESOURCE_OWNER` | 403 | Thao tác trên dữ liệu của người khác (nhà trọ, tin, đơn của người khác) | Hiện `message`, quay về danh sách của mình |
 | `FORBIDDEN` | 403 | Bị từ chối khác | Hiện `message` |
 | `NOT_FOUND` | 404 | Route hoặc nội dung không tồn tại (kể cả phường hoặc tiện ích không có ở API danh mục của admin, 6.30) | Hiện `message` |
 | `EMAIL_TAKEN` | 409 | Email đã có tài khoản (kể cả tài khoản đã xóa) | Báo lỗi ở ô email |
@@ -184,11 +193,11 @@ Lưu ý: **một trường có thể xuất hiện nhiều lần** trong `errors
 | `DB_UNAVAILABLE` | 503 | Cơ sở dữ liệu tạm không dùng được | Hiện `message`, cho thử lại sau |
 | `INTERNAL_ERROR` | 500 | Lỗi hệ thống | Hiện `message`, gửi `requestId` cho backend |
 | `HTTP_ERROR` | khác | Lỗi HTTP khác chưa có mã riêng | Hiện `message` |
-| `RATE_LIMITED` | 429 | Gọi một API có giới hạn (đăng nhập, mật khẩu, ghi nhà trọ) quá nhiều lần trong thời gian ngắn. Kèm header `Retry-After` (số giây phải đợi) | Hiện `message` kèm "thử lại sau N giây", chặn nút gửi đến hết thời gian, **không** tự thử lại. Xem phần "Lỗi 429" ngay dưới |
+| `RATE_LIMITED` | 429 | Gọi một API có giới hạn (đăng nhập, mật khẩu, các API ghi dữ liệu, vài API đọc công khai) quá nhiều lần trong thời gian ngắn. Kèm header `Retry-After` (số giây phải đợi) | Hiện `message` kèm "thử lại sau N giây", chặn nút gửi đến hết thời gian, **không** tự thử lại. Xem phần "Lỗi 429" ngay dưới |
 
 ### Lỗi 429 `RATE_LIMITED`: gọi quá nhanh
 
-Chỉ **sáu API đăng nhập và mật khẩu, các API ghi nhà trọ, tin, tải ảnh, đơn, theo dõi chủ trọ, lưu tin và sửa hồ sơ, và năm API đọc (hai của tin, một của bảng giá, một của hồ sơ chủ trọ, một của tin đã lưu)** có giới hạn (các API đọc khác thì chưa). Body lỗi cùng dạng như mọi lỗi khác (có `requestId`), kèm header **`Retry-After`**: số giây còn phải đợi (số nguyên, ít nhất 1). Mỗi API đếm riêng, nên bị chặn đăng nhập không làm hỏng việc đọc `GET /auth/me` hay đăng xuất.
+Chỉ **sáu API đăng nhập và mật khẩu, các API ghi nhà trọ, tin, tải ảnh, đơn, theo dõi chủ trọ, lưu tin và sửa hồ sơ, và sáu API đọc (hai của tin, một của bảng giá, hai của hồ sơ chủ trọ gồm hồ sơ và danh sách tin, một của tin đã lưu)** có giới hạn (các API đọc khác thì chưa). Body lỗi cùng dạng như mọi lỗi khác (có `requestId`), kèm header **`Retry-After`**: số giây còn phải đợi (số nguyên, ít nhất 1). Mỗi API đếm riêng, nên bị chặn đăng nhập không làm hỏng việc đọc `GET /auth/me` hay đăng xuất.
 
 | API | Giới hạn theo IP | Giới hạn theo email (hoặc người dùng) | Bị chặn trong |
 |---|---|---|---|
@@ -283,15 +292,15 @@ Quyền admin chỉnh được **chỉ gồm hành động lẻ** của các mod
 | `profile` | read, update | có | | có (mục 6.35) |
 | `user` | read, lock, revoke | | tất cả | `read` (mục 6.34), `lock`, `revoke` |
 | `account_type` | read, update | | tất cả | có |
-| `catalog` | read, create, update, delete | | tất cả | chưa |
+| `catalog` | read, create, update, delete | | tất cả | có: đọc công khai (mục 6.15, 6.16), ghi (mục 6.30) |
 | `setting` | read, update | | tất cả | có (mục 6.24) |
 | `property` | read, create, update, delete | có | | có (mục 6.17) |
-| `listing` | read, create, update, delete, moderate | có | `moderate` | `read`, `create`, `update`, `delete` (mục 6.18 đến 6.23); `moderate` chưa |
-| `favorite` | read, create, delete | có | | chưa |
+| `listing` | read, create, update, delete, moderate | có | `moderate` | `read`, `create`, `update`, `delete` (mục 6.18 đến 6.23); `moderate` (mục 6.29) |
+| `favorite` | read, create, delete | có | | có (mục 6.33) |
 | `follow` | create, delete | có | | có (mục 6.32): `create` cho `POST`, `delete` cho `DELETE`. Admin giữ cả hai nhưng vẫn bị 403 |
-| `plan` | read, create, update, delete | | tất cả | chưa |
+| `plan` | read, create, update, delete | | tất cả | có (mục 6.26) |
 | `order` | create, read, cancel, report | có | `report` | `create`, `read`, `cancel` (mục 6.27); `report` (mục 6.37 và 6.38) |
-| `subscription` | read | có | | chưa |
+| `subscription` | read | có | | có (mục 6.25, `GET /me/membership`) |
 
 Danh mục chỉ có **12 module** của bản MVP. Các module `contact`, `report`, `verification`, `boost`, `product`, `inspection`, `ad`, `expense`, `finance`, `dashboard`, `stats` và hai hành động `order:refund`, `order:gift` đã bị gỡ (xem nhật ký 2026-10-12). Khóa của chúng không còn hợp lệ: gửi lên `PATCH /account-types/:key` sẽ nhận 400 `PERMISSION_UNKNOWN`.
 
@@ -1764,6 +1773,28 @@ Hai ô: mật khẩu hiện tại, mật khẩu mới. Gọi `POST /auth/change-
 - **Đơn mua gói của mọi chủ trọ**: bảng lấy từ `GET /orders/all` (phân trang, mục 6.37) với bộ lọc trạng thái (`status`), chủ trọ (`landlordId`, chọn từ danh sách người dùng ở 6.34), gói (`planId`, chọn từ `GET /plans/all`) và hai ô ngày `from`, `to` (ngày tạo đơn, giờ Việt Nam). Mỗi dòng hiện mã đơn (`code`), tên gói, giá đã chốt, trạng thái, ngày tạo, ngày trả, kỳ gói, cùng tên và email chủ trọ (`name` có thể `null`: hiện email). Đặt hai ô lấy từ `summary` phía trên bảng: "Số đơn đã trả" và "Tổng tiền đã trả" của **đúng bộ lọc đang chọn** (không phải của riêng trang đang xem), kèm nhãn "thanh toán thử". Đổi bộ lọc thì về trang 1. Gặp 403 `ACCOUNT_LOCKED` hay 401 thì đưa về trang đăng nhập.
 - **Doanh thu**: một trang nhỏ lấy từ `GET /orders/revenue` (mục 6.38) với hai ô ngày `from`, `to` (ngày **trả**, giờ Việt Nam) và công tắc "Theo ngày" hay "Theo tháng" (`groupBy`). Đặt ba phần: ô tổng (`paidAmount`, `paidCount`) kèm nhãn "thanh toán thử"; bảng hoặc biểu đồ cột "theo gói" từ `byPlan`; biểu đồ "theo thời gian" từ `series`. `series` thưa, nên điền ngày hay tháng không có đơn bằng 0 trước khi vẽ. Số ở đây có thể khác ô tổng của màn hình đơn (6.37) vì hai API lọc theo hai loại ngày khác nhau (ngày trả và ngày tạo); ghi chú ngay trên màn hình. Đổi khoảng ngày hay cách gom thì gọi lại API.
 
+### Kịch bản demo (đi qua mọi tính năng)
+
+Một lượt kể chuyện cho buổi demo, theo đúng thứ tự folder **23 Kịch bản demo** của Postman (mỗi bước là một request tự kiểm, chạy riêng được). Cần backend đã `seed` (xem "Chạy thử với backend trên máy" ở mục 2).
+
+| Bước | Ai | Việc làm | API |
+|---|---|---|---|
+| 1 | Chủ trọ | Đăng ký (nhận kỳ dùng thử), xem hạn mức: 2 tin | `POST /auth/register`, `GET /me/membership` (6.1, 6.25) |
+| 2 | Chủ trọ | Tạo nhà trọ, đăng tin thứ nhất, tải ảnh, đăng tin thứ hai | `POST /properties`, `POST /properties/:propertyId/listings`, `POST /listings/:id/images` (6.17, 6.18, 6.28) |
+| 3 | Chủ trọ | Đăng tin thứ ba bị chặn: hết hạn mức dùng thử | 403 `LISTING_QUOTA_REACHED` (6.18) |
+| 4 | Khách | Tìm tin, xem chi tiết (chưa thấy số điện thoại), xem ảnh | `GET /listings`, `GET /listings/:slugCode`, `GET /api/v1/media/public/<tệp>` (6.19, 6.20, 6.28) |
+| 5 | Người tìm trọ | Đăng ký, xem chi tiết (thấy số điện thoại), lưu tin, xem tin đã lưu, theo dõi chủ trọ | `GET /listings/:slugCode` kèm token, `POST /listings/:id/favorite`, `GET /me/favorites`, `POST /landlords/:id/follow` (6.20, 6.33, 6.32) |
+| 6 | Khách | Xem hồ sơ chủ trọ (số người theo dõi, số tin, lượt xem) và các tin đang hiện của chủ trọ | `GET /landlords/:id`, `GET /landlords/:id/listings` (6.31, 6.36) |
+| 7 | Chủ trọ | Xem bảng giá, tạo đơn, thanh toán thử: `state` thành `plan`, đăng được tin thứ ba | `GET /plans`, `POST /orders`, `POST /orders/:id/pay`, `GET /me/membership` (6.26, 6.27, 6.25) |
+| 8 | Admin | Tìm tin của chủ trọ, ẩn kèm lý do: tin biến khỏi công khai, chủ trọ thấy lý do và không tự hiện lại được; gỡ ẩn thì chủ trọ hiện lại | `GET /moderation/listings`, `POST /moderation/listings/:id/hide` và `/unhide`, `POST /listings/:id/show` (6.29, 6.23) |
+| 9 | Admin | Tìm chủ trọ trong danh sách người dùng, khóa rồi mở khóa: tin và hồ sơ biến rồi trở lại | `GET /users`, `POST /users/:id/lock` và `/unlock` (6.34, 6.10, 6.11) |
+| 10 | Admin | Xem đơn mua gói đã trả và thống kê doanh thu | `GET /orders/all`, `GET /orders/revenue` (6.37, 6.38) |
+
+Mẹo khi demo:
+- **Dựng cảnh "hết quyền"**: admin đặt `trial_days` thành `0` (6.24) rồi đăng ký một chủ trọ mới: hết dùng thử ngay, đăng tin bị 403 `MEMBERSHIP_REQUIRED` và mọi tin của họ biến khỏi công khai (6.1). Mua gói xong là hết.
+- **Dựng cảnh "vượt hạn mức"**: admin hạ `trial_listing_limit` (6.24), các tin đăng sau cùng của chủ trọ đang dùng thử biến khỏi công khai nhưng vẫn `visible`; chủ trọ thấy tin nào bị ẩn bớt ở cờ `isPublic` của `GET /me/listings` (6.21).
+- **Thanh toán là thanh toán thử**: không có tiền thật, tổng tiền ở màn hình admin cũng vậy; nói rõ với người xem.
+
 ### Hiển thị theo quyền
 
 Ẩn hoặc làm mờ nút khi thiếu quyền (dựa vào `permissions` của `/auth/me`), nhưng **backend vẫn là nơi kiểm cuối**: gặp 403 `PERMISSION_DENIED` thì báo không đủ quyền chứ đừng coi là lỗi hệ thống.
@@ -1793,7 +1824,7 @@ Hai ô: mật khẩu hiện tại, mật khẩu mới. Gọi `POST /auth/change-
 - **Đổi hoặc đặt lại mật khẩu** hủy phiên: đặt lại hủy **tất cả**; đổi (khi đang đăng nhập) hủy tất cả **trừ phiên đang dùng**.
 - **Mật khẩu mới** có thể trùng mật khẩu cũ (backend không cấm).
 - **Mọi thông báo lỗi** là tiếng Việt, hiển thị trực tiếp được.
-- **Dữ liệu cá nhân trả về** chỉ gồm `id, email, name, accountType, phone, status`. Không bao giờ có mật khẩu.
+- **Dữ liệu cá nhân trả về** ở đăng ký, đăng nhập và `GET /auth/me` chỉ gồm `id, email, name, accountType, phone, status`; hồ sơ cá nhân (6.35) và danh sách người dùng của admin (6.34) thêm `createdAt` (danh sách của admin còn thêm `lockedReason`). Không bao giờ có mật khẩu hay mã băm.
 
 ---
 
@@ -1834,12 +1865,7 @@ Hai ô: mật khẩu hiện tại, mật khẩu mới. Gọi `POST /auth/change-
 
 ## 10. Chưa có (đã lên kế hoạch)
 
-Backend sẽ làm theo thứ tự dưới đây. Mỗi mục khi xong sẽ vào mục 6 và nhật ký thay đổi.
-
-| Thứ tự | Tính năng | Ảnh hưởng tới FE |
-|---|---|---|
-| 9 | **Dùng thử miễn phí và hạn mức tin** cho chủ trọ: dùng thử 30 ngày, tối đa 2 tin đang hiện (admin đổi được hai con số này). Hết kỳ dùng thử mà chưa mua gói thì tin của chủ trọ tự biến khỏi danh sách công khai. **Đã có**: API admin xem và đổi hai tham số (mục 6.24); hạn dùng thử đặt lúc đăng ký (6.1); chặn đăng và hiện lại tin khi hết dùng thử hoặc đủ hạn mức (6.18, 6.23, mã lỗi `MEMBERSHIP_REQUIRED` và `LISTING_QUOTA_REACHED`); tin biến khỏi danh sách và chi tiết công khai khi hết kỳ hoặc vượt hạn mức, ẩn bớt theo thứ tự đăng (6.19, 6.20); `GET /me/membership` và cờ `isPublic` (6.25, 6.18). **Còn lại**: đo tốc độ ở hàng chục nghìn tin | Lỗi chặn đăng hoặc hiện thêm tin kèm gợi ý mua gói; hiện ngày hết hạn dùng thử và số tin còn lại |
-| 10 | **Mua gói và gia hạn theo tháng**, **thanh toán thử** (bấm xác nhận là có gói, không có tiền thật, không chuyển sang cổng thanh toán nào, nên **không có trang VNPay**). **Đã có**: bảng giá công khai và API admin tạo, sửa, tắt, xóa gói (mục 6.26); tạo, xem, hủy đơn, thanh toán thử và kỳ gói nối tiếp (mục 6.27). Gói đổi hạn mức tin và hiển thị công khai, `state = plan` và `subscription` trong `GET /me/membership` (mục 6.25). **Còn lại**: không còn gì ở backend cho mục này | Trang chọn gói, nút thanh toán thử, lịch sử đơn, dải trạng thái gói đang chạy (đều dựng được) |
+Tính đến 2026-10-22 **không còn tính năng nào đã lên kế hoạch mà backend chưa làm**: hai mục từng nằm ở đây (dùng thử và hạn mức tin, mua gói và thanh toán thử) đã xong và nằm ở mục 6 (6.24 đến 6.27). Phần "Chưa có" của từng API nằm ngay trong mục của nó, và những việc đã hoãn nằm ở mục 9.
 
 **Đã bỏ khỏi kế hoạch (2026-10-11), FE đừng làm màn hình cho các phần này:** duyệt tin trước khi hiển thị, thanh toán qua VNPay, xác thực chủ trọ bằng giấy tờ, báo cáo tin xấu, liên hệ chủ trọ có giới hạn mỗi ngày, đẩy tin và tin nổi bật, kiểm tra tại chỗ, quảng cáo, báo cáo thu chi và dashboard, thống kê cho chủ trọ, tìm quanh địa điểm mốc, đổi loại tài khoản.
 
@@ -1852,6 +1878,13 @@ Backend sẽ làm theo thứ tự dưới đây. Mỗi mục khi xong sẽ vào 
 ## 11. Nhật ký thay đổi
 
 Mới nhất ở trên cùng. Mục nào **phá vỡ** cách FE đang gọi sẽ ghi rõ "ĐỔI KHÁC VỚI TRƯỚC".
+
+### 2026-10-22 · Rà soát tài liệu: sửa chỗ cũ, thêm hướng dẫn chạy thử và kịch bản demo (không đổi API)
+
+- **API không đổi.** Chỉ sửa tài liệu và bộ Postman cho khớp code. Đã đối chiếu tự động từng route, quyền yêu cầu, tên trường phản hồi, mã lỗi (và mã HTTP của chúng) và các con số giới hạn với code: khớp.
+- **Sửa cho đúng**: bảng quyền ở mục 5 (cột "Đã có API" ghi "chưa" cho `catalog`, `listing:moderate`, `favorite`, `plan`, `subscription` dù API đã chạy); mục 10 (không còn mục nào chờ làm, bỏ dòng "còn lại: đo tốc độ" đã cũ); câu mở đầu bảng giới hạn tần suất ở mục 3 (sáu API đọc, không phải năm); danh sách API phân trang ở mục 2; mô tả `NOT_RESOURCE_OWNER` và `RATE_LIMITED`; thêm mã `UNAUTHORIZED` vào bảng lỗi; câu "dữ liệu cá nhân trả về" ở mục 8.
+- **Thêm**: "Chạy thử với backend trên máy" ở mục 2 (cổng, origin, dữ liệu sau `seed`) và "Kịch bản demo" ở mục 7.
+- **Postman**: thêm folder **23 Kịch bản demo** và **24 Lỗi đăng ký trùng** (cả hai chạy riêng, không cần folder nào chạy trước); thêm ca lỗi còn thiếu vào folder 01 (đăng nhập sai), 03 (loại tài khoản không có, người thường xem danh mục quyền), 04 (lỗi khóa, mở khóa, thu hồi phiên), 08 và 09 (quyền của người tìm trọ, sửa và xóa tin hoặc nhà trọ không tồn tại hay của người khác); sửa mô tả cũ ở folder 09, 10 và phần giới thiệu bộ.
 
 ### 2026-10-21 · Admin xem thống kê doanh thu (mốc 2 của đơn và doanh thu cho admin; phần đơn và doanh thu xong)
 

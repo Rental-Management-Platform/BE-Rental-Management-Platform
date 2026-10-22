@@ -128,11 +128,11 @@ uploads/                                   Ảnh tải lên (git bỏ qua)
      --folder "00 Kiểm tra máy chủ" --folder "01 Đăng ký và đăng nhập"
    ```
 
-   Lặp cờ `--folder "<tên folder>"` cho từng folder cần chạy. Bộ chạy tự động đầy đủ là các folder 00, 01, 03, 04, 05 rồi 07 đến 17, theo đúng thứ tự trong collection. Lưu ý khi chạy:
+   Lặp cờ `--folder "<tên folder>"` cho từng folder cần chạy. Bộ chạy tự động đầy đủ là các folder 00, 01, 03, 04, 05 rồi 07 đến 22, theo đúng thứ tự trong collection. Lưu ý khi chạy:
    - `--working-dir docs/api` là bắt buộc vì folder "15 Ảnh tin" tải tệp mẫu `sample-listing.png` và `sample-not-image.txt` nằm cạnh collection.
-   - Folder "02 Quên và đổi mật khẩu" cần liên kết thật trong email nên bỏ qua khi chạy tự động. Folder "06 Giới hạn tần suất" chạy riêng.
+   - Folder "02 Quên và đổi mật khẩu" cần liên kết thật trong email nên bỏ qua khi chạy tự động. Folder "06 Giới hạn tần suất", "23 Kịch bản demo" (một lượt đi qua mọi tính năng chính, dùng để demo) và "24 Lỗi đăng ký trùng" chạy riêng, không cần folder nào chạy trước; hai folder cuối tốn 2 và 6 lần đăng ký nên khởi động lại API trước khi chạy.
    - Bộ đếm giới hạn tần suất nằm trong bộ nhớ API (ví dụ đăng ký tối đa 10 lần mỗi giờ theo IP): chạy lại cả bộ liên tiếp thì **khởi động lại API trước mỗi lần**.
-   - Mỗi lần chạy tạo thêm dữ liệu thử (tài khoản, gói, ảnh). Chạy trên database thử, không chạy trên database đang dùng. Tạo database thử bằng `DATABASE_NAME=<tên khác> npm run db:create`, rồi `migration:deploy` và `seed` với cùng `DATABASE_NAME` đó.
+   - Mỗi lần chạy tạo thêm dữ liệu thử (tài khoản, gói, ảnh). Chạy trên database thử, không chạy trên database đang dùng (riêng folder 23 tạo dữ liệu demo nên chạy trên database dùng để demo được). Tạo database thử bằng `DATABASE_NAME=<tên khác> npm run db:create`, rồi `migration:deploy` và `seed` với cùng `DATABASE_NAME` đó.
 3. **Tài liệu cho FE**: [`docs/api/api-for-frontend.md`](docs/api/api-for-frontend.md). **Hai file `docs/api/` (tài liệu FE và bộ Postman) phải được cập nhật cùng mỗi thay đổi API.**
 
 ## Ảnh tải lên
