@@ -1,8 +1,19 @@
 # Tài liệu API và nghiệp vụ cho Frontend
 
-Cập nhật lần cuối: 2026-10-22 (xem mục [Nhật ký thay đổi](#11-nhật-ký-thay-đổi) để biết thay đổi gần nhất).
+Cập nhật lần cuối: 2026-10-23 (xem mục [Nhật ký thay đổi](#11-nhật-ký-thay-đổi) để biết thay đổi gần nhất).
 
-File này do đội backend giữ và **cập nhật cùng mỗi thay đổi API**. Mục đích: để bên FE hiểu hệ thống làm gì, mỗi màn hình cần gọi API nào, và xử lý lỗi ra sao. Đi kèm file này là bộ request thử trong Postman: [`postman-collection.json`](postman-collection.json) (import vào Postman để gọi thử từng API).
+File này do đội backend giữ và **cập nhật cùng mỗi thay đổi API**. Mục đích: để bên FE hiểu hệ thống làm gì, mỗi màn hình cần gọi API nào, xử lý lỗi ra sao, và **vì sao** hệ thống quyết định như vậy (nguyên tắc nghiệp vụ ở mục 8). Đi kèm file này là bộ request thử trong Postman: [`postman-collection.json`](postman-collection.json) (import vào Postman để gọi thử từng API).
+
+Cách đọc nhanh theo việc cần làm:
+
+| Cần gì | Đọc ở đâu |
+|---|---|
+| Biết có những API nào, cần đăng nhập hay quyền gì, bị giới hạn bao nhiêu | [Phụ lục A](#phụ-lục-a-bảng-tra-nhanh-mọi-api) |
+| Sao chép sẵn kiểu TypeScript của mọi phản hồi | [Phụ lục B](#phụ-lục-b-kiểu-typescript-của-phản-hồi) |
+| Dựng kiểm tra nhập liệu ở FE cho khớp backend | [Phụ lục C](#phụ-lục-c-bảng-luật-nhập-liệu) |
+| Xử lý đăng nhập, token, Next.js (SSR, SEO) | Mục [4](#4-đăng-nhập-token-và-phiên) |
+| Ai được làm gì (khách, người tìm trọ, chủ trọ, admin) | Mục [5](#5-loại-tài-khoản-và-quyền), bảng "Ai làm được gì" |
+| Hiểu luật hiển thị tin, hạn mức, gói, đơn bằng ví dụ có số | Mục [8](#8-quy-tắc-nghiệp-vụ-cần-nhớ) |
 
 Quy ước đọc file: phần nào ghi **Chưa có** nghĩa là đã lên kế hoạch nhưng backend chưa làm, FE đừng dựng giao diện cho phần đó vội.
 
@@ -20,6 +31,8 @@ Quy ước đọc file: phần nào ghi **Chưa có** nghĩa là đã lên kế 
 10. [Chưa có (đã lên kế hoạch)](#10-chưa-có-đã-lên-kế-hoạch)
 11. [Nhật ký thay đổi](#11-nhật-ký-thay-đổi)
 12. [Cách giữ file này luôn đúng](#12-cách-giữ-file-này-luôn-đúng)
+
+Phụ lục: [A. Bảng tra nhanh mọi API](#phụ-lục-a-bảng-tra-nhanh-mọi-api) · [B. Kiểu TypeScript của phản hồi](#phụ-lục-b-kiểu-typescript-của-phản-hồi) · [C. Bảng luật nhập liệu](#phụ-lục-c-bảng-luật-nhập-liệu)
 
 ---
 
@@ -89,9 +102,10 @@ Mỗi tài khoản chỉ thuộc **một** loại, chọn lúc đăng ký và **
 | Kích thước body | Tối đa 100 KB, quá thì 413 `PAYLOAD_TOO_LARGE`. Riêng API tải ảnh (6.28) nhận tệp đến dung lượng tối đa của một ảnh |
 | Trường lạ | Gửi trường không có trong mô tả bị từ chối 400 `VALIDATION_FAILED` (không âm thầm bỏ qua) |
 | Ngôn ngữ | Mọi `message` trả về là tiếng Việt, hiển thị thẳng cho người dùng được. `code` là hằng số tiếng Anh, FE dùng `code` để rẽ nhánh, không so chuỗi `message` |
-| Truy vết | Mỗi response có header `X-Request-Id` (trùng `requestId` trong body lỗi). Gửi kèm khi báo lỗi cho backend |
-| Phân trang | Query `page` (từ 1, mặc định 1) và `pageSize` (1 đến 50, mặc định 20). Trả `{ "items": [...], "total": 37, "page": 1, "pageSize": 20 }`. `total` là tổng số dòng thỏa điều kiện, không phải số dòng của trang này. Trang quá cuối trả `items` rỗng (không phải lỗi). `pageSize` quá 50, `page` nhỏ hơn 1 hoặc không phải số nguyên là 400 `VALIDATION_FAILED`. Các API phân trang: `GET /properties`, `GET /listings`, `GET /me/listings`, `GET /plans`, `GET /plans/all`, `GET /orders`, `GET /orders/all`, `GET /users`, `GET /moderation/listings`, `GET /me/favorites` và `GET /landlords/:id/listings` |
-| Đọc đăng nhập tùy chọn | `GET /listings/:slugCode` là route công khai nhưng **nên gửi `Authorization: Bearer ...` nếu người dùng đã đăng nhập**: có token hợp lệ thì thấy số điện thoại chủ trọ; không có, sai hoặc hết hạn thì coi như khách (`phone: null`) và vẫn 200, **không bao giờ 401**. Xem 6.20 |
+| Truy vết | Mỗi response có header `X-Request-Id` (trùng `requestId` trong body lỗi). Gửi kèm khi báo lỗi cho backend. **Trình duyệt chỉ cho JS đọc header này khi FE và API cùng origin** (xem dòng "Header đọc được" ngay dưới); khác origin thì lấy `requestId` trong body lỗi. FE có thể tự gửi header `X-Request-Id` (1 đến 64 ký tự chữ, số, `_`, `-`) và backend dùng lại giá trị đó, tiện để nối log FE với log backend |
+| Header đọc được | Backend bật CORS với `credentials: true` nhưng **chưa khai báo `Access-Control-Expose-Headers`**. Hệ quả: khi FE ở origin khác API (cách chạy mặc định: FE `:5173`, API `:3000`), JS **không đọc được `Retry-After` và `X-Request-Id`** (trình duyệt trả `null`) dù response có chúng. Xem phần "Lỗi 429" ở mục 3 để biết cách xử lý. FE đặt API sau cùng origin (proxy `/api` của Next.js, mục 4.1) thì đọc được bình thường |
+| Phân trang | Query `page` (từ 1 đến 1.000.000, mặc định 1) và `pageSize` (1 đến 50, mặc định 20). Trả `{ "items": [...], "total": 37, "page": 1, "pageSize": 20 }`. `total` là tổng số dòng thỏa điều kiện, không phải số dòng của trang này. Trang quá cuối trả `items` rỗng (không phải lỗi). `pageSize` quá 50, `page` nhỏ hơn 1 hoặc không phải số nguyên là 400 `VALIDATION_FAILED`. Các API phân trang: `GET /properties`, `GET /listings`, `GET /me/listings`, `GET /plans`, `GET /plans/all`, `GET /orders`, `GET /orders/all`, `GET /users`, `GET /moderation/listings`, `GET /me/favorites` và `GET /landlords/:id/listings` |
+| Đọc đăng nhập tùy chọn | Bốn route công khai **nên gửi `Authorization: Bearer ...` nếu người dùng đã đăng nhập**: `GET /listings` (`isFavorite`), `GET /listings/:slugCode` (`phone` của chủ trọ và `isFavorite`), `GET /landlords/:id` (`isFollowing`) và `GET /landlords/:id/listings` (`isFavorite`). Có token hợp lệ thì các trường đó có giá trị thật; không có, sai hoặc **hết hạn** thì coi như khách (các trường là `null`) và vẫn 200, **không bao giờ 401**. Vì không có 401 nên FE **không thể dựa vào "gặp 401 rồi refresh"** cho bốn route này: phải tự refresh trước khi gọi nếu token sắp hết hạn (mục 4.1). Cả bốn có `Cache-Control: private, no-store` |
 
 Email được chuẩn hóa: cắt khoảng trắng đầu cuối và đổi thành chữ thường. `An@Example.com` và `an@example.com` là cùng một tài khoản.
 
@@ -190,10 +204,10 @@ Lưu ý: **một trường có thể xuất hiện nhiều lần** trong `errors
 | `CANNOT_LOCK_SELF` | 409 | Admin tự khóa chính mình | Hiện `message` |
 | `ACCOUNT_ALREADY_LOCKED` | 409 | Khóa tài khoản đang bị khóa | Làm mới trạng thái trên giao diện |
 | `ACCOUNT_NOT_LOCKED` | 409 | Mở khóa tài khoản không bị khóa | Làm mới trạng thái trên giao diện |
-| `DB_UNAVAILABLE` | 503 | Cơ sở dữ liệu tạm không dùng được | Hiện `message`, cho thử lại sau |
+| `DB_UNAVAILABLE` | 503 | Một thao tác **ghi** bị tranh chấp với thao tác khác ở database và vẫn thất bại sau 3 lần backend tự thử lại (mất vài trăm mili giây). Hiếm; gặp khi nhiều yêu cầu ghi dồn vào cùng một dữ liệu | Hiện `message`, cho người dùng bấm lại. Thao tác chưa được lưu |
 | `INTERNAL_ERROR` | 500 | Lỗi hệ thống | Hiện `message`, gửi `requestId` cho backend |
 | `HTTP_ERROR` | khác | Lỗi HTTP khác chưa có mã riêng | Hiện `message` |
-| `RATE_LIMITED` | 429 | Gọi một API có giới hạn (đăng nhập, mật khẩu, các API ghi dữ liệu, vài API đọc công khai) quá nhiều lần trong thời gian ngắn. Kèm header `Retry-After` (số giây phải đợi) | Hiện `message` kèm "thử lại sau N giây", chặn nút gửi đến hết thời gian, **không** tự thử lại. Xem phần "Lỗi 429" ngay dưới |
+| `RATE_LIMITED` | 429 | Gọi một API có giới hạn (đăng nhập, mật khẩu, các API ghi dữ liệu, vài API đọc công khai) quá nhiều lần trong thời gian ngắn. Kèm header `Retry-After` (số giây phải đợi). `message` là câu cố định "Bạn thao tác quá nhanh. Vui lòng thử lại sau ít phút.", **không có số giây** | Hiện `message`, chặn nút gửi đến hết thời gian, **không** tự thử lại. Đọc `Retry-After` được hay không phụ thuộc origin: xem phần "Lỗi 429" ngay dưới |
 
 ### Lỗi 429 `RATE_LIMITED`: gọi quá nhanh
 
@@ -226,9 +240,10 @@ API của admin (kiểm duyệt tin, danh mục phường và tiện ích, tham 
 Cách đếm: vượt số lần trong cột thì **lần vượt đó bị từ chối và bị chặn đúng khoảng thời gian ở cột "Bị chặn trong"** kể từ lần vượt; `Retry-After` cho biết còn bao lâu. Email được so không phân biệt hoa thường và bỏ khoảng trắng đầu cuối (`An@Example.com` và ` an@example.com ` là một). Gửi email sai dạng hoặc không có email thì tính vào bộ đếm email theo IP, nên không né được giới hạn bằng cách bỏ trống.
 
 FE nên:
-- Đọc `Retry-After`, hiện "Thử lại sau N giây" (đổi sang phút nếu lớn) và khóa nút gửi đến hết thời gian.
+- **Đọc `Retry-After` nếu đọc được**, hiện "Thử lại sau N giây" (đổi sang phút nếu lớn) và khóa nút gửi đến hết thời gian.
+- **Cẩn thận: trình duyệt thường không cho JS đọc `Retry-After`.** Backend hiện chưa khai báo `Access-Control-Expose-Headers`, nên khi FE khác origin với API (ví dụ FE `:5173`, API `:3000`) thì `response.headers.get('Retry-After')` là `null` dù header có thật (xem Network trong DevTools sẽ thấy). Khi đó FE dùng **cột "Bị chặn trong" của bảng trên** làm thời gian khóa nút (ví dụ đăng nhập sai quá số lần thì khóa 15 phút) và hiện `message` của lỗi. FE chạy cùng origin với API (proxy `/api` của Next.js, mục 4.1) thì đọc được bình thường. Cách sửa gọn ở backend là khai báo `exposedHeaders: ['Retry-After', 'X-Request-Id']` trong cấu hình CORS; tới lúc đó mục này sẽ được cập nhật.
 - **Không tự động thử lại** khi gặp 429: thử lại chỉ kéo dài thời gian bị chặn.
-- Với `refresh`: chỉ gọi khi gặp 401 `TOKEN_EXPIRED`, và nếu nhiều request cùng hết hạn thì gom về **một** lần refresh rồi thử lại tất cả. Đừng refresh theo bộ đếm giờ hay mỗi lần chuyển trang.
+- Với `refresh`: gọi khi gặp 401 `TOKEN_EXPIRED`, **hoặc** chủ động ngay trước khi gọi một trong bốn API đọc đăng nhập tùy chọn mà token sắp hết hạn (mục 2 và 4.1, vì các API đó không bao giờ trả 401). Nếu nhiều request cùng cần token mới thì gom về **một** lần refresh rồi thử lại tất cả. Đừng refresh theo bộ đếm giờ cố định hay mỗi lần chuyển trang. Giới hạn là 60 lần mỗi phút theo IP, nhiều người dùng chung một IP (ký túc xá) cộng dồn vào đó.
 - Bộ đếm nằm **trong bộ nhớ** của backend: khởi động lại backend là về 0. Khi thử tay mà bị chặn, nhờ restart backend thay vì đợi.
 - Khi chạy thử trên máy cá nhân (không qua proxy), mọi client cùng một IP nên giới hạn theo IP dùng chung cho cả máy.
 
@@ -247,11 +262,15 @@ Có hai loại chìa khóa:
 
 Cookie `rt`: `HttpOnly`, `SameSite=Strict`, `Path=/api/v1/auth` (chỉ gửi cho các API dưới `/api/v1/auth`), sống 30 ngày. Cookie được **xoay vòng**: mỗi lần refresh, backend cấp cookie mới và cookie cũ chết.
 
+Các con số ở bảng trên là **mặc định**; backend đổi được bằng biến môi trường (`ACCESS_TTL_SECONDS` từ 60 đến 3600, `REFRESH_TTL_DAYS` từ 1 đến 90, `REFRESH_GRACE_SECONDS` từ 0 đến 60, `MAX_SESSIONS_PER_USER` từ 1 đến 50, `REFRESH_COOKIE_NAME`). **FE đọc `expiresIn` trong phản hồi để biết token sống bao lâu, đừng cứng 900.** Cookie có thêm `Secure` khi backend chạy với `COOKIE_SECURE=true` (bắt buộc khi chạy HTTPS thật; trình duyệt không lưu cookie `Secure` qua HTTP).
+
+**`SameSite=Strict` đòi FE và API cùng một "site".** Trình duyệt chỉ gửi cookie `rt` khi trang đang mở cùng site với API (cùng domain đăng ký, ví dụ `app.example.com` gọi `api.example.com`; `localhost` khác cổng cũng là cùng site). FE ở một domain còn API ở domain khác hẳn (ví dụ FE `*.vercel.app`, API `*.railway.app`) thì cookie không đi kèm và người dùng mất phiên mỗi lần tải lại trang. Khi triển khai, cho FE và API chung domain gốc, hoặc đặt API sau cùng origin với FE (mục 4.1).
+
 ### FE làm gì
 
 1. **Sau đăng ký hoặc đăng nhập**: lưu `accessToken` vào bộ nhớ, rồi gọi `GET /auth/me` để biết người dùng là ai, loại tài khoản gì và có quyền gì. Đừng tự giải mã JWT.
 2. **Khi tải lại trang** (bộ nhớ mất token): gọi `POST /auth/refresh` ngay lúc khởi động app. Thành công thì có access token mới (rồi gọi `/auth/me`); lỗi 401 thì coi như chưa đăng nhập.
-3. **Khi một request trả 401 `TOKEN_EXPIRED`**: gọi `POST /auth/refresh` **đúng một lần**, lấy `accessToken` mới rồi gửi lại request vừa lỗi. Nếu refresh cũng lỗi (`SESSION_REVOKED`, `SESSION_EXPIRED`, `REFRESH_TOKEN_MISSING`) thì xóa trạng thái đăng nhập và chuyển trang đăng nhập.
+3. **Khi một request trả 401 `TOKEN_EXPIRED`**: gọi `POST /auth/refresh` **đúng một lần**, lấy `accessToken` mới rồi gửi lại request vừa lỗi. Nếu refresh cũng lỗi (`SESSION_REVOKED`, `SESSION_EXPIRED`, `REFRESH_TOKEN_MISSING`) thì xóa trạng thái đăng nhập và chuyển trang đăng nhập. **Ngoại lệ:** bốn API đọc đăng nhập tùy chọn (mục 2) không bao giờ trả 401, token hết hạn chỉ làm chúng trả bản khách; với chúng, FE phải refresh **trước khi gọi** nếu token sắp hết hạn (lưu `expiresAt = thời điểm nhận + expiresIn`, refresh khi còn dưới khoảng 30 giây). Chi tiết ở mục 4.1.
 4. **Nhiều request cùng hết hạn một lúc**: chỉ phát **một** lời gọi refresh, các request còn lại đợi kết quả đó. (Hai tab cùng refresh trong vòng 10 giây vẫn an toàn nhờ khoảng ân hạn, nhưng dùng lại cookie cũ sau 10 giây sẽ bị coi là bị đánh cắp và **hủy cả phiên**.)
 5. **Đăng xuất**: gọi `POST /auth/logout`, xóa token trong bộ nhớ.
 
@@ -264,6 +283,46 @@ gọi API ──401 TOKEN_EXPIRED──> POST /auth/refresh ──200──> th�
 ```
 
 Mỗi tài khoản giữ tối đa 10 phiên (10 thiết bị). Đăng nhập thêm thì phiên cũ nhất bị hủy và thiết bị đó nhận `SESSION_REVOKED` ở lần refresh tới.
+
+**Những chuyện cần nhớ về vòng đời phiên** (đã đối chiếu code):
+- Access token là JWT không trạng thái: backend **không** tra database mỗi request (trừ các route "đọc lại admin", cột "Đọc lại DB" ở Phụ lục A). Nên sau khi đăng xuất, bị khóa hay bị thu hồi phiên, access token còn hạn vẫn dùng được cho các API thường tối đa `expiresIn` giây; phiên chỉ thật sự mất ở lần refresh kế tiếp (`SESSION_REVOKED` hoặc `ACCOUNT_LOCKED`). Đăng xuất ở tab này thì tab kia mất phiên ở lần refresh sau, không ngay lập tức.
+- Refresh trả `ACCOUNT_LOCKED` (và hủy mọi phiên của tài khoản) khi tài khoản bị khóa; trả `SESSION_REVOKED` khi tài khoản đã bị xóa. Quyền trong token mới luôn đọc lại từ database.
+- Trong khoảng ân hạn (mặc định 10 giây) sau một lần xoay, gọi refresh bằng cookie cũ vẫn nhận access token mới nhưng **không** nhận cookie mới (cookie đã được lần gọi đầu đổi rồi). Ngoài khoảng ân hạn, dùng lại cookie cũ bị coi là bị đánh cắp và hủy cả phiên (`SESSION_REVOKED`).
+- Đổi mật khẩu hủy mọi phiên **khác**, giữ phiên đang dùng; đặt lại mật khẩu, khóa tài khoản và `revoke-sessions` hủy **tất cả**.
+
+### 4.1 Dùng với Next.js (SSR, SEO) khi access token chỉ nằm trong bộ nhớ
+
+**Vấn đề.** Trang công khai (danh sách tin, chi tiết tin, hồ sơ chủ trọ) cần server render đầy đủ để công cụ tìm kiếm đọc được. Nhưng số điện thoại chủ trọ, nút tim và nút theo dõi phụ thuộc người đang xem, mà access token chỉ nằm trong bộ nhớ trình duyệt (không `localStorage`, không cookie đọc được bằng JS). Backend đã được thiết kế để hai yêu cầu này không mâu thuẫn. Đây là **hướng dẫn cách dùng**, không phải điều backend ép buộc.
+
+**Backend bảo đảm gì (đã đối chiếu code):**
+- Bốn route đọc đăng nhập tùy chọn (mục 2) gọi **không có** `Authorization` thì luôn trả đúng bản dành cho khách: `phone`, `isFavorite`, `isFollowing` là `null`, vẫn 200. Bản này **giống nhau cho mọi khách**, nên server FE render và cache được.
+- Số điện thoại **không nằm trong bản dành cho khách**, nên không lọt vào HTML, không vào bộ nhớ đệm, không vào kết quả công cụ tìm kiếm.
+- Cookie `rt` là `HttpOnly`, `SameSite=Strict`, `Path=/api/v1/auth` và do API đặt, nên **server FE không bao giờ nhận được nó**. Server FE vì thế không thể và không cần biết ai đang xem. Đừng cố chuyển cookie này sang server FE.
+
+**Mô hình hai lớp (khuyến nghị):**
+
+| Lớp | Chạy ở đâu | Làm gì |
+|---|---|---|
+| 1. Bản khách | Server FE (SSR hoặc ISR) | Gọi API **không gắn `Authorization`**. Render đủ nội dung cho SEO: tiêu đề, giá, địa chỉ, ảnh, metadata, dữ liệu có cấu trúc. Chỗ số điện thoại là nút giữ chỗ ("Hiện số điện thoại"), tim và nút theo dõi là khung chờ |
+| 2. Phần theo người xem | Trình duyệt, sau khi trang mở | Lấy access token (bước 2 dưới đây). Có phiên thì gọi lại **cùng API đó kèm `Bearer`** rồi đè các trường theo người xem lên bản khách: `landlord.phone` và `isFavorite` ở chi tiết; `isFavorite` theo `id` tin ở danh sách và danh sách tin của chủ trọ; `isFollowing` ở hồ sơ chủ trọ |
+
+**Các bước và lưu ý:**
+
+1. **Server FE không gắn token và đặt thời gian cache tường minh.** Backend trả `Cache-Control: private, no-store` cho bốn route này, đúng với người dùng thật. Cache dữ liệu của Next.js thì điều khiển bằng tùy chọn của `fetch` (`next.revalidate`), nên hãy đặt rõ (ví dụ 60 giây) cho bản khách; kiểm lại cách hoạt động theo phiên bản Next đang dùng. **Tuyệt đối không** gắn token của một người dùng vào request server có cache dùng chung: số điện thoại sẽ nằm trong HTML của người khác.
+2. **Khôi phục phiên khi trang mở.** Một `AuthProvider` ở client gọi `POST /auth/refresh` một lần (`credentials: 'include'`). 200: giữ `accessToken` trong biến module và ghi `expiresAt = Date.now() + expiresIn * 1000`, rồi gọi `GET /auth/me`. 401 (`REFRESH_TOKEN_MISSING`, `SESSION_REVOKED`, `SESSION_EXPIRED`): trạng thái `guest`, **không hiện lỗi**. Trạng thái đăng nhập có **ba** giá trị: `loading`, `guest`, `user`. Ở `loading`, nút số điện thoại, tim và theo dõi hiện khung chờ, để nút "Đăng nhập" không nhấp nháy với người đã có phiên.
+3. **Gộp mọi lần refresh thành một Promise dùng chung.** React StrictMode ở môi trường dev chạy effect hai lần, và nhiều component có thể cùng cần token. Backend chịu được hai lần gọi trùng trong khoảng ân hạn (mục 4) nhưng đừng dựa vào đó.
+4. **Refresh chủ động cho bốn API đọc tùy chọn.** Hàm "lấy token" của FE nên làm: nếu `expiresAt - bây giờ` còn dưới khoảng 30 giây thì refresh trước rồi mới gọi. Lý do: token hết hạn thì bốn API này **không báo 401** mà lặng lẽ trả bản khách (`phone: null`), nên cơ chế "gặp 401 thì refresh" không bao giờ chạy và người đã đăng nhập thấy mất số điện thoại. Với các API cần đăng nhập (lưu tin, theo dõi, quản lý...) vẫn dùng cơ chế 401 `TOKEN_EXPIRED` ở mục "FE làm gì".
+5. **Đừng gọi refresh vô ích cho khách.** Mỗi lượt khách mở trang mà gọi `POST /auth/refresh` đều nhận 401 và **tính vào giới hạn 60 lần mỗi phút theo IP** (mục 3). Nhiều khách chung một IP (ký túc xá, quán cà phê) dễ chạm giới hạn. Khuyến nghị: khi đăng nhập thành công, FE đặt một cookie gợi ý trên domain của FE (ví dụ `has_session=1`, không `HttpOnly`, không chứa bí mật, sống tối đa 30 ngày) và chỉ gọi refresh khi cookie này còn; xóa nó khi đăng xuất hoặc khi refresh trả 401. Cookie này chỉ là gợi ý, không phải bằng chứng đăng nhập.
+6. **IP mà backend thấy khi server FE gọi API.** Server FE gọi API thì backend thấy IP của server FE, không phải IP người xem. Hai hệ quả: (a) giới hạn `GET /listings` và `GET /listings/:slugCode` (300 lần mỗi phút theo IP, mục 3) tính chung cho mọi trang do server render, nên dùng ISR hoặc `revalidate` để mỗi trang chỉ gọi API khoảng một lần mỗi chu kỳ thay vì mỗi lượt xem; (b) lượt xem (`viewCount`, 6.20) tính một lần mỗi người xem mỗi 30 phút theo IP hoặc tài khoản, nên các lần gọi từ server FE gần như không làm số tăng, còn lượt xem thật chỉ tăng khi **trình duyệt** gọi chi tiết (lớp 2, nơi backend thấy tài khoản hoặc IP thật). Với khách, lớp 2 chỉ chạy nếu FE chủ động gọi lại; nếu bỏ qua thì lượt xem của khách bị đếm thiếu. FE tự quyết: gọi lại cho cả khách để đếm đúng nhưng tốn thêm một lần gọi mỗi lượt xem, hoặc chấp nhận đếm thiếu ở bản demo.
+7. **Triển khai.** Xem đoạn `SameSite=Strict` ở đầu mục 4: FE và API chung domain gốc là cách gọn nhất (không đổi code). Cách thứ hai là cho trình duyệt gọi API qua cùng origin với FE (proxy `/api` bằng cấu hình rewrite của Next.js): khi đó không cần CORS, đọc được `Retry-After` và `X-Request-Id` (mục 2), cookie là cookie của chính origin FE; đổi lại backend phải được cấu hình chuyển tiếp IP người dùng (`X-Forwarded-For` kèm `TRUST_PROXY_HOPS` cho khớp), nếu không mọi người dùng bị tính chung một IP. Dù cách nào, origin của FE phải nằm trong `ALLOWED_ORIGINS` của backend (nếu không `refresh` và `logout` trả 403 `ORIGIN_NOT_ALLOWED`), và backend chạy HTTPS thật phải đặt `COOKIE_SECURE=true`.
+
+**Kiểm thử trước khi coi phần đăng nhập là xong:**
+- Xem mã nguồn trang (`view-source`) của chi tiết tin: **không** có số điện thoại.
+- Đăng nhập, tải lại cứng trang chi tiết: số điện thoại và tim hiện lại mà không phải đăng nhập lại.
+- Để token hết hạn rồi mở chi tiết (chạy backend dev với `ACCESS_TTL_SECONDS=60` cho nhanh): vẫn thấy số điện thoại.
+- Mở hai tab cùng lúc, cùng tải lại: không bị văng phiên.
+- Đăng xuất ở tab này: tab kia mất phiên ở lần refresh kế tiếp (token còn hạn vẫn dùng được đến lúc hết hạn).
+- Trên domain thật: cookie `rt` đi kèm khi gọi `/auth/refresh` giữa hai subdomain.
 
 ---
 
@@ -282,6 +341,30 @@ Admin có tất cả quyền. Quyền của `landlord` và `tenant` nằm trong 
 | `admin` | Tất cả |
 
 Quyền admin chỉnh được **chỉ gồm hành động lẻ** của các module không dành riêng cho admin. Các hành động trong cột "Chỉ admin" bên dưới và mọi khóa `module:manage` không thể cấp cho landlord hay tenant.
+
+### Ai làm được gì (tóm tắt theo loại tài khoản)
+
+Bảng này gom **quyền mặc định** với **luật cố định trong code** để FE biết nên dựng màn hình nào cho ai. Quyền mặc định của `landlord` và `tenant` admin chỉnh được (bảng ở trên); luật cố định (chủ sở hữu, "admin không mua gói, không theo dõi, không lưu tin") thì không chỉnh được. Ô ghi "403" là mã `PERMISSION_DENIED` trừ khi ghi khác.
+
+| Việc | Khách (chưa đăng nhập) | Người tìm trọ (`tenant`) | Chủ trọ (`landlord`) | Admin |
+|---|---|---|---|---|
+| Xem danh sách tin, chi tiết tin, ảnh, hồ sơ chủ trọ và tin của họ, bảng giá, phường, tiện ích | Có. `landlord.phone`, `isFavorite`, `isFollowing` là `null` | Có, thấy số điện thoại; `isFavorite`, `isFollowing` theo dữ liệu thật | Có, thấy số điện thoại; `isFavorite` và `isFollowing` là `false` | Như chủ trọ |
+| Đăng ký | Có (chọn `landlord` hoặc `tenant`) | Không áp dụng | Không áp dụng | Không đăng ký được, chỉ tạo bằng lệnh seed |
+| Hồ sơ cá nhân (`/me/profile`) | Không (401) | Có. Xóa được số điện thoại | Có. **Không** xóa được số điện thoại | Có |
+| Lưu tin, bỏ lưu, danh sách tin đã lưu | Không (401) | Có | Mặc định 403 (admin cấp quyền `favorite:*` thì được) | **Luôn 403**, kể cả có quyền |
+| Theo dõi, bỏ theo dõi chủ trọ | Không (401) | Có (không theo dõi chính mình: 409 `CANNOT_FOLLOW_SELF`) | Mặc định 403 (admin cấp quyền `follow:*` thì được) | **Luôn 403**, kể cả có quyền |
+| Nhà trọ (`/properties`) | Không (401) | Mặc định 403 | Có, **chỉ nhà trọ của mình** | Có quyền nhưng cũng chỉ nhà trọ của chính mình (thực tế không dùng) |
+| Tin của mình: đăng, sửa, ẩn, hiện, xóa, tải ảnh, `/me/listings` | Không (401) | Mặc định 403 | Có, **chỉ tin của mình**. Đăng và hiện lại còn phải trong hạn mức (`MEMBERSHIP_REQUIRED`, `LISTING_QUOTA_REACHED`) | Đăng tin: 403 `MEMBERSHIP_REQUIRED` (không có kỳ dùng thử). Sửa, xóa tin người khác: 403 `NOT_RESOURCE_OWNER` |
+| Kỳ dùng thử và hạn mức (`GET /me/membership`) | Không (401) | 403 | Có | Gọi được nhưng luôn `state = expired`, `listingLimit = 0` |
+| Đơn mua gói (tạo, thanh toán, hủy, lịch sử) | Không (401) | 403 | Có, **chỉ đơn của mình** | Tạo đơn: 403. Xem, thanh toán, hủy đơn người khác: 403 `NOT_RESOURCE_OWNER`. `GET /orders` luôn rỗng. Xem đơn mọi chủ trọ ở `GET /orders/all` |
+| Ẩn, gỡ ẩn tin của người khác, danh sách kiểm duyệt | Không | 403 | 403 | Có |
+| Khóa, mở khóa, thu hồi phiên, danh sách người dùng | Không | 403 | 403 | Có |
+| Quản lý gói, tham số hệ thống, phường và tiện ích, quyền loại tài khoản, đơn mọi chủ trọ, doanh thu | Không | 403 | 403 | Có (một số API đọc lại tài khoản admin từ database mỗi lần gọi, Phụ lục A) |
+
+Ba luật cố định đáng nhớ:
+- **Chủ sở hữu áp cho mọi loại tài khoản, kể cả admin.** Dữ liệu của người khác (nhà trọ, tin, đơn) luôn là 403 `NOT_RESOURCE_OWNER`. Admin tác động lên dữ liệu người khác chỉ qua quyền riêng: ẩn tin, khóa tài khoản.
+- **Chỉ tài khoản `landlord` tạo được đơn mua gói.** Admin không mua gói.
+- **Admin không lưu tin và không theo dõi chủ trọ**, dù `permissions` của admin liệt kê đủ `favorite:*` và `follow:*` (admin có mọi quyền trong danh mục). FE ẩn nút theo loại tài khoản **và** theo `permissions`.
 
 ### Danh mục quyền hiện có
 
@@ -376,7 +459,7 @@ Thứ tự kiểm trùng: email trước, số điện thoại sau.
 
 **200 OK**: `{ "accessToken": "...", "expiresIn": 900 }` và (thường) cookie `rt` mới. Quyền trong token mới đã được đọc lại từ cơ sở dữ liệu.
 
-**Lỗi**: 401 `REFRESH_TOKEN_MISSING` · 401 `SESSION_REVOKED` · 401 `SESSION_EXPIRED` · 403 `ACCOUNT_LOCKED` (khi bị khóa, mọi phiên của tài khoản bị hủy) · 403 `ORIGIN_NOT_ALLOWED` · 429 `RATE_LIMITED` (quá 60 lần mỗi phút theo IP).
+**Lỗi**: 401 `REFRESH_TOKEN_MISSING` (không có cookie `rt`: chưa đăng nhập, đã đăng xuất, hoặc trình duyệt không gửi cookie vì `SameSite`, `credentials` hay origin sai) · 401 `SESSION_REVOKED` (cookie không khớp phiên nào, phiên đã bị hủy, tài khoản đã bị xóa, hoặc dùng lại cookie cũ ngoài khoảng ân hạn) · 401 `SESSION_EXPIRED` (quá 30 ngày kể từ lúc đăng nhập; **hạn này cố định, không tự gia hạn khi refresh**) · 403 `ACCOUNT_LOCKED` (khi bị khóa, mọi phiên của tài khoản bị hủy) · 403 `ORIGIN_NOT_ALLOWED` · 429 `RATE_LIMITED` (quá 60 lần mỗi phút theo IP).
 
 Trình duyệt tự gửi header `Origin`; backend từ chối nếu origin của FE không nằm trong danh sách cho phép.
 
@@ -737,7 +820,7 @@ Danh sách cho trang tìm trọ. **Gửi kèm `Authorization: Bearer <accessToke
 
 | Query | Kiểu | Mặc định | Luật |
 |---|---|---|---|
-| `q` | chuỗi | không lọc | Từ khóa **không phân biệt dấu và chữ hoa thường** (`tan dinh` tìm ra "Tân Định"). Tìm trong tiêu đề, tên nhà trọ, địa chỉ và tên phường. Tối đa 6 từ (từ thừa bị bỏ), mỗi từ tối đa 50 ký tự (dài hơn bị cắt), các từ nối bằng AND. `%`, `_`, `\` chỉ khớp đúng ký tự đó. `q` rỗng thì không lọc. Tối đa 500 ký tự |
+| `q` | chuỗi | không lọc | Từ khóa **không phân biệt dấu và chữ hoa thường** (`tan dinh` tìm ra "Tân Định"). Tìm trong tiêu đề, tên nhà trọ, địa chỉ (số nhà, đường) và tên phường (không tìm trong tên tỉnh hay thành phố). Tối đa 6 từ (từ thừa bị bỏ), mỗi từ tối đa 50 ký tự (dài hơn bị cắt), các từ nối bằng AND. **Mỗi từ khớp một phần (chuỗi con), không cần khớp nguyên từ**: `an` khớp cả "Tân", "Bình An" và "Phan"; vì đã bỏ dấu nên `ben` khớp cả "Bến" và "Bên". Gõ từ dài từ 3 ký tự trở lên cho kết quả gọn. `%`, `_`, `\` chỉ khớp đúng ký tự đó. `q` rỗng thì không lọc. Tối đa 500 ký tự |
 | `wardCode` | chuỗi | không lọc | Mã 5 chữ số của phường hoặc xã (`GET /wards`). Mã đúng dạng nhưng không có trong danh mục trả danh sách rỗng (không phải lỗi); sai dạng là 400 |
 | `minPrice`, `maxPrice` | số nguyên | không lọc | Từ 0 đến 100.000.000, so với giá thuê. `minPrice` lớn hơn `maxPrice` là 400 |
 | `sort` | chuỗi | `newest` | `newest` (mới đăng trước), `price_asc` (giá tăng dần), `price_desc` (giá giảm dần). Cùng giá thì xếp ổn định, tin đăng sau trước với `price_desc` |
@@ -778,7 +861,7 @@ Cần nhớ:
 
 `GET /listings/:slugCode` · công khai, **đọc đăng nhập tùy chọn**
 
-`:slugCode` là `slug-mã` hoặc chỉ `mã`. **Chỉ phần mã (8 ký tự sau dấu `-` cuối cùng) được dùng để tra**: slug sai hoặc cũ vẫn mở được, và phản hồi trả `slug` đúng để FE thay địa chỉ trên thanh địa chỉ. Không lấy được mã hợp lệ cũng là 404 (không phải 400).
+`:slugCode` là `slug-mã` hoặc chỉ `mã`. **Chỉ phần mã (8 ký tự sau dấu `-` cuối cùng) được dùng để tra**: slug sai hoặc cũ vẫn mở được, và phản hồi trả `slug` đúng để FE thay địa chỉ trên thanh địa chỉ. Không lấy được mã hợp lệ cũng là 404 (không phải 400). Mã do backend sinh gồm chữ thường (bỏ `i`, `l`, `o`) và số từ 2 đến 9; địa chỉ có chữ hoa trong phần mã (`K7M2XQ9P`) không khớp và nhận 404, nên FE dùng nguyên chuỗi `slug` và `code` backend trả, đừng đổi hoa thường.
 
 **Gửi kèm `Authorization: Bearer <accessToken>` nếu người dùng đã đăng nhập.** Có token hợp lệ thì thấy số điện thoại của chủ trọ; khách, token sai hoặc token hết hạn thì `landlord.phone` là `null` và **vẫn 200, không bao giờ 401**. Vì vậy FE nên làm mới token hết hạn trước khi mở trang chi tiết nếu muốn hiện số. Phản hồi có `Cache-Control: private, no-store` (nội dung đổi theo người xem), đừng cho proxy hay CDN cache.
 
@@ -1803,6 +1886,69 @@ Mẹo khi demo:
 
 ## 8. Quy tắc nghiệp vụ cần nhớ
 
+### 8.1 Nguyên tắc chung (đọc trước, rồi mới đọc từng quy tắc)
+
+1. **Mọi trạng thái kiểu "đang hiện", "còn hạn" đều tính lúc đọc, không có cờ lưu sẵn.** Hạn mức tin, tin có hiện công khai không, số ngày dùng thử còn lại, gói đang chạy, số người theo dõi, tổng lượt xem đều tính từ dữ liệu gốc mỗi lần gọi. Hệ quả cho FE: đừng tự tính hạn dùng thử hay hạn mức; sau mỗi thao tác có ảnh hưởng (đăng, ẩn, hiện, xóa tin, mua gói, admin khóa tài khoản hay đổi tham số) thì gọi lại API đọc liên quan; đừng cache lâu các con số này.
+2. **Hai lớp kiểm: quyền theo loại tài khoản và luật cố định trong code.** Quyền (`permissions`) của `landlord` và `tenant` admin chỉnh được. Còn luật chủ sở hữu (`NOT_RESOURCE_OWNER`, áp cả admin), "chỉ chủ trọ mua gói", "admin không theo dõi, không lưu tin" thì cố định. FE ẩn nút theo `permissions` nhưng luôn xử lý 403, vì backend là nơi quyết định cuối.
+3. **Xóa là xóa mềm** (nhà trọ, tin, tài khoản): dữ liệu biến khỏi API nhưng vẫn giữ chỗ. Email và số điện thoại của tài khoản đã xóa vẫn báo `EMAIL_TAKEN`, `PHONE_TAKEN`; phường hoặc tiện ích từng được nhà trọ dùng không xóa được (`CATALOG_IN_USE`).
+4. **Ghi lặp lại an toàn ở các thao tác "đặt trạng thái"**: theo dõi, bỏ theo dõi, lưu, bỏ lưu, thanh toán đơn đã trả, hủy đơn đã hủy đều trả 200 với kết quả đúng của lần trước, và nhiều lần gọi cùng lúc cũng không tạo bản trùng. Ngược lại **các thao tác tạo mới không an toàn khi bấm đúp**: tạo nhà trọ, đăng tin, tạo đơn, tải ảnh sẽ tạo thêm một bản. FE khóa nút trong lúc đang gửi.
+5. **Khi hai bên đua nhau thì có luật thắng thua cố định.** Admin ẩn tin đúng lúc chủ trọ ẩn hoặc hiện: admin thắng. Mỗi chủ trọ chỉ có tối đa một đơn chờ: tạo đơn mới thì đơn chờ cũ tự hủy. Hai yêu cầu đăng tin cùng lúc khi chỉ còn một chỗ: đúng một yêu cầu thành công (kiểm hạn mức và ghi nằm trong cùng một giao dịch có khóa).
+6. **Mọi API công khai dùng chung một luật hiển thị**, nên "mở được ở trang chi tiết" và "có trong danh sách, trong tin đã lưu, trong tin của chủ trọ, trong `publicListingCount`, và có ảnh xem được" là cùng một điều kiện. FE tin vào `total`, không lọc thêm.
+7. **Không lộ thông tin qua mã lỗi.** Tin đang ẩn trả 404 giống tin không tồn tại (kể cả với chính chủ ở route công khai); sai email và sai mật khẩu cùng một lỗi; "quên mật khẩu" luôn cùng một câu; chủ trọ bị khóa trả 404 như không tồn tại. FE đừng cố phân biệt các trường hợp này trong giao diện công khai.
+8. **Thanh toán là thanh toán thử.** `paid` chỉ nghĩa là chủ trọ tự bấm xác nhận; mọi con số tiền (kể cả của admin) là tiền thử.
+9. **Thời gian.** Mọi thời điểm trả về là ISO 8601 UTC. "Ngày" ở mọi bộ lọc và thống kê của admin là ngày theo **giờ Việt Nam** (UTC+7, không có giờ mùa hè). `availableFrom` là ngày thuần `YYYY-MM-DD`, không có giờ, không đổi theo múi giờ. Hiển thị thời điểm cho người dùng thì FE tự đổi sang giờ địa phương.
+
+### 8.2 Các máy trạng thái
+
+**Tin đăng (`status`)** (chủ trọ chỉ chuyển giữa hai trạng thái đầu; chỉ admin vào và ra `hidden_by_admin`):
+
+| Đang ở \ Hành động | Chủ trọ `hide` | Chủ trọ `show` | Admin `hide` | Admin `unhide` | Chủ trọ xóa |
+|---|---|---|---|---|---|
+| `visible` | thành `hidden_by_owner` | 409 `LISTING_STATE_INVALID` | thành `hidden_by_admin` | 409 `LISTING_STATE_INVALID` | xóa mềm |
+| `hidden_by_owner` | 409 `LISTING_STATE_INVALID` | thành `visible` (phải qua cửa hạn mức) | thành `hidden_by_admin` | 409 `LISTING_STATE_INVALID` | xóa mềm |
+| `hidden_by_admin` | 409 `LISTING_STATE_INVALID` | **403 `LISTING_HIDDEN_BY_ADMIN`** | 409 `LISTING_STATE_INVALID` | thành `hidden_by_owner` (không về `visible`) | xóa mềm |
+
+`status` và "đang hiện với khách" là **hai khái niệm khác nhau**: tin `visible` vẫn có thể không hiện với khách (vượt hạn mức, chủ trọ hết dùng thử và hết gói, chủ trọ bị khóa). Chủ trọ đọc `isPublic` (6.18); khách chỉ thấy tin khi nó thỏa luật ở 6.19.
+
+**Đơn mua gói (`status`)**: `pending` là trạng thái duy nhất còn đổi được.
+
+| Đang ở \ Hành động | `pay` | `cancel` | Tạo đơn mới của cùng chủ trọ |
+|---|---|---|---|
+| `pending` | thành `paid`, sinh kỳ gói | thành `cancelled` | tự thành `cancelled` |
+| `paid` | 200, trả đúng kết quả cũ, **không** sinh kỳ mới | 409 `ORDER_STATE_INVALID` (chưa có hoàn tiền) | không đổi |
+| `cancelled` | 409 `ORDER_STATE_INVALID` | 200, trả đúng kết quả cũ | không đổi |
+
+**Quyền đăng tin của chủ trọ (`state` trong `GET /me/membership`)**, tính lúc đọc theo thứ tự ưu tiên: `plan` (có kỳ gói đang chạy, hạn mức là `maxListings` của gói) → `trial` (không có gói và `trialEndsAt` còn ở tương lai, hạn mức là `trial_listing_limit`) → `expired` (hạn mức 0, đăng và hiện tin bị `MEMBERSHIP_REQUIRED`, mọi tin biến khỏi công khai). Gói hết mà dùng thử còn thì quay về `trial`.
+
+**Tài khoản (`status`)**: `active` ⇄ `locked`, chỉ admin đổi. Khóa hủy mọi phiên ngay; mở khóa **không** khôi phục phiên (người dùng đăng nhập lại). Tài khoản bị khóa: đăng nhập đúng mật khẩu nhận `ACCOUNT_LOCKED`, hồ sơ chủ trọ và tin của họ biến khỏi công khai; mở khóa thì trở lại như cũ.
+
+**Phiên đăng nhập**: tạo khi đăng ký hoặc đăng nhập (tối đa 10 phiên mỗi tài khoản, vượt thì phiên cũ nhất bị hủy), xoay mỗi lần refresh, sống 30 ngày kể từ lúc đăng nhập; bị hủy bởi đăng xuất, đăng xuất mọi thiết bị, đổi hoặc đặt lại mật khẩu, khóa tài khoản, admin thu hồi, hoặc phát hiện dùng lại refresh token cũ ngoài khoảng ân hạn.
+
+### 8.3 Ví dụ có số liệu
+
+**Ví dụ 1: tin nào hiện với khách khi vượt hạn mức.** Chủ trọ Nam đang dùng thử với `trial_listing_limit = 2`, đăng lần lượt ba tin L1 (cũ nhất), L2, L3 (mới nhất). Cả ba là `visible`.
+- Khách chỉ thấy L1 và L2. L3 vẫn `visible` nhưng `isPublic: false` ở `GET /me/listings`, và 404 `LISTING_NOT_FOUND` ở chi tiết công khai.
+- `GET /me/membership`: `listingLimit 2`, `visibleCount 3`, `remaining 0`, `overLimitCount 1`.
+- Nam ẩn L1: tin `visible` còn L2, L3, cả hai nằm trong 2 tin đăng sớm nhất nên **L3 hiện lại ngay**; `visibleCount 2`, `overLimitCount 0`, `remaining 0`.
+- Nam bấm "Hiện" lại L1 lúc này: 403 `LISTING_QUOTA_REACHED` (đang hiện 2, hạn mức 2).
+- Admin hạ `trial_listing_limit` xuống 1: chỉ L2 hiện với khách; `status` của L3 vẫn `visible`.
+
+**Ví dụ 2: ngày dùng thử còn lại.** Chủ trọ đăng ký lúc `2026-10-01T03:00:00Z`, `trial_days = 30` nên `trialEndsAt = 2026-10-31T03:00:00Z`. Lúc `2026-10-20T04:00:00Z` còn 10 ngày 23 giờ, `trialDaysLeft = 11` (làm tròn **lên**). Đúng lúc `2026-10-31T03:00:00Z` là hết (`state = expired`), không phải còn một giây. Đổi `trial_days` sau này không đổi `trialEndsAt` của người đã đăng ký.
+
+**Ví dụ 3: mua gói nối tiếp và nâng gói phải chờ.** Gói A (5 tin, 30 ngày), gói B (15 tin, 30 ngày). Chủ trọ thanh toán đơn gói A lúc `2026-10-19T03:00:00Z`: kỳ 1 là `10-19T03:00Z` đến `11-18T03:00Z`. Ngày `2026-11-01` họ mua thêm gói B:
+- Kỳ 2 bắt đầu **đúng lúc kỳ 1 hết**: `11-18T03:00Z` đến `12-18T03:00Z` (không chồng, không hở).
+- Ngày 11-01 `GET /me/membership`: `state plan`, `listingLimit 5`, `subscription.planName` là A, `subscription.endsAt = 11-18T03:00Z`, `paidUntil = 12-18T03:00Z`.
+- Từ `11-18T03:00Z` hạn mức mới là 15, `subscription.planName` là B, `endsAt = 12-18T03:00Z`. Không có đổi gói ngay, không hoàn tiền phần gói A chưa dùng.
+- Bước xác nhận đơn nên báo: "Gói B bắt đầu sau khi gói A hết, vào 18/11/2026".
+
+**Ví dụ 4: đơn chờ tự thay.** Chủ trọ tạo đơn O1 (gói A, `pending`) rồi đổi ý, tạo đơn O2 (gói B). O1 thành `cancelled` ngay trong lần tạo O2; `GET /orders?status=pending` chỉ còn O2. Nếu tạo O2 thất bại (gói B đã ngừng bán, 409 `PLAN_INACTIVE`) thì O1 **vẫn** `pending`.
+
+**Ví dụ 5: ranh giới ngày giờ Việt Nam.** Đơn thanh toán lúc `2026-10-31T17:30:00Z` là 00:30 ngày `2026-11-01` giờ Việt Nam. Trong thống kê doanh thu gom theo ngày nó thuộc `period = 2026-11-01`, gom theo tháng thuộc `2026-11`; lọc `to=2026-10-31` thì **không** có nó, lọc `from=2026-11-01` thì có.
+
+**Ví dụ 6: lượt xem.** Khách A (IP 1.2.3.4) mở chi tiết tin T hai lần trong 10 phút: `viewCount` tăng 1. Sau 31 phút mở lại: tăng thêm 1. Chủ tin mở tin của mình: không tăng. Người dùng đã đăng nhập được tính theo tài khoản, không theo IP.
+
+### 8.4 Tổng hợp quy tắc theo chủ đề
+
 - **Email** duy nhất toàn hệ thống, không phân biệt hoa thường; tài khoản đã xóa vẫn giữ email của nó (đăng ký lại bằng email đó vẫn báo `EMAIL_TAKEN`).
 - **Số điện thoại** của người đăng bài duy nhất toàn hệ thống (kể cả tài khoản đã xóa). Người đăng bài **đổi được số** ở `PATCH /me/profile` (mục 6.35) với đúng luật lúc đăng ký, và không bao giờ để trống. Mục đích của luật duy nhất: mỗi số chỉ nhận một lần dùng thử miễn phí; số không được xác thực bằng mã nên đây chỉ là rào cản nhẹ. Người tìm trọ và admin có thể trùng số hoặc không có số.
 - **Loại tài khoản không đổi.** Không có API đổi loại.
@@ -1878,6 +2024,18 @@ Tính đến 2026-10-22 **không còn tính năng nào đã lên kế hoạch m�
 ## 11. Nhật ký thay đổi
 
 Mới nhất ở trên cùng. Mục nào **phá vỡ** cách FE đang gọi sẽ ghi rõ "ĐỔI KHÁC VỚI TRƯỚC".
+
+### 2026-10-23 · Rà soát lại tài liệu theo code, thêm hướng dẫn Next.js, nguyên tắc nghiệp vụ và phụ lục tra nhanh (không đổi API)
+
+- **API không đổi.** Đọc lại toàn bộ controller, DTO, mapper và service rồi đối chiếu với file này (đối chiếu bằng đọc code, không chạy API): 69 route, quyền yêu cầu, giới hạn tần suất, hình dạng phản hồi, luật nhập liệu và 55 mã lỗi đều khớp. Chỉ sửa chỗ sai và bổ sung chỗ thiếu.
+- **Sửa cho đúng**:
+  - **`Retry-After` và `X-Request-Id` không đọc được bằng JS khi FE khác origin với API**, vì backend bật CORS nhưng chưa khai báo `Access-Control-Expose-Headers`. Trước đây file hướng dẫn FE "đọc `Retry-After`" như thể luôn làm được (mục 2 và 3). Đã ghi cách xử lý (dùng cột "Bị chặn trong" của bảng giới hạn làm dự phòng).
+  - Mục 2 chỉ nêu `GET /listings/:slugCode` là đọc đăng nhập tùy chọn; thực tế là **bốn** route (thêm `GET /listings`, `GET /landlords/:id`, `GET /landlords/:id/listings`).
+  - Mục 3 và 4 dặn "chỉ refresh khi gặp 401" trong khi bốn route trên **không bao giờ trả 401** khi token hết hạn mà lặng lẽ trả bản khách (mất số điện thoại, tim, theo dõi). Đã thêm quy tắc refresh chủ động trước khi gọi (mục 4, 4.1).
+  - `q` của tìm kiếm là khớp một phần (chuỗi con), không phải khớp nguyên từ, và không tìm trong tên tỉnh; `page` tối đa 1.000.000; mã tin viết hoa không khớp; `DB_UNAVAILABLE` chỉ gặp ở thao tác ghi sau khi backend tự thử lại 3 lần; `SESSION_EXPIRED` là hạn cố định 30 ngày kể từ lúc đăng nhập (refresh không gia hạn); refresh của tài khoản đã xóa trả `SESSION_REVOKED`.
+- **Thêm**: mục 4.1 (Next.js: SSR, SEO và phiên chỉ nằm trong bộ nhớ, kèm cảnh báo `SameSite=Strict`, giới hạn refresh của khách và IP khi server FE gọi API); bảng "Ai làm được gì" ở mục 5; mục 8.1 đến 8.3 (nguyên tắc chung, các máy trạng thái, sáu ví dụ có số liệu); Phụ lục A (bảng tra nhanh 69 API), B (kiểu TypeScript) và C (bảng luật nhập liệu).
+- **Postman**: chưa đổi vì không có API nào đổi.
+- **Đề xuất cho backend, chưa làm**: thêm `exposedHeaders: ['Retry-After', 'X-Request-Id']` vào `app.enableCors` ở `src/app.factory.ts` để FE khác origin đọc được hai header này. Khi làm xong thì sửa lại các dòng nói về chuyện này ở mục 2 và 3.
 
 ### 2026-10-22 · Rà soát tài liệu: sửa chỗ cũ, thêm hướng dẫn chạy thử và kịch bản demo (không đổi API)
 
@@ -2143,3 +2301,393 @@ Mỗi lần backend thêm, đổi hoặc bỏ một API, mã lỗi, quy tắc ng
 2. Thêm một dòng vào **Nhật ký thay đổi** (mục 11) với ngày; ghi "ĐỔI KHÁC VỚI TRƯỚC" nếu FE đang chạy sẽ hỏng.
 3. Cập nhật dòng "Cập nhật lần cuối" ở đầu file và bảng trạng thái ở mục 1; chuyển tính năng từ mục 10 sang mục 6 khi làm xong.
 4. Cập nhật [`postman-collection.json`](postman-collection.json): thêm request mới vào đúng folder, kèm kiểm tra tự động và mô tả; sửa request đã đổi.
+5. Cập nhật ba phụ lục bên dưới: dòng của API trong **Phụ lục A** (quyền, giới hạn, mã thành công), kiểu trong **Phụ lục B** nếu hình dạng phản hồi đổi, dòng trong **Phụ lục C** nếu luật nhập liệu đổi.
+
+---
+
+## Phụ lục A. Bảng tra nhanh mọi API
+
+Tổng cộng **69 API**. Mọi đường dẫn nằm dưới `/api/v1`. Quy ước cột:
+- **Cần**: "công khai" là không cần đăng nhập; "công khai + token tùy chọn" là route đọc đăng nhập tùy chọn (mục 2, mục 4.1); "đăng nhập" là chỉ cần access token hợp lệ; `module:hành_động` là quyền cần có (lấy từ `permissions` của `GET /auth/me`). **"đọc lại DB"** nghĩa là backend không tin quyền trong token mà đọc lại tài khoản từ database mỗi lần gọi: admin vừa bị khóa nhận 403 `ACCOUNT_LOCKED`, admin đã bị xóa nhận 401 `TOKEN_INVALID`, dù token còn hạn.
+- **Giới hạn**: giới hạn tần suất (mục 3); ô ghi "không" nghĩa là API đó không bị giới hạn. "Theo người" là theo tài khoản đang đăng nhập. Mỗi API có bộ đếm riêng, kể cả khi dùng chung một con số.
+- **OK**: mã HTTP khi thành công.
+
+**Thứ tự kiểm lỗi chung** (mọi API): 401 (token) → 403 (quyền, hoặc `ACCOUNT_LOCKED` ở API "đọc lại DB") → 429 (giới hạn tần suất) → 400 (`INVALID_ID`, `VALIDATION_FAILED`) → 404 hoặc 403 `NOT_RESOURCE_OWNER` (tồn tại và chủ sở hữu) → luật nghiệp vụ (409, 403 hạn mức...). Thứ tự riêng từng API nằm ở mục tương ứng ở mục 6.
+
+**Phản hồi có `Cache-Control: private, no-store`** (đừng cho proxy hay CDN cache): `GET /listings`, `GET /listings/:slugCode`, `GET /landlords/:id`, `GET /landlords/:id/listings`, `POST` và `DELETE /landlords/:id/follow`, `POST` và `DELETE /listings/:id/favorite`, `GET /me/favorites`, `GET` và `PATCH /me/profile`, `GET /users`, `GET /orders/all`, `GET /orders/revenue`. Ảnh `/media/public/...` thì `public, max-age=86400`.
+
+### A.1 Hệ thống và đăng nhập
+
+| API | Cần | Giới hạn | OK | Mục |
+|---|---|---|---|---|
+| `GET /` | công khai | không | 200 (chữ thuần) | 6.0 |
+| `POST /auth/register` | công khai | 10 lần mỗi giờ theo IP | 201 | 6.1 |
+| `POST /auth/login` | công khai | 30 mỗi 15 phút theo IP; 10 mỗi 15 phút theo email | 200 | 6.2 |
+| `POST /auth/refresh` | công khai, cookie `rt`, kiểm `Origin` | 60 mỗi phút theo IP | 200 | 6.3 |
+| `POST /auth/logout` | công khai, cookie `rt`, kiểm `Origin` | không | 204 | 6.4 |
+| `POST /auth/logout-all` | đăng nhập | không | 204 | 6.5 |
+| `GET /auth/me` | đăng nhập (tự đọc database) | không | 200 | 6.6 |
+| `POST /auth/forgot-password` | công khai | 10 mỗi giờ theo IP; 3 mỗi giờ theo email | 202 | 6.7 |
+| `POST /auth/reset-password` | công khai | 20 mỗi giờ theo IP | 204 | 6.8 |
+| `POST /auth/change-password` | đăng nhập | 10 mỗi 15 phút theo người | 204 | 6.9 |
+
+### A.2 Tài khoản, quyền, hồ sơ
+
+| API | Cần | Giới hạn | OK | Mục |
+|---|---|---|---|---|
+| `GET /me/profile` | `profile:read` (tự đọc database) | không | 200 | 6.35 |
+| `PATCH /me/profile` | `profile:update` (tự đọc database) | 30 mỗi giờ theo người | 200 | 6.35 |
+| `GET /users` | `user:read`, đọc lại DB | không | 200 | 6.34 |
+| `POST /users/:id/lock` | `user:lock`, đọc lại DB | không | 200 | 6.10 |
+| `POST /users/:id/unlock` | `user:lock`, đọc lại DB | không | 200 | 6.11 |
+| `POST /users/:id/revoke-sessions` | `user:revoke`, đọc lại DB | không | 204 | 6.12 |
+| `GET /permissions` | `account_type:read` | không | 200 | 6.13 |
+| `GET /account-types` | `account_type:read` | không | 200 | 6.14 |
+| `PATCH /account-types/:key` | `account_type:update`, đọc lại DB | không | 200 | 6.14 |
+
+### A.3 Danh mục phường và tiện ích
+
+| API | Cần | Giới hạn | OK | Mục |
+|---|---|---|---|---|
+| `GET /wards` | công khai | không | 200 | 6.15 |
+| `POST /wards` | `catalog:create` | không | 201 | 6.30 |
+| `PATCH /wards/:code` | `catalog:update` | không | 200 | 6.30 |
+| `DELETE /wards/:code` | `catalog:delete` | không | 204 | 6.30 |
+| `GET /amenities` | công khai | không | 200 | 6.16 |
+| `POST /amenities` | `catalog:create` | không | 201 | 6.30 |
+| `PATCH /amenities/:key` | `catalog:update` | không | 200 | 6.30 |
+| `DELETE /amenities/:key` | `catalog:delete` | không | 204 | 6.30 |
+
+### A.4 Chủ trọ: nhà trọ, tin, ảnh
+
+| API | Cần | Giới hạn | OK | Mục |
+|---|---|---|---|---|
+| `POST /properties` | `property:create` | 30 mỗi giờ theo người | 201 | 6.17 |
+| `GET /properties` | `property:read` | không | 200 | 6.17 |
+| `GET /properties/:id` | `property:read` | không | 200 | 6.17 |
+| `PATCH /properties/:id` | `property:update` | 30 mỗi giờ theo người | 200 | 6.17 |
+| `DELETE /properties/:id` | `property:delete` | 30 mỗi giờ theo người | 204 | 6.17 |
+| `POST /properties/:propertyId/listings` | `listing:create` | 60 mỗi giờ theo người | 201 | 6.18 |
+| `GET /me/listings` | `listing:read` | không | 200 | 6.21 |
+| `GET /me/listings/:id` | `listing:read` | không | 200 | 6.21 |
+| `PATCH /listings/:id` | `listing:update` | 60 mỗi giờ theo người | 200 | 6.22 |
+| `DELETE /listings/:id` | `listing:delete` | 60 mỗi giờ theo người | 204 | 6.22 |
+| `POST /listings/:id/hide` | `listing:update` | 60 mỗi giờ theo người | 200 | 6.23 |
+| `POST /listings/:id/show` | `listing:update` | 60 mỗi giờ theo người | 200 | 6.23 |
+| `POST /listings/:id/images` | `listing:update` | 60 mỗi giờ theo người | 201 | 6.28 |
+| `DELETE /listings/:id/images/:imageId` | `listing:update` | không | 204 | 6.28 |
+
+Ba API ghi nhà trọ đếm riêng nhau (mỗi API 30 lần mỗi giờ); năm API ghi tin đếm riêng nhau (mỗi API 60 lần mỗi giờ).
+
+### A.5 Đọc công khai
+
+| API | Cần | Giới hạn | OK | Mục |
+|---|---|---|---|---|
+| `GET /listings` | công khai + token tùy chọn | 300 mỗi phút theo IP | 200 | 6.19 |
+| `GET /listings/:slugCode` | công khai + token tùy chọn | 300 mỗi phút theo IP; thêm 60 mỗi phút theo người nếu có token hợp lệ | 200 | 6.20 |
+| `GET /media/public/:file` | công khai | không | 200 (tệp ảnh) | 6.28 |
+| `GET /landlords/:id` | công khai + token tùy chọn | 300 mỗi phút theo IP | 200 | 6.31 |
+| `GET /landlords/:id/listings` | công khai + token tùy chọn | 300 mỗi phút theo IP (bộ đếm riêng) | 200 | 6.36 |
+| `GET /plans` | công khai | 300 mỗi phút theo IP | 200 | 6.26 |
+
+### A.6 Người tìm trọ: theo dõi, lưu tin
+
+Admin gọi các API này luôn nhận 403 `PERMISSION_DENIED` dù có quyền.
+
+| API | Cần | Giới hạn | OK | Mục |
+|---|---|---|---|---|
+| `POST /landlords/:id/follow` | `follow:create` | 60 mỗi giờ theo người | 200 | 6.32 |
+| `DELETE /landlords/:id/follow` | `follow:delete` | 60 mỗi giờ theo người | 200 | 6.32 |
+| `POST /listings/:id/favorite` | `favorite:create` | 120 mỗi giờ theo người | 200 | 6.33 |
+| `DELETE /listings/:id/favorite` | `favorite:delete` | 120 mỗi giờ theo người | 200 | 6.33 |
+| `GET /me/favorites` | `favorite:read` | 300 mỗi phút theo IP | 200 | 6.33 |
+
+### A.7 Chủ trọ: dùng thử, gói, đơn
+
+| API | Cần | Giới hạn | OK | Mục |
+|---|---|---|---|---|
+| `GET /me/membership` | `subscription:read` | không | 200 | 6.25 |
+| `POST /orders` | `order:create`, phải là tài khoản `landlord` | 30 mỗi giờ theo người | 201 | 6.27 |
+| `GET /orders` | `order:read` | không | 200 | 6.27 |
+| `GET /orders/:id` | `order:read` | không | 200 | 6.27 |
+| `POST /orders/:id/pay` | `order:create` | 30 mỗi giờ theo người | 200 | 6.27 |
+| `POST /orders/:id/cancel` | `order:cancel` | 30 mỗi giờ theo người | 200 | 6.27 |
+
+### A.8 Admin vận hành
+
+Admin không bị giới hạn tần suất ở nhóm này.
+
+| API | Cần | OK | Mục |
+|---|---|---|---|
+| `GET /plans/all` | `plan:read` | 200 | 6.26 |
+| `POST /plans` | `plan:create`, đọc lại DB | 201 | 6.26 |
+| `PATCH /plans/:id` | `plan:update`, đọc lại DB | 200 | 6.26 |
+| `DELETE /plans/:id` | `plan:delete`, đọc lại DB | 204 | 6.26 |
+| `GET /settings` | `setting:read` | 200 | 6.24 |
+| `PATCH /settings/:key` | `setting:update`, đọc lại DB | 200 | 6.24 |
+| `GET /moderation/listings` | `listing:moderate` | 200 | 6.29 |
+| `POST /moderation/listings/:id/hide` | `listing:moderate`, đọc lại DB | 200 | 6.29 |
+| `POST /moderation/listings/:id/unhide` | `listing:moderate`, đọc lại DB | 200 | 6.29 |
+| `GET /orders/all` | `order:report`, đọc lại DB | 200 | 6.37 |
+| `GET /orders/revenue` | `order:report`, đọc lại DB | 200 | 6.38 |
+
+---
+
+## Phụ lục B. Kiểu TypeScript của phản hồi
+
+Sao chép được thẳng vào FE. Kiểu viết tay theo đúng code backend (thời điểm 2026-10-23); khi API đổi, mục 12 yêu cầu sửa lại phụ lục này. Mọi `Date` của backend đi qua JSON thành chuỗi ISO 8601 UTC, nên ở đây là `IsoDateTime`. Mọi số tiền là số nguyên đồng.
+
+```ts
+// ---------- Kiểu dùng chung ----------
+type Uuid = string;
+type IsoDateTime = string; // "2026-10-19T03:00:00.000Z", luôn UTC
+type DateOnly = string; // "YYYY-MM-DD", không có giờ, không đổi theo múi giờ
+type AccountType = 'admin' | 'landlord' | 'tenant';
+type UserStatus = 'active' | 'locked';
+type PermissionKey = string; // "module:hành_động", ví dụ "favorite:create"
+
+interface Page<T> {
+  items: T[];
+  total: number; // tổng số dòng thỏa điều kiện, không phải số dòng của trang này
+  page: number;
+  pageSize: number;
+}
+
+interface FieldError {
+  field: string; // trường lồng nhau có dạng "fees.0.price"
+  code: string;
+  message: string; // tiếng Việt
+}
+
+interface ApiError {
+  status: number;
+  code: ErrorCode;
+  message: string; // tiếng Việt, hiển thị thẳng được
+  // Có ở VALIDATION_FAILED và vài lỗi nêu rõ trường sai (WARD_UNKNOWN, AMENITY_UNKNOWN,
+  // PERMISSION_UNKNOWN, PERMISSION_ADMIN_ONLY, PLAN_NAME_TAKEN). Một trường có thể lặp nhiều lần.
+  errors?: FieldError[];
+  requestId: string;
+}
+
+type ErrorCode =
+  | 'VALIDATION_FAILED' | 'INVALID_ID' | 'BAD_REQUEST' | 'PAYLOAD_TOO_LARGE' | 'RATE_LIMITED'
+  | 'TOKEN_MISSING' | 'TOKEN_INVALID' | 'TOKEN_EXPIRED' | 'UNAUTHORIZED'
+  | 'INVALID_CREDENTIALS' | 'REFRESH_TOKEN_MISSING' | 'SESSION_REVOKED' | 'SESSION_EXPIRED'
+  | 'ACCOUNT_LOCKED' | 'ORIGIN_NOT_ALLOWED' | 'PERMISSION_DENIED' | 'NOT_RESOURCE_OWNER' | 'FORBIDDEN'
+  | 'NOT_FOUND' | 'EMAIL_TAKEN' | 'PHONE_TAKEN' | 'RESET_TOKEN_INVALID' | 'CURRENT_PASSWORD_WRONG'
+  | 'PERMISSION_UNKNOWN' | 'PERMISSION_ADMIN_ONLY' | 'SYSTEM_TYPE_PROTECTED' | 'ACCOUNT_TYPE_NOT_FOUND'
+  | 'USER_NOT_FOUND' | 'CANNOT_LOCK_SELF' | 'ACCOUNT_ALREADY_LOCKED' | 'ACCOUNT_NOT_LOCKED'
+  | 'WARD_UNKNOWN' | 'AMENITY_UNKNOWN' | 'CATALOG_CODE_TAKEN' | 'CATALOG_IN_USE'
+  | 'PROPERTY_NOT_FOUND' | 'PROPERTY_HAS_LISTINGS'
+  | 'LISTING_NOT_FOUND' | 'LISTING_STATE_INVALID' | 'LISTING_HIDDEN_BY_ADMIN' | 'LISTING_IMAGE_LIMIT' | 'IMAGE_INVALID'
+  | 'MEMBERSHIP_REQUIRED' | 'LISTING_QUOTA_REACHED'
+  | 'PLAN_NOT_FOUND' | 'PLAN_NAME_TAKEN' | 'PLAN_IN_USE' | 'PLAN_INACTIVE'
+  | 'ORDER_NOT_FOUND' | 'ORDER_STATE_INVALID'
+  | 'LANDLORD_NOT_FOUND' | 'CANNOT_FOLLOW_SELF'
+  | 'DB_UNAVAILABLE' | 'INTERNAL_ERROR' | 'HTTP_ERROR';
+
+// ---------- Đăng nhập, tài khoản ----------
+interface TokenResponse { accessToken: string; expiresIn: number } // login, refresh; expiresIn tính bằng giây
+interface User { id: Uuid; email: string; name: string | null; accountType: AccountType; phone: string | null; status: UserStatus }
+interface RegisterResponse extends TokenResponse { user: User }
+interface MeResponse { user: User; permissions: PermissionKey[] } // permissions đã mở rộng từng hành động
+interface MessageResponse { message: string } // forgot-password
+interface Profile { id: Uuid; email: string; name: string | null; phone: string | null; accountType: AccountType; status: UserStatus; createdAt: IsoDateTime }
+interface AdminUserListItem extends Profile { lockedReason: string | null }
+interface PermissionCatalogEntry { module: string; actions: string[]; ownerScoped: boolean; adminActions: string[] }
+interface AccountTypeView { key: AccountType; name: string; description: string | null; permissions: PermissionKey[] }
+
+// ---------- Danh mục, nhà trọ ----------
+interface Ward { code: string; name: string; provinceCode: string; provinceName: string }
+interface Amenity { key: string; name: string }
+type FeeKind = 'electricity' | 'water' | 'internet' | 'parking' | 'service' | 'other';
+type FeeUnit = 'per_kwh' | 'per_m3' | 'per_month' | 'per_person_month' | 'per_vehicle_month';
+interface PropertyFee { kind: FeeKind; price: number; unit: FeeUnit; note: string | null }
+interface Property {
+  id: Uuid; name: string; addressText: string; fullAddress: string; ward: Ward;
+  latitude: number | null; longitude: number | null;
+  fees: PropertyFee[]; // thứ tự cố định: electricity, water, internet, parking, service, other
+  amenities: Amenity[]; // theo tên tiếng Việt
+  createdAt: IsoDateTime; updatedAt: IsoDateTime;
+}
+interface PropertyListItem extends Property { listingCount: number }
+
+// ---------- Tin đăng ----------
+type ListingStatus = 'visible' | 'hidden_by_owner' | 'hidden_by_admin';
+interface ListingImage { id: Uuid; position: number; url: string } // url tương đối: "/api/v1/media/public/<uuid>.<đuôi>"
+interface ListingSummary {
+  id: Uuid; code: string; slug: string; title: string;
+  price: number; areaM2: number; deposit: number | null; availableFrom: DateOnly | null;
+  coverImageUrl: string | null;
+  ward: Pick<Ward, 'code' | 'name'>; addressText: string; fullAddress: string;
+  landlord: { id: Uuid; name: string | null };
+  createdAt: IsoDateTime;
+}
+// GET /listings và GET /landlords/:id/listings
+interface PublicListingSummary extends ListingSummary { isFavorite: boolean | null }
+// GET /me/favorites
+interface SavedListing extends ListingSummary { favoritedAt: IsoDateTime; isFavorite: true }
+// GET /moderation/listings và kết quả hide/unhide của admin (không có isPublic, không có phone)
+interface ModerationListing extends ListingSummary { status: ListingStatus; moderationReason: string | null; viewCount: number }
+type PropertyInListing = Pick<Property, 'id' | 'name' | 'addressText' | 'fullAddress' | 'ward' | 'latitude' | 'longitude' | 'fees' | 'amenities'>;
+// GET /listings/:slugCode
+interface ListingDetail extends Omit<ListingSummary, 'landlord'> {
+  description: string; viewCount: number; images: ListingImage[]; property: PropertyInListing;
+  isFavorite: boolean | null;
+  landlord: { id: Uuid; name: string | null; phone: string | null }; // phone là null với khách
+}
+// GET /me/listings
+interface OwnerListingSummary extends Omit<ListingSummary, 'landlord'> {
+  status: ListingStatus; moderationReason: string | null; viewCount: number; isPublic: boolean;
+}
+// GET /me/listings/:id và kết quả của POST, PATCH, hide, show
+interface OwnerListingDetail extends Omit<ListingDetail, 'landlord' | 'isFavorite'> {
+  status: ListingStatus; moderationReason: string | null; isPublic: boolean;
+}
+interface FavoriteResult { listingId: Uuid; isFavorite: boolean } // POST/DELETE /listings/:id/favorite
+
+// ---------- Hồ sơ chủ trọ ----------
+interface LandlordProfile {
+  id: Uuid; name: string | null; joinedAt: IsoDateTime;
+  followerCount: number; totalViewCount: number; publicListingCount: number;
+  isFollowing: boolean | null; // null với khách
+}
+
+// ---------- Dùng thử, gói, đơn ----------
+type MembershipState = 'plan' | 'trial' | 'expired';
+interface Subscription { orderCode: string; planName: string; startsAt: IsoDateTime; endsAt: IsoDateTime; daysLeft: number; paidUntil: IsoDateTime }
+interface Membership {
+  state: MembershipState; trialEndsAt: IsoDateTime | null; trialDaysLeft: number | null;
+  subscription: Subscription | null; listingLimit: number; visibleCount: number; remaining: number; overLimitCount: number;
+}
+interface Plan { id: Uuid; name: string; price: number; maxListings: number; durationDays: number }
+interface AdminPlan extends Plan { isActive: boolean; createdAt: IsoDateTime; updatedAt: IsoDateTime }
+type OrderStatus = 'pending' | 'paid' | 'cancelled';
+interface Order {
+  id: Uuid; code: string; planId: Uuid;
+  planName: string; price: number; maxListings: number; durationDays: number; // bản chốt lúc tạo đơn
+  status: OrderStatus; paidAt: IsoDateTime | null; cancelledAt: IsoDateTime | null;
+  startsAt: IsoDateTime | null; endsAt: IsoDateTime | null; createdAt: IsoDateTime;
+}
+interface AdminOrder extends Order { landlord: { id: Uuid; name: string | null; email: string } }
+interface AdminOrderPage extends Page<AdminOrder> { summary: { paidCount: number; paidAmount: number } }
+interface RevenueResponse {
+  from: DateOnly | null; to: DateOnly | null; groupBy: 'day' | 'month'; timeZone: 'Asia/Ho_Chi_Minh';
+  paidCount: number; paidAmount: number;
+  byPlan: { planId: Uuid; planName: string; paidCount: number; paidAmount: number }[];
+  series: { period: string; paidCount: number; paidAmount: number }[]; // "YYYY-MM-DD" hoặc "YYYY-MM"; thưa
+}
+
+// ---------- Tham số hệ thống ----------
+interface Setting {
+  key: 'trial_days' | 'trial_listing_limit'; value: number; min: number; max: number;
+  updatedAt: IsoDateTime | null; updatedBy: Uuid | null;
+}
+```
+
+**Thân yêu cầu (body) hay dùng**, để đối chiếu với Phụ lục C:
+
+```ts
+interface RegisterBody { email: string; password: string; name?: string; accountType: 'landlord' | 'tenant'; phone?: string } // landlord bắt buộc phone
+interface LoginBody { email: string; password: string }
+interface ChangePasswordBody { currentPassword: string; newPassword: string }
+interface ResetPasswordBody { token: string; newPassword: string }
+interface ReasonBody { reason: string } // lock, unlock, moderation hide, unhide
+interface UpdateProfileBody { name?: string | null; phone?: string | null }
+interface PropertyBody { name: string; addressText: string; wardCode: string; latitude?: number | null; longitude?: number | null; fees?: PropertyFee[]; amenityKeys?: string[] } // PATCH: mọi trường tùy chọn
+interface ListingBody { title: string; description: string; price: number; areaM2: number; deposit?: number | null; availableFrom?: DateOnly | null } // PATCH: mọi trường tùy chọn
+interface PlanBody { name: string; price: number; maxListings: number; durationDays?: number; isActive?: boolean } // PATCH: mọi trường tùy chọn
+interface CreateOrderBody { planId: Uuid }
+interface UpdateSettingBody { value: number }
+interface UpdateAccountTypeBody { permissions: PermissionKey[] } // thay toàn bộ danh sách
+```
+
+---
+
+## Phụ lục C. Bảng luật nhập liệu
+
+Dùng để dựng kiểm tra ở FE cho khớp backend, **nhằm báo lỗi sớm cho người dùng; backend vẫn là nơi quyết định** và trả `VALIDATION_FAILED` kèm `errors[].field`. Chuỗi được backend cắt khoảng trắng hai đầu trước khi kiểm (trừ mật khẩu). Gửi trường không có trong bảng của API đó là 400. Giới hạn `≤` nghĩa là "tối đa, tính cả".
+
+**Chung**
+
+| Trường | Luật |
+|---|---|
+| Id trên đường dẫn (`:id`, `:propertyId`, `:imageId`) | UUID; sai dạng là 400 `INVALID_ID` (riêng `:code` của phường và `:key` của tiện ích không phải UUID) |
+| `page` | Số nguyên từ 1 đến 1.000.000, mặc định 1 |
+| `pageSize` | Số nguyên từ 1 đến 50, mặc định 20 |
+| Thân JSON | ≤ 100 KB, quá là 413 `PAYLOAD_TOO_LARGE` |
+
+**Tài khoản**
+
+| Trường | Luật |
+|---|---|
+| `email` | Email hợp lệ, ≤ 254 ký tự; backend đổi chữ thường |
+| `password` lúc đăng nhập | Chuỗi không rỗng, ≤ 128 (không kiểm độ dài tối thiểu, để không chặn nhầm tài khoản cũ) |
+| `password`, `newPassword` lúc đặt mới | 8 đến 128 ký tự; **không** cắt khoảng trắng |
+| `currentPassword` | Chuỗi không rỗng, ≤ 128 |
+| `name` | ≤ 100 ký tự; ở `PATCH /me/profile`, `null` hoặc rỗng là xóa tên |
+| `accountType` lúc đăng ký | `landlord` hoặc `tenant` |
+| `phone` | Sau khi bỏ dấu cách, chấm, gạch và đổi đầu `+84` hoặc `84` thành `0`: khớp `^0(3\|5\|7\|8\|9)\d{8}$`. Chủ trọ bắt buộc và không xóa được; người tìm trọ tùy chọn |
+| `token` (đặt lại mật khẩu) | Chuỗi không rỗng, ≤ 200 |
+| `reason` (khóa, mở khóa, ẩn, gỡ ẩn) | 1 đến 500 ký tự sau khi cắt |
+| `permissions` (đổi quyền loại tài khoản) | Mảng ≤ 300 chuỗi, mỗi chuỗi ≤ 60 ký tự, dạng `module:hành_động` có trong `GET /permissions` |
+
+**Nhà trọ**
+
+| Trường | Luật |
+|---|---|
+| `name` | 2 đến 100 ký tự |
+| `addressText` | 5 đến 200 ký tự (chỉ số nhà và đường) |
+| `wardCode` | Đúng 5 chữ số và có trong `GET /wards` |
+| `latitude`, `longitude` | Gửi **cùng nhau**: số trong [-90, 90] và [-180, 180]; hoặc cùng `null` để xóa (PATCH); hoặc không gửi |
+| `fees` | Mảng ≤ 6 khoản, mỗi `kind` một khoản |
+| `fees[].kind` | `electricity`, `water`, `internet`, `parking`, `service`, `other` |
+| `fees[].price` | Số nguyên từ 0 đến 100.000.000 |
+| `fees[].unit` | `per_kwh`, `per_m3`, `per_month`, `per_person_month`, `per_vehicle_month` |
+| `fees[].note` | ≤ 100 ký tự; rỗng thì lưu `null` |
+| `amenityKeys` | Mảng ≤ 30 khóa không trùng, mỗi khóa ≤ 30 ký tự và có trong `GET /amenities` |
+
+**Tin đăng**
+
+| Trường | Luật |
+|---|---|
+| `title` | 5 đến 120 ký tự |
+| `description` | 10 đến 5000 ký tự |
+| `price` | Số nguyên từ 100.000 đến 100.000.000 |
+| `areaM2` | Số từ 1 đến 1000, tối đa một chữ số thập phân |
+| `deposit` | Số nguyên từ 0 đến 1.000.000.000, hoặc `null` |
+| `availableFrom` | `YYYY-MM-DD` là ngày có thật (năm 1000 đến 9999; ngày đã qua vẫn được), hoặc `null` |
+| Ảnh (`POST /listings/:id/images`) | `multipart/form-data`, đúng một tệp ở trường `file`, JPEG/PNG/WebP (nhận bằng nội dung tệp), ≤ `MAX_UPLOAD_BYTES` (mặc định 5 MiB, cấu hình 1 byte đến 10 MiB), tối đa 5 ảnh mỗi tin, tối đa 5 tệp mỗi yêu cầu |
+
+**Tìm kiếm và lọc**
+
+| Tham số | Luật |
+|---|---|
+| `GET /listings` `q` | ≤ 500 ký tự; 6 từ đầu, mỗi từ cắt còn 50 ký tự; khớp một phần, không phân biệt dấu và hoa thường |
+| `wardCode` | Đúng 5 chữ số |
+| `minPrice`, `maxPrice` | Số nguyên từ 0 đến 100.000.000; `minPrice` > `maxPrice` là 400 |
+| `sort` | `newest` (mặc định), `price_asc`, `price_desc` |
+| `GET /me/listings` `status`, `GET /moderation/listings` `status` | `visible`, `hidden_by_owner`, `hidden_by_admin` |
+| `GET /moderation/listings` `landlordId`, `q` | UUID; `q` như trên (≤ 500) |
+| `GET /users` | `accountType` (`admin`, `landlord`, `tenant`), `status` (`active`, `locked`), `q` ≤ 254 ký tự (email, tên hoặc số điện thoại chứa chuỗi) |
+| `GET /orders` `status` | `pending`, `paid`, `cancelled` |
+| `GET /orders/all` | `status`, `landlordId` (UUID), `planId` (UUID), `from` và `to` (`YYYY-MM-DD` có thật, năm 2000 đến 2100; `to` không trước `from`) |
+| `GET /orders/revenue` | `from`, `to` như trên; `groupBy` là `day` hoặc `month` (mặc định `month`); **không** nhận `page`, `pageSize`, `status` |
+| `GET /landlords/:id/listings`, `GET /me/favorites` | Chỉ nhận `page`, `pageSize` |
+
+**Gói, đơn, tham số, danh mục (admin)**
+
+| Trường | Luật |
+|---|---|
+| `plans.name` | 2 đến 60 ký tự, không trùng gói khác |
+| `plans.price` | Số nguyên từ 0 đến 100.000.000 |
+| `plans.maxListings` | Số nguyên từ 1 đến 1000 |
+| `plans.durationDays` | Số nguyên từ 1 đến 365; mặc định 30 khi tạo |
+| `plans.isActive` | boolean; mặc định `true` khi tạo |
+| `orders.planId` | UUID của gói đang bán |
+| `settings.value` | Số nguyên (không phải chuỗi). `trial_days`: 0 đến 365; `trial_listing_limit`: 0 đến 100. Dùng `min`, `max` trong `GET /settings` |
+| `wards.code` | Đúng 5 chữ số, không đổi được sau khi tạo |
+| `wards.provinceCode` | Đúng 2 chữ số, không đổi được |
+| `wards.name`, `wards.provinceName` | 2 đến 100 ký tự |
+| `amenities.key` | `^[a-z][a-z0-9_]{1,29}$` (chữ thường, số, gạch dưới, bắt đầu bằng chữ), không đổi được |
+| `amenities.name` | 2 đến 50 ký tự |
