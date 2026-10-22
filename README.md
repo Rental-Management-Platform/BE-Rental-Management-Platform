@@ -38,7 +38,8 @@ Cần PostgreSQL đã cài sẵn trên máy và biết mật khẩu tài khoản
    - ba gói mua mẫu;
    - tài khoản admin đầu tiên từ `ADMIN_SEED_EMAIL`, `ADMIN_SEED_PASSWORD`, `ADMIN_SEED_NAME`. Đã có admin thì không tạo thêm; seed dừng với thông báo rõ nếu email đó thuộc một tài khoản không phải admin, khi đó đổi `ADMIN_SEED_EMAIL`.
 7. Chạy ứng dụng: `npm run start:dev`. API nằm ở `http://localhost:3000/api/v1` (đổi cổng bằng `PORT`).
-8. Thử API: xem mục "Thử API" bên dưới.
+8. (Tùy chọn) Nạp dữ liệu demo cho FE làm việc: điền `DEMO_SEED_PASSWORD` trong `.env` rồi chạy `npm run seed:demo`. Xem mục "Dữ liệu demo" bên dưới.
+9. Thử API: xem mục "Thử API" bên dưới.
 
 Database phải thuộc về role ứng dụng (`db:create` làm đúng điều này). Nếu bạn tạo database bằng tay, chạy `ALTER DATABASE <tên> OWNER TO rental_app;` bằng tài khoản `postgres`, nếu không `migration:deploy` báo `permission denied for schema public`.
 
@@ -73,6 +74,7 @@ Danh sách đầy đủ kèm ghi chú nằm trong [`.env.example`](.env.example)
 | `UPLOAD_DIR` | không | `uploads` | Thư mục lưu ảnh tải lên, tính từ thư mục chạy ứng dụng; đã được `.gitignore` |
 | `MAX_UPLOAD_BYTES` | không | `5242880` | Dung lượng tối đa mỗi ảnh (5 MiB), từ 1 đến 10485760 |
 | `ADMIN_SEED_EMAIL`, `ADMIN_SEED_PASSWORD`, `ADMIN_SEED_NAME` | chỉ `seed` | | Tài khoản admin đầu tiên; mật khẩu từ 8 ký tự. Ứng dụng không đọc |
+| `DEMO_SEED_PASSWORD` | chỉ `seed:demo` | | Mật khẩu chung của mọi tài khoản demo, từ 8 ký tự. Ứng dụng không đọc |
 
 ## Lệnh npm
 
@@ -88,6 +90,7 @@ Danh sách đầy đủ kèm ghi chú nằm trong [`.env.example`](.env.example)
 | `npm run migration:dev -- --name TenMigration` | Tạo migration mới sau khi sửa `prisma/schema.prisma` (thêm `--create-only` nếu cần sửa SQL tay, ví dụ `CHECK` hoặc chỉ mục một phần). Cần một database phụ tên `<DATABASE_NAME>_shadow`: tạo bằng `DATABASE_NAME=<tên>_shadow npm run db:create` |
 | `npm run migration:status` | Xem migration nào đã áp |
 | `npm run seed` | Nạp dữ liệu nền và tạo admin đầu tiên |
+| `npm run seed:demo` | Nạp dữ liệu demo cho FE (chủ trọ, người tìm trọ, nhà trọ, tin kèm ảnh, đơn, gói). Thêm `-- --reset` để xóa dữ liệu demo cũ và tạo lại |
 | `npm run db:generate`, `npm run db:studio` | Sinh lại Prisma client; mở giao diện xem dữ liệu |
 
 ## Cấu trúc thư mục
@@ -96,7 +99,7 @@ Danh sách đầy đủ kèm ghi chú nằm trong [`.env.example`](.env.example)
 src/
   main.ts, app.module.ts, app.factory.ts   Khởi động và lắp ghép
   config/                                  Biến môi trường được kiểm khi khởi động
-  database/                                Kết nối, seed, script tạo database
+  database/                                Kết nối, seed, script tạo database; demo/ là dữ liệu demo cho FE
   common/                                  Lỗi chung, phân quyền, giới hạn tần suất, phân trang, văn bản
   auth/  users/  account-types/            Tài khoản, đăng nhập, quyền theo loại
   moderation/                              Khóa tài khoản và lịch sử kiểm duyệt
@@ -114,6 +117,17 @@ docs/
   scope/, specs/                           Phạm vi và các bản thiết kế
 uploads/                                   Ảnh tải lên (git bỏ qua)
 ```
+
+## Dữ liệu demo
+
+`npm run seed:demo` nạp một bộ dữ liệu trông như thật để FE có gì đó mà dựng màn hình, không cần đăng ký tay hay chạy Postman. Cần `npm run seed` chạy trước (phường, tiện ích, gói mẫu, admin) và `DEMO_SEED_PASSWORD` trong `.env`.
+
+- **Gồm**: 9 chủ trọ và 10 người tìm trọ, 12 nhà trọ ở TP. Hồ Chí Minh (cả khu Bình Dương và Vũng Tàu cũ), 53 tin kèm ảnh minh họa (37 tin hiện công khai), đơn mua gói, kỳ gói, lượt theo dõi và tin đã lưu. Các chủ trọ dựng sẵn mọi trạng thái FE phải xử lý: gói còn hạn và đã gia hạn trước, đang dùng thử, hết dùng thử, gói hết hạn, tin vượt hạn mức, tài khoản bị khóa, tin bị admin ẩn, và một tài khoản mới tinh chưa có gì. Danh sách tài khoản và từng kịch bản nằm ở mục "Dữ liệu demo có sẵn" của [tài liệu FE](docs/api/api-for-frontend.md); nội dung gốc ở `src/database/demo/demo-data.ts`. Mật khẩu chung của mọi tài khoản là giá trị `DEMO_SEED_PASSWORD` bạn tự đặt trong `.env`.
+- **Mốc thời gian tính từ lúc chạy** (hạn dùng thử, kỳ gói, ngày đăng tin), nên các kịch bản chỉ đúng vài tuần. Chạy `npm run seed:demo -- --reset` để làm mới. Chạy lại không kèm `--reset` thì dừng và không đổi gì.
+- **`--reset` chỉ xóa dữ liệu của tài khoản có email đuôi `@demo.example.com`** (kể cả ảnh của chúng), và dòng lưu tin hay theo dõi của người khác trỏ vào dữ liệu đó. Tài khoản thật không bị đụng.
+- **Ảnh** là hình minh họa phẳng do mã tự vẽ (không dùng ảnh thật, không cần mạng), ghi vào `UPLOAD_DIR` (khoảng 1,7 MB cho 209 ảnh). Muốn ảnh thật thì tải lên qua API như bình thường.
+- Mọi tài khoản demo dùng chung một mật khẩu, nên lệnh **từ chối chạy khi `NODE_ENV=production`**. Email dùng tên miền dành riêng `example.com`, số điện thoại là chuỗi mẫu đúng định dạng; không có thư hay cuộc gọi thật nào đi ra.
+- Kịch bản giả định tham số mặc định (`trial_listing_limit` 2, gói mẫu 5, 15 và 50 tin). Admin đã đổi thì lệnh in cảnh báo.
 
 ## Thử API
 

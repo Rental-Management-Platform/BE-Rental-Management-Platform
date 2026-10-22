@@ -21,6 +21,7 @@
 		"db:create": "ts-node src/database/scripts/create-database.ts",
 		"db:check": "ts-node src/database/scripts/check-connection.ts",
 		"seed": "npm run build && node dist/database/seed.js",
+		"seed:demo": "npm run build && node dist/database/seed-demo.js",
 		"db:generate": "prisma generate",
 		"db:studio": "prisma studio",
 		"migration:dev": "prisma migrate dev",

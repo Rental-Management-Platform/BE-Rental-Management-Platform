@@ -210,6 +210,19 @@ export class SeedEnv {
 	ADMIN_SEED_NAME: string;
 }
 
+/** Chỉ dùng cho `npm run seed:demo` (ứng dụng không đọc): mật khẩu chung của mọi tài khoản demo và nơi ghi ảnh demo. */
+export class DemoSeedEnv {
+	@IsString()
+	@MinLength(8, { message: '$property phải dài ít nhất 8 ký tự' })
+	@MaxLength(128)
+	@Matches(NOT_PLACEHOLDER, { message: NOT_PLACEHOLDER_MESSAGE })
+	DEMO_SEED_PASSWORD: string;
+
+	@IsString()
+	@IsNotEmpty()
+	UPLOAD_DIR: string = 'uploads';
+}
+
 /** Câu tiếng Việt cho từng ràng buộc; chỉ nêu tên biến, tuyệt đối không nêu giá trị (nhiều biến là bí mật). */
 const ENV_MESSAGES: Readonly<Record<string, (property: string) => string>> = {
 	isNotEmpty: (property) => `${property} không được để trống`,
@@ -276,4 +289,10 @@ export function validateDatabaseEnv(
 
 export function validateSeedEnv(config: Record<string, unknown>): SeedEnv {
 	return validateEnvAs(SeedEnv, config);
+}
+
+export function validateDemoSeedEnv(
+	config: Record<string, unknown>,
+): DemoSeedEnv {
+	return validateEnvAs(DemoSeedEnv, config);
 }

@@ -113,9 +113,59 @@ Email được chuẩn hóa: cắt khoảng trắng đầu cuối và đổi th�
 
 1. **Chạy backend.** Lần đầu: `npm run db:create`, `npm run migration:deploy`, `npm run seed`; các lần sau: `npm run start:dev`. API ở `http://localhost:3000/api/v1` (đổi cổng bằng biến `PORT`). Các bước đầy đủ nằm trong `README.md` của backend.
 2. **Cổng và origin của FE.** Origin của FE phải nằm trong `ALLOWED_ORIGINS` của backend (mặc định `http://localhost:5173`), nếu không trình duyệt bị chặn CORS và `refresh` trả 403 `ORIGIN_NOT_ALLOWED`. Cẩn thận khi FE là Next.js: `next dev` mặc định chiếm cổng 3000, **trùng cổng mặc định của API**. Chạy FE ở cổng khác (ví dụ `next dev -p 5173`) hoặc đổi `PORT` của API, rồi sửa `ALLOWED_ORIGINS` và `APP_BASE_URL` (địa chỉ trong email đặt lại mật khẩu) cho khớp origin của FE.
-3. **Dữ liệu có sẵn sau `seed`**: một tài khoản admin (email và mật khẩu lấy từ `ADMIN_SEED_EMAIL`, `ADMIN_SEED_PASSWORD` trong `.env` của backend), 168 phường, xã, đặc khu của Thành phố Hồ Chí Minh, 13 tiện ích, ba gói mẫu và hai tham số dùng thử. **Chưa có chủ trọ, người tìm trọ, nhà trọ hay tin nào**: tạo bằng màn hình đăng ký của FE, hoặc chạy folder **23 Kịch bản demo** của Postman để có sẵn một chủ trọ, một người tìm trọ và vài tin.
+3. **Dữ liệu có sẵn sau `seed`**: một tài khoản admin (email và mật khẩu lấy từ `ADMIN_SEED_EMAIL`, `ADMIN_SEED_PASSWORD` trong `.env` của backend), 168 phường, xã, đặc khu của Thành phố Hồ Chí Minh, 13 tiện ích, ba gói mẫu và hai tham số dùng thử. **Chưa có chủ trọ, người tìm trọ, nhà trọ hay tin nào**: nạp bộ dữ liệu demo bằng `npm run seed:demo` (xem "Dữ liệu demo có sẵn" ngay bên dưới), hoặc tạo bằng màn hình đăng ký của FE, hoặc chạy folder **23 Kịch bản demo** của Postman để có sẵn một chủ trọ, một người tìm trọ và vài tin.
 4. **Gọi thử không cần FE.** Import `postman-collection.json`, điền `adminEmail` và `adminPassword` ở tab Variables. Folder 23 chạy một lèo cả kịch bản demo (mục "Kịch bản demo" ở mục 7).
 5. **Giới hạn tần suất khi thử tay** nằm trong bộ nhớ của backend (đăng ký 10 lần mỗi giờ theo IP, đăng nhập 10 lần mỗi 15 phút theo email, xem mục 3): bị chặn 429 thì khởi động lại backend thay vì đợi.
+
+### Dữ liệu demo có sẵn (`npm run seed:demo`)
+
+Sau `seed`, database mới chỉ có admin và danh mục. Để có người, nhà trọ, tin và ảnh mà dựng màn hình, backend chạy thêm `npm run seed:demo` (trước đó điền `DEMO_SEED_PASSWORD` trong `.env` của backend). Chạy lại không kèm `--reset` thì không đổi gì; `npm run seed:demo -- --reset` xóa đúng dữ liệu demo cũ rồi tạo lại với mốc thời gian mới. Lệnh từ chối chạy khi `NODE_ENV=production`.
+
+**Đăng nhập**: mọi tài khoản dưới đây dùng chung một mật khẩu, là giá trị `DEMO_SEED_PASSWORD` trong `.env` của backend (hỏi người chạy backend). Email có đuôi `@demo.example.com`. Admin là tài khoản của `seed` (`ADMIN_SEED_EMAIL`), không nằm trong bảng.
+
+**Có gì**: 9 chủ trọ, 10 người tìm trọ, 12 nhà trọ ở TP. Hồ Chí Minh (cả khu Bình Dương và Vũng Tàu cũ), 53 tin kèm hơn 200 ảnh minh họa (37 tin đang hiện công khai), 20 đơn (16 đã trả, tổng 3.084.000 đ trải khoảng sáu tháng), 16 kỳ gói, 16 lượt theo dõi và 42 tin đã lưu.
+
+#### Chủ trọ (mỗi người dựng một trạng thái FE phải xử lý)
+
+| Email | Tên | Trạng thái và nên dùng để thử |
+|---|---|---|
+| `khoa.tran@demo.example.com` | Trần Minh Khoa | `state` `plan`, gói Chuyên nghiệp (50 tin), **đã gia hạn trước một kỳ** nên `paidUntil` xa hơn `endsAt` của kỳ đang chạy. 3 nhà trọ, 16 tin hiện, 1 tin tự ẩn, 6 người theo dõi, 7 đơn đã trả. Dùng cho: bảng điều khiển chủ trọ đầy đủ, danh sách phân trang, lịch sử đơn, hồ sơ công khai nhiều tin |
+| `nhung.le@demo.example.com` | Lê Thị Hồng Nhung | Gói Nâng cao (15 tin). 10 tin hiện, **1 tin bị admin ẩn kèm `moderationReason`**, 1 tin tự ẩn; có tin giá cao ở Quận 1 (8,5 đến 14,5 triệu). Dùng cho: nhãn "bị admin ẩn", nút hiện tin bị chặn (403 `LISTING_HIDDEN_BY_ADMIN`) |
+| `bao.pham@demo.example.com` | Phạm Quốc Bảo | Gói Cơ bản (5 tin) nhưng có **7 tin hiện**: `overLimitCount` là 2 và hai tin đăng sau cùng có `isPublic` `false` (khách không thấy). Có **một tin không ảnh** (`coverImageUrl` `null`). Dùng cho: cảnh báo vượt hạn mức, ảnh trống |
+| `phat.nguyen@demo.example.com` | Nguyễn Hữu Phát | Gói Cơ bản còn chỗ (`remaining` 1). Có một tin chỉ một ảnh |
+| `tam.vo@demo.example.com` | Võ Thanh Tâm | **Đang dùng thử, còn khoảng 3 ngày**, hạn mức 2 tin đã dùng hết (`remaining` 0). Có **một đơn chờ thanh toán** (gói Nâng cao) và một đơn đã hủy: dùng đơn chờ để thử `POST /orders/:id/pay`, sau đó `state` thành `plan` và đăng được tin thứ ba. Dùng cho: biểu ngữ "sắp hết dùng thử" |
+| `mai.dang@demo.example.com` | Đặng Thị Mai | **Hết dùng thử 25 ngày trước, chưa mua gói** (`state` `expired`, `listingLimit` 0). 3 tin vẫn `visible` nhưng khách không thấy; đăng thêm bị 403 `MEMBERSHIP_REQUIRED`; có đơn chờ thanh toán |
+| `huy.hoang@demo.example.com` | Hoàng Gia Huy | **Gói đã hết hạn khoảng 22 ngày** (`state` `expired`). 4 tin ở Vũng Tàu biến khỏi công khai; có một đơn đã hủy |
+| `lan.bui@demo.example.com` | Bùi Ngọc Lan | **Bị admin khóa** 6 ngày trước (gói Nâng cao vẫn còn hạn): đăng nhập 403 `ACCOUNT_LOCKED`, hồ sơ `GET /landlords/:id` trả 404, tin biến khỏi công khai. Admin mở khóa bằng `POST /users/:id/unlock` (6.11) |
+| `ha.ngo@demo.example.com` | Ngô Thị Thu Hà | **Mới đăng ký 2 ngày trước**: còn khoảng 28 ngày dùng thử, chưa có nhà trọ, tin hay đơn nào. Dùng cho: màn hình trống kiểu "tạo nhà trọ đầu tiên" |
+
+#### Người tìm trọ
+
+| Email | Tên | Trạng thái và nên dùng để thử |
+|---|---|---|
+| `lananh.nguyen@demo.example.com` | Nguyễn Thị Lan Anh | **Tài khoản nên dùng nhiều nhất.** Đã lưu 12 tin, trong đó có tin của chủ trọ hết dùng thử, hết gói và bị khóa, nên `GET /me/favorites` chỉ trả phần còn công khai (6.33): số tin trả về ít hơn số tin đã lưu. Theo dõi Khoa, Nhung, Bảo |
+| `viet.tran@demo.example.com`, `yen.le@demo.example.com`, `thinh.pham@demo.example.com`, `diep.vo@demo.example.com`, `quan.dang@demo.example.com`, `tuan.bui@demo.example.com` | Trần Quốc Việt, Lê Hoàng Yến, Phạm Đức Thịnh, Võ Ngọc Diệp, Đặng Minh Quân, Bùi Anh Tuấn | Mỗi người lưu 2 đến 7 tin và theo dõi 1 đến 2 chủ trọ; để có số liệu thật cho `followerCount` |
+| `truc.huynh@demo.example.com` | Huỳnh Thanh Trúc | Lưu 5 tin, theo dõi 3 chủ trọ, trong đó có Lan đang bị khóa |
+| `linh.ngo@demo.example.com` | Ngô Khánh Linh | **Mới đăng ký 3 ngày**, chưa lưu tin nào, chưa theo dõi ai: màn hình trống |
+| `son.duong@demo.example.com` | Dương Văn Sơn | **Bị admin khóa** 8 ngày trước: đăng nhập 403 |
+
+#### Số liệu để đối chiếu khi dựng màn hình
+
+| Màn hình | Số liệu có sẵn |
+|---|---|
+| Tìm trọ (khách) | `GET /listings` có 37 tin, trang 2 (với `pageSize` 20) có 17 tin. Lọc `wardCode=26890` (Phường Hạnh Thông) ra 6 tin; `q=sinh vien` (không dấu) ra tin; `maxPrice=2500000` ra tin giá rẻ; giá từ 850.000 đ (một giường ký túc xá, giá tính theo giường) đến 14,5 triệu (căn hộ 40 m² ở Quận 1) |
+| Chi tiết tin | Mỗi tin có 1 đến 5 ảnh, mô tả nhiều đoạn (tiện ích, chi phí hàng tháng, vị trí), phí và tiện ích của nhà trọ, tọa độ. Khách thấy `landlord.phone` là `null`, người đã đăng nhập thấy số (ví dụ Khoa là `0901234501`) |
+| Hồ sơ chủ trọ | Khoa: 6 người theo dõi, 16 tin, hơn 500 lượt xem cộng dồn. Lan (bị khóa): 404 |
+| Admin: người dùng | `GET /users` có 20 dòng (19 demo cộng admin), 2 dòng bị khóa kèm `lockedReason` |
+| Admin: đơn và doanh thu | `GET /orders/all` có 20 đơn (16 `paid`, 2 `pending`, 2 `cancelled`); `GET /orders/revenue` tổng 3.084.000 đ, đủ ba gói trong `byPlan`, nhiều tháng trong `series` |
+| Admin: kiểm duyệt | `GET /moderation/listings` có 53 tin, trong đó đúng 1 tin `hidden_by_admin` |
+
+#### Cần biết khi dùng
+
+- **Mốc thời gian tính từ lúc chạy** (hạn dùng thử, kỳ gói, ngày đăng tin). Sau vài tuần các kịch bản lệch dần (Tâm hết dùng thử, kỳ gói của Khoa hết); nhờ backend chạy `npm run seed:demo -- --reset` để làm mới. Ghi vào tài khoản demo (thanh toán đơn chờ, đăng tin, khóa) cũng làm kịch bản đổi; `--reset` đưa mọi thứ về ban đầu.
+- **Ảnh là hình minh họa phẳng do backend tự vẽ**, không phải ảnh thật. Đường dẫn vẫn là `/api/v1/media/public/<uuid>.png` như ảnh tải lên thật, và vẫn chỉ tải được ảnh của tin đang hiện công khai (ảnh của tin bị ẩn hay hết quyền trả 404, xem 6.28).
+- **Email và số điện thoại là giả.** Email dùng tên miền dành riêng `example.com` nên thư "quên mật khẩu" của tài khoản demo không đến ai; muốn thử luồng quên mật khẩu thì đăng ký bằng email thật của bạn.
+- Đăng nhập bị giới hạn 10 lần mỗi 15 phút theo email (mục 3): đổi qua lại một tài khoản nhiều lần thì giữ access token thay vì đăng nhập lại.
 
 ---
 
@@ -1874,6 +1924,7 @@ Một lượt kể chuyện cho buổi demo, theo đúng thứ tự folder **23 
 | 10 | Admin | Xem đơn mua gói đã trả và thống kê doanh thu | `GET /orders/all`, `GET /orders/revenue` (6.37, 6.38) |
 
 Mẹo khi demo:
+- **Muốn có sẵn dữ liệu thay vì đi từng bước**: backend chạy `npm run seed:demo` (xem "Dữ liệu demo có sẵn" ở mục 2). Các cảnh dưới đây đã dựng sẵn bằng những tài khoản riêng (`mai.dang` hết quyền, `bao.pham` vượt hạn mức, `tam.vo` còn đơn chờ thanh toán).
 - **Dựng cảnh "hết quyền"**: admin đặt `trial_days` thành `0` (6.24) rồi đăng ký một chủ trọ mới: hết dùng thử ngay, đăng tin bị 403 `MEMBERSHIP_REQUIRED` và mọi tin của họ biến khỏi công khai (6.1). Mua gói xong là hết.
 - **Dựng cảnh "vượt hạn mức"**: admin hạ `trial_listing_limit` (6.24), các tin đăng sau cùng của chủ trọ đang dùng thử biến khỏi công khai nhưng vẫn `visible`; chủ trọ thấy tin nào bị ẩn bớt ở cờ `isPublic` của `GET /me/listings` (6.21).
 - **Thanh toán là thanh toán thử**: không có tiền thật, tổng tiền ở màn hình admin cũng vậy; nói rõ với người xem.
@@ -2024,6 +2075,12 @@ Tính đến 2026-10-22 **không còn tính năng nào đã lên kế hoạch m�
 ## 11. Nhật ký thay đổi
 
 Mới nhất ở trên cùng. Mục nào **phá vỡ** cách FE đang gọi sẽ ghi rõ "ĐỔI KHÁC VỚI TRƯỚC".
+
+### 2026-10-23 · Thêm bộ dữ liệu demo cho FE: `npm run seed:demo` (không đổi API)
+
+- **API không đổi.** Backend có thêm lệnh nạp dữ liệu để FE có thứ mà dựng màn hình: 9 chủ trọ và 10 người tìm trọ ở đủ các trạng thái (gói còn hạn và đã gia hạn trước, đang dùng thử, hết dùng thử, gói hết hạn, vượt hạn mức, bị khóa, mới đăng ký), 12 nhà trọ, 53 tin kèm hơn 200 ảnh minh họa (37 tin hiện công khai), đơn, kỳ gói, theo dõi và tin đã lưu. Danh sách tài khoản và số liệu để đối chiếu nằm ở mục 2, "Dữ liệu demo có sẵn".
+- **Chạy riêng, không nằm trong `seed`**; mốc thời gian tính từ lúc chạy nên cần `npm run seed:demo -- --reset` để làm mới sau vài tuần. Mọi tài khoản demo dùng chung mật khẩu `DEMO_SEED_PASSWORD` trong `.env` của backend.
+- **Postman**: chưa đổi vì không có API nào đổi.
 
 ### 2026-10-23 · Rà soát lại tài liệu theo code, thêm hướng dẫn Next.js, nguyên tắc nghiệp vụ và phụ lục tra nhanh (không đổi API)
 
