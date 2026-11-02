@@ -62,6 +62,24 @@ export class ListingImagesRepository {
 		});
 	}
 
+	/**
+	 * Chèn các dòng ảnh của một tin vừa tạo (spec 0011): tin mới chưa có ảnh nào nên các `position` 0, 1, 2… do
+	 * Service chia sẵn không đụng `UNIQUE (listing_id, position)`.
+	 */
+	async createMany(
+		listingId: string,
+		images: readonly { position: number; storageKey: string }[],
+		tx: Prisma.TransactionClient,
+	): Promise<void> {
+		await tx.listingImage.createMany({
+			data: images.map(({ position, storageKey }) => ({
+				listingId,
+				position,
+				storageKey,
+			})),
+		});
+	}
+
 	/** Ảnh `imageId` của đúng tin `listingId`, hoặc `null` (không có, hay thuộc tin khác). */
 	findInListing(
 		listingId: string,

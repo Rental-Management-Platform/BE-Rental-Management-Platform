@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { AppException } from '../common/errors/app.exception';
 import { ErrorCode } from '../common/errors/error-code';
 import type { RequestUser } from '../common/http/authenticated-request';
@@ -11,6 +12,8 @@ import type {
 import type { ModerationLogsRepository } from '../moderation/moderation-logs.repository';
 import type { PropertiesRepository } from '../properties/properties.repository';
 import type { SettingsService } from '../settings/settings.service';
+import { STORAGE_KEY_PATTERN } from '../storage/storage.service';
+import type { StorageService } from '../storage/storage.service';
 import type { UsersService } from '../users/users.service';
 import type { CreateListingDto } from './dto/create-listing.dto';
 import type {
@@ -19,6 +22,7 @@ import type {
 } from './dto/listing-queries.dto';
 import type { UpdateListingDto } from './dto/update-listing.dto';
 import { ListingCodeTakenError } from './listing-code';
+import type { ListingImagesRepository } from './listing-images.repository';
 import {
 	LANDLORD_ID,
 	LISTING_ID,
@@ -43,6 +47,14 @@ const tx = { marker: 'tx' } as unknown as Prisma.TransactionClient;
 
 /** Đồng hồ cố định: Service nhận `now` từ controller, không tự lấy giờ. */
 const NOW = new Date('2026-10-19T03:00:00.000Z');
+
+const PNG = Uint8Array.from([
+	0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3,
+]);
+const JPEG = Uint8Array.from([0xff, 0xd8, 0xff, 0xe0, 0, 0x10]);
+
+/** Một ảnh PNG hợp lệ ở trường `images`: đủ để qua kiểm hình dạng ảnh (spec 0011 AC-3) ở các test không bàn về ảnh. */
+const IMAGES = [{ fieldname: 'images', buffer: PNG }];
 
 /** Chủ trọ còn trong kỳ dùng thử với hạn mức 2 tin (mặc định của `trial_listing_limit`). */
 const TRIAL: Membership = {
@@ -119,6 +131,8 @@ interface Harness {
 	memberships: Mocks<'resolve'>;
 	settings: Mocks<'getValue'>;
 	favorites: Mocks<'findSavedIds' | 'isFavorite'>;
+	storage: Mocks<'put' | 'delete'>;
+	imageRows: Mocks<'createMany'>;
 }
 
 function build(
@@ -214,6 +228,11 @@ function build(
 		),
 	};
 	const views = new ViewDeduplicator();
+	const storage = {
+		put: jest.fn(() => Promise.resolve()),
+		delete: jest.fn(() => Promise.resolve()),
+	};
+	const imageRows = { createMany: jest.fn(() => Promise.resolve()) };
 	return {
 		service: new ListingsService(
 			repository as unknown as ListingsRepository,
@@ -225,6 +244,8 @@ function build(
 			memberships as unknown as MembershipsService,
 			settings as unknown as SettingsService,
 			favorites as unknown as FavoritesRepository,
+			storage as unknown as StorageService,
+			imageRows as unknown as ListingImagesRepository,
 		),
 		repository,
 		properties,
@@ -235,6 +256,8 @@ function build(
 		memberships,
 		settings,
 		favorites,
+		storage,
+		imageRows,
 	};
 }
 
@@ -265,7 +288,7 @@ beforeEach(() => {
 describe('ListingsService.create (AC-5)', () => {
 	it('khóa dòng nhà trọ trước khi chèn, cùng một giao dịch', async () => {
 		const { service, properties, repository } = build();
-		await service.create(owner, PROPERTY_ID, createDto(), NOW);
+		await service.create(owner, PROPERTY_ID, createDto(), IMAGES, NOW);
 		expect(properties.lockLiveById).toHaveBeenCalledWith(PROPERTY_ID, tx);
 		const lockOrder =
 			properties.lockLiveById.mock.invocationCallOrder[0] ?? 0;
@@ -276,7 +299,7 @@ describe('ListingsService.create (AC-5)', () => {
 
 	it('ghi mã vừa sinh, search_key theo tiêu đề cộng tên nhà trọ, địa chỉ, phường; cọc và ngày mặc định null', async () => {
 		const { service, repository } = build();
-		await service.create(owner, PROPERTY_ID, createDto(), NOW);
+		await service.create(owner, PROPERTY_ID, createDto(), IMAGES, NOW);
 		expect(repository.create).toHaveBeenCalledWith(
 			{
 				propertyId: PROPERTY_ID,
@@ -300,6 +323,7 @@ describe('ListingsService.create (AC-5)', () => {
 			owner,
 			PROPERTY_ID,
 			createDto({ deposit: 2_000_000, availableFrom: '2026-11-01' }),
+			IMAGES,
 			NOW,
 		);
 		expect(repository.create).toHaveBeenCalledWith(
@@ -313,7 +337,7 @@ describe('ListingsService.create (AC-5)', () => {
 
 	it('không nhận trạng thái hay lượt xem từ ai: Service không truyền chúng, cột lấy mặc định visible và 0', async () => {
 		const { service, repository } = build();
-		await service.create(owner, PROPERTY_ID, createDto(), NOW);
+		await service.create(owner, PROPERTY_ID, createDto(), IMAGES, NOW);
 		const input = argsOf(repository.create)[0]?.[0] as Record<
 			string,
 			unknown
@@ -328,6 +352,7 @@ describe('ListingsService.create (AC-5)', () => {
 			owner,
 			PROPERTY_ID,
 			createDto(),
+			IMAGES,
 			NOW,
 		);
 		expect(repository.findOwnerDetail).toHaveBeenCalledWith(LISTING_ID);
@@ -341,7 +366,7 @@ describe('ListingsService.create (AC-5)', () => {
 	it('nhà trọ không có hoặc đã xóa mềm thì 404 PROPERTY_NOT_FOUND, không chèn', async () => {
 		const { service, repository } = build({ locked: null });
 		await expect(
-			service.create(owner, PROPERTY_ID, createDto(), NOW),
+			service.create(owner, PROPERTY_ID, createDto(), IMAGES, NOW),
 		).rejects.toMatchObject({ code: ErrorCode.PROPERTY_NOT_FOUND });
 		expect(repository.create).not.toHaveBeenCalled();
 	});
@@ -349,7 +374,7 @@ describe('ListingsService.create (AC-5)', () => {
 	it('đăng vào nhà trọ của người khác thì 403 NOT_RESOURCE_OWNER, không chèn', async () => {
 		const { service, repository } = build();
 		await expect(
-			service.create(stranger, PROPERTY_ID, createDto(), NOW),
+			service.create(stranger, PROPERTY_ID, createDto(), IMAGES, NOW),
 		).rejects.toMatchObject({ code: ErrorCode.NOT_RESOURCE_OWNER });
 		expect(repository.create).not.toHaveBeenCalled();
 	});
@@ -363,7 +388,7 @@ describe('ListingsService.create (AC-5)', () => {
 			repository.create.mockRejectedValueOnce(
 				new ListingCodeTakenError(),
 			);
-			await service.create(owner, PROPERTY_ID, createDto(), NOW);
+			await service.create(owner, PROPERTY_ID, createDto(), IMAGES, NOW);
 			expect(repository.create).toHaveBeenCalledTimes(2);
 			expect(
 				argsOf(repository.create).map(
@@ -377,7 +402,7 @@ describe('ListingsService.create (AC-5)', () => {
 			const { service, repository } = build();
 			repository.create.mockRejectedValue(new ListingCodeTakenError());
 			await expect(
-				service.create(owner, PROPERTY_ID, createDto(), NOW),
+				service.create(owner, PROPERTY_ID, createDto(), IMAGES, NOW),
 			).rejects.toMatchObject({ code: ErrorCode.INTERNAL_ERROR });
 			expect(repository.create).toHaveBeenCalledTimes(5);
 		});
@@ -386,7 +411,7 @@ describe('ListingsService.create (AC-5)', () => {
 			const { service, repository } = build();
 			repository.create.mockRejectedValue(new Error('mất kết nối'));
 			await expect(
-				service.create(owner, PROPERTY_ID, createDto(), NOW),
+				service.create(owner, PROPERTY_ID, createDto(), IMAGES, NOW),
 			).rejects.toThrow('mất kết nối');
 			expect(repository.create).toHaveBeenCalledTimes(1);
 		});
@@ -394,7 +419,7 @@ describe('ListingsService.create (AC-5)', () => {
 		it('lỗi sở hữu không bị thử lại', async () => {
 			const { service, transactions } = build();
 			await expect(
-				service.create(stranger, PROPERTY_ID, createDto(), NOW),
+				service.create(stranger, PROPERTY_ID, createDto(), IMAGES, NOW),
 			).rejects.toMatchObject({ code: ErrorCode.NOT_RESOURCE_OWNER });
 			expect(transactions.run).toHaveBeenCalledTimes(1);
 		});
@@ -1226,7 +1251,7 @@ describe('ListingsService.hide và show (AC-6)', () => {
 describe('ListingsService.create: cửa hạn mức (spec 0003 AC-4, AC-6, AC-7)', () => {
 	it('khóa dòng users TRƯỚC dòng nhà trọ, kiểm hạn mức, rồi mới chèn, cùng một giao dịch', async () => {
 		const { service, users, properties, memberships, repository } = build();
-		await service.create(owner, PROPERTY_ID, createDto(), NOW);
+		await service.create(owner, PROPERTY_ID, createDto(), IMAGES, NOW);
 		expect(users.lockById).toHaveBeenCalledWith(LANDLORD_ID, tx);
 		expect(memberships.resolve).toHaveBeenCalledWith(LANDLORD_ID, NOW, tx);
 		expect(repository.countVisibleByLandlord).toHaveBeenCalledWith(
@@ -1251,7 +1276,7 @@ describe('ListingsService.create: cửa hạn mức (spec 0003 AC-4, AC-6, AC-7)
 
 	it('còn chỗ (1 tin đang hiện, hạn mức 2) thì chèn', async () => {
 		const { service, repository } = build({ visibleCount: 1 });
-		await service.create(owner, PROPERTY_ID, createDto(), NOW);
+		await service.create(owner, PROPERTY_ID, createDto(), IMAGES, NOW);
 		expect(repository.create).toHaveBeenCalledTimes(1);
 	});
 
@@ -1260,7 +1285,7 @@ describe('ListingsService.create: cửa hạn mức (spec 0003 AC-4, AC-6, AC-7)
 		async (visibleCount) => {
 			const { service, repository } = build({ visibleCount });
 			await expect(
-				service.create(owner, PROPERTY_ID, createDto(), NOW),
+				service.create(owner, PROPERTY_ID, createDto(), IMAGES, NOW),
 			).rejects.toMatchObject({ code: ErrorCode.LISTING_QUOTA_REACHED });
 			expect(repository.create).not.toHaveBeenCalled();
 		},
@@ -1269,7 +1294,7 @@ describe('ListingsService.create: cửa hạn mức (spec 0003 AC-4, AC-6, AC-7)
 	it('còn trong kỳ dùng thử nhưng hạn mức bị đặt 0 thì LISTING_QUOTA_REACHED (không phải MEMBERSHIP_REQUIRED)', async () => {
 		const { service } = build({ membership: { ...TRIAL, limit: 0 } });
 		await expect(
-			service.create(owner, PROPERTY_ID, createDto(), NOW),
+			service.create(owner, PROPERTY_ID, createDto(), IMAGES, NOW),
 		).rejects.toMatchObject({ code: ErrorCode.LISTING_QUOTA_REACHED });
 	});
 
@@ -1278,7 +1303,7 @@ describe('ListingsService.create: cửa hạn mức (spec 0003 AC-4, AC-6, AC-7)
 			membership: PLAN,
 			visibleCount: 4,
 		});
-		await service.create(owner, PROPERTY_ID, createDto(), NOW);
+		await service.create(owner, PROPERTY_ID, createDto(), IMAGES, NOW);
 		expect(repository.create).toHaveBeenCalledTimes(1);
 	});
 
@@ -1288,7 +1313,7 @@ describe('ListingsService.create: cửa hạn mức (spec 0003 AC-4, AC-6, AC-7)
 			visibleCount: 5,
 		});
 		await expect(
-			service.create(owner, PROPERTY_ID, createDto(), NOW),
+			service.create(owner, PROPERTY_ID, createDto(), IMAGES, NOW),
 		).rejects.toMatchObject({ code: ErrorCode.LISTING_QUOTA_REACHED });
 		expect(repository.create).not.toHaveBeenCalled();
 	});
@@ -1299,7 +1324,7 @@ describe('ListingsService.create: cửa hạn mức (spec 0003 AC-4, AC-6, AC-7)
 			visibleCount: 99,
 		});
 		await expect(
-			service.create(owner, PROPERTY_ID, createDto(), NOW),
+			service.create(owner, PROPERTY_ID, createDto(), IMAGES, NOW),
 		).rejects.toMatchObject({ code: ErrorCode.MEMBERSHIP_REQUIRED });
 		expect(repository.countVisibleByLandlord).not.toHaveBeenCalled();
 		expect(repository.create).not.toHaveBeenCalled();
@@ -1308,13 +1333,25 @@ describe('ListingsService.create: cửa hạn mức (spec 0003 AC-4, AC-6, AC-7)
 	it('nhà trọ không có (404) và nhà trọ của người khác (403) được báo trước hai lỗi hạn mức', async () => {
 		const missing = build({ locked: null, membership: EXPIRED });
 		await expect(
-			missing.service.create(owner, PROPERTY_ID, createDto(), NOW),
+			missing.service.create(
+				owner,
+				PROPERTY_ID,
+				createDto(),
+				IMAGES,
+				NOW,
+			),
 		).rejects.toMatchObject({ code: ErrorCode.PROPERTY_NOT_FOUND });
 		expect(missing.memberships.resolve).not.toHaveBeenCalled();
 
 		const foreign = build({ membership: EXPIRED, visibleCount: 99 });
 		await expect(
-			foreign.service.create(stranger, PROPERTY_ID, createDto(), NOW),
+			foreign.service.create(
+				stranger,
+				PROPERTY_ID,
+				createDto(),
+				IMAGES,
+				NOW,
+			),
 		).rejects.toMatchObject({ code: ErrorCode.NOT_RESOURCE_OWNER });
 		expect(foreign.memberships.resolve).not.toHaveBeenCalled();
 	});
@@ -1322,7 +1359,7 @@ describe('ListingsService.create: cửa hạn mức (spec 0003 AC-4, AC-6, AC-7)
 	it('lỗi hạn mức không bị thử lại như lỗi trùng mã', async () => {
 		const { service, transactions } = build({ visibleCount: 2 });
 		await expect(
-			service.create(owner, PROPERTY_ID, createDto(), NOW),
+			service.create(owner, PROPERTY_ID, createDto(), IMAGES, NOW),
 		).rejects.toMatchObject({ code: ErrorCode.LISTING_QUOTA_REACHED });
 		expect(transactions.run).toHaveBeenCalledTimes(1);
 	});
@@ -1330,7 +1367,7 @@ describe('ListingsService.create: cửa hạn mức (spec 0003 AC-4, AC-6, AC-7)
 	it('thử lại vì trùng mã thì giao dịch mới khóa và kiểm hạn mức lại từ đầu', async () => {
 		const { service, repository, users, memberships } = build();
 		repository.create.mockRejectedValueOnce(new ListingCodeTakenError());
-		await service.create(owner, PROPERTY_ID, createDto(), NOW);
+		await service.create(owner, PROPERTY_ID, createDto(), IMAGES, NOW);
 		expect(users.lockById).toHaveBeenCalledTimes(2);
 		// hai lần kiểm trong hai giao dịch; lần thứ ba (không có tx) là lần đọc `isPublic` sau khi chèn xong
 		expect(gateCallsOf(memberships.resolve)).toHaveLength(2);
@@ -1562,6 +1599,7 @@ describe('isPublic của tin chủ trọ (spec 0003 AC-11)', () => {
 						owner,
 						PROPERTY_ID,
 						createDto(),
+						IMAGES,
 						NOW,
 					)
 				).isPublic,
@@ -1594,6 +1632,354 @@ describe('isPublic của tin chủ trọ (spec 0003 AC-11)', () => {
 				false,
 			);
 			expect(memberships.resolve).not.toHaveBeenCalled();
+		});
+	});
+});
+
+/** Một lời hứa mở được từ ngoài: để test điều khiển lúc một lần ghi tệp xong. */
+function deferred<T = void>() {
+	let resolve!: (value: T) => void;
+	let reject!: (reason: unknown) => void;
+	const promise = new Promise<T>((res, rej) => {
+		resolve = res;
+		reject = rej;
+	});
+	return { promise, resolve, reject };
+}
+
+const storageKeysOf = (mock: jest.Mock): string[] =>
+	argsOf(mock).map((call) => call[0] as string);
+
+describe('ListingsService.create: ảnh trong cùng yêu cầu (spec 0011)', () => {
+	const spies: jest.SpyInstance[] = [];
+	beforeEach(() => {
+		spies.push(
+			jest.spyOn(Logger.prototype, 'error').mockImplementation(() => {}),
+			jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => {}),
+		);
+	});
+	afterEach(() => {
+		for (const spy of spies.splice(0)) spy.mockRestore();
+	});
+
+	const three = [
+		{ fieldname: 'images', buffer: PNG },
+		{ fieldname: 'images', buffer: JPEG },
+		{ fieldname: 'images', buffer: PNG },
+	];
+
+	describe('thứ tự và nguồn giá trị (AC-1, AC-5, AC-6)', () => {
+		it('khóa users, khóa nhà trọ, cửa hạn mức, chèn tin, chèn dòng ảnh, và CUỐI CÙNG mới ghi tệp, cùng một giao dịch', async () => {
+			const {
+				service,
+				users,
+				properties,
+				memberships,
+				repository,
+				imageRows,
+				storage,
+			} = build();
+			await service.create(owner, PROPERTY_ID, createDto(), three, NOW);
+			const order = (mock: jest.Mock): number =>
+				mock.mock.invocationCallOrder[0] ?? 0;
+			const sequence = [
+				users.lockById,
+				properties.lockLiveById,
+				memberships.resolve,
+				repository.create,
+				imageRows.createMany,
+				storage.put,
+			].map(order);
+			expect(sequence).toEqual([...sequence].sort((a, b) => a - b));
+			expect(new Set(sequence).size).toBe(sequence.length);
+			expect(imageRows.createMany).toHaveBeenCalledWith(
+				LISTING_ID,
+				expect.any(Array),
+				tx,
+			);
+		});
+
+		it('giao dịch đăng tin dùng thời hạn riêng 15 giây chạy và 5 giây chờ kết nối', async () => {
+			const { service, transactions } = build();
+			await service.create(owner, PROPERTY_ID, createDto(), IMAGES, NOW);
+			expect(transactions.run).toHaveBeenCalledWith(
+				expect.any(Function),
+				{
+					timeout: 15_000,
+					maxWait: 5_000,
+				},
+			);
+		});
+
+		it('position theo thứ tự tệp, khóa do server sinh theo loại nhận ra bằng nội dung, tệp ghi đúng byte đã gửi', async () => {
+			const { service, imageRows, storage } = build();
+			await service.create(owner, PROPERTY_ID, createDto(), three, NOW);
+			const rows = argsOf(imageRows.createMany)[0]?.[1] as {
+				position: number;
+				storageKey: string;
+			}[];
+			expect(rows.map((row) => row.position)).toEqual([0, 1, 2]);
+			for (const row of rows) {
+				expect(row.storageKey).toMatch(STORAGE_KEY_PATTERN);
+			}
+			expect(rows.map((row) => row.storageKey.split('.')[1])).toEqual([
+				'png',
+				'jpg',
+				'png',
+			]);
+			expect(storageKeysOf(storage.put)).toEqual(
+				rows.map((row) => row.storageKey),
+			);
+			expect(argsOf(storage.put).map((call) => call[1])).toEqual([
+				PNG,
+				JPEG,
+				PNG,
+			]);
+			expect(new Set(rows.map((row) => row.storageKey)).size).toBe(3);
+		});
+
+		it('trả tin đọc lại SAU commit, không phải kết quả trong giao dịch', async () => {
+			const { service, repository, transactions } = build();
+			const response = await service.create(
+				owner,
+				PROPERTY_ID,
+				createDto(),
+				three,
+				NOW,
+			);
+			expect(transactions.run).toHaveBeenCalledTimes(1);
+			expect(repository.findOwnerDetail).toHaveBeenCalledWith(LISTING_ID);
+			expect(response).toMatchObject({ status: 'visible' });
+		});
+
+		it('tệp ghi tuần tự: tệp kế không bắt đầu khi tệp trước chưa xong', async () => {
+			const first = deferred();
+			const { service, storage } = build();
+			storage.put.mockReturnValueOnce(first.promise);
+			const pending = service.create(
+				owner,
+				PROPERTY_ID,
+				createDto(),
+				three,
+				NOW,
+			);
+			await new Promise((resolve) => setImmediate(resolve));
+			expect(storage.put).toHaveBeenCalledTimes(1);
+			first.resolve();
+			await pending;
+			expect(storage.put).toHaveBeenCalledTimes(3);
+		});
+	});
+
+	describe('kiểm hình dạng ảnh trước khi chạm database (AC-3, AC-5)', () => {
+		it.each([
+			['không có tệp nào', []],
+			['files là undefined', undefined],
+		])(
+			'%s: 400 IMAGE_INVALID ở trường images, không giao dịch',
+			async (_name, files) => {
+				const { service, transactions, users, storage } = build();
+				await expect(
+					service.create(owner, PROPERTY_ID, createDto(), files, NOW),
+				).rejects.toMatchObject({
+					code: ErrorCode.IMAGE_INVALID,
+					fieldErrors: [
+						expect.objectContaining({
+							field: 'images',
+							code: 'imagesRequired',
+						}),
+					],
+				});
+				expect(transactions.run).not.toHaveBeenCalled();
+				expect(users.lockById).not.toHaveBeenCalled();
+				expect(storage.put).not.toHaveBeenCalled();
+			},
+		);
+
+		it('ảnh sai thì IMAGE_INVALID đến trước 403 NOT_RESOURCE_OWNER và 404 PROPERTY_NOT_FOUND', async () => {
+			const { service, transactions } = build({ locked: null });
+			await expect(
+				service.create(
+					stranger,
+					PROPERTY_ID,
+					createDto(),
+					[{ fieldname: 'file', buffer: PNG }],
+					NOW,
+				),
+			).rejects.toMatchObject({ code: ErrorCode.IMAGE_INVALID });
+			expect(transactions.run).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('từ chối ở cửa thì không ghi tệp nào (AC-2, AC-5, AC-6)', () => {
+		it.each([
+			[
+				'nhà trọ không có',
+				{ locked: null },
+				owner,
+				ErrorCode.PROPERTY_NOT_FOUND,
+			],
+			[
+				'nhà trọ của người khác',
+				{},
+				stranger,
+				ErrorCode.NOT_RESOURCE_OWNER,
+			],
+			[
+				'hết dùng thử và chưa có gói',
+				{ membership: EXPIRED },
+				owner,
+				ErrorCode.MEMBERSHIP_REQUIRED,
+			],
+			[
+				'đủ hạn mức',
+				{ visibleCount: 2 },
+				owner,
+				ErrorCode.LISTING_QUOTA_REACHED,
+			],
+		])('%s', async (_name, options, user, code) => {
+			const { service, storage, imageRows, repository } = build(options);
+			await expect(
+				service.create(user, PROPERTY_ID, createDto(), three, NOW),
+			).rejects.toMatchObject({ code });
+			expect(repository.create).not.toHaveBeenCalled();
+			expect(imageRows.createMany).not.toHaveBeenCalled();
+			expect(storage.put).not.toHaveBeenCalled();
+			expect(storage.delete).not.toHaveBeenCalled();
+		});
+
+		it('trùng mã tin: thử lại bằng giao dịch mới, không tệp nào được ghi hay xóa, mỗi ảnh ghi đúng một lần với cùng khóa', async () => {
+			const { service, repository, storage, imageRows } = build();
+			repository.create.mockRejectedValueOnce(
+				new ListingCodeTakenError(),
+			);
+			await service.create(owner, PROPERTY_ID, createDto(), three, NOW);
+			expect(repository.create).toHaveBeenCalledTimes(2);
+			expect(imageRows.createMany).toHaveBeenCalledTimes(1);
+			expect(storage.put).toHaveBeenCalledTimes(3);
+			expect(storage.delete).not.toHaveBeenCalled();
+		});
+
+		it('hết 5 lần thử trùng mã: 500 INTERNAL_ERROR và không tệp nào', async () => {
+			const { service, repository, storage } = build();
+			repository.create.mockRejectedValue(new ListingCodeTakenError());
+			await expect(
+				service.create(owner, PROPERTY_ID, createDto(), three, NOW),
+			).rejects.toMatchObject({ code: ErrorCode.INTERNAL_ERROR });
+			expect(storage.put).not.toHaveBeenCalled();
+			expect(storage.delete).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('tất cả hoặc không gì cả (AC-2)', () => {
+		it('ghi tệp thứ ba lỗi: xóa mọi khóa của lần đăng, ném lại lỗi gốc, không đọc lại tin', async () => {
+			const { service, storage, repository } = build();
+			storage.put
+				.mockResolvedValueOnce(undefined)
+				.mockResolvedValueOnce(undefined)
+				.mockRejectedValueOnce(new Error('ổ đĩa đầy'));
+			await expect(
+				service.create(owner, PROPERTY_ID, createDto(), three, NOW),
+			).rejects.toThrow('ổ đĩa đầy');
+			expect(storage.put).toHaveBeenCalledTimes(3);
+			expect([...storageKeysOf(storage.delete)].sort()).toEqual(
+				[...storageKeysOf(storage.put)].sort(),
+			);
+			expect(repository.findOwnerDetail).not.toHaveBeenCalled();
+		});
+
+		it('commit lỗi mà tin không có thì xóa mọi tệp rồi ném lỗi gốc', async () => {
+			const { service, storage, transactions, repository } = build();
+			transactions.run.mockImplementationOnce(
+				async (
+					fn: (client: Prisma.TransactionClient) => Promise<string>,
+				) => {
+					await fn(tx);
+					throw new Error('mất kết nối lúc COMMIT');
+				},
+			);
+			repository.findStatus.mockResolvedValueOnce(null);
+			await expect(
+				service.create(owner, PROPERTY_ID, createDto(), three, NOW),
+			).rejects.toThrow('mất kết nối lúc COMMIT');
+			expect(repository.findStatus).toHaveBeenCalledWith(LISTING_ID);
+			expect([...storageKeysOf(storage.delete)].sort()).toEqual(
+				[...storageKeysOf(storage.put)].sort(),
+			);
+		});
+
+		it('commit báo lỗi mà tin thực ra đã lưu thì giữ tin và tệp, coi như thành công', async () => {
+			const { service, storage, transactions, repository } = build();
+			transactions.run.mockImplementationOnce(
+				async (
+					fn: (client: Prisma.TransactionClient) => Promise<string>,
+				) => {
+					await fn(tx);
+					throw new Error('mất kết nối lúc COMMIT');
+				},
+			);
+			repository.findStatus.mockResolvedValueOnce('visible');
+			const response = await service.create(
+				owner,
+				PROPERTY_ID,
+				createDto(),
+				three,
+				NOW,
+			);
+			expect(response).toMatchObject({ status: 'visible' });
+			expect(storage.delete).not.toHaveBeenCalled();
+			expect(repository.findOwnerDetail).toHaveBeenCalledWith(LISTING_ID);
+		});
+
+		it('commit lỗi và cũng không kiểm lại được: giữ tệp (không xóa nhầm ảnh của tin có thể đã lưu), ném lỗi gốc', async () => {
+			const { service, storage, transactions, repository } = build();
+			transactions.run.mockImplementationOnce(
+				async (
+					fn: (client: Prisma.TransactionClient) => Promise<string>,
+				) => {
+					await fn(tx);
+					throw new Error('mất kết nối lúc COMMIT');
+				},
+			);
+			repository.findStatus.mockRejectedValueOnce(
+				new Error('database sập'),
+			);
+			await expect(
+				service.create(owner, PROPERTY_ID, createDto(), three, NOW),
+			).rejects.toThrow('mất kết nối lúc COMMIT');
+			expect(storage.delete).not.toHaveBeenCalled();
+		});
+
+		it('lỗi giao dịch TRƯỚC khi hàm gọi lại xong (chưa có id) thì không hỏi lại database, xóa tệp đã ghi', async () => {
+			const { service, storage, repository } = build();
+			storage.put.mockRejectedValueOnce(new Error('ổ đĩa đầy'));
+			await expect(
+				service.create(owner, PROPERTY_ID, createDto(), three, NOW),
+			).rejects.toThrow('ổ đĩa đầy');
+			expect(repository.findStatus).not.toHaveBeenCalled();
+			expect(storage.delete).toHaveBeenCalledTimes(3);
+		});
+
+		it('đọc lại tin lỗi SAU commit: không xóa ảnh của tin đã lưu', async () => {
+			const { service, storage, repository } = build();
+			repository.findOwnerDetail.mockRejectedValueOnce(
+				new Error('lỗi đọc'),
+			);
+			await expect(
+				service.create(owner, PROPERTY_ID, createDto(), three, NOW),
+			).rejects.toThrow('lỗi đọc');
+			expect(storage.delete).not.toHaveBeenCalled();
+			expect(repository.findStatus).not.toHaveBeenCalled();
+		});
+
+		it('lỗi xóa tệp khi dọn chỉ ghi log, không che lỗi gốc', async () => {
+			const { service, storage } = build();
+			storage.put.mockRejectedValueOnce(new Error('ổ đĩa đầy'));
+			storage.delete.mockRejectedValue(new Error('không xóa được'));
+			await expect(
+				service.create(owner, PROPERTY_ID, createDto(), three, NOW),
+			).rejects.toThrow('ổ đĩa đầy');
+			expect(storage.delete).toHaveBeenCalledTimes(3);
 		});
 	});
 });

@@ -67,6 +67,7 @@ Mỗi tài khoản chỉ thuộc **một** loại, chọn lúc đăng ký và **
 | Nhà trọ của chủ trọ (tạo, xem danh sách và chi tiết, sửa, xóa mềm) | Có (mới, 2026-10-16) |
 | Tin đăng: đăng, sửa, xóa, ẩn và hiện của chủ trọ; danh sách và chi tiết tin công khai (có lọc, số điện thoại cho người đăng nhập, đếm lượt xem) | Có (mới, 2026-10-16) |
 | Ảnh tin: tải lên (tối đa 5 ảnh mỗi tin), xóa ảnh, xem ảnh công khai | Có (mới, 2026-10-19, mục 6.28) |
+| Đăng tin kèm 1 đến 5 ảnh trong một lần gọi (`POST /properties/:propertyId/listings` nhận `multipart/form-data`) | Có (mới, 2026-11-02, mục 6.18). **ĐỔI KHÁC VỚI TRƯỚC**: đường JSON cũ đã bỏ |
 | Admin kiểm duyệt tin (ẩn, gỡ ẩn kèm lý do) và quản lý danh mục phường, tiện ích | Có (mới, 2026-10-20, mục 6.29 và 6.30) |
 | Tham số hệ thống: admin xem và đổi số ngày dùng thử, số tin dùng thử | Có (mục 6.24). Đã áp vào đăng ký (số ngày) và vào đăng, hiện tin (số tin) từ 2026-10-19 |
 | Kỳ dùng thử lúc đăng ký; chặn đăng và hiện tin khi hết dùng thử hoặc đủ hạn mức | Có (mới, 2026-10-19, mục 6.1, 6.18, 6.23) |
@@ -92,14 +93,14 @@ Mỗi tài khoản chỉ thuộc **một** loại, chọn lúc đăng ký và **
 | Mục | Quy ước |
 |---|---|
 | Địa chỉ gốc | `http://localhost:3000/api/v1` (dev). Mọi đường dẫn trong file này nằm dưới `/api/v1` |
-| Định dạng | Gửi và nhận JSON, UTF-8. Header `Content-Type: application/json` khi có body |
+| Định dạng | Gửi và nhận JSON, UTF-8. Header `Content-Type: application/json` khi có body. **Hai API nhận `multipart/form-data` thay vì JSON**: đăng tin (6.18, từ 2026-11-02) và tải ảnh lẻ (6.28). Với hai API đó **đừng tự đặt `Content-Type`**, trình duyệt tự thêm ranh giới (boundary) |
 | Xác thực | Header `Authorization: Bearer <accessToken>` cho API cần đăng nhập |
 | Cookie | Gọi từ trình duyệt phải bật gửi cookie: `fetch(..., { credentials: 'include' })` hoặc `withCredentials: true` |
 | CORS | Chỉ origin của FE nằm trong `ALLOWED_ORIGINS` của backend được gọi. Cho backend biết origin FE của bạn |
 | Host | Dùng `localhost` ở **cả FE lẫn API**. Đừng trộn `127.0.0.1`, cookie đăng nhập sẽ không đi |
 | Id | UUID (chuỗi), ví dụ `0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8d9e` |
 | Thời gian | ISO 8601 (UTC) khi API trả thời gian |
-| Kích thước body | Tối đa 100 KB, quá thì 413 `PAYLOAD_TOO_LARGE`. Riêng API tải ảnh (6.28) nhận tệp đến dung lượng tối đa của một ảnh |
+| Kích thước body | Tối đa 100 KB, quá thì 413 `PAYLOAD_TOO_LARGE`. Riêng hai API nhận tệp (đăng tin ở 6.18 và tải ảnh ở 6.28) giới hạn **theo từng ảnh**: mỗi ảnh tối đa `MAX_UPLOAD_BYTES` (mặc định 5 MiB), quá thì 413. Một lần đăng tin gửi tối đa 5 ảnh nên cả yêu cầu có thể đến 25 MiB |
 | Trường lạ | Gửi trường không có trong mô tả bị từ chối 400 `VALIDATION_FAILED` (không âm thầm bỏ qua) |
 | Ngôn ngữ | Mọi `message` trả về là tiếng Việt, hiển thị thẳng cho người dùng được. `code` là hằng số tiếng Anh, FE dùng `code` để rẽ nhánh, không so chuỗi `message` |
 | Truy vết | Mỗi response có header `X-Request-Id` (trùng `requestId` trong body lỗi). Gửi kèm khi báo lỗi cho backend. **Trình duyệt chỉ cho JS đọc header này khi FE và API cùng origin** (xem dòng "Header đọc được" ngay dưới); khác origin thì lấy `requestId` trong body lỗi. FE có thể tự gửi header `X-Request-Id` (1 đến 64 ký tự chữ, số, `_`, `-`) và backend dùng lại giá trị đó, tiện để nối log FE với log backend |
@@ -205,8 +206,8 @@ Lưu ý: **một trường có thể xuất hiện nhiều lần** trong `errors
 |---|---|---|---|
 | `VALIDATION_FAILED` | 400 | Dữ liệu gửi lên sai (xem `errors`) | Hiện lỗi dưới từng ô theo `errors[].field` |
 | `INVALID_ID` | 400 | Id trên đường dẫn không phải UUID | Lỗi lập trình, kiểm lại id |
-| `BAD_REQUEST` | 400 | Yêu cầu hỏng khác (ví dụ JSON sai cú pháp) | Hiện `message` |
-| `PAYLOAD_TOO_LARGE` | 413 | Body JSON quá 100 KB, hoặc ảnh tải lên quá dung lượng tối đa của một ảnh (6.28) | Hiện `message`; với ảnh thì gợi ý chọn ảnh nhỏ hơn |
+| `BAD_REQUEST` | 400 | Yêu cầu hỏng khác (ví dụ JSON sai cú pháp; form `multipart` bị cắt hoặc thiếu ranh giới; gửi **hơn 5 tệp** ở đăng tin hoặc tải ảnh) | Hiện `message` |
+| `PAYLOAD_TOO_LARGE` | 413 | Body JSON quá 100 KB, hoặc **một** ảnh (ở đăng tin 6.18 hay tải ảnh 6.28) quá dung lượng tối đa của một ảnh | Hiện `message`; với ảnh thì gợi ý chọn ảnh nhỏ hơn. Ở đăng tin thì chưa có tin nào được tạo |
 | `TOKEN_MISSING` | 401 | Thiếu access token | Coi như chưa đăng nhập, chuyển trang đăng nhập |
 | `TOKEN_INVALID` | 401 | Access token sai, hỏng, hoặc tài khoản đã bị xóa | Xóa token, chuyển trang đăng nhập |
 | `TOKEN_EXPIRED` | 401 | Access token hết hạn (sau 15 phút) | Gọi `POST /auth/refresh` rồi thử lại request (mục 4) |
@@ -240,7 +241,7 @@ Lưu ý: **một trường có thể xuất hiện nhiều lần** trong `errors
 | `LISTING_STATE_INVALID` | 409 | Chuyển trạng thái tin không hợp lệ (ẩn tin không đang hiện, hiện tin đã hiện, ẩn tin đang bị admin ẩn); ở API kiểm duyệt của admin (6.29) là ẩn tin đã bị admin ẩn hoặc gỡ ẩn tin không bị admin ẩn | Tải lại tin (`GET /me/listings/:id`) rồi cập nhật nút |
 | `LISTING_HIDDEN_BY_ADMIN` | 403 | Chủ trọ cố hiện lại tin đang bị admin ẩn | Hiện nhãn "bị quản trị viên ẩn" kèm `moderationReason`, ẩn nút "Hiện" |
 | `LISTING_IMAGE_LIMIT` | 409 | Tải ảnh lên tin đã đủ 5 ảnh | Tắt nút tải khi `images` đã đủ 5 ảnh; báo "hãy xóa bớt một ảnh trước" |
-| `IMAGE_INVALID` | 400 | Tải ảnh mà thiếu tệp, tệp không phải JPEG, PNG hoặc WebP (kiểm bằng nội dung tệp, không theo đuôi tên), sai tên trường (phải là `file`), hoặc gửi nhiều hơn một tệp | Hiện `message`, nhắc chọn đúng một ảnh JPEG, PNG hoặc WebP |
+| `IMAGE_INVALID` | 400 | Ảnh không hợp lệ. **Đăng tin (6.18, từ 2026-11-02)**: thiếu ảnh (`errors` có một dòng `field: "images"`, `code: "imagesRequired"`), hoặc có tệp sai loại (không phải JPEG, PNG, WebP; kiểm bằng nội dung tệp, không theo đuôi tên: `code: "notImage"`) hay sai tên trường (phải đúng `images`: `code: "wrongField"`). `errors` liệt kê **mọi** ảnh sai, mỗi dòng `field: "images.N"` với N là thứ tự tệp trong form, **đếm từ 0**. Yêu cầu JSON (không có tệp) cũng nhận mã này. **Tải ảnh lẻ (6.28)**: thiếu tệp, sai tên trường (phải là `file`), gửi nhiều hơn một tệp hoặc sai loại (không có `errors`) | Hiện `message`; ở đăng tin dùng `errors[].field` (`images.N`) để đánh dấu đúng ảnh sai, nhắc chọn ảnh JPEG, PNG hoặc WebP |
 | `MEMBERSHIP_REQUIRED` | 403 | Đăng tin hoặc hiện lại tin khi **kỳ dùng thử đã hết và không có gói đang chạy** (cả tài khoản admin, vì admin không có kỳ dùng thử). Chỉ hai API đăng và hiện tin trả mã này. Mua gói xong là hết mã này | Hiện `message` kèm nút "Mua gói" dẫn tới trang bảng giá (mục 7). Vẫn cho ẩn, sửa, xóa tin và quản lý nhà trọ |
 | `LISTING_QUOTA_REACHED` | 403 | Đăng tin hoặc hiện lại tin khi **còn hạn mức (gói đang chạy hoặc kỳ dùng thử) nhưng số tin đang hiện đã bằng hoặc vượt hạn mức đó** | Hiện `message`, gợi ý "ẩn hoặc xóa bớt một tin" (hoặc mua gói lớn hơn). FE biết hạn mức trước qua `GET /me/membership` (6.25) |
 | `PLAN_NOT_FOUND` | 404 | Admin sửa hoặc xóa gói không có, hoặc chủ trọ đặt đơn với gói không có | Hiện `message`, tải lại danh sách gói |
@@ -798,16 +799,37 @@ Body có các trường như lúc tạo, **mọi trường đều tùy chọn**,
 
 Chủ trọ đăng một tin phòng vào **nhà trọ của chính mình** (`:propertyId`, xem 6.17). **Tin hiện ngay khi đăng**: không có bản nháp, không có bước duyệt.
 
+> **ĐỔI KHÁC VỚI TRƯỚC (2026-11-02).** API này giờ **chỉ nhận `multipart/form-data`**: các trường chữ của tin cộng **từ 1 đến 5 ảnh** ở trường `images` (lặp lại), tất cả trong **một lần gọi**. Tin, các dòng ảnh và các tệp ảnh được lưu cùng lúc hoặc không gì cả: một ảnh sai thì không có tin nào được tạo. **Đường JSON cũ đã bỏ**: gửi JSON nhận 400 `IMAGE_INVALID` (thiếu ảnh). FE, script và bộ Postman gọi bằng JSON phải đổi sang `FormData`. Tin cũ đăng trước đó (có thể chưa có ảnh) giữ nguyên.
+
 | Trường | Kiểu | Bắt buộc | Luật |
 |---|---|---|---|
 | `title` | chuỗi | có | 5 đến 120 ký tự (đã cắt khoảng trắng đầu cuối) |
 | `description` | chuỗi | có | 10 đến 5000 ký tự. Văn bản thuần, FE tự thoát khi hiển thị |
 | `price` | số nguyên | có | Giá thuê mỗi tháng, đồng, từ 100.000 đến 100.000.000 |
 | `areaM2` | số | có | Diện tích, từ 1 đến 1000, **tối đa một chữ số thập phân** (`22.5` được, `22.55` bị 400) |
-| `deposit` | số nguyên | không | Tiền cọc, đồng, từ 0 đến 1.000.000.000. `null` coi như không gửi |
-| `availableFrom` | chuỗi | không | Ngày vào ở, đúng dạng `YYYY-MM-DD` và là ngày có thật (`2026-02-30` bị 400). Ngày đã qua vẫn được. `null` coi như không gửi |
+| `deposit` | số nguyên | không | Tiền cọc, đồng, từ 0 đến 1.000.000.000. Không có thì **bỏ hẳn trường khỏi form** (chuỗi rỗng là 400) |
+| `availableFrom` | chuỗi | không | Ngày vào ở, đúng dạng `YYYY-MM-DD` và là ngày có thật (`2026-02-30` bị 400). Ngày đã qua vẫn được. Không có thì **bỏ hẳn trường khỏi form** (chuỗi rỗng là 400) |
+| `images` | tệp ảnh, **lặp lại** | có | Từ **1 đến 5** tệp, tên trường đúng là `images` (`images[]`, `image`, `file` đều là sai tên). JPEG, PNG hoặc WebP, nhận ra bằng **nội dung tệp** (đuôi tên và `Content-Type` do trình duyệt gửi không được tin). Mỗi ảnh tối đa `MAX_UPLOAD_BYTES` byte (mặc định 5 MiB). **Ảnh đầu tiên là ảnh bìa**; `position` 0, 1, 2… theo đúng thứ tự `append` |
 
 Không gửi `status`, `code`, `propertyId`, `viewCount` (bị 400 vì trường lạ): trạng thái luôn là `visible`, mã ngắn do backend sinh, nhà trọ lấy từ đường dẫn.
+
+**Cách gửi trường trong form.** Mọi trường chữ đến backend dưới dạng chuỗi, nên số được đọc từ chuỗi: chỉ **chuỗi số thập phân thường** (chữ số, có thể một dấu chấm) được nhận. `1e5`, `0x10`, chuỗi có khoảng trắng và chuỗi rỗng là 400 `VALIDATION_FAILED` (chuỗi rỗng không bao giờ thành 0). `100000.0`, `0100000` và `20.50` được nhận vì giá trị sau khi đổi vẫn hợp lệ. Trường lạ, hoặc một trường gửi hai lần, cũng là 400. `title` và `description` vẫn được cắt khoảng trắng hai đầu.
+
+```js
+const form = new FormData();
+form.append('title', title);
+form.append('description', description);
+form.append('price', String(price));
+form.append('areaM2', String(areaM2));
+if (deposit !== null) form.append('deposit', String(deposit)); // để trống thì đừng append
+if (availableFrom) form.append('availableFrom', availableFrom); // "YYYY-MM-DD"
+for (const file of files) form.append('images', file); // ảnh đầu là ảnh bìa, tối đa 5
+const res = await fetch(`${API}/properties/${propertyId}/listings`, {
+  method: 'POST',
+  headers: { Authorization: `Bearer ${accessToken}` }, // KHÔNG tự đặt Content-Type
+  body: form,
+});
+```
 
 **201 Created**: **Tin của chủ trọ**, hình dạng dùng chung cho mọi API ghi tin và cho `GET /me/listings/:id`:
 
@@ -822,8 +844,10 @@ Không gửi `status`, `code`, `propertyId`, `viewCount` (bị 400 vì trường
   "areaM2": 22.5,
   "deposit": 3500000,
   "availableFrom": "2026-11-01",
-  "coverImageUrl": null,
-  "images": [],
+  "coverImageUrl": "/api/v1/media/public/3f1c2a9e-7b4d-4e0a-9c15-8d6e2b7a1f40.png",
+  "images": [
+    { "id": "0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8d04", "position": 0, "url": "/api/v1/media/public/3f1c2a9e-7b4d-4e0a-9c15-8d6e2b7a1f40.png" }
+  ],
   "ward": { "code": "26743", "name": "Phường Bến Thành" },
   "addressText": "12 Lê Lợi",
   "fullAddress": "12 Lê Lợi, Phường Bến Thành, Thành phố Hồ Chí Minh",
@@ -850,13 +874,15 @@ Cần nhớ:
 - `code` là mã ngắn 8 ký tự (chữ thường và số, bỏ các chữ dễ nhầm). **Đường dẫn công khai của tin là `<slug>-<code>`** (ví dụ `phong-dep-co-gac-gan-cho-ben-thanh-k7m2xq9p`). Chỉ phần `code` ở cuối được dùng để tra, nên đổi tiêu đề (slug đổi) thì link cũ vẫn mở được.
 - `status` là một trong `visible` (đang hiện), `hidden_by_owner` (chủ trọ tự ẩn), `hidden_by_admin` (admin ẩn). `moderationReason` có giá trị khi `status` là `hidden_by_admin` (lý do admin ghi), ngược lại `null`.
 - **`isPublic`** (từ 2026-10-19) cho biết tin có đang hiện với khách hay không: `true` khi `status` là `visible` **và** tin nằm trong hạn mức hiện hành của chủ trọ (nằm trong N tin `visible` đăng sớm nhất, N là hạn mức, xem 6.19 và 6.25). Tin `visible` mà `isPublic` là `false` là tin đang bị ẩn bớt khỏi công khai vì vượt hạn mức, hoặc vì hết dùng thử mà không có gói đang chạy: nó vẫn `visible` và vẫn tính vào số tin đang hiện. Tin `hidden_by_owner` và `hidden_by_admin` luôn có `isPublic` `false`. Trường này có ở **mọi** phản hồi tin của chủ trọ (`POST` đăng, `PATCH`, `hide`, `show`, `GET /me/listings` và `GET /me/listings/:id`) và **không có** ở API công khai.
-- `coverImageUrl` là ảnh bìa và `images[]` là các ảnh theo thứ tự `position`; tin chưa có ảnh thì `coverImageUrl` là `null` và `images` là `[]` (tải ảnh ở 6.28). `url` là đường dẫn tương đối `/api/v1/media/public/<uuid>.<đuôi>`, FE tự nối với địa chỉ API.
+- **Tin vừa đăng luôn có từ 1 đến 5 ảnh** (từ 2026-11-02): `images[]` theo `position` 0, 1, 2… đúng thứ tự tệp trong form, `coverImageUrl` là `url` của ảnh đầu. Tin cũ đăng trước đó có thể chưa có ảnh (`coverImageUrl` là `null`, `images` là `[]`); thêm ảnh cho tin đã đăng bằng `POST /listings/:id/images` (6.28). `url` là đường dẫn tương đối `/api/v1/media/public/<uuid>.<đuôi>`, FE tự nối với địa chỉ API.
 - `deposit` và `availableFrom` là `null` khi không có. `availableFrom` luôn là chuỗi `YYYY-MM-DD`.
 - `fullAddress` do backend ghép sẵn (xem 6.17), FE hiển thị thẳng.
 - **Hạn mức tin (từ 2026-10-19).** Đăng tin là thêm một tin đang hiện, nên chủ trọ phải còn hạn mức (có gói đang chạy hoặc còn trong kỳ dùng thử) và còn chỗ. Hạn mức là số tin của **gói đang chạy** nếu có (thay hạn mức dùng thử, kể cả khi nhỏ hơn), không thì `trial_listing_limit` khi còn dùng thử. Chỉ tin `visible` chưa xóa mới tính vào số tin đang hiện. Có hạn mức mà số tin đang hiện đã **bằng hoặc vượt** nó thì 403 `LISTING_QUOTA_REACHED`; hết dùng thử và không có gói đang chạy thì 403 `MEMBERSHIP_REQUIRED` (mua gói xong hết mã này). Ẩn hoặc xóa một tin trả lại một chỗ, đăng thêm được ngay. Hai yêu cầu đăng cùng lúc khi chỉ còn một chỗ thì đúng một yêu cầu thành công.
-- Thứ tự báo lỗi: 404 `PROPERTY_NOT_FOUND` và 403 `NOT_RESOURCE_OWNER` luôn đến **trước** hai lỗi hạn mức; lỗi dữ liệu 400 `VALIDATION_FAILED` đến trước tất cả.
+- **Thứ tự báo lỗi**: 401, 403 `PERMISSION_DENIED`, 429 `RATE_LIMITED` (ba lỗi này đến **trước khi backend đọc ảnh**) → 413 `PAYLOAD_TOO_LARGE` hoặc 400 `BAD_REQUEST` (một ảnh quá dung lượng, hơn 5 tệp, form hỏng) → 400 `INVALID_ID` → 400 `VALIDATION_FAILED` (trường chữ, số) → 400 `IMAGE_INVALID` (hình dạng ảnh, chưa chạm database) → 404 `PROPERTY_NOT_FOUND` → 403 `NOT_RESOURCE_OWNER` → 403 `MEMBERSHIP_REQUIRED` → 403 `LISTING_QUOTA_REACHED`. Nghĩa là ảnh sai được báo trước cả lỗi nhà trọ của người khác, và hai lỗi hạn mức vẫn đến sau lỗi nhà trọ. **Lỗi ở bất kỳ bước nào thì không có tin, dòng ảnh hay tệp ảnh nào được lưu.**
+- **Một ảnh sai thì cả bài chưa được đăng**: dùng `errors[].field` (`images.N`, N đếm từ 0 theo thứ tự `append`) để đánh dấu đúng ảnh sai trên giao diện, người dùng sửa rồi gửi lại **cả form** (gồm các ảnh).
+- **Không có khóa chống trùng**: bấm đúp nút Đăng có thể tạo hai tin. FE khóa nút trong lúc gửi, như mọi thao tác tạo mới. Hiếm: nếu backend lỗi lúc đọc lại tin sau khi đã lưu thì FE nhận 500 dù tin đã có; vào `GET /me/listings` kiểm tra trước khi gửi lại.
 
-**Lỗi**: 400 `VALIDATION_FAILED` · 404 `PROPERTY_NOT_FOUND` · 403 `NOT_RESOURCE_OWNER` (nhà trọ của người khác) · 403 `MEMBERSHIP_REQUIRED` (hết dùng thử, không có gói) · 403 `LISTING_QUOTA_REACHED` (đủ hạn mức) · 403 `PERMISSION_DENIED` · 400 `INVALID_ID` · 429 `RATE_LIMITED` (quá 60 lần mỗi giờ). Lỗi thì không có tin nào được tạo.
+**Lỗi**: 400 `VALIDATION_FAILED` · 400 `IMAGE_INVALID` (thiếu ảnh, sai loại, sai tên trường; `errors[].field` là `images` hoặc `images.N`) · 400 `BAD_REQUEST` (hơn 5 tệp, hoặc form hỏng) · 413 `PAYLOAD_TOO_LARGE` (một ảnh quá `MAX_UPLOAD_BYTES`) · 404 `PROPERTY_NOT_FOUND` · 403 `NOT_RESOURCE_OWNER` (nhà trọ của người khác) · 403 `MEMBERSHIP_REQUIRED` (hết dùng thử, không có gói) · 403 `LISTING_QUOTA_REACHED` (đủ hạn mức) · 403 `PERMISSION_DENIED` · 400 `INVALID_ID` · 429 `RATE_LIMITED` (quá 60 lần mỗi giờ). Lỗi thì không có tin nào được tạo và không tệp ảnh nào được giữ lại.
 
 ### 6.19 Danh sách tin công khai
 
@@ -918,7 +944,7 @@ Cần nhớ:
 **200 OK**: tin tóm tắt (6.19, nhưng `landlord` đổi thành `{ id, name, phone }`) cộng:
 - `description`: mô tả đầy đủ.
 - `viewCount`: số lượt xem (đã gồm lượt vừa tính nếu có).
-- `images`: `[ { "id", "position", "url" } ]` theo `position` tăng dần (ảnh bìa là `position` nhỏ nhất). Tin chưa có ảnh thì là `[]` (tải ảnh ở 6.28).
+- `images`: `[ { "id", "position", "url" } ]` theo `position` tăng dần (ảnh bìa là `position` nhỏ nhất). Tin cũ đăng trước 2026-11-02 có thể chưa có ảnh thì là `[]` (thêm ảnh ở 6.28); tin đăng từ 2026-11-02 luôn có ít nhất một ảnh.
 - `property`: `{ id, name, addressText, fullAddress, ward { code, name, provinceCode, provinceName }, latitude, longitude, fees[], amenities[] }` (như 6.17: `fees` theo thứ tự cố định, `amenities` theo tên tiếng Việt).
 - `isFavorite`: `null` với khách, token sai hoặc token hết hạn; `true` hoặc `false` với người đã đăng nhập (chủ trọ và admin nhận `false`). Cùng luật với danh sách (6.19), đọc bằng một truy vấn theo khóa chính. Chi tiết tin trong `/me/listings/:id` (6.21) **không có** trường này.
 
@@ -1229,7 +1255,7 @@ Cần nhớ:
 
 ### 6.28 Ảnh của tin
 
-Chủ trọ tải ảnh lên từng tin, **tối đa 5 ảnh mỗi tin**. Ảnh có `position` nhỏ nhất là **ảnh bìa** (`coverImageUrl` ở danh sách). Ảnh được phục vụ công khai ở một đường dẫn riêng. Ảnh không được nén hay đổi kích thước (mục 9).
+Chủ trọ tải ảnh lên từng tin, **tối đa 5 ảnh mỗi tin**. Từ 2026-11-02 ảnh đầu tiên gửi **cùng lúc đăng tin** (6.18); API này dùng để **thêm ảnh sau** cho tin đã đăng, kể cả tin cũ chưa có ảnh. Ảnh có `position` nhỏ nhất là **ảnh bìa** (`coverImageUrl` ở danh sách). Ảnh được phục vụ công khai ở một đường dẫn riêng. Ảnh không được nén hay đổi kích thước (mục 9).
 
 `POST /listings/:id/images` · quyền `listing:update` (chỉ chủ tin) · gửi **`multipart/form-data`**
 
@@ -1268,7 +1294,7 @@ const res = await fetch(`${API}/listings/${listingId}/images`, {
 Cần nhớ:
 - Tải ảnh được vào tin ở **mọi trạng thái**, kể cả tin đang ẩn và tin bị admin ẩn, và **không bị cửa hạn mức chặn** (như sửa tin), kể cả khi hết dùng thử.
 - Hai lần tải đồng thời khi tin chỉ còn một chỗ thì đúng một lần thành công, lần kia nhận 409 `LISTING_IMAGE_LIMIT`.
-- Gửi từ 2 đến 5 tệp trong một yêu cầu là 400 `IMAGE_INVALID`; gửi **hơn 5 tệp** bị chặn sớm hơn với 400 `BAD_REQUEST` chung. FE chỉ cần gửi từng ảnh một.
+- Gửi từ 2 đến 5 tệp trong một yêu cầu là 400 `IMAGE_INVALID`; gửi **hơn 5 tệp** bị chặn sớm hơn với 400 `BAD_REQUEST` chung; form hỏng (thân bị cắt, thiếu ranh giới) cũng là 400 `BAD_REQUEST`. FE chỉ cần gửi từng ảnh một (muốn gửi nhiều ảnh trong một lần thì dùng đăng tin, 6.18).
 - Không có API đổi thứ tự ảnh: muốn đổi ảnh bìa thì xóa ảnh bìa (ảnh kế tiếp thành bìa) hoặc xóa và tải lại.
 - Ảnh của tin bị ẩn nằm trong bộ nhớ đệm trình duyệt tối đa một ngày. Chủ trọ **không xem được ảnh của tin đang ẩn của chính mình** qua đường này (thẻ `<img>` không gửi token); hiện lại tin là thấy.
 - Xóa mềm tin giữ nguyên ảnh (ổ đĩa chỉ tăng). Ảnh được kiểm bằng nội dung tệp, tên tệp do backend đặt, không thể đi ra ngoài thư mục lưu ảnh.
@@ -1847,14 +1873,14 @@ Hai ô: mật khẩu hiện tại, mật khẩu mới. Gọi `POST /auth/change-
 
 0. **Dải trạng thái dùng thử** đầu trang quản lý tin: gọi `GET /me/membership` (6.25) và hiện "Còn N ngày dùng thử · đang hiện X trên Y tin". `state` là `plan` thì hiện "Gói <planName> đến hết ngày <endsAt> · đang hiện X trên Y tin" (thêm "đã trả đến <paidUntil>" khi `paidUntil` khác `endsAt`); `state` là `expired` thì đổi thành lời mời mua gói. `overLimitCount` lớn hơn 0 thì hiện cảnh báo có tin đang bị ẩn khỏi khách. Gọi lại sau mỗi lần đăng, ẩn, hiện, xóa.
 1. **Trang quản lý tin**: `GET /me/listings` (lọc theo `status` nếu muốn), mỗi dòng hiện ảnh bìa, tiêu đề, giá, `fullAddress`, `viewCount` và nhãn trạng thái. Với tin `visible` mà `isPublic` là `false`, thêm nhãn "Đang bị ẩn bớt vì vượt hạn mức" (hoặc "Hết dùng thử và chưa có gói"), đừng hiện như một tin đang chạy bình thường. Nút theo trạng thái: `visible` có "Ẩn"; `hidden_by_owner` có "Hiện"; `hidden_by_admin` **không có nút Hiện**, thay bằng nhãn "Bị quản trị viên ẩn" kèm `moderationReason`.
-2. **Đăng tin** từ trang một nhà trọ (hoặc chọn nhà trọ trước): biểu mẫu tiêu đề, mô tả, giá, diện tích, tiền cọc và ngày vào ở (không bắt buộc). Gọi `POST /properties/:propertyId/listings`. **Tin hiện ngay**, nên sau khi thành công có thể mở luôn trang công khai `/<slug>-<code>` cho chủ trọ xem. Chưa có nhà trọ thì dẫn đi tạo nhà trọ trước.
+2. **Đăng tin** từ trang một nhà trọ (hoặc chọn nhà trọ trước): biểu mẫu tiêu đề, mô tả, giá, diện tích, tiền cọc và ngày vào ở (không bắt buộc), **cộng ô chọn từ 1 đến 5 ảnh** (bắt buộc ít nhất 1; ảnh đầu là ảnh bìa, nên cho người dùng sắp thứ tự ảnh **trước khi gửi** vì chưa có API đổi thứ tự). Gọi `POST /properties/:propertyId/listings` bằng `FormData` (6.18), **khóa nút Đăng trong lúc gửi** (không có khóa chống trùng). Một ảnh sai thì cả bài chưa được đăng: dùng `errors[].field` (`images.N`) để đánh dấu đúng ảnh sai. **Tin hiện ngay**, nên sau khi thành công có thể mở luôn trang công khai `/<slug>-<code>` cho chủ trọ xem. Chưa có nhà trọ thì dẫn đi tạo nhà trọ trước.
 3. **Sửa tin**: mở biểu mẫu bằng `GET /me/listings/:id`, gửi `PATCH` các trường đã đổi (cho phép sửa cả khi tin đang ẩn, kể cả bị admin ẩn). Muốn bỏ tiền cọc hoặc ngày vào ở thì gửi `null`.
 4. **Xóa tin**: hỏi xác nhận, `DELETE`. Muốn xóa nhà trọ thì phải xóa hết tin của nó trước.
 5. Gặp 409 `LISTING_STATE_INVALID` hoặc 403 `LISTING_HIDDEN_BY_ADMIN` ở nút ẩn, hiện: tải lại tin để lấy trạng thái thật (có thể admin vừa ẩn).
 6. **Hạn mức** (đăng tin và nút "Hiện"): gặp 403 `LISTING_QUOTA_REACHED` thì báo "bạn đã dùng hết số tin được hiện, hãy ẩn hoặc xóa bớt một tin" và giữ nguyên biểu mẫu để người dùng không mất chữ đã nhập; gặp 403 `MEMBERSHIP_REQUIRED` thì báo kỳ dùng thử đã hết kèm nút "Mua gói" dẫn tới trang bảng giá (mục "Bảng giá gói" bên dưới); mua xong đăng được ngay. **Không** coi hai lỗi này là lỗi hệ thống, và **không** thử lại tự động. Khi hết dùng thử vẫn cho ẩn, sửa, xóa tin và quản lý nhà trọ bình thường.
 
 7. Tin `visible` vẫn có thể không hiện công khai: chủ trọ hết dùng thử và hết gói, hoặc tin đăng sau bị ẩn bớt vì vượt hạn mức (6.19). **Đừng suy ra từ `status` rằng tin đang hiện với khách; đọc `isPublic`** (6.18), có ở mọi phản hồi tin của chủ trọ.
-8. **Ảnh của tin** (trong biểu mẫu tin và trang quản lý tin): nút "Thêm ảnh" mở hộp chọn tệp (`accept="image/jpeg,image/png,image/webp"`), gửi **từng ảnh một** bằng `POST /listings/:id/images` (6.28), hiện ảnh từ `url` trả về. Lấy danh sách ảnh từ `images[]` của `GET /me/listings/:id`, mỗi ảnh có nút "Xóa" gọi `DELETE /listings/:id/images/:imageId`. Ẩn nút thêm khi đã đủ 5 ảnh, nhưng vẫn xử lý 409 `LISTING_IMAGE_LIMIT`, 400 `IMAGE_INVALID` và 413 `PAYLOAD_TOO_LARGE` bằng `message` của backend. Kiểm dung lượng ở FE trước khi gửi nếu muốn (mặc định 5 MiB).
+8. **Ảnh của tin**: các ảnh đầu gửi cùng lúc đăng tin (bước 2); bước này là **thêm ảnh sau** cho tin đã đăng (trong biểu mẫu sửa tin và trang quản lý tin): nút "Thêm ảnh" mở hộp chọn tệp (`accept="image/jpeg,image/png,image/webp"`), gửi **từng ảnh một** bằng `POST /listings/:id/images` (6.28), hiện ảnh từ `url` trả về. Lấy danh sách ảnh từ `images[]` của `GET /me/listings/:id`, mỗi ảnh có nút "Xóa" gọi `DELETE /listings/:id/images/:imageId`. Ẩn nút thêm khi đã đủ 5 ảnh, nhưng vẫn xử lý 409 `LISTING_IMAGE_LIMIT`, 400 `IMAGE_INVALID` và 413 `PAYLOAD_TOO_LARGE` bằng `message` của backend. Kiểm dung lượng ở FE trước khi gửi nếu muốn (mặc định 5 MiB).
 
 ### Tìm trọ (khách và người tìm trọ)
 
@@ -1913,7 +1939,7 @@ Một lượt kể chuyện cho buổi demo, theo đúng thứ tự folder **23 
 | Bước | Ai | Việc làm | API |
 |---|---|---|---|
 | 1 | Chủ trọ | Đăng ký (nhận kỳ dùng thử), xem hạn mức: 2 tin | `POST /auth/register`, `GET /me/membership` (6.1, 6.25) |
-| 2 | Chủ trọ | Tạo nhà trọ, đăng tin thứ nhất, tải ảnh, đăng tin thứ hai | `POST /properties`, `POST /properties/:propertyId/listings`, `POST /listings/:id/images` (6.17, 6.18, 6.28) |
+| 2 | Chủ trọ | Tạo nhà trọ, đăng tin thứ nhất kèm ảnh, tải thêm một ảnh, đăng tin thứ hai kèm ảnh | `POST /properties`, `POST /properties/:propertyId/listings`, `POST /listings/:id/images` (6.17, 6.18, 6.28) |
 | 3 | Chủ trọ | Đăng tin thứ ba bị chặn: hết hạn mức dùng thử | 403 `LISTING_QUOTA_REACHED` (6.18) |
 | 4 | Khách | Tìm tin, xem chi tiết (chưa thấy số điện thoại), xem ảnh | `GET /listings`, `GET /listings/:slugCode`, `GET /api/v1/media/public/<tệp>` (6.19, 6.20, 6.28) |
 | 5 | Người tìm trọ | Đăng ký, xem chi tiết (thấy số điện thoại), lưu tin, xem tin đã lưu, theo dõi chủ trọ | `GET /listings/:slugCode` kèm token, `POST /listings/:id/favorite`, `GET /me/favorites`, `POST /landlords/:id/follow` (6.20, 6.33, 6.32) |
@@ -2046,6 +2072,7 @@ Mẹo khi demo:
 - **Lịch sử kiểm duyệt chưa có API đọc.** Mỗi lần ẩn hoặc gỡ ẩn tin ghi một dòng vào bảng `moderation_logs`, nhưng ra ngoài chỉ có `moderationReason` (lý do ẩn gần nhất) trong API tin. Lý do gỡ ẩn và các lần ẩn cũ chỉ xem được trong cơ sở dữ liệu.
 - **Đổi tên phường dựng lại từ khóa từng tin một** trong một giao dịch, nên phường có hàng chục nghìn tin sẽ đổi tên chậm. Một tin đang được đăng đúng lúc phường đổi tên có thể mang tên phường cũ trong từ khóa tìm kiếm cho tới lần sửa tin kế tiếp (hiển thị `fullAddress` vẫn đúng vì ghép lúc đọc). Chấp nhận ở bản demo.
 - **Danh mục không có tìm kiếm hay phân trang** (`GET /wards` trả cả 168 đơn vị một lần, và admin quản lý trên cùng danh sách đó).
+- **Đăng tin kèm ảnh giữ cả 5 ảnh trong bộ nhớ** của backend trong lúc xử lý (mặc định đến 25 MiB mỗi yêu cầu), nên nhiều chủ trọ đăng cùng lúc tốn bộ nhớ theo đó. Tệp được ghi khi giao dịch còn mở và giữ khóa dòng chủ trọ cùng nhà trọ (giao dịch hết hạn sau 15 giây). Chưa có sửa tin kèm ảnh trong một lần (`PATCH` vẫn là JSON, ảnh sửa riêng ở 6.28), chưa có đổi thứ tự hay chọn ảnh bìa, và gửi lại sau lỗi phải gửi lại cả ảnh. Chấp nhận ở bản demo.
 - **Ảnh tin không được xử lý**: không nén, không đổi kích thước, giữ nguyên dữ liệu EXIF (có thể chứa vị trí GPS và kiểu máy ảnh), không có API đổi thứ tự ảnh. Nếu backend dừng đúng giữa lúc ghi tệp và ghi cơ sở dữ liệu thì có thể còn tệp ảnh mồ côi trên ổ đĩa, và xóa mềm tin cũng giữ ảnh nên ổ đĩa chỉ tăng. Chấp nhận ở bản demo.
 - **Chủ trọ không xem được ảnh của tin đang ẩn của chính mình** qua `/media/public` (đường đó chỉ phục vụ tin đang hiện công khai và thẻ ảnh không gửi token); hiện lại tin là thấy. Ảnh của tin vừa bị ẩn còn nằm trong bộ nhớ đệm trình duyệt tối đa một ngày.
 - **Tìm kiếm** chỉ khớp theo từng từ (không sửa lỗi chính tả, không tìm gần đúng). Từ ngắn dưới 3 ký tự vẫn tìm được nhưng chậm hơn khi có hàng chục nghìn tin.
@@ -2075,6 +2102,17 @@ Tính đến 2026-10-22 **không còn tính năng nào đã lên kế hoạch m�
 ## 11. Nhật ký thay đổi
 
 Mới nhất ở trên cùng. Mục nào **phá vỡ** cách FE đang gọi sẽ ghi rõ "ĐỔI KHÁC VỚI TRƯỚC".
+
+### 2026-11-02 · Đăng tin kèm ảnh trong một lần gọi (mốc 1 của đăng tin kèm ảnh)
+
+- **ĐỔI KHÁC VỚI TRƯỚC**: `POST /properties/:propertyId/listings` (mục 6.18) giờ **chỉ nhận `multipart/form-data`**: các trường chữ của tin cộng từ 1 đến 5 tệp ở trường `images`. Đường JSON cũ **đã bỏ**: gửi JSON nhận 400 `IMAGE_INVALID`. FE, script và bộ Postman gọi bằng JSON phải đổi sang `FormData` cùng đợt (ví dụ ở 6.18).
+- **Tất cả hoặc không gì cả**: tin, các dòng ảnh và các tệp ảnh được lưu cùng lúc; một ảnh sai, một trường sai, hết hạn mức hay lỗi ghi tệp thì không có tin, không dòng ảnh và không tệp ảnh nào được giữ lại.
+- **Phản hồi 201** vẫn là "Tin của chủ trọ" (hình dạng không đổi), nhưng giờ `images[]` có từ 1 đến 5 ảnh đúng thứ tự gửi và `coverImageUrl` là ảnh đầu (trước đây luôn `[]` và `null` lúc vừa đăng).
+- **`IMAGE_INVALID` có `errors`** ở đường này: `field` là `images` (thiếu ảnh) hoặc `images.N` (ảnh thứ N sai, đếm từ 0), `code` là `imagesRequired`, `wrongField` hoặc `notImage`. Hơn 5 tệp là 400 `BAD_REQUEST` chung; một ảnh quá dung lượng là 413 `PAYLOAD_TOO_LARGE`.
+- **Số trong form** đến dạng chuỗi và chỉ chuỗi số thập phân thường được nhận (`1e5`, `0x10`, khoảng trắng, chuỗi rỗng là 400 `VALIDATION_FAILED`); trường tùy chọn thì bỏ hẳn khỏi form.
+- **Thứ tự báo lỗi mới** ghi ở 6.18 (ảnh sai được báo trước lỗi nhà trọ của người khác). Quyền, hạn mức, giới hạn 60 lần mỗi giờ và việc tin hiện ngay **không đổi**.
+- **Không đổi**: `POST /listings/:id/images` (vẫn thêm được ảnh cho tin đã đăng, kể cả tin cũ chưa có ảnh), `PATCH /listings/:id` (JSON), ẩn, hiện, xóa tin, các `GET` và `/media/public/<tệp>`.
+- **Chưa làm (mốc 2)**: chặn xóa ảnh cuối cùng của một tin. Cho tới lúc đó `DELETE /listings/:id/images/:imageId` vẫn xóa được ảnh cuối.
 
 ### 2026-10-23 · Thêm bộ dữ liệu demo cho FE: `npm run seed:demo` (không đổi API)
 
@@ -2424,7 +2462,7 @@ Tổng cộng **69 API**. Mọi đường dẫn nằm dưới `/api/v1`. Quy ư�
 | `GET /properties/:id` | `property:read` | không | 200 | 6.17 |
 | `PATCH /properties/:id` | `property:update` | 30 mỗi giờ theo người | 200 | 6.17 |
 | `DELETE /properties/:id` | `property:delete` | 30 mỗi giờ theo người | 204 | 6.17 |
-| `POST /properties/:propertyId/listings` | `listing:create` | 60 mỗi giờ theo người | 201 | 6.18 |
+| `POST /properties/:propertyId/listings` (`multipart/form-data` kèm 1 đến 5 ảnh) | `listing:create` | 60 mỗi giờ theo người | 201 | 6.18 |
 | `GET /me/listings` | `listing:read` | không | 200 | 6.21 |
 | `GET /me/listings/:id` | `listing:read` | không | 200 | 6.21 |
 | `PATCH /listings/:id` | `listing:update` | 60 mỗi giờ theo người | 200 | 6.22 |
@@ -2710,10 +2748,11 @@ Dùng để dựng kiểm tra ở FE cho khớp backend, **nhằm báo lỗi s�
 |---|---|
 | `title` | 5 đến 120 ký tự |
 | `description` | 10 đến 5000 ký tự |
-| `price` | Số nguyên từ 100.000 đến 100.000.000 |
+| `price` | Số nguyên từ 100.000 đến 100.000.000. Trong form đăng tin (6.18) là chuỗi số thập phân thường (`1e5`, `0x10`, khoảng trắng, chuỗi rỗng bị từ chối) |
 | `areaM2` | Số từ 1 đến 1000, tối đa một chữ số thập phân |
 | `deposit` | Số nguyên từ 0 đến 1.000.000.000, hoặc `null` |
 | `availableFrom` | `YYYY-MM-DD` là ngày có thật (năm 1000 đến 9999; ngày đã qua vẫn được), hoặc `null` |
+| Ảnh khi đăng tin (`POST /properties/:propertyId/listings`) | `multipart/form-data`, từ 1 đến 5 tệp, tên trường đúng là `images` (lặp lại), JPEG/PNG/WebP (nhận bằng nội dung tệp), mỗi ảnh ≤ `MAX_UPLOAD_BYTES`; thiếu ảnh hoặc sai loại là 400 `IMAGE_INVALID`, hơn 5 tệp là 400 `BAD_REQUEST` |
 | Ảnh (`POST /listings/:id/images`) | `multipart/form-data`, đúng một tệp ở trường `file`, JPEG/PNG/WebP (nhận bằng nội dung tệp), ≤ `MAX_UPLOAD_BYTES` (mặc định 5 MiB, cấu hình 1 byte đến 10 MiB), tối đa 5 ảnh mỗi tin, tối đa 5 tệp mỗi yêu cầu |
 
 **Tìm kiếm và lọc**

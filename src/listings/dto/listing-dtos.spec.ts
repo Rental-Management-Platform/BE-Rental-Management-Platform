@@ -43,7 +43,7 @@ const base = {
 	areaM2: 22.5,
 };
 
-describe('CreateListingDto (spec 0002 AC-5)', () => {
+describe('CreateListingDto (spec 0002 AC-5, số JSON)', () => {
 	it('chấp nhận thân tối thiểu', async () => {
 		const { errors } = await validate(CreateListingDto, base);
 		expect(errors).toEqual([]);
@@ -83,7 +83,6 @@ describe('CreateListingDto (spec 0002 AC-5)', () => {
 		['giá dưới 100000', { ...base, price: 99_999 }, 'price'],
 		['giá trên 100 triệu', { ...base, price: 100_000_001 }, 'price'],
 		['giá thập phân', { ...base, price: 3_500_000.5 }, 'price'],
-		['giá là chuỗi', { ...base, price: '3500000' }, 'price'],
 		['thiếu giá', { ...base, price: undefined }, 'price'],
 		['diện tích dưới 1', { ...base, areaM2: 0.9 }, 'areaM2'],
 		['diện tích trên 1000', { ...base, areaM2: 1000.5 }, 'areaM2'],
@@ -92,7 +91,6 @@ describe('CreateListingDto (spec 0002 AC-5)', () => {
 			{ ...base, areaM2: 22.55 },
 			'areaM2',
 		],
-		['diện tích là chuỗi', { ...base, areaM2: '22' }, 'areaM2'],
 		['tiền cọc âm', { ...base, deposit: -1 }, 'deposit'],
 		['tiền cọc trên 1 tỷ', { ...base, deposit: 1_000_000_001 }, 'deposit'],
 		['tiền cọc thập phân', { ...base, deposit: 100.5 }, 'deposit'],
@@ -185,6 +183,130 @@ describe('CreateListingDto (spec 0002 AC-5)', () => {
 			availableFrom: 'mai',
 		});
 		for (const error of errors) expect(error.message).toMatch(/\P{ASCII}/u);
+	});
+});
+
+describe('CreateListingDto: số trong multipart đến dạng chuỗi (spec 0011 AC-4)', () => {
+	it('đổi chuỗi số thập phân thường thành số và giữ nguyên các luật biên', async () => {
+		const { errors, value } = await validate(CreateListingDto, {
+			...base,
+			price: '3500000',
+			areaM2: '22.5',
+			deposit: '2000000',
+			availableFrom: '2026-11-01',
+		});
+		expect(errors).toEqual([]);
+		expect(value).toMatchObject({
+			price: 3_500_000,
+			areaM2: 22.5,
+			deposit: 2_000_000,
+		});
+	});
+
+	it.each([
+		['giá 100000.0', { price: '100000.0' }],
+		['giá có số 0 đứng đầu 0100000', { price: '0100000' }],
+		['diện tích 20.50', { areaM2: '20.50' }],
+		['cọc 0', { deposit: '0' }],
+	])(
+		'chấp nhận %s vì giá trị sau khi đổi vẫn hợp lệ',
+		async (_name, overrides) => {
+			const { errors } = await validate(CreateListingDto, {
+				...base,
+				...overrides,
+			});
+			expect(errors).toEqual([]);
+		},
+	);
+
+	it.each([
+		['chữ', 'abc'],
+		['số mũ', '1e5'],
+		['thập lục phân', '0x10'],
+		['khoảng trắng đầu', ' 5'],
+		['khoảng trắng cuối', '5 '],
+		['rỗng (không bao giờ thành 0)', ''],
+		['âm', '-500000'],
+		['có dấu cộng', '+500000'],
+		['dấu phẩy thập phân', '3500000,5'],
+		['dấu chấm cuối', '3500000.'],
+		['dấu chấm đầu', '.5'],
+		['Infinity', 'Infinity'],
+		['chữ số khác ASCII', '٣٥٠٠٠٠٠'],
+	])('từ chối giá %s bằng 400 VALIDATION_FAILED', async (_name, price) => {
+		const { errors } = await validate(CreateListingDto, { ...base, price });
+		expect(fields(errors)).toEqual(['price']);
+	});
+
+	it.each([
+		['giá dưới 100000 dạng chuỗi', { price: '99999' }, 'price'],
+		['giá thập phân', { price: '3500000.5' }, 'price'],
+		['diện tích hai chữ số thập phân', { areaM2: '20.55' }, 'areaM2'],
+		['diện tích rỗng', { areaM2: '' }, 'areaM2'],
+		['diện tích dưới 1', { areaM2: '0.5' }, 'areaM2'],
+		[
+			'cọc rỗng (trường tùy chọn để trống vẫn là sai)',
+			{ deposit: '' },
+			'deposit',
+		],
+		['cọc số mũ', { deposit: '1e3' }, 'deposit'],
+		['cọc trên 1 tỷ', { deposit: '1000000001' }, 'deposit'],
+		['ngày vào ở rỗng', { availableFrom: '' }, 'availableFrom'],
+		['giá là null (JSON)', { price: null }, 'price'],
+	])('từ chối %s', async (_name, overrides, field) => {
+		const { errors } = await validate(CreateListingDto, {
+			...base,
+			...overrides,
+		});
+		expect(fields(errors)).toEqual([field]);
+	});
+
+	it.each([
+		[
+			'title gửi hai lần',
+			{ title: ['Phòng đẹp có gác', 'Phòng khác'] },
+			'title',
+		],
+		['price gửi hai lần', { price: ['3500000', '4000000'] }, 'price'],
+		['price[x]=1 thành đối tượng', { price: { x: '1' } }, 'price'],
+		['deposit gửi hai lần', { deposit: ['1', '2'] }, 'deposit'],
+	])('từ chối %s', async (_name, overrides, field) => {
+		const { errors } = await validate(CreateListingDto, {
+			...base,
+			...overrides,
+		});
+		expect(fields(errors)).toEqual([field]);
+	});
+
+	it('từ chối trường lạ, kể cả trường tên images (tệp nằm ngoài thân, không phải trường chữ)', async () => {
+		const { errors } = await validate(CreateListingDto, {
+			...base,
+			images: 'x',
+		});
+		expect(errors).toContainEqual(
+			expect.objectContaining({
+				field: 'images',
+				code: 'whitelistValidation',
+			}),
+		);
+	});
+
+	it('thân multipart của multer không có prototype vẫn qua được pipe', async () => {
+		const body = Object.assign(Object.create(null) as object, {
+			...base,
+			price: '3500000',
+			areaM2: '22.5',
+		});
+		const { errors, value } = await validate(CreateListingDto, body);
+		expect(errors).toEqual([]);
+		expect(value).toMatchObject({ price: 3_500_000, areaM2: 22.5 });
+	});
+
+	it('PATCH vẫn từ chối số dạng chuỗi (spec 0011 AC-9: chỉ đường đăng tin đổi)', async () => {
+		const { errors } = await validate(UpdateListingDto, {
+			price: '4000000',
+		});
+		expect(fields(errors)).toEqual(['price']);
 	});
 });
 

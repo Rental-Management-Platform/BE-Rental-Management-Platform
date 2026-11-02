@@ -11,6 +11,8 @@ import {
 	Post,
 	Query,
 	Req,
+	UploadedFiles,
+	UseInterceptors,
 } from '@nestjs/common';
 import type { Request } from 'express';
 import {
@@ -20,6 +22,8 @@ import {
 import { OptionalAuth } from '../common/auth/optional-auth.decorator';
 import { RequirePermissions } from '../common/auth/require-permissions.decorator';
 import { uuidParam } from '../common/errors/create-validation-pipe';
+import { RejectInvalidUuidParam } from '../common/errors/uuid-param.interceptor';
+import { MultipartFilesInterceptor } from '../common/files/multipart-files.interceptor';
 import type { RequestUser } from '../common/http/authenticated-request';
 import type { Page } from '../common/pagination/pagination';
 import { RateLimited } from '../common/rate-limit/rate-limited.decorator';
@@ -37,7 +41,12 @@ import {
 import { UpdateListingDto } from './dto/update-listing.dto';
 import { ListingsService } from './listings.service';
 
-/** Đăng tin vào nhà trọ của mình (spec 0002 AC-5). Tin hiện ngay, không nháp, không duyệt. */
+/**
+ * Đăng tin kèm ảnh vào nhà trọ của mình (spec 0002 AC-5, spec 0011). Chỉ nhận `multipart/form-data`: các trường chữ
+ * và từ 1 đến 5 tệp ở trường `images`. Tin hiện ngay, không nháp, không duyệt. Ba guard toàn cục (401, 403, 429)
+ * chạy trước multer; lỗi multer (413, 400) đến trước `INVALID_ID`, rồi `VALIDATION_FAILED`. Thứ tự hai lỗi sau do
+ * `RejectInvalidUuidParam` bảo đảm (có test), không phải do thứ tự tham số: Nest giải tham số song song.
+ */
 @Controller('properties/:propertyId/listings')
 export class PropertyListingsController {
 	constructor(private readonly listings: ListingsService) {}
@@ -45,12 +54,17 @@ export class PropertyListingsController {
 	@Post()
 	@RequirePermissions('listing:create')
 	@RateLimited('listingWrite')
+	@UseInterceptors(
+		MultipartFilesInterceptor,
+		RejectInvalidUuidParam('propertyId'),
+	)
 	create(
 		@CurrentUser() user: RequestUser,
 		@Param('propertyId', uuidParam()) propertyId: string,
 		@Body() dto: CreateListingDto,
+		@UploadedFiles() files: Express.Multer.File[] | undefined,
 	): Promise<OwnerListingDetailResponse> {
-		return this.listings.create(user, propertyId, dto, new Date());
+		return this.listings.create(user, propertyId, dto, files, new Date());
 	}
 }
 

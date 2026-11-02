@@ -143,7 +143,7 @@ uploads/                                   Ảnh tải lên (git bỏ qua)
    ```
 
    Lặp cờ `--folder "<tên folder>"` cho từng folder cần chạy. Bộ chạy tự động đầy đủ là các folder 00, 01, 03, 04, 05 rồi 07 đến 22, theo đúng thứ tự trong collection. Lưu ý khi chạy:
-   - `--working-dir docs/api` là bắt buộc vì folder "15 Ảnh tin" tải tệp mẫu `sample-listing.png` và `sample-not-image.txt` nằm cạnh collection.
+   - `--working-dir docs/api` là bắt buộc vì các folder đăng tin (09, 11, 14, 15, 16, 17, 19, 23) gửi tệp mẫu `sample-listing.png` và `sample-not-image.txt` nằm cạnh collection: từ spec 0011 đăng tin là `multipart/form-data` kèm ít nhất một ảnh.
    - Folder "02 Quên và đổi mật khẩu" cần liên kết thật trong email nên bỏ qua khi chạy tự động. Folder "06 Giới hạn tần suất", "23 Kịch bản demo" (một lượt đi qua mọi tính năng chính, dùng để demo) và "24 Lỗi đăng ký trùng" chạy riêng, không cần folder nào chạy trước; hai folder cuối tốn 2 và 6 lần đăng ký nên khởi động lại API trước khi chạy.
    - Bộ đếm giới hạn tần suất nằm trong bộ nhớ API (ví dụ đăng ký tối đa 10 lần mỗi giờ theo IP): chạy lại cả bộ liên tiếp thì **khởi động lại API trước mỗi lần**.
    - Mỗi lần chạy tạo thêm dữ liệu thử (tài khoản, gói, ảnh). Chạy trên database thử, không chạy trên database đang dùng (riêng folder 23 tạo dữ liệu demo nên chạy trên database dùng để demo được). Tạo database thử bằng `DATABASE_NAME=<tên khác> npm run db:create`, rồi `migration:deploy` và `seed` với cùng `DATABASE_NAME` đó.
@@ -151,7 +151,7 @@ uploads/                                   Ảnh tải lên (git bỏ qua)
 
 ## Ảnh tải lên
 
-Ảnh của tin lưu trên ổ đĩa trong `UPLOAD_DIR`, phục vụ công khai ở `GET /api/v1/media/public/<tên tệp>` và **chỉ cho ảnh của tin đang hiện công khai**. Chỉ nhận JPEG, PNG, WebP (kiểm bằng nội dung tệp), tối đa 5 ảnh mỗi tin và `MAX_UPLOAD_BYTES` mỗi ảnh. Ảnh không được nén hay xóa dữ liệu EXIF, và xóa mềm tin giữ nguyên ảnh nên thư mục chỉ lớn dần; không có API dọn tệp. Chạy nhiều bản API thì các bản phải dùng chung một thư mục ảnh.
+Ảnh của tin lưu trên ổ đĩa trong `UPLOAD_DIR`, phục vụ công khai ở `GET /api/v1/media/public/<tên tệp>` và **chỉ cho ảnh của tin đang hiện công khai**. Chỉ nhận JPEG, PNG, WebP (kiểm bằng nội dung tệp), tối đa 5 ảnh mỗi tin và `MAX_UPLOAD_BYTES` mỗi ảnh. Tin được đăng kèm 1 đến 5 ảnh trong **một lần gọi** (`POST /properties/:propertyId/listings`, `multipart/form-data`, trường `images`): tin, dòng ảnh và tệp được lưu cùng lúc hoặc không gì cả, và một lần đăng giữ cả 5 ảnh trong bộ nhớ (đến 25 MiB với mặc định). `POST /listings/:id/images` chỉ còn để thêm ảnh sau cho tin đã đăng. Ảnh không được nén hay xóa dữ liệu EXIF, và xóa mềm tin giữ nguyên ảnh nên thư mục chỉ lớn dần; không có API dọn tệp. Chạy nhiều bản API thì các bản phải dùng chung một thư mục ảnh.
 
 ## Giới hạn của bản demo
 

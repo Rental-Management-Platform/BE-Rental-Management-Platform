@@ -13,6 +13,7 @@ import { MembershipsService } from '../memberships/memberships.service';
 import { ModerationLogsRepository } from '../moderation/moderation-logs.repository';
 import { PropertiesRepository } from '../properties/properties.repository';
 import { SettingsService } from '../settings/settings.service';
+import { StorageService } from '../storage/storage.service';
 import { UsersService } from '../users/users.service';
 import type { CreateListingDto } from './dto/create-listing.dto';
 import type {
@@ -32,6 +33,8 @@ import {
 	LISTING_CODE_ATTEMPTS,
 	ListingCodeTakenError,
 } from './listing-code';
+import { ListingImagesRepository } from './listing-images.repository';
+import type { UploadedImage } from './listing-images.service';
 import {
 	toListingDetail,
 	toOwnerDetail,
@@ -44,6 +47,8 @@ import type {
 	OwnerDetailRow,
 	PublicVisibility,
 } from './listings.repository';
+import { prepareListingImages } from './new-listing-images';
+import type { NewListingImageFile } from './new-listing-images';
 import { toSearchWords } from './search-words';
 import { ViewDeduplicator } from './view-deduplicator';
 
@@ -51,6 +56,20 @@ import { ViewDeduplicator } from './view-deduplicator';
 export interface Viewer {
 	readonly userId?: string;
 	readonly ip: string;
+}
+
+/**
+ * Giao dịch đăng tin giữ khóa dòng `users` và `properties` trong lúc ghi tệp, nên nới thời hạn: mặc định 5 giây chạy
+ * và 2 giây chờ kết nối không đủ khi phải chờ khóa và ghi tối đa 5 tệp (spec 0011, "Cách chạy" 3).
+ */
+const CREATE_TRANSACTION = { timeout: 15_000, maxWait: 5_000 } as const;
+
+/** Trạng thái chia sẻ giữa vòng thử lại, hàm gọi lại của giao dịch và bước dọn tệp của một lần đăng (spec 0011). */
+interface CreateProgress {
+	/** Đặt ngay trước tệp đầu tiên; còn `false` thì chưa có tệp nào để dọn. */
+	startedWriting: boolean;
+	/** `id` tin mà hàm gọi lại đã trả về (mọi việc trong giao dịch xong, chỉ còn COMMIT); chưa có thì `undefined`. */
+	insertedId?: string;
 }
 
 /** `YYYY-MM-DD` đã qua DTO thành `Date` lúc nửa đêm UTC, đúng cột `date`; `null` hoặc vắng thì `null`. */
@@ -67,7 +86,8 @@ function toDateOnly(value: string | null | undefined): Date | null {
  * trạng thái là một câu `updateMany` có điều kiện trạng thái nguồn nên admin ẩn đua với chủ trọ thì admin thắng.
  *
  * Chỉ `create` và `show` (đưa tin về `visible`) có cửa hạn mức (spec 0003 AC-4 đến AC-7): khóa dòng `users` của
- * chủ trọ, kiểm hạn mức, rồi ghi, tất cả trong một giao dịch. `hide`, `update`, `remove` không bị chặn.
+ * chủ trọ, kiểm hạn mức, rồi ghi, tất cả trong một giao dịch. `hide`, `update`, `remove` không bị chặn. `create`
+ * ghi cả dòng ảnh và tệp ảnh trong giao dịch đó (spec 0011).
  */
 @Injectable()
 export class ListingsService {
@@ -83,49 +103,96 @@ export class ListingsService {
 		private readonly memberships: MembershipsService,
 		private readonly settings: SettingsService,
 		private readonly favorites: FavoritesRepository,
+		private readonly storage: StorageService,
+		private readonly imageRows: ListingImagesRepository,
 	) {}
 
 	// ----- đăng và sửa -----
 
 	/**
-	 * Đăng tin vào nhà trọ của mình: trạng thái `visible`, `view_count` 0, mã ngắn duy nhất. Không kiểm trùng mã
-	 * trước (vẫn đua giữa hai request): chèn thẳng, gặp trùng thì sinh mã mới và thử lại tối đa 5 lần. Vòng thử lại
-	 * bọc NGOÀI cả giao dịch vì giao dịch PostgreSQL đã lỗi thì bị hủy, không chèn tiếp được. `now` là đồng hồ
-	 * ứng dụng do controller lấy một lần mỗi request.
+	 * Đăng tin kèm 1 đến 5 ảnh trong một lần (spec 0011): trạng thái `visible`, `view_count` 0, mã ngắn duy nhất.
+	 * Kiểm hình dạng ảnh TRƯỚC khi chạm database (AC-5: `IMAGE_INVALID` đến trước 404 và 403), rồi tin, dòng ảnh và
+	 * tệp ghi trong một giao dịch, tất cả hoặc không gì cả. Không kiểm trùng mã trước (vẫn đua giữa hai request):
+	 * chèn thẳng, gặp trùng thì sinh mã mới và thử lại tối đa 5 lần. Vòng thử lại bọc NGOÀI cả giao dịch vì giao
+	 * dịch PostgreSQL đã lỗi thì bị hủy, không chèn tiếp được. Đọc lại tin để trả về nằm NGOÀI phạm vi dọn tệp: lỗi
+	 * đọc sau commit không được xóa ảnh của tin đã lưu. `now` là đồng hồ ứng dụng do controller lấy một lần mỗi request.
 	 */
 	async create(
 		user: RequestUser,
 		propertyId: string,
 		dto: CreateListingDto,
+		files: readonly UploadedImage[] | undefined,
 		now: Date,
 	): Promise<OwnerListingDetailResponse> {
-		let collision: unknown;
-		for (let attempt = 1; attempt <= LISTING_CODE_ATTEMPTS; attempt += 1) {
-			try {
-				const id = await this.insertOnce(user, propertyId, dto, now);
-				return await this.readOwner(id, now);
-			} catch (error: unknown) {
-				if (!(error instanceof ListingCodeTakenError)) throw error;
-				collision = error;
-			}
-		}
-		this.logger.error(
-			`Không sinh được mã tin duy nhất sau ${LISTING_CODE_ATTEMPTS} lần thử (nhà trọ ${propertyId}).`,
+		const images = prepareListingImages(files);
+		const id = await this.insertWithImages(
+			user,
+			propertyId,
+			dto,
+			images,
+			now,
 		);
-		throw new AppException(ErrorCode.INTERNAL_ERROR, [], {
-			cause: collision,
-		});
+		return this.readOwner(id, now);
+	}
+
+	/**
+	 * Vòng thử lại trùng mã, bọc trong dọn tệp (spec 0011, "Cách chạy" 3 và 4). Tệp chỉ được ghi sau khi mọi cửa
+	 * đã qua và tin đã chèn, nên lỗi từ chối, trùng mã và lỗi chèn xảy ra trước mọi lần ghi và không cần dọn. Lỗi
+	 * sau khi đã bắt đầu ghi, kể cả lúc COMMIT, thì xóa mọi tệp của lần đăng.
+	 */
+	private async insertWithImages(
+		user: RequestUser,
+		propertyId: string,
+		dto: CreateListingDto,
+		images: readonly NewListingImageFile[],
+		now: Date,
+	): Promise<string> {
+		const progress: CreateProgress = { startedWriting: false };
+		try {
+			let collision: unknown;
+			for (
+				let attempt = 1;
+				attempt <= LISTING_CODE_ATTEMPTS;
+				attempt += 1
+			) {
+				try {
+					return await this.insertOnce(
+						user,
+						propertyId,
+						dto,
+						images,
+						now,
+						progress,
+					);
+				} catch (error: unknown) {
+					if (!(error instanceof ListingCodeTakenError)) throw error;
+					collision = error;
+				}
+			}
+			this.logger.error(
+				`Không sinh được mã tin duy nhất sau ${LISTING_CODE_ATTEMPTS} lần thử (nhà trọ ${propertyId}).`,
+			);
+			throw new AppException(ErrorCode.INTERNAL_ERROR, [], {
+				cause: collision,
+			});
+		} catch (error: unknown) {
+			if (!progress.startedWriting) throw error;
+			return this.settleFailedCreate(images, progress, error);
+		}
 	}
 
 	/**
 	 * Thứ tự khóa của spec 0003: dòng `users` của người gọi trước, rồi dòng nhà trọ. Kiểm sở hữu nằm trước kiểm
-	 * hạn mức nên nhà trọ không có (404) hay của người khác (403) luôn được báo trước hai lỗi hạn mức (AC-4).
+	 * hạn mức nên nhà trọ không có (404) hay của người khác (403) luôn được báo trước hai lỗi hạn mức (AC-4). Tệp
+	 * ghi CUỐI CÙNG, sau khi tin và dòng ảnh đã chèn, nên yêu cầu bị từ chối không ghi tệp nào.
 	 */
 	private insertOnce(
 		user: RequestUser,
 		propertyId: string,
 		dto: CreateListingDto,
+		images: readonly NewListingImageFile[],
 		now: Date,
+		progress: CreateProgress,
 	): Promise<string> {
 		return this.transactions.run(async (tx) => {
 			await this.users.lockById(user.userId, tx);
@@ -139,7 +206,7 @@ export class ListingsService {
 				propertyId,
 				tx,
 			);
-			return this.repository.create(
+			const id = await this.repository.create(
 				{
 					propertyId,
 					code: generateListingCode(),
@@ -158,7 +225,69 @@ export class ListingsService {
 				},
 				tx,
 			);
-		});
+			await this.imageRows.createMany(id, images, tx);
+			await this.writeFiles(images, progress);
+			// Từ đây hàm gọi lại đã xong; nếu giao dịch vẫn ném lỗi thì đó là lỗi ở bước COMMIT.
+			progress.insertedId = id;
+			return id;
+		}, CREATE_TRANSACTION);
+	}
+
+	/**
+	 * Ghi từng tệp một theo thứ tự và chờ xong mới ghi tệp kế, không song song: khi một tệp lỗi và đến bước dọn thì
+	 * không còn tệp nào đang ghi dở rồi hoàn tất sau. Giao dịch hết hạn (15 giây) trong lúc ghi cũng vậy: Prisma
+	 * chờ hàm gọi lại chạy xong rồi mới báo lỗi lúc commit (đã kiểm thật), nên bước dọn luôn thấy đủ các tệp.
+	 */
+	private async writeFiles(
+		images: readonly NewListingImageFile[],
+		progress: CreateProgress,
+	): Promise<void> {
+		progress.startedWriting = true;
+		for (const image of images) {
+			await this.storage.put(image.storageKey, image.data);
+		}
+	}
+
+	/**
+	 * Lỗi sau khi đã bắt đầu ghi tệp. Ngoại lệ cho lỗi ở bước COMMIT (hàm gọi lại đã xong và trả `id`, nhưng
+	 * `$transaction` vẫn ném, ví dụ mất kết nối đúng lúc COMMIT): hỏi lại bằng một truy vấn mới ngoài giao dịch xem
+	 * tin có thật sự đã lưu; đã lưu thì giữ tin và tệp, coi như thành công. Mọi trường hợp khác xóa mọi tệp của lần
+	 * đăng rồi ném lại lỗi gốc. Hỏi lại cũng lỗi thì không biết tin đã lưu chưa: giữ tệp (tệp mồ côi vô hại, còn xóa
+	 * nhầm ảnh của tin đã lưu thì tin hiện ra với ảnh hỏng) và ghi log khóa các tệp để dọn tay.
+	 */
+	private async settleFailedCreate(
+		images: readonly NewListingImageFile[],
+		progress: CreateProgress,
+		error: unknown,
+	): Promise<string> {
+		const { insertedId } = progress;
+		if (insertedId !== undefined) {
+			let saved: boolean;
+			try {
+				saved = (await this.repository.findStatus(insertedId)) !== null;
+			} catch (checkError: unknown) {
+				this.logger.error(
+					`Lỗi lúc commit tin ${insertedId} và không kiểm lại được; giữ nguyên các tệp ${images.map((image) => image.storageKey).join(', ')}: ${checkError instanceof Error ? checkError.message : String(checkError)}`,
+				);
+				throw error;
+			}
+			if (saved) return insertedId;
+		}
+		await Promise.all(
+			images.map((image) => this.discardFile(image.storageKey)),
+		);
+		throw error;
+	}
+
+	/** Xóa tệp, nuốt lỗi và ghi log: không để lỗi dọn dẹp che mất kết quả thật của yêu cầu. */
+	private async discardFile(key: string): Promise<void> {
+		try {
+			await this.storage.delete(key);
+		} catch (error: unknown) {
+			this.logger.warn(
+				`Không xóa được tệp ảnh ${key}: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
 	}
 
 	/** Sửa tin của mình ở mọi trạng thái (kể cả `hidden_by_admin`); không đổi được nhà trọ, trạng thái hay mã. */

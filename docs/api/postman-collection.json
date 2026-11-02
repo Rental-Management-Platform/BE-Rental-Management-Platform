@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Rental Management Platform API",
-    "description": "Bộ request để thử API backend. Cập nhật cùng mỗi thay đổi API (xem docs/api/api-for-frontend.md, mục Nhật ký thay đổi).\n\nCách dùng:\n1. Import file này vào Postman.\n2. Mở tab Variables của collection, điền `adminEmail` và `adminPassword` theo ADMIN_SEED_* trong .env (không commit mật khẩu thật).\n3. Chạy API (`npm run start:dev`), rồi chạy lần lượt folder 00, 01, 02, 03, 04, 05, rồi 07 đến 22 (folder 15 cần thư mục làm việc `docs/api` vì có tải tệp mẫu). Folder 06 (giới hạn tần suất, lỗi 429), folder 23 (**kịch bản demo** đi qua mọi tính năng chính) và folder 24 (lỗi đăng ký trùng) chạy riêng, đừng chạy cả bộ nhiều lần liên tiếp: bộ đếm nằm trong bộ nhớ backend, muốn chạy lại ngay thì khởi động lại backend.\n4. Các request tự lưu token vào biến `userToken` và `adminToken`.\n\nCookie refresh (`rt`) có Path `/api/v1/auth`, Postman tự giữ và tự gửi cho các request dưới đường dẫn đó.",
+    "description": "Bộ request để thử API backend. Cập nhật cùng mỗi thay đổi API (xem docs/api/api-for-frontend.md, mục Nhật ký thay đổi).\n\nCách dùng:\n1. Import file này vào Postman.\n2. Mở tab Variables của collection, điền `adminEmail` và `adminPassword` theo ADMIN_SEED_* trong .env (không commit mật khẩu thật).\n3. Chạy API (`npm run start:dev`), rồi chạy lần lượt folder 00, 01, 02, 03, 04, 05, rồi 07 đến 22 (các folder có đăng tin hoặc tải ảnh, tức 09, 11, 14, 15, 16, 17, 19 và 23, cần thư mục làm việc `docs/api` vì gửi tệp mẫu `sample-listing.png`; từ spec 0011 đăng tin là `multipart/form-data` kèm 1 đến 5 ảnh ở trường `images`). Folder 06 (giới hạn tần suất, lỗi 429), folder 23 (**kịch bản demo** đi qua mọi tính năng chính) và folder 24 (lỗi đăng ký trùng) chạy riêng, đừng chạy cả bộ nhiều lần liên tiếp: bộ đếm nằm trong bộ nhớ backend, muốn chạy lại ngay thì khởi động lại backend.\n4. Các request tự lưu token vào biến `userToken` và `adminToken`.\n\nCookie refresh (`rt`) có Path `/api/v1/auth`, Postman tự giữ và tự gửi cho các request dưới đường dẫn đó.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -4421,10 +4421,12 @@
                   "    pm.expect(listing.fullAddress).to.eql(listing.addressText + ', ' + listing.ward.name + ', ' + listing.property.ward.provinceName);",
                   "    pm.expect(listing.fullAddress).to.not.match(/quận|huyện/i);",
                   "});",
-                  "pm.test('tin của chủ trọ không có landlord, chưa có ảnh', () => {",
+                  "pm.test('tin của chủ trọ không có landlord, có đúng một ảnh bìa (đăng kèm ảnh, spec 0011)', () => {",
                   "    pm.expect(listing).to.not.have.property('landlord');",
-                  "    pm.expect(listing.images).to.eql([]);",
-                  "    pm.expect(listing.coverImageUrl).to.eql(null);",
+                  "    pm.expect(listing.images).to.have.length(1);",
+                  "    pm.expect(listing.images[0].position).to.eql(0);",
+                  "    pm.expect(listing.images[0].url).to.match(/^\\/api\\/v1\\/media\\/public\\/[0-9a-f-]{36}\\.png$/);",
+                  "    pm.expect(listing.coverImageUrl).to.eql(listing.images[0].url);",
                   "});",
                   "pm.test('ngày vào ở trả YYYY-MM-DD', () => pm.expect(listing.availableFrom).to.eql('2026-11-01'));"
                 ]
@@ -4433,12 +4435,7 @@
           ],
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}/properties/{{listingPropertyId}}/listings",
               "host": [
@@ -4450,15 +4447,46 @@
                 "listings"
               ]
             },
-            "description": "Quyền `listing:create`, giới hạn 60 lần ghi mỗi giờ cho mỗi API. Chỉ đăng được vào nhà trọ của chính mình. **Tin hiện ngay**: `status` luôn là `visible`, `viewCount` 0, không có bản nháp hay bước duyệt. Không gửi `status`, `code`, `propertyId` (bị 400): trạng thái do hệ thống đặt, mã ngắn 8 ký tự do hệ thống sinh, nhà trọ lấy từ đường dẫn. `title` 5 đến 120 ký tự, `description` 10 đến 5000, `price` số nguyên 100.000 đến 100.000.000, `areaM2` từ 1 đến 1000 tối đa một chữ số thập phân; `deposit` (0 đến 1 tỷ) và `availableFrom` (`YYYY-MM-DD`) tùy chọn. Lỗi có thể gặp: 400 VALIDATION_FAILED, 404 PROPERTY_NOT_FOUND, 403 NOT_RESOURCE_OWNER, 403 PERMISSION_DENIED, 429 RATE_LIMITED.",
+            "description": "Quyền `listing:create`, giới hạn 60 lần ghi mỗi giờ cho mỗi API. Chỉ đăng được vào nhà trọ của chính mình. **Tin hiện ngay**: `status` luôn là `visible`, `viewCount` 0, không có bản nháp hay bước duyệt. Không gửi `status`, `code`, `propertyId` (bị 400): trạng thái do hệ thống đặt, mã ngắn 8 ký tự do hệ thống sinh, nhà trọ lấy từ đường dẫn. `title` 5 đến 120 ký tự, `description` 10 đến 5000, `price` số nguyên 100.000 đến 100.000.000, `areaM2` từ 1 đến 1000 tối đa một chữ số thập phân; `deposit` (0 đến 1 tỷ) và `availableFrom` (`YYYY-MM-DD`) tùy chọn. Lỗi có thể gặp: 400 VALIDATION_FAILED, 404 PROPERTY_NOT_FOUND, 403 NOT_RESOURCE_OWNER, 403 PERMISSION_DENIED, 429 RATE_LIMITED. **Từ spec 0011 đường này chỉ nhận `multipart/form-data`**: các trường chữ cộng từ 1 đến 5 tệp ở trường `images` (request này gửi `sample-listing.png`). Cần `--working-dir docs/api` trong Newman, hoặc đặt thư mục làm việc của Postman là `docs/api`.",
             "body": {
-              "mode": "raw",
-              "raw": "{\n  \"title\": \"Phòng đẹp có gác gần chợ Bến Thành\",\n  \"description\": \"Phòng sạch sẽ thoáng mát, có gác lửng, giờ giấc tự do, gần chợ và trạm xe buýt.\",\n  \"price\": 3500000,\n  \"areaM2\": 22.5,\n  \"deposit\": 3500000,\n  \"availableFrom\": \"2026-11-01\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "Phòng đẹp có gác gần chợ Bến Thành",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Phòng sạch sẽ thoáng mát, có gác lửng, giờ giấc tự do, gần chợ và trạm xe buýt.",
+                  "type": "text"
+                },
+                {
+                  "key": "price",
+                  "value": "3500000",
+                  "type": "text"
+                },
+                {
+                  "key": "areaM2",
+                  "value": "22.5",
+                  "type": "text"
+                },
+                {
+                  "key": "deposit",
+                  "value": "3500000",
+                  "type": "text"
+                },
+                {
+                  "key": "availableFrom",
+                  "value": "2026-11-01",
+                  "type": "text"
+                },
+                {
+                  "key": "images",
+                  "type": "file",
+                  "src": "sample-listing.png"
                 }
-              }
+              ]
             }
           }
         },
@@ -4587,7 +4615,7 @@
                   "pm.test('lượt xem đầu tiên của IP này được cộng: viewCount là 1', () => pm.expect(detail.viewCount).to.eql(1));",
                   "pm.test('có mô tả, ảnh, nhà trọ kèm phí và tiện ích', () => {",
                   "    pm.expect(detail.description).to.be.a(\"string\");",
-                  "    pm.expect(detail.images).to.eql([]);",
+                  "    pm.expect(detail.images).to.have.length(1);",
                   "    pm.expect(detail.property.fees.map((f) => f.kind)).to.eql(['electricity', 'water']);",
                   "    pm.expect(detail.property.amenities.map((a) => a.key)).to.eql(['loft', 'wifi']);",
                   "});",
@@ -4999,12 +5027,7 @@
           ],
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}/properties/{{listingPropertyId}}/listings",
               "host": [
@@ -5016,15 +5039,46 @@
                 "listings"
               ]
             },
-            "description": "Mong đợi 400 VALIDATION_FAILED, `errors` nêu trường `price`. Không có tin nào được tạo.",
+            "description": "Mong đợi 400 VALIDATION_FAILED, `errors` nêu trường `price`. Không có tin nào được tạo. **Từ spec 0011 đường này chỉ nhận `multipart/form-data`**: các trường chữ cộng từ 1 đến 5 tệp ở trường `images` (request này gửi `sample-listing.png`). Cần `--working-dir docs/api` trong Newman, hoặc đặt thư mục làm việc của Postman là `docs/api`.",
             "body": {
-              "mode": "raw",
-              "raw": "{\n  \"title\": \"Phòng đẹp có gác gần chợ Bến Thành\",\n  \"description\": \"Phòng sạch sẽ thoáng mát, có gác lửng, giờ giấc tự do, gần chợ và trạm xe buýt.\",\n  \"price\": 50000,\n  \"areaM2\": 22.5,\n  \"deposit\": 3500000,\n  \"availableFrom\": \"2026-11-01\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "Phòng đẹp có gác gần chợ Bến Thành",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Phòng sạch sẽ thoáng mát, có gác lửng, giờ giấc tự do, gần chợ và trạm xe buýt.",
+                  "type": "text"
+                },
+                {
+                  "key": "price",
+                  "value": "50000",
+                  "type": "text"
+                },
+                {
+                  "key": "areaM2",
+                  "value": "22.5",
+                  "type": "text"
+                },
+                {
+                  "key": "deposit",
+                  "value": "3500000",
+                  "type": "text"
+                },
+                {
+                  "key": "availableFrom",
+                  "value": "2026-11-01",
+                  "type": "text"
+                },
+                {
+                  "key": "images",
+                  "type": "file",
+                  "src": "sample-listing.png"
                 }
-              }
+              ]
             }
           }
         },
@@ -5047,12 +5101,7 @@
           ],
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}/properties/{{listingPropertyId}}/listings",
               "host": [
@@ -5064,15 +5113,46 @@
                 "listings"
               ]
             },
-            "description": "Mong đợi 400 VALIDATION_FAILED, `errors` nêu trường `availableFrom`. Ngày phải đúng dạng `YYYY-MM-DD` và là ngày có thật; ngày đã qua thì được.",
+            "description": "Mong đợi 400 VALIDATION_FAILED, `errors` nêu trường `availableFrom`. Ngày phải đúng dạng `YYYY-MM-DD` và là ngày có thật; ngày đã qua thì được. **Từ spec 0011 đường này chỉ nhận `multipart/form-data`**: các trường chữ cộng từ 1 đến 5 tệp ở trường `images` (request này gửi `sample-listing.png`). Cần `--working-dir docs/api` trong Newman, hoặc đặt thư mục làm việc của Postman là `docs/api`.",
             "body": {
-              "mode": "raw",
-              "raw": "{\n  \"title\": \"Phòng đẹp có gác gần chợ Bến Thành\",\n  \"description\": \"Phòng sạch sẽ thoáng mát, có gác lửng, giờ giấc tự do, gần chợ và trạm xe buýt.\",\n  \"price\": 3500000,\n  \"areaM2\": 22.5,\n  \"deposit\": 3500000,\n  \"availableFrom\": \"2026-02-30\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "Phòng đẹp có gác gần chợ Bến Thành",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Phòng sạch sẽ thoáng mát, có gác lửng, giờ giấc tự do, gần chợ và trạm xe buýt.",
+                  "type": "text"
+                },
+                {
+                  "key": "price",
+                  "value": "3500000",
+                  "type": "text"
+                },
+                {
+                  "key": "areaM2",
+                  "value": "22.5",
+                  "type": "text"
+                },
+                {
+                  "key": "deposit",
+                  "value": "3500000",
+                  "type": "text"
+                },
+                {
+                  "key": "availableFrom",
+                  "value": "2026-02-30",
+                  "type": "text"
+                },
+                {
+                  "key": "images",
+                  "type": "file",
+                  "src": "sample-listing.png"
                 }
-              }
+              ]
             }
           }
         },
@@ -5094,12 +5174,7 @@
           ],
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}/properties/{{listingPropertyId}}/listings",
               "host": [
@@ -5111,15 +5186,51 @@
                 "listings"
               ]
             },
-            "description": "Mong đợi 400 VALIDATION_FAILED vì trường lạ: trạng thái do hệ thống đặt (luôn `visible`), không nhận từ client.",
+            "description": "Mong đợi 400 VALIDATION_FAILED vì trường lạ: trạng thái do hệ thống đặt (luôn `visible`), không nhận từ client. **Từ spec 0011 đường này chỉ nhận `multipart/form-data`**: các trường chữ cộng từ 1 đến 5 tệp ở trường `images` (request này gửi `sample-listing.png`). Cần `--working-dir docs/api` trong Newman, hoặc đặt thư mục làm việc của Postman là `docs/api`.",
             "body": {
-              "mode": "raw",
-              "raw": "{\n  \"title\": \"Phòng đẹp có gác gần chợ Bến Thành\",\n  \"description\": \"Phòng sạch sẽ thoáng mát, có gác lửng, giờ giấc tự do, gần chợ và trạm xe buýt.\",\n  \"price\": 3500000,\n  \"areaM2\": 22.5,\n  \"deposit\": 3500000,\n  \"availableFrom\": \"2026-11-01\",\n  \"status\": \"hidden_by_admin\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "Phòng đẹp có gác gần chợ Bến Thành",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Phòng sạch sẽ thoáng mát, có gác lửng, giờ giấc tự do, gần chợ và trạm xe buýt.",
+                  "type": "text"
+                },
+                {
+                  "key": "price",
+                  "value": "3500000",
+                  "type": "text"
+                },
+                {
+                  "key": "areaM2",
+                  "value": "22.5",
+                  "type": "text"
+                },
+                {
+                  "key": "deposit",
+                  "value": "3500000",
+                  "type": "text"
+                },
+                {
+                  "key": "availableFrom",
+                  "value": "2026-11-01",
+                  "type": "text"
+                },
+                {
+                  "key": "status",
+                  "value": "hidden_by_admin",
+                  "type": "text"
+                },
+                {
+                  "key": "images",
+                  "type": "file",
+                  "src": "sample-listing.png"
                 }
-              }
+              ]
             }
           }
         },
@@ -5141,12 +5252,7 @@
           ],
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}/properties/{{listingPropertyId}}/listings",
               "host": [
@@ -5158,15 +5264,46 @@
                 "listings"
               ]
             },
-            "description": "Dùng token của chủ trọ thứ hai. Mong đợi 403 NOT_RESOURCE_OWNER.",
+            "description": "Dùng token của chủ trọ thứ hai. Mong đợi 403 NOT_RESOURCE_OWNER. **Từ spec 0011 đường này chỉ nhận `multipart/form-data`**: các trường chữ cộng từ 1 đến 5 tệp ở trường `images` (request này gửi `sample-listing.png`). Cần `--working-dir docs/api` trong Newman, hoặc đặt thư mục làm việc của Postman là `docs/api`.",
             "body": {
-              "mode": "raw",
-              "raw": "{\n  \"title\": \"Phòng đẹp có gác gần chợ Bến Thành\",\n  \"description\": \"Phòng sạch sẽ thoáng mát, có gác lửng, giờ giấc tự do, gần chợ và trạm xe buýt.\",\n  \"price\": 3500000,\n  \"areaM2\": 22.5,\n  \"deposit\": 3500000,\n  \"availableFrom\": \"2026-11-01\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "Phòng đẹp có gác gần chợ Bến Thành",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Phòng sạch sẽ thoáng mát, có gác lửng, giờ giấc tự do, gần chợ và trạm xe buýt.",
+                  "type": "text"
+                },
+                {
+                  "key": "price",
+                  "value": "3500000",
+                  "type": "text"
+                },
+                {
+                  "key": "areaM2",
+                  "value": "22.5",
+                  "type": "text"
+                },
+                {
+                  "key": "deposit",
+                  "value": "3500000",
+                  "type": "text"
+                },
+                {
+                  "key": "availableFrom",
+                  "value": "2026-11-01",
+                  "type": "text"
+                },
+                {
+                  "key": "images",
+                  "type": "file",
+                  "src": "sample-listing.png"
                 }
-              }
+              ]
             },
             "auth": {
               "type": "bearer",
@@ -5198,6 +5335,479 @@
           ],
           "request": {
             "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/properties/{{listingPropertyId}}/listings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "{{listingPropertyId}}",
+                "listings"
+              ]
+            },
+            "description": "Mong đợi 403 PERMISSION_DENIED: tenant không có quyền `listing:*`. **Từ spec 0011 đường này chỉ nhận `multipart/form-data`**: các trường chữ cộng từ 1 đến 5 tệp ở trường `images` (request này gửi `sample-listing.png`). Cần `--working-dir docs/api` trong Newman, hoặc đặt thư mục làm việc của Postman là `docs/api`.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "Phòng đẹp có gác gần chợ Bến Thành",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Phòng sạch sẽ thoáng mát, có gác lửng, giờ giấc tự do, gần chợ và trạm xe buýt.",
+                  "type": "text"
+                },
+                {
+                  "key": "price",
+                  "value": "3500000",
+                  "type": "text"
+                },
+                {
+                  "key": "areaM2",
+                  "value": "22.5",
+                  "type": "text"
+                },
+                {
+                  "key": "deposit",
+                  "value": "3500000",
+                  "type": "text"
+                },
+                {
+                  "key": "availableFrom",
+                  "value": "2026-11-01",
+                  "type": "text"
+                },
+                {
+                  "key": "images",
+                  "type": "file",
+                  "src": "sample-listing.png"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Đăng tin kèm ba ảnh (POST /properties/:propertyId/listings)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "const listing = pm.response.json();",
+                  "pm.collectionVariables.set('multiImageListingId', listing.id);",
+                  "pm.test('ba ảnh, position 0, 1, 2 đúng thứ tự gửi', () => pm.expect(listing.images.map((i) => i.position)).to.eql([0, 1, 2]));",
+                  "pm.test('ba tệp khác nhau (tên do backend sinh)', () => pm.expect(new Set(listing.images.map((i) => i.url)).size).to.eql(3));",
+                  "pm.test('ảnh bìa là ảnh đầu', () => pm.expect(listing.coverImageUrl).to.eql(listing.images[0].url));",
+                  "pm.test('tin hiện ngay', () => { pm.expect(listing.status).to.eql('visible'); pm.expect(listing.isPublic).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/properties/{{listingPropertyId}}/listings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "{{listingPropertyId}}",
+                "listings"
+              ]
+            },
+            "description": "Một lần gọi đăng tin cùng 3 ảnh (spec 0011 AC-1): ba phần `images` lặp lại, `position` 0, 1, 2 đúng thứ tự gửi, `coverImageUrl` là ảnh đầu. Mỗi ảnh có một tệp riêng với tên do backend sinh. Lưu `multiImageListingId`; request dọn dẹp ở cuối nhóm này xóa tin lại để trả chỗ hạn mức.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "Phòng ba ảnh Postman gần chợ",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Phòng sạch sẽ thoáng mát, giờ giấc tự do, gần chợ và trạm xe buýt.",
+                  "type": "text"
+                },
+                {
+                  "key": "price",
+                  "value": "3300000",
+                  "type": "text"
+                },
+                {
+                  "key": "areaM2",
+                  "value": "25",
+                  "type": "text"
+                },
+                {
+                  "key": "images",
+                  "type": "file",
+                  "src": "sample-listing.png"
+                },
+                {
+                  "key": "images",
+                  "type": "file",
+                  "src": "sample-listing.png"
+                },
+                {
+                  "key": "images",
+                  "type": "file",
+                  "src": "sample-listing.png"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: đăng tin không kèm ảnh",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Lỗi IMAGE_INVALID', () => pm.expect(pm.response.json().code).to.eql('IMAGE_INVALID'));",
+                  "pm.test('errors có đúng một dòng images (imagesRequired)', () => { const errors = pm.response.json().errors; pm.expect(errors.map((e) => e.field)).to.eql(['images']); pm.expect(errors[0].code).to.eql('imagesRequired'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/properties/{{listingPropertyId}}/listings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "{{listingPropertyId}}",
+                "listings"
+              ]
+            },
+            "description": "Mong đợi 400 IMAGE_INVALID với `errors` có một dòng `images` (`imagesRequired`): bắt buộc từ 1 đến 5 ảnh. Không tạo tin nào và không để lại tệp ảnh nào. Cần `--working-dir docs/api` trong Newman (tệp mẫu `sample-listing.png`, `sample-not-image.txt`).",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "Phòng ba ảnh Postman gần chợ",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Phòng sạch sẽ thoáng mát, giờ giấc tự do, gần chợ và trạm xe buýt.",
+                  "type": "text"
+                },
+                {
+                  "key": "price",
+                  "value": "3300000",
+                  "type": "text"
+                },
+                {
+                  "key": "areaM2",
+                  "value": "25",
+                  "type": "text"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: tệp không phải ảnh ở trường images",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Lỗi IMAGE_INVALID', () => pm.expect(pm.response.json().code).to.eql('IMAGE_INVALID'));",
+                  "pm.test('errors có đúng một dòng images.1 (notImage)', () => { const errors = pm.response.json().errors; pm.expect(errors.map((e) => e.field)).to.eql(['images.1']); pm.expect(errors[0].code).to.eql('notImage'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/properties/{{listingPropertyId}}/listings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "{{listingPropertyId}}",
+                "listings"
+              ]
+            },
+            "description": "Hai tệp ở trường `images`: ảnh đầu hợp lệ (`sample-listing.png`), tệp thứ hai là `sample-not-image.txt`. Loại ảnh nhận ra bằng nội dung tệp. Mong đợi 400 IMAGE_INVALID, `errors` có đúng một dòng `images.1` (`notImage`): N đếm từ 0 theo thứ tự tệp trong yêu cầu. Không tạo tin nào và không để lại tệp ảnh nào (kể cả ảnh đầu hợp lệ). Cần `--working-dir docs/api` trong Newman.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "Phòng ba ảnh Postman gần chợ",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Phòng sạch sẽ thoáng mát, giờ giấc tự do, gần chợ và trạm xe buýt.",
+                  "type": "text"
+                },
+                {
+                  "key": "price",
+                  "value": "3300000",
+                  "type": "text"
+                },
+                {
+                  "key": "areaM2",
+                  "value": "25",
+                  "type": "text"
+                },
+                {
+                  "key": "images",
+                  "type": "file",
+                  "src": "sample-listing.png"
+                },
+                {
+                  "key": "images",
+                  "type": "file",
+                  "src": "sample-not-image.txt"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: ảnh gửi sai tên trường (image thay vì images)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Lỗi IMAGE_INVALID', () => pm.expect(pm.response.json().code).to.eql('IMAGE_INVALID'));",
+                  "pm.test('errors có đúng một dòng images.0 (wrongField)', () => { const errors = pm.response.json().errors; pm.expect(errors.map((e) => e.field)).to.eql(['images.0']); pm.expect(errors[0].code).to.eql('wrongField'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/properties/{{listingPropertyId}}/listings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "{{listingPropertyId}}",
+                "listings"
+              ]
+            },
+            "description": "Tên trường phải đúng là `images` (không phải `image`, `file` hay `images[]`). Mong đợi 400 IMAGE_INVALID, `errors` nêu `images.0` (`wrongField`). Không tạo tin nào và không để lại tệp ảnh nào. Cần `--working-dir docs/api` trong Newman (tệp mẫu `sample-listing.png`, `sample-not-image.txt`).",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "Phòng ba ảnh Postman gần chợ",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Phòng sạch sẽ thoáng mát, giờ giấc tự do, gần chợ và trạm xe buýt.",
+                  "type": "text"
+                },
+                {
+                  "key": "price",
+                  "value": "3300000",
+                  "type": "text"
+                },
+                {
+                  "key": "areaM2",
+                  "value": "25",
+                  "type": "text"
+                },
+                {
+                  "key": "image",
+                  "type": "file",
+                  "src": "sample-listing.png"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: price viết 1e5 trong form",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Lỗi VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));",
+                  "pm.test('errors nêu trường price', () => pm.expect(pm.response.json().errors.map((e) => e.field)).to.include('price'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/properties/{{listingPropertyId}}/listings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "{{listingPropertyId}}",
+                "listings"
+              ]
+            },
+            "description": "Trong form số đến dạng chuỗi và chỉ chuỗi số thập phân thường được nhận: `1e5`, `0x10`, chuỗi có khoảng trắng hay chuỗi rỗng là 400 VALIDATION_FAILED. Không tạo tin nào và không để lại tệp ảnh nào. Cần `--working-dir docs/api` trong Newman (tệp mẫu `sample-listing.png`, `sample-not-image.txt`).",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "Phòng ba ảnh Postman gần chợ",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Phòng sạch sẽ thoáng mát, giờ giấc tự do, gần chợ và trạm xe buýt.",
+                  "type": "text"
+                },
+                {
+                  "key": "price",
+                  "value": "1e5",
+                  "type": "text"
+                },
+                {
+                  "key": "areaM2",
+                  "value": "25",
+                  "type": "text"
+                },
+                {
+                  "key": "images",
+                  "type": "file",
+                  "src": "sample-listing.png"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: tiền cọc để trống trong form",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Lỗi VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));",
+                  "pm.test('errors nêu trường deposit', () => pm.expect(pm.response.json().errors.map((e) => e.field)).to.include('deposit'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/properties/{{listingPropertyId}}/listings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "{{listingPropertyId}}",
+                "listings"
+              ]
+            },
+            "description": "Trường tùy chọn thì bỏ hẳn khỏi form, không gửi chuỗi rỗng. `deposit` rỗng là 400 VALIDATION_FAILED (không bao giờ thành 0 đồng). Không tạo tin nào và không để lại tệp ảnh nào. Cần `--working-dir docs/api` trong Newman (tệp mẫu `sample-listing.png`, `sample-not-image.txt`).",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "Phòng ba ảnh Postman gần chợ",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Phòng sạch sẽ thoáng mát, giờ giấc tự do, gần chợ và trạm xe buýt.",
+                  "type": "text"
+                },
+                {
+                  "key": "price",
+                  "value": "3300000",
+                  "type": "text"
+                },
+                {
+                  "key": "areaM2",
+                  "value": "25",
+                  "type": "text"
+                },
+                {
+                  "key": "deposit",
+                  "value": "",
+                  "type": "text"
+                },
+                {
+                  "key": "images",
+                  "type": "file",
+                  "src": "sample-listing.png"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: gửi JSON thay vì multipart (đường cũ đã bỏ)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Lỗi IMAGE_INVALID: không còn cách đăng tin không ảnh', () => pm.expect(pm.response.json().code).to.eql('IMAGE_INVALID'));",
+                  "pm.test('errors có dòng images', () => pm.expect(pm.response.json().errors.map((e) => e.field)).to.eql(['images']));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
@@ -5215,26 +5825,45 @@
                 "listings"
               ]
             },
-            "description": "Mong đợi 403 PERMISSION_DENIED: tenant không có quyền `listing:*`.",
+            "description": "Thân JSON hợp lệ nhưng không có ảnh: 400 IMAGE_INVALID. Từ spec 0011 đường đăng tin chỉ nhận `multipart/form-data`; FE và script cũ gọi bằng JSON phải đổi.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"Phòng đẹp có gác gần chợ Bến Thành\",\n  \"description\": \"Phòng sạch sẽ thoáng mát, có gác lửng, giờ giấc tự do, gần chợ và trạm xe buýt.\",\n  \"price\": 3500000,\n  \"areaM2\": 22.5,\n  \"deposit\": 3500000,\n  \"availableFrom\": \"2026-11-01\"\n}",
+              "raw": "{\n  \"title\": \"Phòng ba ảnh Postman gần chợ\",\n  \"description\": \"Phòng sạch sẽ thoáng mát, giờ giấc tự do, gần chợ và trạm xe buýt.\",\n  \"price\": 3300000,\n  \"areaM2\": 25\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{tenantToken}}",
-                  "type": "string"
-                }
-              ]
             }
+          }
+        },
+        {
+          "name": "Dọn dẹp: xóa tin kèm ba ảnh (DELETE /listings/:id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{multiImageListingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{multiImageListingId}}"
+              ]
+            },
+            "description": "Xóa mềm tin vừa đăng kèm ba ảnh, trả lại một chỗ hạn mức."
           }
         },
         {
@@ -6931,12 +7560,7 @@
           ],
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}/properties/{{quotaPropertyId}}/listings",
               "host": [
@@ -6948,15 +7572,36 @@
                 "listings"
               ]
             },
-            "description": "Đang hiện 0 tin trên hạn mức 2: được đăng.",
+            "description": "Đang hiện 0 tin trên hạn mức 2: được đăng. **Từ spec 0011 đường này chỉ nhận `multipart/form-data`**: các trường chữ cộng từ 1 đến 5 tệp ở trường `images` (request này gửi `sample-listing.png`). Cần `--working-dir docs/api` trong Newman, hoặc đặt thư mục làm việc của Postman là `docs/api`.",
             "body": {
-              "mode": "raw",
-              "raw": "{\n  \"title\": \"Phòng hạn mức số một gần chợ\",\n  \"description\": \"Phòng sạch sẽ thoáng mát, giờ giấc tự do, gần chợ và trạm xe buýt.\",\n  \"price\": 3500000,\n  \"areaM2\": 22.5\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "Phòng hạn mức số một gần chợ",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Phòng sạch sẽ thoáng mát, giờ giấc tự do, gần chợ và trạm xe buýt.",
+                  "type": "text"
+                },
+                {
+                  "key": "price",
+                  "value": "3500000",
+                  "type": "text"
+                },
+                {
+                  "key": "areaM2",
+                  "value": "22.5",
+                  "type": "text"
+                },
+                {
+                  "key": "images",
+                  "type": "file",
+                  "src": "sample-listing.png"
                 }
-              }
+              ]
             },
             "auth": {
               "type": "bearer",
@@ -6988,12 +7633,7 @@
           ],
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}/properties/{{quotaPropertyId}}/listings",
               "host": [
@@ -7005,15 +7645,36 @@
                 "listings"
               ]
             },
-            "description": "Đang hiện 1 tin trên hạn mức 2: được đăng.",
+            "description": "Đang hiện 1 tin trên hạn mức 2: được đăng. **Từ spec 0011 đường này chỉ nhận `multipart/form-data`**: các trường chữ cộng từ 1 đến 5 tệp ở trường `images` (request này gửi `sample-listing.png`). Cần `--working-dir docs/api` trong Newman, hoặc đặt thư mục làm việc của Postman là `docs/api`.",
             "body": {
-              "mode": "raw",
-              "raw": "{\n  \"title\": \"Phòng hạn mức số hai gần chợ\",\n  \"description\": \"Phòng sạch sẽ thoáng mát, giờ giấc tự do, gần chợ và trạm xe buýt.\",\n  \"price\": 3500000,\n  \"areaM2\": 22.5\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "Phòng hạn mức số hai gần chợ",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Phòng sạch sẽ thoáng mát, giờ giấc tự do, gần chợ và trạm xe buýt.",
+                  "type": "text"
+                },
+                {
+                  "key": "price",
+                  "value": "3500000",
+                  "type": "text"
+                },
+                {
+                  "key": "areaM2",
+                  "value": "22.5",
+                  "type": "text"
+                },
+                {
+                  "key": "images",
+                  "type": "file",
+                  "src": "sample-listing.png"
                 }
-              }
+              ]
             },
             "auth": {
               "type": "bearer",
@@ -7092,12 +7753,7 @@
           ],
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}/properties/{{quotaPropertyId}}/listings",
               "host": [
@@ -7109,15 +7765,36 @@
                 "listings"
               ]
             },
-            "description": "Đang hiện 2 tin trên hạn mức 2. Mong đợi 403 LISTING_QUOTA_REACHED và không có tin nào được tạo.",
+            "description": "Đang hiện 2 tin trên hạn mức 2. Mong đợi 403 LISTING_QUOTA_REACHED và không có tin nào được tạo. **Từ spec 0011 đường này chỉ nhận `multipart/form-data`**: các trường chữ cộng từ 1 đến 5 tệp ở trường `images` (request này gửi `sample-listing.png`). Cần `--working-dir docs/api` trong Newman, hoặc đặt thư mục làm việc của Postman là `docs/api`.",
             "body": {
-              "mode": "raw",
-              "raw": "{\n  \"title\": \"Phòng hạn mức số ba gần chợ\",\n  \"description\": \"Phòng sạch sẽ thoáng mát, giờ giấc tự do, gần chợ và trạm xe buýt.\",\n  \"price\": 3500000,\n  \"areaM2\": 22.5\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "Phòng hạn mức số ba gần chợ",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Phòng sạch sẽ thoáng mát, giờ giấc tự do, gần chợ và trạm xe buýt.",
+                  "type": "text"
+                },
+                {
+                  "key": "price",
+                  "value": "3500000",
+                  "type": "text"
+                },
+                {
+                  "key": "areaM2",
+                  "value": "22.5",
+                  "type": "text"
+                },
+                {
+                  "key": "images",
+                  "type": "file",
+                  "src": "sample-listing.png"
                 }
-              }
+              ]
             },
             "auth": {
               "type": "bearer",
@@ -7190,12 +7867,7 @@
           ],
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}/properties/{{quotaPropertyId}}/listings",
               "host": [
@@ -7207,15 +7879,36 @@
                 "listings"
               ]
             },
-            "description": "Đang hiện 1 tin (tin ẩn không tính) trên hạn mức 2: được đăng.",
+            "description": "Đang hiện 1 tin (tin ẩn không tính) trên hạn mức 2: được đăng. **Từ spec 0011 đường này chỉ nhận `multipart/form-data`**: các trường chữ cộng từ 1 đến 5 tệp ở trường `images` (request này gửi `sample-listing.png`). Cần `--working-dir docs/api` trong Newman, hoặc đặt thư mục làm việc của Postman là `docs/api`.",
             "body": {
-              "mode": "raw",
-              "raw": "{\n  \"title\": \"Phòng hạn mức số ba gần chợ\",\n  \"description\": \"Phòng sạch sẽ thoáng mát, giờ giấc tự do, gần chợ và trạm xe buýt.\",\n  \"price\": 3500000,\n  \"areaM2\": 22.5\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "Phòng hạn mức số ba gần chợ",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Phòng sạch sẽ thoáng mát, giờ giấc tự do, gần chợ và trạm xe buýt.",
+                  "type": "text"
+                },
+                {
+                  "key": "price",
+                  "value": "3500000",
+                  "type": "text"
+                },
+                {
+                  "key": "areaM2",
+                  "value": "22.5",
+                  "type": "text"
+                },
+                {
+                  "key": "images",
+                  "type": "file",
+                  "src": "sample-listing.png"
                 }
-              }
+              ]
             },
             "auth": {
               "type": "bearer",
@@ -7647,12 +8340,7 @@
           ],
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}/properties/{{quotaPropertyId}}/listings",
               "host": [
@@ -7664,15 +8352,36 @@
                 "listings"
               ]
             },
-            "description": "Đang hiện 2 tin, hạn mức vừa hạ còn 1: hạn mức có hiệu lực ngay. Mong đợi 403 LISTING_QUOTA_REACHED.",
+            "description": "Đang hiện 2 tin, hạn mức vừa hạ còn 1: hạn mức có hiệu lực ngay. Mong đợi 403 LISTING_QUOTA_REACHED. **Từ spec 0011 đường này chỉ nhận `multipart/form-data`**: các trường chữ cộng từ 1 đến 5 tệp ở trường `images` (request này gửi `sample-listing.png`). Cần `--working-dir docs/api` trong Newman, hoặc đặt thư mục làm việc của Postman là `docs/api`.",
             "body": {
-              "mode": "raw",
-              "raw": "{\n  \"title\": \"Phòng hạn mức số bốn gần chợ\",\n  \"description\": \"Phòng sạch sẽ thoáng mát, giờ giấc tự do, gần chợ và trạm xe buýt.\",\n  \"price\": 3500000,\n  \"areaM2\": 22.5\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "Phòng hạn mức số bốn gần chợ",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Phòng sạch sẽ thoáng mát, giờ giấc tự do, gần chợ và trạm xe buýt.",
+                  "type": "text"
+                },
+                {
+                  "key": "price",
+                  "value": "3500000",
+                  "type": "text"
+                },
+                {
+                  "key": "areaM2",
+                  "value": "22.5",
+                  "type": "text"
+                },
+                {
+                  "key": "images",
+                  "type": "file",
+                  "src": "sample-listing.png"
                 }
-              }
+              ]
             },
             "auth": {
               "type": "bearer",
@@ -8146,12 +8855,7 @@
           ],
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}/properties/{{expiredPropertyId}}/listings",
               "host": [
@@ -8163,15 +8867,36 @@
                 "listings"
               ]
             },
-            "description": "Mong đợi 403 MEMBERSHIP_REQUIRED (không phải LISTING_QUOTA_REACHED).",
+            "description": "Mong đợi 403 MEMBERSHIP_REQUIRED (không phải LISTING_QUOTA_REACHED). **Từ spec 0011 đường này chỉ nhận `multipart/form-data`**: các trường chữ cộng từ 1 đến 5 tệp ở trường `images` (request này gửi `sample-listing.png`). Cần `--working-dir docs/api` trong Newman, hoặc đặt thư mục làm việc của Postman là `docs/api`.",
             "body": {
-              "mode": "raw",
-              "raw": "{\n  \"title\": \"Phòng khi hết dùng thử gần chợ\",\n  \"description\": \"Phòng sạch sẽ thoáng mát, giờ giấc tự do, gần chợ và trạm xe buýt.\",\n  \"price\": 3500000,\n  \"areaM2\": 22.5\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "Phòng khi hết dùng thử gần chợ",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Phòng sạch sẽ thoáng mát, giờ giấc tự do, gần chợ và trạm xe buýt.",
+                  "type": "text"
+                },
+                {
+                  "key": "price",
+                  "value": "3500000",
+                  "type": "text"
+                },
+                {
+                  "key": "areaM2",
+                  "value": "22.5",
+                  "type": "text"
+                },
+                {
+                  "key": "images",
+                  "type": "file",
+                  "src": "sample-listing.png"
                 }
-              }
+              ]
             },
             "auth": {
               "type": "bearer",
@@ -8203,12 +8928,7 @@
           ],
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}/properties/0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8d99/listings",
               "host": [
@@ -8220,15 +8940,36 @@
                 "listings"
               ]
             },
-            "description": "Lỗi nhà trọ không có luôn được báo trước lỗi hạn mức. Mong đợi 404 PROPERTY_NOT_FOUND.",
+            "description": "Lỗi nhà trọ không có luôn được báo trước lỗi hạn mức. Mong đợi 404 PROPERTY_NOT_FOUND. **Từ spec 0011 đường này chỉ nhận `multipart/form-data`**: các trường chữ cộng từ 1 đến 5 tệp ở trường `images` (request này gửi `sample-listing.png`). Cần `--working-dir docs/api` trong Newman, hoặc đặt thư mục làm việc của Postman là `docs/api`.",
             "body": {
-              "mode": "raw",
-              "raw": "{\n  \"title\": \"Phòng khi hết dùng thử gần chợ\",\n  \"description\": \"Phòng sạch sẽ thoáng mát, giờ giấc tự do, gần chợ và trạm xe buýt.\",\n  \"price\": 3500000,\n  \"areaM2\": 22.5\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "Phòng khi hết dùng thử gần chợ",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Phòng sạch sẽ thoáng mát, giờ giấc tự do, gần chợ và trạm xe buýt.",
+                  "type": "text"
+                },
+                {
+                  "key": "price",
+                  "value": "3500000",
+                  "type": "text"
+                },
+                {
+                  "key": "areaM2",
+                  "value": "22.5",
+                  "type": "text"
+                },
+                {
+                  "key": "images",
+                  "type": "file",
+                  "src": "sample-listing.png"
                 }
-              }
+              ]
             },
             "auth": {
               "type": "bearer",
@@ -8260,12 +9001,7 @@
           ],
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}/properties/{{quotaPropertyId}}/listings",
               "host": [
@@ -8277,15 +9013,36 @@
                 "listings"
               ]
             },
-            "description": "Dùng nhà trọ của chủ trọ thứ nhất. Mong đợi 403 NOT_RESOURCE_OWNER, không phải MEMBERSHIP_REQUIRED.",
+            "description": "Dùng nhà trọ của chủ trọ thứ nhất. Mong đợi 403 NOT_RESOURCE_OWNER, không phải MEMBERSHIP_REQUIRED. **Từ spec 0011 đường này chỉ nhận `multipart/form-data`**: các trường chữ cộng từ 1 đến 5 tệp ở trường `images` (request này gửi `sample-listing.png`). Cần `--working-dir docs/api` trong Newman, hoặc đặt thư mục làm việc của Postman là `docs/api`.",
             "body": {
-              "mode": "raw",
-              "raw": "{\n  \"title\": \"Phòng khi hết dùng thử gần chợ\",\n  \"description\": \"Phòng sạch sẽ thoáng mát, giờ giấc tự do, gần chợ và trạm xe buýt.\",\n  \"price\": 3500000,\n  \"areaM2\": 22.5\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "Phòng khi hết dùng thử gần chợ",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Phòng sạch sẽ thoáng mát, giờ giấc tự do, gần chợ và trạm xe buýt.",
+                  "type": "text"
+                },
+                {
+                  "key": "price",
+                  "value": "3500000",
+                  "type": "text"
+                },
+                {
+                  "key": "areaM2",
+                  "value": "22.5",
+                  "type": "text"
+                },
+                {
+                  "key": "images",
+                  "type": "file",
+                  "src": "sample-listing.png"
                 }
-              }
+              ]
             },
             "auth": {
               "type": "bearer",
@@ -8370,12 +9127,7 @@
           ],
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}/properties/{{adminPropertyId}}/listings",
               "host": [
@@ -8387,15 +9139,36 @@
                 "listings"
               ]
             },
-            "description": "Tài khoản không có `trial_ends_at` có hạn mức 0. Mong đợi 403 MEMBERSHIP_REQUIRED.",
+            "description": "Tài khoản không có `trial_ends_at` có hạn mức 0. Mong đợi 403 MEMBERSHIP_REQUIRED. **Từ spec 0011 đường này chỉ nhận `multipart/form-data`**: các trường chữ cộng từ 1 đến 5 tệp ở trường `images` (request này gửi `sample-listing.png`). Cần `--working-dir docs/api` trong Newman, hoặc đặt thư mục làm việc của Postman là `docs/api`.",
             "body": {
-              "mode": "raw",
-              "raw": "{\n  \"title\": \"Phòng của admin gần chợ\",\n  \"description\": \"Phòng sạch sẽ thoáng mát, giờ giấc tự do, gần chợ và trạm xe buýt.\",\n  \"price\": 3500000,\n  \"areaM2\": 22.5\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "Phòng của admin gần chợ",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Phòng sạch sẽ thoáng mát, giờ giấc tự do, gần chợ và trạm xe buýt.",
+                  "type": "text"
+                },
+                {
+                  "key": "price",
+                  "value": "3500000",
+                  "type": "text"
+                },
+                {
+                  "key": "areaM2",
+                  "value": "22.5",
+                  "type": "text"
+                },
+                {
+                  "key": "images",
+                  "type": "file",
+                  "src": "sample-listing.png"
                 }
-              }
+              ]
             },
             "auth": {
               "type": "bearer",
@@ -11843,12 +12616,7 @@
           ],
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}/properties/{{planFlowPropertyId}}/listings",
               "host": [
@@ -11860,15 +12628,36 @@
                 "listings"
               ]
             },
-            "description": "Mong đợi 403 `MEMBERSHIP_REQUIRED`. Sau khi mua gói ở các bước dưới, đúng yêu cầu này thành công.",
+            "description": "Mong đợi 403 `MEMBERSHIP_REQUIRED`. Sau khi mua gói ở các bước dưới, đúng yêu cầu này thành công. **Từ spec 0011 đường này chỉ nhận `multipart/form-data`**: các trường chữ cộng từ 1 đến 5 tệp ở trường `images` (request này gửi `sample-listing.png`). Cần `--working-dir docs/api` trong Newman, hoặc đặt thư mục làm việc của Postman là `docs/api`.",
             "body": {
-              "mode": "raw",
-              "raw": "{\n  \"title\": \"Phòng mua gói Postman gần chợ\",\n  \"description\": \"Phòng sạch sẽ thoáng mát, giờ giấc tự do, gần chợ và trạm xe buýt.\",\n  \"price\": 3200000,\n  \"areaM2\": 24\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "Phòng mua gói Postman gần chợ",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Phòng sạch sẽ thoáng mát, giờ giấc tự do, gần chợ và trạm xe buýt.",
+                  "type": "text"
+                },
+                {
+                  "key": "price",
+                  "value": "3200000",
+                  "type": "text"
+                },
+                {
+                  "key": "areaM2",
+                  "value": "24",
+                  "type": "text"
+                },
+                {
+                  "key": "images",
+                  "type": "file",
+                  "src": "sample-listing.png"
                 }
-              }
+              ]
             },
             "auth": {
               "type": "bearer",
@@ -12045,12 +12834,7 @@
           ],
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}/properties/{{planFlowPropertyId}}/listings",
               "host": [
@@ -12062,15 +12846,36 @@
                 "listings"
               ]
             },
-            "description": "Cùng yêu cầu đã bị 403 `MEMBERSHIP_REQUIRED` lúc chưa có gói, nay 201. Lưu `planFlowListingId` và `planFlowListingCode`.",
+            "description": "Cùng yêu cầu đã bị 403 `MEMBERSHIP_REQUIRED` lúc chưa có gói, nay 201. Lưu `planFlowListingId` và `planFlowListingCode`. **Từ spec 0011 đường này chỉ nhận `multipart/form-data`**: các trường chữ cộng từ 1 đến 5 tệp ở trường `images` (request này gửi `sample-listing.png`). Cần `--working-dir docs/api` trong Newman, hoặc đặt thư mục làm việc của Postman là `docs/api`.",
             "body": {
-              "mode": "raw",
-              "raw": "{\n  \"title\": \"Phòng mua gói Postman gần chợ\",\n  \"description\": \"Phòng sạch sẽ thoáng mát, giờ giấc tự do, gần chợ và trạm xe buýt.\",\n  \"price\": 3200000,\n  \"areaM2\": 24\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "Phòng mua gói Postman gần chợ",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Phòng sạch sẽ thoáng mát, giờ giấc tự do, gần chợ và trạm xe buýt.",
+                  "type": "text"
+                },
+                {
+                  "key": "price",
+                  "value": "3200000",
+                  "type": "text"
+                },
+                {
+                  "key": "areaM2",
+                  "value": "24",
+                  "type": "text"
+                },
+                {
+                  "key": "images",
+                  "type": "file",
+                  "src": "sample-listing.png"
                 }
-              }
+              ]
             },
             "auth": {
               "type": "bearer",
@@ -12420,7 +13225,7 @@
     },
     {
       "name": "15 Ảnh tin",
-      "description": "Tải lên, xem và xóa ảnh của tin (spec 0002 AC-8, mốc 4). **Chạy sau folder 09** (dùng `userToken` và `otherLandlordToken` của folder 08, `tenantToken` của folder 09, `wardCode` của folder 07) **và từ trên xuống**. Folder tự tạo nhà trọ và tin của nó rồi dọn lại; không đăng ký tài khoản mới. **Cần tệp mẫu**: các request tải ảnh dùng `sample-listing.png` và `sample-not-image.txt` nằm cạnh collection trong `docs/api`. Trong Postman, đặt thư mục làm việc là `docs/api` (Settings > Working directory) hoặc chọn lại tệp ở từng request; trong Newman thêm `--working-dir docs/api`. Mỗi lần chạy tải 7 ảnh (giới hạn 60 lần mỗi giờ cho API tải ảnh). Ảnh đã tải nằm trong `UPLOAD_DIR` và không có API dọn tệp; xóa tin chỉ xóa mềm nên tệp còn đó. Chưa thử được ở đây: ảnh quá `MAX_UPLOAD_BYTES` (413) và hai lần tải đồng thời (thử bằng script).",
+      "description": "Tải lên, xem và xóa ảnh của tin (spec 0002 AC-8, mốc 4). **Chạy sau folder 09** (dùng `userToken` và `otherLandlordToken` của folder 08, `tenantToken` của folder 09, `wardCode` của folder 07) **và từ trên xuống**. Folder tự tạo nhà trọ và tin của nó rồi dọn lại; không đăng ký tài khoản mới. **Cần tệp mẫu**: các request tải ảnh dùng `sample-listing.png` và `sample-not-image.txt` nằm cạnh collection trong `docs/api`. Trong Postman, đặt thư mục làm việc là `docs/api` (Settings > Working directory) hoặc chọn lại tệp ở từng request; trong Newman thêm `--working-dir docs/api`. Mỗi lần chạy gửi 11 request tới API tải ảnh lẻ (giới hạn 60 lần mỗi giờ). Từ spec 0011 tin đăng ra đã có sẵn ảnh bìa (vị trí 0) nên các ảnh tải thêm bắt đầu từ vị trí 1. Ảnh đã tải nằm trong `UPLOAD_DIR` và không có API dọn tệp; xóa tin chỉ xóa mềm nên tệp còn đó. Chưa thử được ở đây: ảnh quá `MAX_UPLOAD_BYTES` (413) và hai lần tải đồng thời (thử bằng script).",
       "item": [
         {
           "name": "Tạo nhà trọ để thử ảnh (POST /properties)",
@@ -12476,7 +13281,7 @@
           }
         },
         {
-          "name": "Đăng tin để gắn ảnh (POST /properties/:propertyId/listings)",
+          "name": "Đăng tin kèm ảnh bìa để gắn thêm ảnh (POST /properties/:propertyId/listings)",
           "event": [
             {
               "listen": "test",
@@ -12487,19 +13292,16 @@
                   "const listing = pm.response.json();",
                   "pm.collectionVariables.set('imgListingId', listing.id);",
                   "pm.collectionVariables.set('imgListingCode', listing.code);",
-                  "pm.test('chưa có ảnh', () => { pm.expect(listing.images).to.eql([]); pm.expect(listing.coverImageUrl).to.eql(null); });"
+                  "pm.test('có đúng một ảnh ở vị trí 0 và là ảnh bìa', () => { pm.expect(listing.images).to.have.length(1); pm.expect(listing.images[0].position).to.eql(0); pm.expect(listing.coverImageUrl).to.eql(listing.images[0].url); });",
+                  "pm.collectionVariables.set('imgImageId1', listing.images[0].id);",
+                  "pm.collectionVariables.set('imgFile1', listing.images[0].url.split('/').pop());"
                 ]
               }
             }
           ],
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}/properties/{{imgPropertyId}}/listings",
               "host": [
@@ -12511,66 +13313,32 @@
                 "listings"
               ]
             },
-            "description": "Tin mới chưa có ảnh. Lưu `imgListingId`, `imgListingCode`.",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"title\": \"Phòng ảnh Postman gần chợ\",\n  \"description\": \"Phòng sạch sẽ thoáng mát, giờ giấc tự do, gần chợ và trạm xe buýt.\",\n  \"price\": 3300000,\n  \"areaM2\": 25\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{userToken}}",
-                  "type": "string"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "Tải ảnh thứ nhất (POST /listings/:id/images)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
-                  "const image = pm.response.json();",
-                  "pm.test('đúng ba trường, vị trí 0', () => { pm.expect(Object.keys(image).sort()).to.eql(['id', 'position', 'url']); pm.expect(image.position).to.eql(0); });",
-                  "pm.test('url là /api/v1/media/public/<uuid>.png', () => pm.expect(image.url).to.match(/^\\/api\\/v1\\/media\\/public\\/[0-9a-f-]{36}\\.png$/));",
-                  "pm.collectionVariables.set('imgImageId1', image.id);",
-                  "pm.collectionVariables.set('imgFile1', image.url.split('/').pop());"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/listings/{{imgListingId}}/images",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "listings",
-                "{{imgListingId}}",
-                "images"
-              ]
-            },
-            "description": "`multipart/form-data` với đúng một tệp ở trường `file`. **Trong Postman**: nếu không thấy tệp, đặt thư mục làm việc của Postman là `docs/api` (Settings > Working directory) hoặc bấm chọn lại tệp `sample-listing.png`. **Trong Newman**: thêm `--working-dir docs/api`. Mong đợi 201 `{ id, position: 0, url }`. Lưu `imgImageId1` và tên tệp `imgFile1`.",
+            "description": "Tin mới đã có sẵn ảnh bìa ở vị trí 0 (đăng kèm `sample-listing.png`, spec 0011). Lưu `imgListingId`, `imgListingCode`, `imgImageId1`, `imgFile1`. **Từ spec 0011 đường này chỉ nhận `multipart/form-data`**: các trường chữ cộng từ 1 đến 5 tệp ở trường `images` (request này gửi `sample-listing.png`). Cần `--working-dir docs/api` trong Newman, hoặc đặt thư mục làm việc của Postman là `docs/api`.",
             "body": {
               "mode": "formdata",
               "formdata": [
                 {
-                  "key": "file",
+                  "key": "title",
+                  "value": "Phòng ảnh Postman gần chợ",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Phòng sạch sẽ thoáng mát, giờ giấc tự do, gần chợ và trạm xe buýt.",
+                  "type": "text"
+                },
+                {
+                  "key": "price",
+                  "value": "3300000",
+                  "type": "text"
+                },
+                {
+                  "key": "areaM2",
+                  "value": "25",
+                  "type": "text"
+                },
+                {
+                  "key": "images",
                   "type": "file",
                   "src": "sample-listing.png"
                 }
@@ -12589,7 +13357,7 @@
           }
         },
         {
-          "name": "Tải ảnh thứ hai: vị trí 1",
+          "name": "Tải thêm ảnh thứ hai: vị trí 1 (POST /listings/:id/images)",
           "event": [
             {
               "listen": "test",
@@ -12598,7 +13366,8 @@
                 "exec": [
                   "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
                   "const image = pm.response.json();",
-                  "pm.test('vị trí 1', () => pm.expect(image.position).to.eql(1));",
+                  "pm.test('đúng ba trường, vị trí 1', () => { pm.expect(Object.keys(image).sort()).to.eql(['id', 'position', 'url']); pm.expect(image.position).to.eql(1); });",
+                  "pm.test('url là /api/v1/media/public/<uuid>.png', () => pm.expect(image.url).to.match(/^\\/api\\/v1\\/media\\/public\\/[0-9a-f-]{36}\\.png$/));",
                   "pm.collectionVariables.set('imgImageId2', image.id);",
                   "pm.collectionVariables.set('imgFile2', image.url.split('/').pop());"
                 ]
@@ -12619,7 +13388,7 @@
                 "images"
               ]
             },
-            "description": "Ảnh kế tiếp nhận vị trí trống nhỏ nhất. Lưu `imgImageId2`, `imgFile2`.",
+            "description": "Tin đã có ảnh bìa (vị trí 0) từ lúc đăng. `multipart/form-data` với đúng một tệp ở trường `file`. **Trong Postman**: nếu không thấy tệp, đặt thư mục làm việc của Postman là `docs/api` (Settings > Working directory) hoặc bấm chọn lại tệp `sample-listing.png`. **Trong Newman**: thêm `--working-dir docs/api`. Mong đợi 201 `{ id, position: 1, url }`. Lưu `imgImageId2` và tên tệp `imgFile2`.",
             "body": {
               "mode": "formdata",
               "formdata": [
@@ -13803,12 +14572,7 @@
           ],
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}/properties/{{modPropertyId}}/listings",
               "host": [
@@ -13820,15 +14584,36 @@
                 "listings"
               ]
             },
-            "description": "Dùng `userToken`. Tiêu đề có từ khóa `kdpm` để các request sau tìm đúng tin này. Lưu `modListingId`, `modListingCode`, `modListingSlug`.",
+            "description": "Dùng `userToken`. Tiêu đề có từ khóa `kdpm` để các request sau tìm đúng tin này. Lưu `modListingId`, `modListingCode`, `modListingSlug`. **Từ spec 0011 đường này chỉ nhận `multipart/form-data`**: các trường chữ cộng từ 1 đến 5 tệp ở trường `images` (request này gửi `sample-listing.png`). Cần `--working-dir docs/api` trong Newman, hoặc đặt thư mục làm việc của Postman là `docs/api`.",
             "body": {
-              "mode": "raw",
-              "raw": "{\n  \"title\": \"Phòng kiểm duyệt Postman kdpm\",\n  \"description\": \"Phòng sạch sẽ, thoáng mát, giờ giấc tự do, có chỗ để xe.\",\n  \"price\": 3000000,\n  \"areaM2\": 20\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "Phòng kiểm duyệt Postman kdpm",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Phòng sạch sẽ, thoáng mát, giờ giấc tự do, có chỗ để xe.",
+                  "type": "text"
+                },
+                {
+                  "key": "price",
+                  "value": "3000000",
+                  "type": "text"
+                },
+                {
+                  "key": "areaM2",
+                  "value": "20",
+                  "type": "text"
+                },
+                {
+                  "key": "images",
+                  "type": "file",
+                  "src": "sample-listing.png"
                 }
-              }
+              ]
             },
             "auth": {
               "type": "bearer",
@@ -16130,12 +16915,7 @@
           ],
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}/properties/{{catPropertyId}}/listings",
               "host": [
@@ -16147,15 +16927,36 @@
                 "listings"
               ]
             },
-            "description": "Tiêu đề có từ khóa `dtpm` và KHÔNG chứa tên phường, nên chỉ khớp tên phường qua `search_key`. Lưu `catListingId`.",
+            "description": "Tiêu đề có từ khóa `dtpm` và KHÔNG chứa tên phường, nên chỉ khớp tên phường qua `search_key`. Lưu `catListingId`. **Từ spec 0011 đường này chỉ nhận `multipart/form-data`**: các trường chữ cộng từ 1 đến 5 tệp ở trường `images` (request này gửi `sample-listing.png`). Cần `--working-dir docs/api` trong Newman, hoặc đặt thư mục làm việc của Postman là `docs/api`.",
             "body": {
-              "mode": "raw",
-              "raw": "{\n  \"title\": \"Phòng thử đổi tên phường dtpm\",\n  \"description\": \"Phòng sạch sẽ, thoáng mát, giờ giấc tự do, có chỗ để xe.\",\n  \"price\": 3000000,\n  \"areaM2\": 20\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "Phòng thử đổi tên phường dtpm",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Phòng sạch sẽ, thoáng mát, giờ giấc tự do, có chỗ để xe.",
+                  "type": "text"
+                },
+                {
+                  "key": "price",
+                  "value": "3000000",
+                  "type": "text"
+                },
+                {
+                  "key": "areaM2",
+                  "value": "20",
+                  "type": "text"
+                },
+                {
+                  "key": "images",
+                  "type": "file",
+                  "src": "sample-listing.png"
                 }
-              }
+              ]
             },
             "auth": {
               "type": "bearer",
@@ -19332,12 +20133,7 @@
           ],
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}/properties/{{favPropertyId}}/listings",
               "host": [
@@ -19349,7 +20145,7 @@
                 "listings"
               ]
             },
-            "description": "Tin hiện ngay. Lưu `favListingId`, `favListingCode`, `favListingSlug` để lưu tin ở các request sau.",
+            "description": "Tin hiện ngay. Lưu `favListingId`, `favListingCode`, `favListingSlug` để lưu tin ở các request sau. **Từ spec 0011 đường này chỉ nhận `multipart/form-data`**: các trường chữ cộng từ 1 đến 5 tệp ở trường `images` (request này gửi `sample-listing.png`). Cần `--working-dir docs/api` trong Newman, hoặc đặt thư mục làm việc của Postman là `docs/api`.",
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -19361,13 +20157,34 @@
               ]
             },
             "body": {
-              "mode": "raw",
-              "raw": "{\n  \"title\": \"Phòng thử lưu tin A\",\n  \"description\": \"Phòng sạch sẽ thoáng mát giờ giấc tự do\",\n  \"price\": 3000000,\n  \"areaM2\": 20\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "Phòng thử lưu tin A",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Phòng sạch sẽ thoáng mát giờ giấc tự do",
+                  "type": "text"
+                },
+                {
+                  "key": "price",
+                  "value": "3000000",
+                  "type": "text"
+                },
+                {
+                  "key": "areaM2",
+                  "value": "20",
+                  "type": "text"
+                },
+                {
+                  "key": "images",
+                  "type": "file",
+                  "src": "sample-listing.png"
                 }
-              }
+              ]
             }
           }
         },
@@ -19391,12 +20208,7 @@
           ],
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}/properties/{{favPropertyId}}/listings",
               "host": [
@@ -19408,7 +20220,7 @@
                 "listings"
               ]
             },
-            "description": "Tin hiện ngay. Lưu `favListingId2`, `favListingCode2`, `favListingSlug2` để lưu tin ở các request sau.",
+            "description": "Tin hiện ngay. Lưu `favListingId2`, `favListingCode2`, `favListingSlug2` để lưu tin ở các request sau. **Từ spec 0011 đường này chỉ nhận `multipart/form-data`**: các trường chữ cộng từ 1 đến 5 tệp ở trường `images` (request này gửi `sample-listing.png`). Cần `--working-dir docs/api` trong Newman, hoặc đặt thư mục làm việc của Postman là `docs/api`.",
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -19420,13 +20232,34 @@
               ]
             },
             "body": {
-              "mode": "raw",
-              "raw": "{\n  \"title\": \"Phòng thử lưu tin B\",\n  \"description\": \"Phòng sạch sẽ thoáng mát giờ giấc tự do\",\n  \"price\": 3000000,\n  \"areaM2\": 20\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "Phòng thử lưu tin B",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Phòng sạch sẽ thoáng mát giờ giấc tự do",
+                  "type": "text"
+                },
+                {
+                  "key": "price",
+                  "value": "3000000",
+                  "type": "text"
+                },
+                {
+                  "key": "areaM2",
+                  "value": "20",
+                  "type": "text"
+                },
+                {
+                  "key": "images",
+                  "type": "file",
+                  "src": "sample-listing.png"
                 }
-              }
+              ]
             }
           }
         },
@@ -26844,12 +27677,7 @@
           ],
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}/properties/{{demoPropertyId}}/listings",
               "host": [
@@ -26861,15 +27689,46 @@
                 "listings"
               ]
             },
-            "description": "Cần quyền `listing:create`. **Tin hiện ngay khi đăng**: không có bản nháp, không có bước duyệt. Tiêu đề chứa `demoStamp` để bước tìm kiếm sau tìm đúng tin của lần chạy này.",
+            "description": "Cần quyền `listing:create`. **Tin hiện ngay khi đăng**: không có bản nháp, không có bước duyệt. Tiêu đề chứa `demoStamp` để bước tìm kiếm sau tìm đúng tin của lần chạy này. **Từ spec 0011 đường này chỉ nhận `multipart/form-data`**: các trường chữ cộng từ 1 đến 5 tệp ở trường `images` (request này gửi `sample-listing.png`). Cần `--working-dir docs/api` trong Newman, hoặc đặt thư mục làm việc của Postman là `docs/api`.",
             "body": {
-              "mode": "raw",
-              "raw": "{\n  \"title\": \"Phòng demo {{demoStamp}} có gác gần chợ Bến Thành\",\n  \"description\": \"Phòng sạch sẽ, thoáng mát, có gác lửng, giờ giấc tự do, gần chợ và trạm xe buýt.\",\n  \"price\": 3500000,\n  \"areaM2\": 22.5,\n  \"deposit\": 3500000,\n  \"availableFrom\": \"2026-11-01\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "Phòng demo {{demoStamp}} có gác gần chợ Bến Thành",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Phòng sạch sẽ, thoáng mát, có gác lửng, giờ giấc tự do, gần chợ và trạm xe buýt.",
+                  "type": "text"
+                },
+                {
+                  "key": "price",
+                  "value": "3500000",
+                  "type": "text"
+                },
+                {
+                  "key": "areaM2",
+                  "value": "22.5",
+                  "type": "text"
+                },
+                {
+                  "key": "deposit",
+                  "value": "3500000",
+                  "type": "text"
+                },
+                {
+                  "key": "availableFrom",
+                  "value": "2026-11-01",
+                  "type": "text"
+                },
+                {
+                  "key": "images",
+                  "type": "file",
+                  "src": "sample-listing.png"
                 }
-              }
+              ]
             },
             "auth": {
               "type": "bearer",
@@ -26884,7 +27743,7 @@
           }
         },
         {
-          "name": "7. Chủ trọ: tải ảnh cho tin thứ nhất",
+          "name": "7. Chủ trọ: tải thêm một ảnh cho tin thứ nhất",
           "event": [
             {
               "listen": "test",
@@ -26894,7 +27753,7 @@
                   "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
                   "const image = pm.response.json();",
                   "pm.collectionVariables.set('demoImageFile', image.url.split('/').pop());",
-                  "pm.test('ảnh đầu tiên là ảnh bìa (position 0)', () => pm.expect(image.position).to.eql(0));"
+                  "pm.test('ảnh thứ hai của tin (position 1); ảnh bìa là ảnh đăng kèm ở bước 6', () => pm.expect(image.position).to.eql(1));"
                 ]
               }
             }
@@ -26913,7 +27772,7 @@
                 "images"
               ]
             },
-            "description": "Cần quyền `listing:update`. Gửi `multipart/form-data`, một tệp tên trường `file` (JPEG, PNG hoặc WebP, tối đa 5 ảnh mỗi tin). Cần chọn tệp `sample-listing.png` trong thư mục `docs/api`; chạy bằng Newman thì thêm `--working-dir docs/api`.",
+            "description": "Cần quyền `listing:update`. Gửi `multipart/form-data`, một tệp tên trường `file` (JPEG, PNG hoặc WebP, tối đa 5 ảnh mỗi tin). Tin thứ nhất đã đăng kèm một ảnh bìa ở bước 6, nên ảnh này là ảnh thứ hai (position 1). Cần chọn tệp `sample-listing.png` trong thư mục `docs/api`; chạy bằng Newman thì thêm `--working-dir docs/api`.",
             "body": {
               "mode": "formdata",
               "formdata": [
@@ -26952,12 +27811,7 @@
           ],
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}/properties/{{demoPropertyId}}/listings",
               "host": [
@@ -26969,15 +27823,46 @@
                 "listings"
               ]
             },
-            "description": "Tin thứ hai: vừa đủ hạn mức dùng thử (mặc định 2 tin đang hiện).",
+            "description": "Tin thứ hai: vừa đủ hạn mức dùng thử (mặc định 2 tin đang hiện). **Từ spec 0011 đường này chỉ nhận `multipart/form-data`**: các trường chữ cộng từ 1 đến 5 tệp ở trường `images` (request này gửi `sample-listing.png`). Cần `--working-dir docs/api` trong Newman, hoặc đặt thư mục làm việc của Postman là `docs/api`.",
             "body": {
-              "mode": "raw",
-              "raw": "{\n  \"title\": \"Phòng demo {{demoStamp}} giá rẻ gần trường đại học\",\n  \"description\": \"Phòng sạch sẽ, thoáng mát, có gác lửng, giờ giấc tự do, gần chợ và trạm xe buýt.\",\n  \"price\": 2800000,\n  \"areaM2\": 22.5,\n  \"deposit\": 2800000,\n  \"availableFrom\": \"2026-11-01\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "Phòng demo {{demoStamp}} giá rẻ gần trường đại học",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Phòng sạch sẽ, thoáng mát, có gác lửng, giờ giấc tự do, gần chợ và trạm xe buýt.",
+                  "type": "text"
+                },
+                {
+                  "key": "price",
+                  "value": "2800000",
+                  "type": "text"
+                },
+                {
+                  "key": "areaM2",
+                  "value": "22.5",
+                  "type": "text"
+                },
+                {
+                  "key": "deposit",
+                  "value": "2800000",
+                  "type": "text"
+                },
+                {
+                  "key": "availableFrom",
+                  "value": "2026-11-01",
+                  "type": "text"
+                },
+                {
+                  "key": "images",
+                  "type": "file",
+                  "src": "sample-listing.png"
                 }
-              }
+              ]
             },
             "auth": {
               "type": "bearer",
@@ -27009,12 +27894,7 @@
           ],
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}/properties/{{demoPropertyId}}/listings",
               "host": [
@@ -27026,15 +27906,46 @@
                 "listings"
               ]
             },
-            "description": "Đã đủ hạn mức dùng thử (mặc định 2 tin): 403 LISTING_QUOTA_REACHED, FE gợi ý ẩn bớt tin hoặc mua gói. Giả định tham số mặc định `trial_listing_limit = 2` (folder 10 đặt lại về mặc định). Bước 19 đến 23 mua gói rồi đăng được.",
+            "description": "Đã đủ hạn mức dùng thử (mặc định 2 tin): 403 LISTING_QUOTA_REACHED, FE gợi ý ẩn bớt tin hoặc mua gói. Giả định tham số mặc định `trial_listing_limit = 2` (folder 10 đặt lại về mặc định). Bước 19 đến 23 mua gói rồi đăng được. **Từ spec 0011 đường này chỉ nhận `multipart/form-data`**: các trường chữ cộng từ 1 đến 5 tệp ở trường `images` (request này gửi `sample-listing.png`). Cần `--working-dir docs/api` trong Newman, hoặc đặt thư mục làm việc của Postman là `docs/api`.",
             "body": {
-              "mode": "raw",
-              "raw": "{\n  \"title\": \"Phòng demo {{demoStamp}} thứ ba\",\n  \"description\": \"Phòng sạch sẽ, thoáng mát, có gác lửng, giờ giấc tự do, gần chợ và trạm xe buýt.\",\n  \"price\": 3000000,\n  \"areaM2\": 22.5,\n  \"deposit\": 3000000,\n  \"availableFrom\": \"2026-11-01\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "Phòng demo {{demoStamp}} thứ ba",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Phòng sạch sẽ, thoáng mát, có gác lửng, giờ giấc tự do, gần chợ và trạm xe buýt.",
+                  "type": "text"
+                },
+                {
+                  "key": "price",
+                  "value": "3000000",
+                  "type": "text"
+                },
+                {
+                  "key": "areaM2",
+                  "value": "22.5",
+                  "type": "text"
+                },
+                {
+                  "key": "deposit",
+                  "value": "3000000",
+                  "type": "text"
+                },
+                {
+                  "key": "availableFrom",
+                  "value": "2026-11-01",
+                  "type": "text"
+                },
+                {
+                  "key": "images",
+                  "type": "file",
+                  "src": "sample-listing.png"
                 }
-              }
+              ]
             },
             "auth": {
               "type": "bearer",
@@ -27109,8 +28020,8 @@
                   "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
                   "const l = pm.response.json();",
                   "pm.test('khách không thấy số điện thoại', () => pm.expect(l.landlord.phone).to.eql(null));",
-                  "pm.test('có ảnh bìa và một ảnh, đã tính lượt xem', () => {",
-                  "    pm.expect(l.images).to.have.length(1);",
+                  "pm.test('có ảnh bìa và hai ảnh (một đăng kèm, một tải thêm), đã tính lượt xem', () => {",
+                  "    pm.expect(l.images).to.have.length(2);",
                   "    pm.expect(l.coverImageUrl).to.match(/^\\/api\\/v1\\/media\\/public\\//);",
                   "    pm.expect(l.viewCount).to.be.at.least(1);",
                   "});"
@@ -27624,12 +28535,7 @@
           ],
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}/properties/{{demoPropertyId}}/listings",
               "host": [
@@ -27641,15 +28547,46 @@
                 "listings"
               ]
             },
-            "description": "Cùng yêu cầu đã bị 403 LISTING_QUOTA_REACHED ở bước 9, nay 201 vì gói nâng hạn mức.",
+            "description": "Cùng yêu cầu đã bị 403 LISTING_QUOTA_REACHED ở bước 9, nay 201 vì gói nâng hạn mức. **Từ spec 0011 đường này chỉ nhận `multipart/form-data`**: các trường chữ cộng từ 1 đến 5 tệp ở trường `images` (request này gửi `sample-listing.png`). Cần `--working-dir docs/api` trong Newman, hoặc đặt thư mục làm việc của Postman là `docs/api`.",
             "body": {
-              "mode": "raw",
-              "raw": "{\n  \"title\": \"Phòng demo {{demoStamp}} thứ ba\",\n  \"description\": \"Phòng sạch sẽ, thoáng mát, có gác lửng, giờ giấc tự do, gần chợ và trạm xe buýt.\",\n  \"price\": 3000000,\n  \"areaM2\": 22.5,\n  \"deposit\": 3000000,\n  \"availableFrom\": \"2026-11-01\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "Phòng demo {{demoStamp}} thứ ba",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Phòng sạch sẽ, thoáng mát, có gác lửng, giờ giấc tự do, gần chợ và trạm xe buýt.",
+                  "type": "text"
+                },
+                {
+                  "key": "price",
+                  "value": "3000000",
+                  "type": "text"
+                },
+                {
+                  "key": "areaM2",
+                  "value": "22.5",
+                  "type": "text"
+                },
+                {
+                  "key": "deposit",
+                  "value": "3000000",
+                  "type": "text"
+                },
+                {
+                  "key": "availableFrom",
+                  "value": "2026-11-01",
+                  "type": "text"
+                },
+                {
+                  "key": "images",
+                  "type": "file",
+                  "src": "sample-listing.png"
                 }
-              }
+              ]
             },
             "auth": {
               "type": "bearer",

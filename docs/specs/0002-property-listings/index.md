@@ -33,6 +33,8 @@ Spec này chốt cách chủ trọ tạo nhà trọ rồi đăng tin phòng, và
 - **AC-15**: Tạo và sửa nhà trọ, tạo và sửa tin, tải ảnh, và các route công khai (danh sách, chi tiết) có giới hạn tần suất; vượt thì 429 `RATE_LIMITED` kèm `Retry-After`.
 - **AC-16**: Mọi nơi trả địa chỉ của nhà trọ hoặc tin (danh sách và chi tiết nhà trọ của chủ trọ, danh sách và chi tiết tin công khai, tin của chủ trọ, danh sách kiểm duyệt) kèm `fullAddress`: `addressText`, tên phường hoặc xã, tên tỉnh hoặc thành phố, nối bằng dấu phẩy theo đúng thứ tự đó (ví dụ `12 Lê Lợi, Phường Bến Thành, Thành phố Hồ Chí Minh`). Không có quận huyện ở bất cứ đâu. `fullAddress` ghép lúc đọc bằng một hàm dùng chung, không lưu cột. `addressText` chỉ là số nhà và tên đường; phường, xã và tỉnh đến từ `ward`.
 
+> Đổi bởi spec [0011](../0011-listing-with-images-in-one-request/index.md) (2026-11-02): AC-5 nay nhận `multipart/form-data` kèm 1 đến 5 ảnh trong một lần gọi (không còn JSON), và AC-8 thêm luật không xóa được ảnh cuối cùng của tin (409 `LISTING_IMAGE_REQUIRED`). Phần còn lại của AC-5 và AC-8 giữ nguyên.
+
 ## Decision
 
 **Chosen option**: Option 1: Hai tầng nhà trọ và tin, tìm từ khóa bằng cột `search_key` đã bỏ dấu cùng chỉ mục trigram, đọc đăng nhập tùy chọn ở route công khai, ảnh qua `StorageService` ghi ổ đĩa

@@ -11,7 +11,6 @@ import {
 	UploadedFiles,
 	UseInterceptors,
 } from '@nestjs/common';
-import { AnyFilesInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
 import { CurrentUser } from '../common/auth/current-user.decorator';
 import { Public } from '../common/auth/public.decorator';
@@ -19,6 +18,7 @@ import { RequirePermissions } from '../common/auth/require-permissions.decorator
 import { AppException } from '../common/errors/app.exception';
 import { ErrorCode } from '../common/errors/error-code';
 import { uuidParam } from '../common/errors/create-validation-pipe';
+import { MultipartFilesInterceptor } from '../common/files/multipart-files.interceptor';
 import type { RequestUser } from '../common/http/authenticated-request';
 import { RateLimited } from '../common/rate-limit/rate-limited.decorator';
 import type { ListingImageResponse } from './dto/listing.response';
@@ -37,7 +37,7 @@ export class ListingImagesController {
 	@Post()
 	@RequirePermissions('listing:update')
 	@RateLimited('listingImage')
-	@UseInterceptors(AnyFilesInterceptor())
+	@UseInterceptors(MultipartFilesInterceptor)
 	upload(
 		@CurrentUser() user: RequestUser,
 		@Param('id', uuidParam()) id: string,

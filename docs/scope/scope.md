@@ -34,6 +34,7 @@ _Đây là các khuyến nghị để việc làm gọn gàng, không phải yê
 | 15 | Hồ sơ cá nhân | Release 15 | done |
 | 16 | Tin đang hiện trên hồ sơ chủ trọ | Release 16 | done |
 | 17 | Admin: xem đơn mua gói và doanh thu | Release 17 | done |
+| 18 | Đăng tin kèm ảnh trong một lần gọi | Release 18 | in-progress |
 
 ## Foundations (đã có)
 
@@ -233,6 +234,17 @@ Hiện `GET /orders` chỉ trả đơn của chính người gọi và Service c
    - [x] Mốc 2: `GET /orders/revenue` (tổng, theo gói, theo ngày hoặc tháng), tài liệu và kiểm cuối (AC-6 đến AC-9); đã chạy thật trên DB thử 2026-10-21 (139 kiểm tra HTTP và SQL với phép tính độc lập từ dòng thô, ranh giới 17:30Z, tổng 3.000.000.000, 48 lần trả đồng thời trong lúc gọi thống kê 198 lần mà ba tổng luôn bằng nhau; chạy lại dưới ba múi giờ phiên; bốn điều khiển âm đều bị bắt; 1380 bài unit; Newman 535 request và 1160 assertion, 0 lỗi, hai lượt liền); `EXPLAIN` ở 50 nghìn đơn đo một lần, không chỉnh (toàn bộ theo tháng khoảng 47 ms)
 Spec [0010](../specs/0010-admin-order-list-revenue/index.md) (10 AC, 2 mốc, đã được bạn Accept ngày 2026-10-21; trạng thái spec đi theo tính năng) · code in `src/orders/`, `src/common/auth/permission-catalog.ts`, `src/common/time/` · tài liệu in `docs/api/`
 
+## Release 18: đăng tin kèm ảnh
+
+### 18. Đăng tin kèm ảnh trong một lần gọi · in-progress · Tracer Bullet
+Hiện đăng tin và thêm ảnh là hai bước riêng: `POST /properties/:propertyId/listings` chỉ nhận JSON và tạo tin ngay, rồi `POST /listings/:id/images` nhận từng ảnh một (mục 6.28 và mục 7 bước 8 của tài liệu FE). Chủ trọ phải đăng xong rồi vào sửa mới có ảnh, và nếu bước ảnh hỏng thì tin đã hiện mà chưa có ảnh. Đã kiểm ngày 2026-11-02: tài liệu FE mô tả đúng API, không thiếu gì; chính API chưa có đường đăng tin kèm ảnh. Hàng này thêm một lần gọi nhận cả các trường của tin lẫn ảnh (`multipart/form-data`), tạo tin và lưu ảnh cùng lúc. Bạn chốt ngày 2026-11-02: một ảnh lỗi thì hủy cả bài, không tạo tin nào; bắt buộc ít nhất 1 ảnh khi đăng. Đã thiết kế đầy đủ ở spec 0011 (9 AC, 2 mốc), bạn Accept ngày 2026-11-02: đổi chính `POST /properties/:propertyId/listings` sang `multipart/form-data` kèm từ 1 đến 5 ảnh ở trường `images` (ảnh đầu là ảnh bìa) và bỏ hẳn đường JSON; tin, dòng ảnh và tệp ghi trong một giao dịch, lỗi ở đâu cũng dọn sạch; lỗi ảnh nói rõ ảnh nào sai (`images.N`); chặn xóa ảnh cuối cùng của một tin (mã mới 409 `LISTING_IMAGE_REQUIRED`); tin cũ chưa có ảnh (như tin của `bao.pham` trong dữ liệu demo) giữ nguyên; không bảng, không migration, không biến môi trường mới. Đây là thay đổi phá vỡ nên FE, bộ Postman và tài liệu FE đổi cùng đợt.
+**Done when:** chủ trọ đăng tin kèm từ 1 đến 5 ảnh trong một lần gọi và nhận lại tin đã có `images` và `coverImageUrl`; thiếu ảnh, quá 5 ảnh, hoặc một ảnh sai định dạng hay quá dung lượng thì không tạo tin nào và không để lại tệp ảnh nào trên ổ đĩa; các luật đăng tin cũ vẫn đúng (đủ quyền, đúng chủ nhà trọ, hạn dùng thử và hạn mức tin, tin hiện ngay); xóa ảnh cuối cùng của một tin bị chặn bằng lỗi 409 và hai lần xóa đồng thời không để tin còn 0 ảnh; tài liệu FE và bộ Postman nói đúng cách gọi mới.
+- [x] Design it (spec): `/architect listing with images in one request`
+- [ ] Build it: `/develop listing with images in one request`
+   - [x] Mốc 1: đăng tin kèm ảnh trong một lần gọi: đường đăng tin sang `multipart/form-data`, kiểm hình dạng ảnh, một giao dịch có dọn tệp, interceptor đổi multipart hỏng thành 400, bộ Postman và tài liệu FE đổi theo (AC-1 đến AC-6, AC-8, AC-9); đã chạy thật trên DB thử 2026-11-02 (114 kiểm tra HTTP và database có so thư mục ảnh trước và sau, 25 kiểm tra gây lỗi thật ở Service: ghi tệp thứ ba lỗi, commit lỗi tin không lưu, commit báo lỗi mà tin đã lưu, đọc lại lỗi sau commit, trùng mã tin, giao dịch hết hạn; 6 yêu cầu đồng thời khi còn một chỗ ra đúng một 201; ba điều khiển âm đều bị bắt; 1522 bài unit; Newman 573 request và 1222 assertion, 0 lỗi, hai lượt liền, cộng folder demo 38 request); hai điểm lệch spec đã xử lý: Nest giải tham số song song nên `INVALID_ID` trước `VALIDATION_FAILED` phải bảo đảm bằng `RejectInvalidUuidParam`, và `MultipartFilesInterceptor` là lớp con của `AnyFilesInterceptor` thay vì interceptor đứng ngoài (xem báo cáo `/develop`)
+   - [ ] Mốc 2: chặn xóa ảnh cuối cùng của tin: mã lỗi `LISTING_IMAGE_REQUIRED`, xóa ảnh trong giao dịch có khóa dòng tin, kiểm cuối (AC-7, AC-9)
+Spec [0011](../specs/0011-listing-with-images-in-one-request/index.md) (9 AC, 2 mốc, đã được bạn Accept ngày 2026-11-02; trạng thái spec đi theo tính năng) · code in `src/listings/`, `src/common/files/`, `src/common/errors/uuid-param.interceptor.ts`, `src/common/decorators/form-number.decorator.ts`, `src/common/persistence/` · tài liệu in `docs/api/`
+
 ## Deferred
 Ngoài phạm vi bản này, giữ lại để kế hoạch trung thực.
 - **Dịch lỗi PostgreSQL**: trùng giá trị khi đăng ký đồng thời, khóa ngoại, id sai, mất kết nối thành lỗi dễ hiểu · needs a decision
@@ -251,6 +263,7 @@ Ngoài phạm vi bản này, giữ lại để kế hoạch trung thực.
 - **Hoãn từ spec 0006 (2026-10-20)**: số lượt lưu cho chủ trọ, ghi chú riêng cho tin đã lưu, thông báo khi tin đã lưu đổi giá hoặc biến mất (cần việc nền), bộ lọc hoặc kiểu sắp xếp cho danh sách đã lưu, báo số tin đã lưu đang bị ẩn, giới hạn số tin được lưu, API riêng trả danh sách id đã lưu · needs a decision
 - **Hoãn từ spec 0009 (2026-10-21)**: bộ lọc hoặc kiểu sắp xếp cho danh sách tin của chủ trọ (giá, phường), lọc theo nhà trọ, nhúng trang đầu vào chính hồ sơ để FE gọi một lần, danh sách rút gọn không có `landlord` · needs a decision
 - **Hoãn từ spec 0010 (2026-10-21)**: tìm đơn theo mã hay email chủ trọ, chuỗi doanh thu điền đủ ô trống, đếm đơn chờ và đơn hủy trong thống kê, doanh thu theo từng chủ trọ, so sánh với kỳ trước, xuất CSV, tham số `sort`, chỉ mục cho `created_at` và `paid_at`, giới hạn tần suất và nhật ký đọc cho hai route, múi giờ chọn được, hoàn tiền (cần cổng thanh toán thật) · needs a decision
+- **Hoãn từ spec 0011 (2026-11-02)**: sửa tin kèm ảnh trong một lần (PATCH multipart), đổi thứ tự ảnh hoặc chọn ảnh bìa, nén hoặc đổi kích thước hoặc xóa EXIF của ảnh, khóa chống trùng khi đăng tin, giới hạn số trường chữ trong multipart, dọn tệp mồ côi bằng việc nền · needs a decision
 
 ## Legend
 
