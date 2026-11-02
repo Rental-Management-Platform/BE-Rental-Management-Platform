@@ -80,20 +80,36 @@ export class ListingImagesRepository {
 		});
 	}
 
-	/** Ảnh `imageId` của đúng tin `listingId`, hoặc `null` (không có, hay thuộc tin khác). */
+	/**
+	 * Ảnh `imageId` của đúng tin `listingId`, hoặc `null` (không có, hay thuộc tin khác). Gọi sau `lockListing`
+	 * trong cùng giao dịch để kết quả không đổi cho đến lúc xóa (spec 0011 AC-7).
+	 */
 	findInListing(
 		listingId: string,
 		imageId: string,
+		tx: Prisma.TransactionClient,
 	): Promise<ListingImageRow | null> {
-		return this.prisma.listingImage.findFirst({
+		return tx.listingImage.findFirst({
 			where: { id: imageId, listingId },
 			select: { id: true, position: true, storageKey: true },
 		});
 	}
 
-	/** Xóa dòng ảnh. `false` nếu dòng không còn (xóa đua với một lần xóa khác). Ảnh nhỏ nhất còn lại thành ảnh bìa. */
-	async delete(listingId: string, imageId: string): Promise<boolean> {
-		const result = await this.prisma.listingImage.deleteMany({
+	/** Số ảnh đang có của một tin. */
+	countInListing(
+		listingId: string,
+		tx: Prisma.TransactionClient,
+	): Promise<number> {
+		return tx.listingImage.count({ where: { listingId } });
+	}
+
+	/** Xóa dòng ảnh. `false` nếu dòng không còn. Ảnh nhỏ nhất còn lại thành ảnh bìa. */
+	async delete(
+		listingId: string,
+		imageId: string,
+		tx: Prisma.TransactionClient,
+	): Promise<boolean> {
+		const result = await tx.listingImage.deleteMany({
 			where: { id: imageId, listingId },
 		});
 		return result.count === 1;

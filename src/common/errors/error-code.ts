@@ -53,6 +53,7 @@ export enum ErrorCode {
 	LISTING_STATE_INVALID = 'LISTING_STATE_INVALID',
 	LISTING_HIDDEN_BY_ADMIN = 'LISTING_HIDDEN_BY_ADMIN',
 	LISTING_IMAGE_LIMIT = 'LISTING_IMAGE_LIMIT',
+	LISTING_IMAGE_REQUIRED = 'LISTING_IMAGE_REQUIRED',
 	IMAGE_INVALID = 'IMAGE_INVALID',
 
 	// Dùng thử và hạn mức tin (spec 0003)
@@ -260,6 +261,11 @@ export const ERRORS: Record<ErrorCode, ErrorDefinition> = {
 	[ErrorCode.LISTING_IMAGE_LIMIT]: {
 		status: HttpStatus.CONFLICT,
 		message: 'Mỗi tin chỉ có tối đa 5 ảnh.',
+	},
+	[ErrorCode.LISTING_IMAGE_REQUIRED]: {
+		status: HttpStatus.CONFLICT,
+		message:
+			'Tin phải còn ít nhất một ảnh. Hãy tải ảnh mới lên trước rồi mới xóa ảnh này.',
 	},
 	[ErrorCode.IMAGE_INVALID]: {
 		status: HttpStatus.BAD_REQUEST,

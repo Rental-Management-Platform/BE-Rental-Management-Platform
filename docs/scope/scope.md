@@ -34,7 +34,7 @@ _Đây là các khuyến nghị để việc làm gọn gàng, không phải yê
 | 15 | Hồ sơ cá nhân | Release 15 | done |
 | 16 | Tin đang hiện trên hồ sơ chủ trọ | Release 16 | done |
 | 17 | Admin: xem đơn mua gói và doanh thu | Release 17 | done |
-| 18 | Đăng tin kèm ảnh trong một lần gọi | Release 18 | in-progress |
+| 18 | Đăng tin kèm ảnh trong một lần gọi | Release 18 | done |
 
 ## Foundations (đã có)
 
@@ -236,13 +236,13 @@ Spec [0010](../specs/0010-admin-order-list-revenue/index.md) (10 AC, 2 mốc, đ
 
 ## Release 18: đăng tin kèm ảnh
 
-### 18. Đăng tin kèm ảnh trong một lần gọi · in-progress · Tracer Bullet
+### 18. Đăng tin kèm ảnh trong một lần gọi · done · Tracer Bullet
 Hiện đăng tin và thêm ảnh là hai bước riêng: `POST /properties/:propertyId/listings` chỉ nhận JSON và tạo tin ngay, rồi `POST /listings/:id/images` nhận từng ảnh một (mục 6.28 và mục 7 bước 8 của tài liệu FE). Chủ trọ phải đăng xong rồi vào sửa mới có ảnh, và nếu bước ảnh hỏng thì tin đã hiện mà chưa có ảnh. Đã kiểm ngày 2026-11-02: tài liệu FE mô tả đúng API, không thiếu gì; chính API chưa có đường đăng tin kèm ảnh. Hàng này thêm một lần gọi nhận cả các trường của tin lẫn ảnh (`multipart/form-data`), tạo tin và lưu ảnh cùng lúc. Bạn chốt ngày 2026-11-02: một ảnh lỗi thì hủy cả bài, không tạo tin nào; bắt buộc ít nhất 1 ảnh khi đăng. Đã thiết kế đầy đủ ở spec 0011 (9 AC, 2 mốc), bạn Accept ngày 2026-11-02: đổi chính `POST /properties/:propertyId/listings` sang `multipart/form-data` kèm từ 1 đến 5 ảnh ở trường `images` (ảnh đầu là ảnh bìa) và bỏ hẳn đường JSON; tin, dòng ảnh và tệp ghi trong một giao dịch, lỗi ở đâu cũng dọn sạch; lỗi ảnh nói rõ ảnh nào sai (`images.N`); chặn xóa ảnh cuối cùng của một tin (mã mới 409 `LISTING_IMAGE_REQUIRED`); tin cũ chưa có ảnh (như tin của `bao.pham` trong dữ liệu demo) giữ nguyên; không bảng, không migration, không biến môi trường mới. Đây là thay đổi phá vỡ nên FE, bộ Postman và tài liệu FE đổi cùng đợt.
 **Done when:** chủ trọ đăng tin kèm từ 1 đến 5 ảnh trong một lần gọi và nhận lại tin đã có `images` và `coverImageUrl`; thiếu ảnh, quá 5 ảnh, hoặc một ảnh sai định dạng hay quá dung lượng thì không tạo tin nào và không để lại tệp ảnh nào trên ổ đĩa; các luật đăng tin cũ vẫn đúng (đủ quyền, đúng chủ nhà trọ, hạn dùng thử và hạn mức tin, tin hiện ngay); xóa ảnh cuối cùng của một tin bị chặn bằng lỗi 409 và hai lần xóa đồng thời không để tin còn 0 ảnh; tài liệu FE và bộ Postman nói đúng cách gọi mới.
 - [x] Design it (spec): `/architect listing with images in one request`
-- [ ] Build it: `/develop listing with images in one request`
+- [x] Build it: `/develop listing with images in one request`
    - [x] Mốc 1: đăng tin kèm ảnh trong một lần gọi: đường đăng tin sang `multipart/form-data`, kiểm hình dạng ảnh, một giao dịch có dọn tệp, interceptor đổi multipart hỏng thành 400, bộ Postman và tài liệu FE đổi theo (AC-1 đến AC-6, AC-8, AC-9); đã chạy thật trên DB thử 2026-11-02 (114 kiểm tra HTTP và database có so thư mục ảnh trước và sau, 25 kiểm tra gây lỗi thật ở Service: ghi tệp thứ ba lỗi, commit lỗi tin không lưu, commit báo lỗi mà tin đã lưu, đọc lại lỗi sau commit, trùng mã tin, giao dịch hết hạn; 6 yêu cầu đồng thời khi còn một chỗ ra đúng một 201; ba điều khiển âm đều bị bắt; 1522 bài unit; Newman 573 request và 1222 assertion, 0 lỗi, hai lượt liền, cộng folder demo 38 request); hai điểm lệch spec đã xử lý: Nest giải tham số song song nên `INVALID_ID` trước `VALIDATION_FAILED` phải bảo đảm bằng `RejectInvalidUuidParam`, và `MultipartFilesInterceptor` là lớp con của `AnyFilesInterceptor` thay vì interceptor đứng ngoài (xem báo cáo `/develop`)
-   - [ ] Mốc 2: chặn xóa ảnh cuối cùng của tin: mã lỗi `LISTING_IMAGE_REQUIRED`, xóa ảnh trong giao dịch có khóa dòng tin, kiểm cuối (AC-7, AC-9)
+   - [x] Mốc 2: chặn xóa ảnh cuối cùng của tin: mã lỗi `LISTING_IMAGE_REQUIRED`, xóa ảnh trong giao dịch có khóa dòng tin, kiểm cuối (AC-7, AC-9); đã chạy thật trên DB thử 2026-11-02 (46 kiểm tra HTTP và database: xóa tuần tự từ 3 ảnh xuống 1 rồi bị chặn có so tệp và dòng, thay ảnh duy nhất, 12 vòng mỗi ca đồng thời: hai ảnh của tin có 2 ảnh ra đúng một 204 một 409, cùng một ảnh hai lần ra một 204 một 404, ba ảnh cùng lúc ra hai 204 một 409, thứ tự lỗi, tin cũ 0 ảnh; điều khiển âm bỏ khóa dòng tin: 25 trên 30 vòng để tin còn 0 ảnh, bị bắt; 1529 bài unit; Newman 583 request và 1241 assertion, 0 lỗi, hai lượt liền, cộng folder demo 38 request); bộ Postman thêm 10 request vào folder 15, tài liệu FE cập nhật
 Spec [0011](../specs/0011-listing-with-images-in-one-request/index.md) (9 AC, 2 mốc, đã được bạn Accept ngày 2026-11-02; trạng thái spec đi theo tính năng) · code in `src/listings/`, `src/common/files/`, `src/common/errors/uuid-param.interceptor.ts`, `src/common/decorators/form-number.decorator.ts`, `src/common/persistence/` · tài liệu in `docs/api/`
 
 ## Deferred

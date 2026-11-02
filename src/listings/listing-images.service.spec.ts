@@ -39,6 +39,7 @@ interface Options {
 	ownership?: { property: { landlordId: string } } | null;
 	locked?: boolean;
 	taken?: number[];
+	imageCount?: number;
 	createError?: Error;
 	putError?: Error;
 	commitError?: Error;
@@ -96,6 +97,9 @@ function build(options: Options = {}) {
 						}
 					: options.image,
 			),
+		),
+		countInListing: jest.fn(() =>
+			track('countInListing', options.imageCount ?? 2),
 		),
 		delete: jest.fn(() =>
 			track('deleteRow', options.deleteRowResult ?? true),
@@ -354,19 +358,72 @@ describe('ListingImagesService.upload (spec 0002 AC-8)', () => {
 	});
 });
 
-describe('ListingImagesService.remove (spec 0002 AC-8)', () => {
-	it('xóa dòng trước, tệp sau; không trả gì', async () => {
-		const { service, calls, storage } = build();
+describe('ListingImagesService.remove (spec 0002 AC-8, spec 0011 AC-7)', () => {
+	it('khóa dòng tin, đọc ảnh, đếm, xóa dòng trong một giao dịch, rồi mới xóa tệp; không trả gì', async () => {
+		const { service, calls, storage, images, transactions } = build();
 		await expect(
 			service.remove(owner, LISTING_ID, IMAGE_ID),
 		).resolves.toBeUndefined();
 		expect(calls).toEqual([
 			'findOwnership',
+			'lockListing',
 			'findInListing',
+			'countInListing',
 			'deleteRow',
 			'deleteFile',
 		]);
+		expect(transactions.run).toHaveBeenCalledTimes(1);
+		expect(images.findInListing).toHaveBeenCalledWith(
+			LISTING_ID,
+			IMAGE_ID,
+			tx,
+		);
+		expect(images.countInListing).toHaveBeenCalledWith(LISTING_ID, tx);
+		expect(images.delete).toHaveBeenCalledWith(LISTING_ID, IMAGE_ID, tx);
 		expect(storage.delete).toHaveBeenCalledWith(`public/${FILE_NAME}`);
+	});
+
+	it('tin còn đúng 2 ảnh: xóa được một ảnh (còn lại một)', async () => {
+		const { service, images } = build({ imageCount: 2 });
+		await expect(
+			service.remove(owner, LISTING_ID, IMAGE_ID),
+		).resolves.toBeUndefined();
+		expect(images.delete).toHaveBeenCalledTimes(1);
+	});
+
+	it('ảnh cuối của tin: 409 LISTING_IMAGE_REQUIRED, không xóa dòng, không xóa tệp', async () => {
+		const { service, images, storage } = build({ imageCount: 1 });
+		await expect(
+			service.remove(owner, LISTING_ID, IMAGE_ID),
+		).rejects.toMatchObject({ code: ErrorCode.LISTING_IMAGE_REQUIRED });
+		expect(images.delete).not.toHaveBeenCalled();
+		expect(storage.delete).not.toHaveBeenCalled();
+	});
+
+	it('tin tự biến mất giữa lúc kiểm chủ và lúc khóa: 404 LISTING_NOT_FOUND, chưa đọc ảnh', async () => {
+		const { service, images, storage } = build({ locked: false });
+		await expect(
+			service.remove(owner, LISTING_ID, IMAGE_ID),
+		).rejects.toMatchObject({ code: ErrorCode.LISTING_NOT_FOUND });
+		expect(images.findInListing).not.toHaveBeenCalled();
+		expect(storage.delete).not.toHaveBeenCalled();
+	});
+
+	it('ảnh không có (kể cả tin cũ chưa có ảnh nào): 404 NOT_FOUND đến trước 409, không đếm', async () => {
+		const { service, images } = build({ image: null, imageCount: 0 });
+		await expect(
+			service.remove(owner, LISTING_ID, IMAGE_ID),
+		).rejects.toMatchObject({ code: ErrorCode.NOT_FOUND });
+		expect(images.countInListing).not.toHaveBeenCalled();
+	});
+
+	it('giao dịch lỗi lúc commit: không xóa tệp, lỗi gốc được ném', async () => {
+		const failure = new Error('commit lỗi');
+		const { service, storage } = build({ commitError: failure });
+		await expect(service.remove(owner, LISTING_ID, IMAGE_ID)).rejects.toBe(
+			failure,
+		);
+		expect(storage.delete).not.toHaveBeenCalled();
 	});
 
 	it('tin không có: 404 LISTING_NOT_FOUND; của người khác: 403 NOT_RESOURCE_OWNER; cả hai trước khi tra ảnh', async () => {

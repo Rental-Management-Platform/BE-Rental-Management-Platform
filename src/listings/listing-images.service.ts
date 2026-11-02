@@ -114,8 +114,11 @@ export class ListingImagesService {
 	}
 
 	/**
-	 * Xóa ảnh: xóa dòng trước, tệp sau (lỗi xóa tệp chỉ ghi log, ảnh đã biến khỏi tin). Ảnh không thuộc tin
-	 * thì 404 `NOT_FOUND` chung.
+	 * Xóa ảnh (spec 0011 AC-7): kiểm chủ như cũ, rồi một giao dịch khóa dòng tin, đọc ảnh, đếm ảnh, xóa dòng.
+	 * Đọc và đếm sau khóa nên hai lần xóa đồng thời hai ảnh của tin có đúng 2 ảnh không cùng thấy "còn hai". Thứ
+	 * tự lỗi: 404 `LISTING_NOT_FOUND` hoặc 403 `NOT_RESOURCE_OWNER`, rồi 404 `NOT_FOUND` chung (ảnh không thuộc
+	 * tin, kể cả tin cũ chưa có ảnh nào), rồi 409 `LISTING_IMAGE_REQUIRED` (đây là ảnh cuối). Tệp xóa sau commit
+	 * (lỗi xóa tệp chỉ ghi log, ảnh đã biến khỏi tin).
 	 */
 	async remove(
 		user: RequestUser,
@@ -126,11 +129,24 @@ export class ListingImagesService {
 		if (owned === null) throw new AppException(ErrorCode.LISTING_NOT_FOUND);
 		assertOwner(user, owned.property.landlordId);
 
-		const image = await this.images.findInListing(listingId, imageId);
-		if (image === null) throw new AppException(ErrorCode.NOT_FOUND);
-		if (!(await this.images.delete(listingId, imageId))) {
-			throw new AppException(ErrorCode.NOT_FOUND);
-		}
+		const image = await this.transactions.run(async (tx) => {
+			if (!(await this.images.lockListing(listingId, tx))) {
+				throw new AppException(ErrorCode.LISTING_NOT_FOUND);
+			}
+			const found = await this.images.findInListing(
+				listingId,
+				imageId,
+				tx,
+			);
+			if (found === null) throw new AppException(ErrorCode.NOT_FOUND);
+			if ((await this.images.countInListing(listingId, tx)) <= 1) {
+				throw new AppException(ErrorCode.LISTING_IMAGE_REQUIRED);
+			}
+			if (!(await this.images.delete(listingId, imageId, tx))) {
+				throw new AppException(ErrorCode.NOT_FOUND);
+			}
+			return found;
+		});
 		await this.discardFile(image.storageKey);
 	}
 

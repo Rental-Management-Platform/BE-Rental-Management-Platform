@@ -241,6 +241,7 @@ Lưu ý: **một trường có thể xuất hiện nhiều lần** trong `errors
 | `LISTING_STATE_INVALID` | 409 | Chuyển trạng thái tin không hợp lệ (ẩn tin không đang hiện, hiện tin đã hiện, ẩn tin đang bị admin ẩn); ở API kiểm duyệt của admin (6.29) là ẩn tin đã bị admin ẩn hoặc gỡ ẩn tin không bị admin ẩn | Tải lại tin (`GET /me/listings/:id`) rồi cập nhật nút |
 | `LISTING_HIDDEN_BY_ADMIN` | 403 | Chủ trọ cố hiện lại tin đang bị admin ẩn | Hiện nhãn "bị quản trị viên ẩn" kèm `moderationReason`, ẩn nút "Hiện" |
 | `LISTING_IMAGE_LIMIT` | 409 | Tải ảnh lên tin đã đủ 5 ảnh | Tắt nút tải khi `images` đã đủ 5 ảnh; báo "hãy xóa bớt một ảnh trước" |
+| `LISTING_IMAGE_REQUIRED` | 409 | Xóa ảnh cuối cùng của tin (tin chỉ còn một ảnh; từ 2026-11-02, mục 6.28) | Ẩn hoặc tắt nút "Xóa" khi `images` chỉ còn 1 ảnh; nếu vẫn gặp thì hiện `message`: "hãy tải ảnh mới lên trước rồi mới xóa ảnh này" |
 | `IMAGE_INVALID` | 400 | Ảnh không hợp lệ. **Đăng tin (6.18, từ 2026-11-02)**: thiếu ảnh (`errors` có một dòng `field: "images"`, `code: "imagesRequired"`), hoặc có tệp sai loại (không phải JPEG, PNG, WebP; kiểm bằng nội dung tệp, không theo đuôi tên: `code: "notImage"`) hay sai tên trường (phải đúng `images`: `code: "wrongField"`). `errors` liệt kê **mọi** ảnh sai, mỗi dòng `field: "images.N"` với N là thứ tự tệp trong form, **đếm từ 0**. Yêu cầu JSON (không có tệp) cũng nhận mã này. **Tải ảnh lẻ (6.28)**: thiếu tệp, sai tên trường (phải là `file`), gửi nhiều hơn một tệp hoặc sai loại (không có `errors`) | Hiện `message`; ở đăng tin dùng `errors[].field` (`images.N`) để đánh dấu đúng ảnh sai, nhắc chọn ảnh JPEG, PNG hoặc WebP |
 | `MEMBERSHIP_REQUIRED` | 403 | Đăng tin hoặc hiện lại tin khi **kỳ dùng thử đã hết và không có gói đang chạy** (cả tài khoản admin, vì admin không có kỳ dùng thử). Chỉ hai API đăng và hiện tin trả mã này. Mua gói xong là hết mã này | Hiện `message` kèm nút "Mua gói" dẫn tới trang bảng giá (mục 7). Vẫn cho ẩn, sửa, xóa tin và quản lý nhà trọ |
 | `LISTING_QUOTA_REACHED` | 403 | Đăng tin hoặc hiện lại tin khi **còn hạn mức (gói đang chạy hoặc kỳ dùng thử) nhưng số tin đang hiện đã bằng hoặc vượt hạn mức đó** | Hiện `message`, gợi ý "ẩn hoặc xóa bớt một tin" (hoặc mua gói lớn hơn). FE biết hạn mức trước qua `GET /me/membership` (6.25) |
@@ -1285,7 +1286,7 @@ const res = await fetch(`${API}/listings/${listingId}/images`, {
 
 `DELETE /listings/:id/images/:imageId` · quyền `listing:update` (chỉ chủ tin)
 
-**204 No Content**, không có thân. Ảnh nhỏ nhất còn lại trở thành ảnh bìa. **Lỗi**: 404 `LISTING_NOT_FOUND` · 403 `NOT_RESOURCE_OWNER` · 404 `NOT_FOUND` (ảnh không có, đã xóa hoặc không thuộc tin này) · 400 `INVALID_ID` · 403 `PERMISSION_DENIED` · 401.
+**204 No Content**, không có thân. Ảnh nhỏ nhất còn lại trở thành ảnh bìa. **Không xóa được ảnh cuối cùng của tin (từ 2026-11-02)**: tin chỉ còn một ảnh thì nhận **409 `LISTING_IMAGE_REQUIRED`**, dòng ảnh và tệp còn nguyên. Muốn thay ảnh duy nhất: tải ảnh mới lên trước (`POST /listings/:id/images`), rồi mới xóa ảnh cũ. **Lỗi**, theo thứ tự kiểm: 404 `LISTING_NOT_FOUND` · 403 `NOT_RESOURCE_OWNER` · 404 `NOT_FOUND` (ảnh không có, đã xóa hoặc không thuộc tin này) · 409 `LISTING_IMAGE_REQUIRED` (đây là ảnh cuối) · 400 `INVALID_ID` · 403 `PERMISSION_DENIED` · 401.
 
 `GET /api/v1/media/public/<uuid>.<đuôi>` · công khai, **không cần token**
 
@@ -1295,7 +1296,9 @@ Cần nhớ:
 - Tải ảnh được vào tin ở **mọi trạng thái**, kể cả tin đang ẩn và tin bị admin ẩn, và **không bị cửa hạn mức chặn** (như sửa tin), kể cả khi hết dùng thử.
 - Hai lần tải đồng thời khi tin chỉ còn một chỗ thì đúng một lần thành công, lần kia nhận 409 `LISTING_IMAGE_LIMIT`.
 - Gửi từ 2 đến 5 tệp trong một yêu cầu là 400 `IMAGE_INVALID`; gửi **hơn 5 tệp** bị chặn sớm hơn với 400 `BAD_REQUEST` chung; form hỏng (thân bị cắt, thiếu ranh giới) cũng là 400 `BAD_REQUEST`. FE chỉ cần gửi từng ảnh một (muốn gửi nhiều ảnh trong một lần thì dùng đăng tin, 6.18).
-- Không có API đổi thứ tự ảnh: muốn đổi ảnh bìa thì xóa ảnh bìa (ảnh kế tiếp thành bìa) hoặc xóa và tải lại.
+- Không có API đổi thứ tự ảnh: muốn đổi ảnh bìa thì xóa ảnh bìa (ảnh kế tiếp thành bìa) hoặc tải ảnh mới lên rồi xóa ảnh cũ. Vì tin không bao giờ xuống 0 ảnh qua API, **không xóa ảnh trước khi tải ảnh thay thế** nếu tin chỉ có một ảnh.
+- Hai lần xóa đồng thời hai ảnh của tin có đúng 2 ảnh thì đúng một lần 204, lần kia 409 `LISTING_IMAGE_REQUIRED`. Hai lần xóa cùng một ảnh thì một lần 204, lần kia 404 `NOT_FOUND`.
+- **Tin cũ chưa có ảnh nào** (đăng trước 2026-11-02, như một tin của `bao.pham` trong dữ liệu demo) không bị đụng: vẫn tải ảnh lên được, và chưa có ảnh thì cũng chẳng có gì để xóa (xóa một `imageId` bất kỳ là 404 `NOT_FOUND`). Tin cũ **chỉ còn một ảnh** thì cũng không xóa được ảnh đó xuống 0.
 - Ảnh của tin bị ẩn nằm trong bộ nhớ đệm trình duyệt tối đa một ngày. Chủ trọ **không xem được ảnh của tin đang ẩn của chính mình** qua đường này (thẻ `<img>` không gửi token); hiện lại tin là thấy.
 - Xóa mềm tin giữ nguyên ảnh (ổ đĩa chỉ tăng). Ảnh được kiểm bằng nội dung tệp, tên tệp do backend đặt, không thể đi ra ngoài thư mục lưu ảnh.
 
@@ -1880,7 +1883,7 @@ Hai ô: mật khẩu hiện tại, mật khẩu mới. Gọi `POST /auth/change-
 6. **Hạn mức** (đăng tin và nút "Hiện"): gặp 403 `LISTING_QUOTA_REACHED` thì báo "bạn đã dùng hết số tin được hiện, hãy ẩn hoặc xóa bớt một tin" và giữ nguyên biểu mẫu để người dùng không mất chữ đã nhập; gặp 403 `MEMBERSHIP_REQUIRED` thì báo kỳ dùng thử đã hết kèm nút "Mua gói" dẫn tới trang bảng giá (mục "Bảng giá gói" bên dưới); mua xong đăng được ngay. **Không** coi hai lỗi này là lỗi hệ thống, và **không** thử lại tự động. Khi hết dùng thử vẫn cho ẩn, sửa, xóa tin và quản lý nhà trọ bình thường.
 
 7. Tin `visible` vẫn có thể không hiện công khai: chủ trọ hết dùng thử và hết gói, hoặc tin đăng sau bị ẩn bớt vì vượt hạn mức (6.19). **Đừng suy ra từ `status` rằng tin đang hiện với khách; đọc `isPublic`** (6.18), có ở mọi phản hồi tin của chủ trọ.
-8. **Ảnh của tin**: các ảnh đầu gửi cùng lúc đăng tin (bước 2); bước này là **thêm ảnh sau** cho tin đã đăng (trong biểu mẫu sửa tin và trang quản lý tin): nút "Thêm ảnh" mở hộp chọn tệp (`accept="image/jpeg,image/png,image/webp"`), gửi **từng ảnh một** bằng `POST /listings/:id/images` (6.28), hiện ảnh từ `url` trả về. Lấy danh sách ảnh từ `images[]` của `GET /me/listings/:id`, mỗi ảnh có nút "Xóa" gọi `DELETE /listings/:id/images/:imageId`. Ẩn nút thêm khi đã đủ 5 ảnh, nhưng vẫn xử lý 409 `LISTING_IMAGE_LIMIT`, 400 `IMAGE_INVALID` và 413 `PAYLOAD_TOO_LARGE` bằng `message` của backend. Kiểm dung lượng ở FE trước khi gửi nếu muốn (mặc định 5 MiB).
+8. **Ảnh của tin**: các ảnh đầu gửi cùng lúc đăng tin (bước 2); bước này là **thêm ảnh sau** cho tin đã đăng (trong biểu mẫu sửa tin và trang quản lý tin): nút "Thêm ảnh" mở hộp chọn tệp (`accept="image/jpeg,image/png,image/webp"`), gửi **từng ảnh một** bằng `POST /listings/:id/images` (6.28), hiện ảnh từ `url` trả về. Lấy danh sách ảnh từ `images[]` của `GET /me/listings/:id`, mỗi ảnh có nút "Xóa" gọi `DELETE /listings/:id/images/:imageId`; **khi tin chỉ còn 1 ảnh thì tắt nút "Xóa" của ảnh đó** (kèm gợi ý "tải ảnh mới lên trước rồi mới xóa ảnh này") và vẫn xử lý 409 `LISTING_IMAGE_REQUIRED` bằng `message` của backend (có thể gặp khi hai tab cùng xóa). Muốn thay ảnh duy nhất: tải ảnh mới lên rồi xóa ảnh cũ. Ẩn nút thêm khi đã đủ 5 ảnh, nhưng vẫn xử lý 409 `LISTING_IMAGE_LIMIT`, 400 `IMAGE_INVALID` và 413 `PAYLOAD_TOO_LARGE` bằng `message` của backend. Kiểm dung lượng ở FE trước khi gửi nếu muốn (mặc định 5 MiB).
 
 ### Tìm trọ (khách và người tìm trọ)
 
@@ -2103,6 +2106,15 @@ Tính đến 2026-10-22 **không còn tính năng nào đã lên kế hoạch m�
 
 Mới nhất ở trên cùng. Mục nào **phá vỡ** cách FE đang gọi sẽ ghi rõ "ĐỔI KHÁC VỚI TRƯỚC".
 
+### 2026-11-02 · Không xóa được ảnh cuối cùng của tin (mốc 2 của đăng tin kèm ảnh; phần đăng tin kèm ảnh xong)
+
+- **ĐỔI KHÁC VỚI TRƯỚC**: `DELETE /listings/:id/images/:imageId` (mục 6.28) khi tin chỉ còn một ảnh giờ trả **409 `LISTING_IMAGE_REQUIRED`** (mã mới, đã thêm vào bảng mã lỗi ở mục 3 và kiểu `ErrorCode` ở Phụ lục B). Dòng ảnh và tệp còn nguyên. Trước đây xóa được ảnh cuối và tin về 0 ảnh.
+- **Còn từ 2 ảnh trở lên thì xóa như cũ** (204, ảnh nhỏ nhất còn lại thành ảnh bìa). Hai lần xóa đồng thời hai ảnh của tin có đúng 2 ảnh: đúng một lần 204, lần kia 409. Hai lần xóa cùng một ảnh: một lần 204, lần kia 404 `NOT_FOUND`.
+- **Thứ tự kiểm lỗi**: 404 `LISTING_NOT_FOUND` hoặc 403 `NOT_RESOURCE_OWNER`, rồi 404 `NOT_FOUND` (ảnh không có), rồi 409. Nên người không phải chủ tin nhận 403 chứ không phải 409, và tin cũ chưa có ảnh nào xóa ảnh bất kỳ vẫn là 404 `NOT_FOUND` như trước.
+- **Muốn thay ảnh duy nhất**: tải ảnh mới lên trước (`POST /listings/:id/images`), rồi mới xóa ảnh cũ.
+- **FE cần làm**: tắt nút "Xóa" của ảnh khi tin chỉ còn 1 ảnh, và vẫn hiện `message` của backend nếu gặp 409 (mục 7, bước 8 của Chủ trọ).
+- **Không đổi**: quyền `listing:update`, việc xóa ảnh không bị giới hạn tần suất, `POST /listings/:id/images`, đăng tin, các `GET` và `/media/public/<tệp>`. Không bảng, cột hay migration mới.
+
 ### 2026-11-02 · Đăng tin kèm ảnh trong một lần gọi (mốc 1 của đăng tin kèm ảnh)
 
 - **ĐỔI KHÁC VỚI TRƯỚC**: `POST /properties/:propertyId/listings` (mục 6.18) giờ **chỉ nhận `multipart/form-data`**: các trường chữ của tin cộng từ 1 đến 5 tệp ở trường `images`. Đường JSON cũ **đã bỏ**: gửi JSON nhận 400 `IMAGE_INVALID`. FE, script và bộ Postman gọi bằng JSON phải đổi sang `FormData` cùng đợt (ví dụ ở 6.18).
@@ -2112,7 +2124,7 @@ Mới nhất ở trên cùng. Mục nào **phá vỡ** cách FE đang gọi sẽ
 - **Số trong form** đến dạng chuỗi và chỉ chuỗi số thập phân thường được nhận (`1e5`, `0x10`, khoảng trắng, chuỗi rỗng là 400 `VALIDATION_FAILED`); trường tùy chọn thì bỏ hẳn khỏi form.
 - **Thứ tự báo lỗi mới** ghi ở 6.18 (ảnh sai được báo trước lỗi nhà trọ của người khác). Quyền, hạn mức, giới hạn 60 lần mỗi giờ và việc tin hiện ngay **không đổi**.
 - **Không đổi**: `POST /listings/:id/images` (vẫn thêm được ảnh cho tin đã đăng, kể cả tin cũ chưa có ảnh), `PATCH /listings/:id` (JSON), ẩn, hiện, xóa tin, các `GET` và `/media/public/<tệp>`.
-- **Chưa làm (mốc 2)**: chặn xóa ảnh cuối cùng của một tin. Cho tới lúc đó `DELETE /listings/:id/images/:imageId` vẫn xóa được ảnh cuối.
+- **Mốc 2 đã làm** (xem mục ngay phía trên): `DELETE /listings/:id/images/:imageId` không còn xóa được ảnh cuối cùng của một tin.
 
 ### 2026-10-23 · Thêm bộ dữ liệu demo cho FE: `npm run seed:demo` (không đổi API)
 
@@ -2474,6 +2486,8 @@ Tổng cộng **69 API**. Mọi đường dẫn nằm dưới `/api/v1`. Quy ư�
 
 Ba API ghi nhà trọ đếm riêng nhau (mỗi API 30 lần mỗi giờ); năm API ghi tin đếm riêng nhau (mỗi API 60 lần mỗi giờ).
 
+`DELETE /listings/:id/images/:imageId` trả 409 `LISTING_IMAGE_REQUIRED` khi tin chỉ còn một ảnh (từ 2026-11-02, mục 6.28).
+
 ### A.5 Đọc công khai
 
 | API | Cần | Giới hạn | OK | Mục |
@@ -2574,7 +2588,7 @@ type ErrorCode =
   | 'USER_NOT_FOUND' | 'CANNOT_LOCK_SELF' | 'ACCOUNT_ALREADY_LOCKED' | 'ACCOUNT_NOT_LOCKED'
   | 'WARD_UNKNOWN' | 'AMENITY_UNKNOWN' | 'CATALOG_CODE_TAKEN' | 'CATALOG_IN_USE'
   | 'PROPERTY_NOT_FOUND' | 'PROPERTY_HAS_LISTINGS'
-  | 'LISTING_NOT_FOUND' | 'LISTING_STATE_INVALID' | 'LISTING_HIDDEN_BY_ADMIN' | 'LISTING_IMAGE_LIMIT' | 'IMAGE_INVALID'
+  | 'LISTING_NOT_FOUND' | 'LISTING_STATE_INVALID' | 'LISTING_HIDDEN_BY_ADMIN' | 'LISTING_IMAGE_LIMIT' | 'LISTING_IMAGE_REQUIRED' | 'IMAGE_INVALID'
   | 'MEMBERSHIP_REQUIRED' | 'LISTING_QUOTA_REACHED'
   | 'PLAN_NOT_FOUND' | 'PLAN_NAME_TAKEN' | 'PLAN_IN_USE' | 'PLAN_INACTIVE'
   | 'ORDER_NOT_FOUND' | 'ORDER_STATE_INVALID'

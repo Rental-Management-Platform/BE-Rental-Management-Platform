@@ -1,6 +1,20 @@
 import { HttpStatus } from '@nestjs/common';
 import { ERRORS, ErrorCode } from './error-code';
 
+describe('mã lỗi chặn xóa ảnh cuối của tin (spec 0011 AC-7)', () => {
+	it('LISTING_IMAGE_REQUIRED là 409 kèm câu tiếng Việt', () => {
+		expect(ERRORS[ErrorCode.LISTING_IMAGE_REQUIRED]).toEqual({
+			status: HttpStatus.CONFLICT,
+			message:
+				'Tin phải còn ít nhất một ảnh. Hãy tải ảnh mới lên trước rồi mới xóa ảnh này.',
+		});
+	});
+
+	it('giá trị của mã trùng tên mã: FE dựa vào chuỗi này', () => {
+		expect(ErrorCode.LISTING_IMAGE_REQUIRED).toBe('LISTING_IMAGE_REQUIRED');
+	});
+});
+
 describe('mã lỗi của hồ sơ chủ trọ (spec 0005)', () => {
 	it('LANDLORD_NOT_FOUND là 404 kèm câu tiếng Việt', () => {
 		expect(ERRORS[ErrorCode.LANDLORD_NOT_FOUND]).toEqual({

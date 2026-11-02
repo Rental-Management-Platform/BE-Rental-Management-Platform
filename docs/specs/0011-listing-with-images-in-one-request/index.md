@@ -1,7 +1,7 @@
 # 0011. Đăng tin kèm ảnh trong một lần gọi
 
 **Date**: 2026-11-02
-**Status**: In Progress
+**Status**: Accepted
 
 ## Summary
 

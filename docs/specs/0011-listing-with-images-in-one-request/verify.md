@@ -1,7 +1,7 @@
 # Verify: đăng tin kèm ảnh trong một lần gọi · spec 0011 · updated 2026-11-02
 _Steps derived from spec 0011 acceptance criteria. `/check verify` runs these; `/test` locks the durable ones._
 
-Mốc 1 xong, mốc 2 (chặn xóa ảnh cuối, AC-7) chưa làm nên các bước của nó sẽ thêm vào cuối tệp này khi build. Chạy trên một database thử (đã dùng `rental_management_verify`), không chạy trên database đang dùng: dọn schema, rồi `npx prisma migrate deploy` và `node dist/database/seed.js` (sau `npm run build`), đặt `UPLOAD_DIR` sang một thư mục riêng để so thư mục ảnh trước và sau, đặt `PORT` riêng, khởi động lại server trước mỗi lần chạy (bộ đếm giới hạn tần suất nằm trong bộ nhớ; đăng ký tối đa 10 lần mỗi giờ theo IP). Trong mọi bước "không để lại gì" nghĩa là ba thứ cùng đúng: không dòng `listings` mới, không dòng `listing_images` mới, thư mục ảnh y như trước.
+Cả hai mốc đã xong; các bước của mốc 2 (chặn xóa ảnh cuối, AC-7) nằm ở mục "AC-7" bên dưới. Chạy trên một database thử (đã dùng `rental_management_verify`), không chạy trên database đang dùng: dọn schema, rồi `npx prisma migrate deploy` và `node dist/database/seed.js` (sau `npm run build`), đặt `UPLOAD_DIR` sang một thư mục riêng để so thư mục ảnh trước và sau, đặt `PORT` riêng, khởi động lại server trước mỗi lần chạy (bộ đếm giới hạn tần suất nằm trong bộ nhớ; đăng ký tối đa 10 lần mỗi giờ theo IP). Trong mọi bước "không để lại gì" nghĩa là ba thứ cùng đúng: không dòng `listings` mới, không dòng `listing_images` mới, thư mục ảnh y như trước.
 
 ## Commands
 - [ ] `npx tsc --noEmit` và `npx eslint "{src,apps,libs,test}/**/*.ts"` → sạch → AC-1 đến AC-9
@@ -55,6 +55,19 @@ AC-6 và AC-2, hạn mức, đồng thời, tất cả hoặc không gì cả:
 AC-8, giới hạn tần suất:
 - [ ] Một chủ trọ gửi 60 yêu cầu đăng tin (kể cả bị từ chối) rồi yêu cầu thứ 61 → 429 `RATE_LIMITED` kèm `Retry-After` là số giây; chủ trọ khác vẫn đăng được → AC-8
 
+AC-7, chặn xóa ảnh cuối (mốc 2; Postman folder `15 Ảnh tin`, cuối folder):
+- [ ] Tin có 3 ảnh, xóa ảnh bìa → 204; tệp của ảnh đó biến khỏi ổ đĩa; database còn 2 dòng; ảnh nhỏ nhất còn lại thành `coverImageUrl` → AC-7
+- [ ] Xóa tiếp khi còn 2 ảnh → 204, tin còn đúng một ảnh → AC-7
+- [ ] Xóa ảnh cuối → 409 `LISTING_IMAGE_REQUIRED` với câu "Tin phải còn ít nhất một ảnh. Hãy tải ảnh mới lên trước rồi mới xóa ảnh này."; dòng ảnh và tệp còn nguyên, không thêm bớt tệp, tin, dòng ảnh nào; ảnh vẫn mở được ở `GET /media/public/<tệp>` → AC-7
+- [ ] Thay ảnh duy nhất: tải ảnh mới (`POST /listings/:id/images`, nhận `position` 0), rồi xóa ảnh cũ → 204; tin còn đúng ảnh mới và nó là ảnh bìa; xóa tiếp ảnh mới → 409 → AC-7
+- [ ] Hai lần xóa đồng thời hai ảnh của tin có đúng 2 ảnh, lặp nhiều vòng (đã chạy 12 vòng) → mỗi vòng đúng một 204 và một 409, tin còn đúng 1 dòng ảnh và 1 tệp, không vòng nào còn 0 ảnh → AC-7
+- [ ] Hai lần xóa đồng thời cùng một ảnh của tin có 3 ảnh → một 204 và một 404 `NOT_FOUND`, tin còn 2 dòng, tệp của ảnh bị xóa mất, hai tệp kia còn → AC-7
+- [ ] Ba lần xóa đồng thời ba ảnh của tin có 3 ảnh → hai 204 và một 409, tin còn 1 ảnh → AC-7
+- [ ] Thứ tự lỗi: chủ trọ khác (và admin) xóa ảnh cuối của tin người ta → 403 `NOT_RESOURCE_OWNER` (không phải 409); tin không có → 404 `LISTING_NOT_FOUND`; tin đã xóa mềm → 404 `LISTING_NOT_FOUND`; `imageId` không có hoặc của tin khác trên tin chỉ có 1 ảnh → 404 `NOT_FOUND` (không phải 409); id không phải UUID → 400 `INVALID_ID`; người tìm trọ → 403 `PERMISSION_DENIED`; không đăng nhập → 401 → AC-7
+- [ ] Tin đang ẩn: còn 2 ảnh xóa được một, ảnh cuối vẫn 409 → AC-7
+- [ ] Tin cũ chưa có ảnh nào (xóa các dòng ảnh bằng SQL để dựng): xóa một `imageId` bất kỳ → 404 `NOT_FOUND` (không phải 409); `POST /listings/:id/images` vẫn thêm được (`position` 0), rồi xóa ảnh đó → 409 → AC-7, AC-9
+- [ ] Điều khiển âm: bỏ `lockListing` trong `ListingImagesService.remove` (sửa tệp biên dịch ở `dist/`, sao lưu trước rồi trả lại) rồi chạy lại hai ảnh đồng thời → phép kiểm phải hỏng (hai 204, tin còn 0 ảnh); trả lại rồi chạy lại phải qua → AC-7
+
 AC-9, không đổi:
 - [ ] `POST /listings/:id/images` (trường `file`) thêm ảnh vào tin vừa đăng → 201 `position` 1; `PATCH /listings/:id` JSON, `hide`, `show`, `DELETE /listings/:id/images/:imageId` (khi còn từ 2 ảnh), `GET /me/listings` vẫn chạy → AC-9
 - [ ] `npm run seed:demo` chạy hai lần liền không lỗi; một tin demo cũ chưa có ảnh: chủ tin đọc được qua `GET /me/listings/:id` (`images` rỗng, `coverImageUrl` `null`) và thêm ảnh được qua `POST /listings/:id/images` (`position` 0) → AC-9
@@ -66,17 +79,24 @@ Mỗi dòng của bảng nguồn giá trị (spec, "Value sourcing"), kiểm bi�
 - [ ] Chỉ số `N` trong `images.N`: chèn tệp sai ở các vị trí khác nhau, `N` luôn là thứ tự tệp trong form đếm từ 0 → AC-3
 - [ ] `now` cho cửa hạn mức do controller lấy một lần: chủ trọ đúng lúc hết dùng thử (`trial_days` 0) bị chặn → AC-6
 - [ ] `images[]` và `coverImageUrl` trong phản hồi: đọc lại sau commit, khớp dòng `listing_images` trong database → AC-1
+- [ ] Xóa ảnh, "ảnh có còn không, số ảnh còn lại" đọc trong giao dịch sau khi khóa dòng tin: hai lần xóa đồng thời không cùng thấy "còn hai" (xem bước hai ảnh đồng thời ở AC-7 và điều khiển âm bỏ khóa) → AC-7
 
 ## Acceptance-criteria coverage
 - AC-1 … đăng tin kèm 1 và 5 ảnh, byte đúng, công khai · AC-2 … lỗi ghi tệp, lỗi commit, commit báo lỗi mà tin đã lưu, đồng thời, hết hạn giao dịch · AC-3 … mọi ca ảnh sai, tệp quá lớn, multipart hỏng · AC-4 … số dạng chuỗi và trường sai · AC-5 … thứ tự lỗi · AC-6 … hạn mức, trùng mã · AC-8 … quyền và 429 · AC-9 … các đường không đổi, seed demo, tin cũ chưa có ảnh
-- AC-7 (chặn xóa ảnh cuối) … thuộc mốc 2, chưa làm
+- AC-7 … xóa tuần tự đến ảnh cuối, thay ảnh duy nhất, ba ca đồng thời, thứ tự lỗi, tin ẩn, tin xóa mềm, tin cũ 0 ảnh, điều khiển âm bỏ khóa
 
 ## Kết quả đã chạy 2026-11-02 (mốc 1)
 - **114 kiểm tra HTTP và database** (script `verify.js`) trên server cổng 3055: gồm 6 yêu cầu đồng thời khi còn một chỗ và 61 lần gọi cho giới hạn 429; log server không có lỗi 5xx. **25 kiểm tra gây lỗi thật bên trong Service** (script `inject.js`, nạp `dist/` và thay `StorageService.put`, `TransactionRunner.run`, `findOwnerDetail`, `generateListingCode` trên chính database thử). **7 kiểm tra** `seed:demo` hai lần và tin cũ chưa có ảnh (script `legacy.js`). Tất cả 0 sai.
 - **Ba điều khiển âm đều bị bắt**: bỏ bước dọn tệp làm thư mục ảnh thừa 2, 3 và 3 tệp ở ba tình huống; để `Number('')` đi qua làm `deposit` rỗng và `price=1e5` được nhận (201) thay vì 400; ghi tệp trước cửa hạn mức làm 8 bài unit hỏng.
 - Unit: 1522 bài (78 bộ), `tsc` và `eslint` sạch. Newman folder 00, 01, 03, 04, 05, 07 đến 22 (bỏ 02 và 06): 573 request, 1222 assertion, 0 lỗi, hai lượt liền (khởi động lại server giữa hai lượt, cùng một database); folder 23: 38 request, 75 assertion, 0 lỗi. Lần chạy đầu trên bộ Postman chưa sửa assertion có 11 assertion hỏng (folder 09 và 15, đều do tin mới giờ có sẵn ảnh), chứng tỏ bộ kiểm bắt được thay đổi.
 
+## Kết quả đã chạy 2026-11-02 (mốc 2)
+- **46 kiểm tra HTTP và database** (script `verify-m2.js`) trên server cổng 3055 và database thử vừa dựng lại: xóa tuần tự 3 ảnh xuống 1 rồi bị chặn (so tệp trên ổ đĩa và dòng database), thay ảnh duy nhất, ba ca đồng thời mỗi ca 12 vòng (hai ảnh của tin có 2 ảnh, cùng một ảnh hai lần, ba ảnh cùng lúc), thứ tự lỗi, tin ẩn, tin xóa mềm, tin cũ chưa có ảnh. 0 sai; log server không có lỗi 5xx.
+- **Điều khiển âm đã bắt**: bỏ `lockListing` khỏi `remove` ở tệp biên dịch (sao lưu rồi trả lại) thì 25 trên 30 vòng hai ảnh đồng thời ra hai 204 và để tin còn 0 ảnh, phép kiểm hỏng đúng chỗ; trả lại thì 46 trên 46 qua.
+- Unit: 1529 bài (78 bộ), `tsc` và `eslint` sạch, không file nào đổi trong `prisma/`. Newman folder 00, 01, 03, 04, 05, 07 đến 22 (bỏ 02 và 06): 583 request, 1241 assertion, 0 lỗi, hai lượt liền (khởi động lại server giữa hai lượt, cùng một database); folder 23: 38 request, 75 assertion, 0 lỗi. So với mốc 1: thêm 10 request và 19 assertion ở folder 15.
+
 ## Ghi chú
+- Mốc 2: script kiểm `verify-m2.js` nằm ở thư mục tạm của phiên (không có trong repo), dựng lại từ `helpers` của `verify.js` mốc 1. Chạy tối đa khoảng 12 vòng mỗi ca vì tin đăng bị giới hạn 60 lần mỗi giờ theo người (30 vòng làm hết hạn mức: 429).
 - Các script kiểm nằm ở thư mục tạm của phiên làm việc (không có trong repo). Làm lại theo các bước trên khi cần. Bản Newman cũ ở các thư mục tạm trước đã hỏng (thiếu `package.json`); cài lại bằng `npm install newman@6.2.1`.
 - **Lệch spec thứ nhất**: spec viết "Nest chạy pipe theo thứ tự tham số nên `INVALID_ID` rồi `VALIDATION_FAILED`". Kiểm thật cho thấy sai: Nest giải các tham số của handler song song (`Promise.all`), lỗi nào xong trước thì thắng, và đã đo được `VALIDATION_FAILED` thắng. Để AC-5 đúng thật, build thêm `RejectInvalidUuidParam('propertyId')` (interceptor chạy sau bước đọc multipart, trước mọi pipe); test có đối chứng bỏ nó thì ra `VALIDATION_FAILED`.
 - **Lệch spec thứ hai**: spec viết `@UseInterceptors(MultipartErrorInterceptor, AnyFilesInterceptor())` với interceptor đứng ngoài. Interceptor đứng ngoài bắt cả lỗi ném từ handler (lỗi database biến 500 thành 400, trái AC-9). Build `MultipartFilesInterceptor` là lớp con của `AnyFilesInterceptor` chỉ bắt lỗi của bước đọc multipart. Thêm nữa, với bản Nest đang cài mọi thân multipart hỏng đã thử đều ra 400 `BAD_REQUEST` ngay cả khi không có interceptor này, nên "multipart hỏng là 500" của spec không tái hiện được; interceptor chỉ là lớp phòng thủ.

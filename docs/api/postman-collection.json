@@ -346,6 +346,31 @@
       "description": "Tên tệp của ảnh thứ hai ở folder 15."
     },
     {
+      "key": "imgKeepId",
+      "value": "",
+      "description": "Tự điền khi chạy folder 15 (xóa ảnh, spec 0011 mốc 2)."
+    },
+    {
+      "key": "imgDropId1",
+      "value": "",
+      "description": "Tự điền khi chạy folder 15 (xóa ảnh, spec 0011 mốc 2)."
+    },
+    {
+      "key": "imgDropId2",
+      "value": "",
+      "description": "Tự điền khi chạy folder 15 (xóa ảnh, spec 0011 mốc 2)."
+    },
+    {
+      "key": "imgDropId3",
+      "value": "",
+      "description": "Tự điền khi chạy folder 15 (xóa ảnh, spec 0011 mốc 2)."
+    },
+    {
+      "key": "imgNewImageId",
+      "value": "",
+      "description": "Tự điền khi chạy folder 15 (xóa ảnh, spec 0011 mốc 2)."
+    },
+    {
       "key": "modPropertyId",
       "value": "",
       "description": "Id nhà trọ tạo ở folder 16."
@@ -13225,7 +13250,7 @@
     },
     {
       "name": "15 Ảnh tin",
-      "description": "Tải lên, xem và xóa ảnh của tin (spec 0002 AC-8, mốc 4). **Chạy sau folder 09** (dùng `userToken` và `otherLandlordToken` của folder 08, `tenantToken` của folder 09, `wardCode` của folder 07) **và từ trên xuống**. Folder tự tạo nhà trọ và tin của nó rồi dọn lại; không đăng ký tài khoản mới. **Cần tệp mẫu**: các request tải ảnh dùng `sample-listing.png` và `sample-not-image.txt` nằm cạnh collection trong `docs/api`. Trong Postman, đặt thư mục làm việc là `docs/api` (Settings > Working directory) hoặc chọn lại tệp ở từng request; trong Newman thêm `--working-dir docs/api`. Mỗi lần chạy gửi 11 request tới API tải ảnh lẻ (giới hạn 60 lần mỗi giờ). Từ spec 0011 tin đăng ra đã có sẵn ảnh bìa (vị trí 0) nên các ảnh tải thêm bắt đầu từ vị trí 1. Ảnh đã tải nằm trong `UPLOAD_DIR` và không có API dọn tệp; xóa tin chỉ xóa mềm nên tệp còn đó. Chưa thử được ở đây: ảnh quá `MAX_UPLOAD_BYTES` (413) và hai lần tải đồng thời (thử bằng script).",
+      "description": "Tải lên, xem và xóa ảnh của tin (spec 0002 AC-8, mốc 4). **Chạy sau folder 09** (dùng `userToken` và `otherLandlordToken` của folder 08, `tenantToken` của folder 09, `wardCode` của folder 07) **và từ trên xuống**. Folder tự tạo nhà trọ và tin của nó rồi dọn lại; không đăng ký tài khoản mới. **Cần tệp mẫu**: các request tải ảnh dùng `sample-listing.png` và `sample-not-image.txt` nằm cạnh collection trong `docs/api`. Trong Postman, đặt thư mục làm việc là `docs/api` (Settings > Working directory) hoặc chọn lại tệp ở từng request; trong Newman thêm `--working-dir docs/api`. Mỗi lần chạy gửi 12 request tới API tải ảnh lẻ (giới hạn 60 lần mỗi giờ). Từ spec 0011 mốc 2 tin không xóa được ảnh cuối cùng (409 `LISTING_IMAGE_REQUIRED`): cuối folder xóa dần đến một ảnh, thử xóa ảnh cuối rồi thay nó bằng ảnh mới. Từ spec 0011 tin đăng ra đã có sẵn ảnh bìa (vị trí 0) nên các ảnh tải thêm bắt đầu từ vị trí 1. Ảnh đã tải nằm trong `UPLOAD_DIR` và không có API dọn tệp; xóa tin chỉ xóa mềm nên tệp còn đó. Chưa thử được ở đây: ảnh quá `MAX_UPLOAD_BYTES` (413) và hai lần tải đồng thời (thử bằng script).",
       "item": [
         {
           "name": "Tạo nhà trọ để thử ảnh (POST /properties)",
@@ -14362,6 +14387,433 @@
               ]
             },
             "description": "Ảnh phục vụ lại ngay.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Chi tiết tin của tôi: ghi lại id các ảnh còn lại (GET /me/listings/:id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "const detail = pm.response.json();",
+                  "pm.test('còn 4 ảnh', () => pm.expect(detail.images).to.have.length(4));",
+                  "pm.collectionVariables.set('imgKeepId', detail.images[0].id);",
+                  "pm.collectionVariables.set('imgDropId1', detail.images[1].id);",
+                  "pm.collectionVariables.set('imgDropId2', detail.images[2].id);",
+                  "pm.collectionVariables.set('imgDropId3', detail.images[3].id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me/listings/{{imgListingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "listings",
+                "{{imgListingId}}"
+              ]
+            },
+            "description": "Sau các bước trên tin còn 4 ảnh (vị trí 1 đến 4). Lưu `imgKeepId` (ảnh đầu, giữ lại đến cuối) và `imgDropId1` đến `imgDropId3` (ba ảnh sẽ xóa).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Xóa ảnh khi tin còn 4 ảnh (204)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{imgListingId}}/images/{{imgDropId1}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{imgListingId}}",
+                "images",
+                "{{imgDropId1}}"
+              ]
+            },
+            "description": "Tin còn từ 2 ảnh trở lên thì xóa được. 204, không có thân.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Xóa ảnh khi tin còn 3 ảnh (204)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{imgListingId}}/images/{{imgDropId2}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{imgListingId}}",
+                "images",
+                "{{imgDropId2}}"
+              ]
+            },
+            "description": "Vẫn xóa được. 204.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Xóa ảnh khi tin còn 2 ảnh: tin còn đúng một ảnh (204)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{imgListingId}}/images/{{imgDropId3}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{imgListingId}}",
+                "images",
+                "{{imgDropId3}}"
+              ]
+            },
+            "description": "Còn 2 ảnh thì xóa một ảnh vẫn được. Sau bước này tin chỉ còn `imgKeepId`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: xóa ảnh cuối cùng của tin (spec 0011 AC-7)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 409', () => pm.response.to.have.status(409));",
+                  "const body = pm.response.json();",
+                  "pm.test('Lỗi LISTING_IMAGE_REQUIRED', () => pm.expect(body.code).to.eql('LISTING_IMAGE_REQUIRED'));",
+                  "pm.test('câu thông báo tiếng Việt', () => pm.expect(body.message).to.eql('Tin phải còn ít nhất một ảnh. Hãy tải ảnh mới lên trước rồi mới xóa ảnh này.'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{imgListingId}}/images/{{imgKeepId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{imgListingId}}",
+                "images",
+                "{{imgKeepId}}"
+              ]
+            },
+            "description": "Tin chỉ còn một ảnh nên không xóa được: 409 `LISTING_IMAGE_REQUIRED`. Muốn thay ảnh duy nhất thì tải ảnh mới lên trước rồi mới xóa ảnh cũ.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Sau khi bị chặn: tin vẫn còn ảnh cuối (GET /me/listings/:id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "const detail = pm.response.json();",
+                  "pm.test('còn đúng một ảnh là imgKeepId', () => { pm.expect(detail.images).to.have.length(1); pm.expect(detail.images[0].id).to.eql(pm.collectionVariables.get('imgKeepId')); });",
+                  "pm.test('ảnh bìa là ảnh đó', () => pm.expect(detail.coverImageUrl).to.eql(detail.images[0].url));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me/listings/{{imgListingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "listings",
+                "{{imgListingId}}"
+              ]
+            },
+            "description": "Dòng ảnh và tệp còn nguyên: tin có đúng một ảnh, là ảnh bìa.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: chủ trọ khác xóa ảnh cuối của tôi (403 đến trước 409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 403', () => pm.response.to.have.status(403));",
+                  "pm.test('Lỗi NOT_RESOURCE_OWNER', () => pm.expect(pm.response.json().code).to.eql('NOT_RESOURCE_OWNER'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{imgListingId}}/images/{{imgKeepId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{imgListingId}}",
+                "images",
+                "{{imgKeepId}}"
+              ]
+            },
+            "description": "Mong đợi 403 `NOT_RESOURCE_OWNER`, không phải 409: kiểm chủ sở hữu đến trước kiểm ảnh cuối.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{otherLandlordToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thay ảnh duy nhất, bước 1: tải ảnh mới lên (POST /listings/:id/images)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "const image = pm.response.json();",
+                  "pm.test('vị trí nhỏ nhất còn trống là 0', () => pm.expect(image.position).to.eql(0));",
+                  "pm.collectionVariables.set('imgNewImageId', image.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{imgListingId}}/images",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{imgListingId}}",
+                "images"
+              ]
+            },
+            "description": "Tin đang có 1 ảnh. Tải ảnh mới lên trước: 201 `{ id, position, url }`, ảnh nhận `position` nhỏ nhất còn trống (0). Lưu `imgNewImageId`.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "sample-listing.png"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thay ảnh duy nhất, bước 2: xóa ảnh cũ (204)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{imgListingId}}/images/{{imgKeepId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{imgListingId}}",
+                "images",
+                "{{imgKeepId}}"
+              ]
+            },
+            "description": "Giờ tin có 2 ảnh nên xóa được ảnh cũ.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Sau khi thay: tin chỉ còn ảnh mới và ảnh đó là ảnh bìa (GET /listings/:slugCode)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "const detail = pm.response.json();",
+                  "pm.test('một ảnh, là ảnh mới', () => { pm.expect(detail.images).to.have.length(1); pm.expect(detail.images[0].id).to.eql(pm.collectionVariables.get('imgNewImageId')); });",
+                  "pm.test('ảnh bìa là ảnh mới', () => pm.expect(detail.coverImageUrl).to.eql(detail.images[0].url));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{imgListingCode}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{imgListingCode}}"
+              ]
+            },
+            "description": "Công khai. Một ảnh, đúng `imgNewImageId`, ảnh bìa là ảnh đó.",
             "auth": {
               "type": "noauth"
             }
