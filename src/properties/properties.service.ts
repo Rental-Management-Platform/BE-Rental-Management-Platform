@@ -10,6 +10,7 @@ import { toSearchKey } from '../common/text/to-search-key';
 import type { RequestUser } from '../common/http/authenticated-request';
 import type { Prisma, Ward } from '../generated/prisma/client';
 import { ListingsRepository } from '../listings/listings.repository';
+import { isInsideCity, isNearWard, toWardBounds } from './coordinate-area';
 import type { CreatePropertyDto } from './dto/create-property.dto';
 import type { PropertyFeeDto } from './dto/property-fee.dto';
 import type {
@@ -19,7 +20,11 @@ import type {
 import type { UpdatePropertyDto } from './dto/update-property.dto';
 import { toPropertyListItem, toPropertyResponse } from './properties.mapper';
 import { PropertiesRepository } from './properties.repository';
-import type { NewFee, PropertyChanges } from './properties.repository';
+import type {
+	NewFee,
+	PropertyAddressSource,
+	PropertyChanges,
+} from './properties.repository';
 
 /** Ghi chú rỗng (hoặc chỉ có khoảng trắng, đã bị `@Trim()` cắt) lưu là `null`, không bao giờ chuỗi rỗng. */
 function toNewFees(fees: readonly PropertyFeeDto[]): NewFee[] {
@@ -29,6 +34,35 @@ function toNewFees(fees: readonly PropertyFeeDto[]): NewFee[] {
 		unit: fee.unit,
 		note: fee.note === undefined || fee.note === '' ? null : fee.note,
 	}));
+}
+
+/** Cặp tọa độ gửi lên khi cả hai là số; `null` hay vắng (không có gì để kiểm) thì `null`. DTO đã bảo đảm hai trường đi cặp. */
+function sentPoint(dto: {
+	latitude?: number | null;
+	longitude?: number | null;
+}): { latitude: number; longitude: number } | null {
+	const { latitude, longitude } = dto;
+	return typeof latitude === 'number' && typeof longitude === 'number'
+		? { latitude, longitude }
+		: null;
+}
+
+/** `sent`: tọa độ vừa gửi lên. `stored`: tọa độ đang lưu, bị phường mới làm trượt (spec 0012 AC-5 b). */
+type CoordinateOrigin = 'sent' | 'stored';
+
+const SENT_HINT = 'Hãy ghim lại trong hoặc sát ranh giới phường này.';
+const STORED_HINT =
+	'Hãy gửi tọa độ mới cùng phường mới, hoặc gửi latitude và longitude đều là null để xóa.';
+
+/** Lỗi tọa độ: cùng một mã cho cả hai trường, mỗi trường một câu riêng (spec 0012 AC-1, AC-2). */
+function coordinateError(
+	code: ErrorCode,
+	messages: { latitude: string; longitude: string },
+): AppException {
+	return new AppException(code, [
+		{ field: 'latitude', code, message: messages.latitude },
+		{ field: 'longitude', code, message: messages.longitude },
+	]);
 }
 
 /**
@@ -50,9 +84,13 @@ export class PropertiesService {
 		dto: CreatePropertyDto,
 	): Promise<PropertyResponse> {
 		const id = await this.transactions.run(async (tx) => {
-			await this.requireWard(dto.wardCode, tx);
+			const ward = await this.requireWard(dto.wardCode, tx);
 			const amenityKeys = dto.amenityKeys ?? [];
 			await this.requireAmenities(amenityKeys, tx);
+			const point = sentPoint(dto);
+			if (point !== null) {
+				this.requireCoordinateAllowed(point, ward, 'sent');
+			}
 			return this.repository.create(
 				{
 					landlordId: user.userId,
@@ -112,6 +150,7 @@ export class PropertiesService {
 			if (dto.amenityKeys !== undefined) {
 				await this.requireAmenities(dto.amenityKeys, tx);
 			}
+			this.requireCoordinateOnUpdate(dto, current, ward);
 
 			await this.repository.update(id, this.changesOf(dto), tx);
 			if (dto.fees !== undefined) {
@@ -197,6 +236,81 @@ export class PropertiesService {
 			]);
 		}
 		return ward;
+	}
+
+	/**
+	 * Quyết định có kiểm tọa độ khi sửa không (spec 0012 AC-5), rồi kiểm với phường hiệu lực `ward`:
+	 * - có cặp số trong body: kiểm cặp đó (a);
+	 * - body không đụng tọa độ (`latitude` vắng) mà phường đổi sang mã khác phường đang lưu, và nhà trọ đang có
+	 *   tọa độ: kiểm tọa độ đang lưu với phường mới (b). `current` được đọc sau khi khóa dòng nên hai PATCH
+	 *   đồng thời không cùng thấy một tọa độ cũ (d);
+	 * - `null` cả hai (xóa tọa độ), hoặc không đụng tới tọa độ lẫn phường: không kiểm gì (c), nên nhà trọ cũ có
+	 *   tọa độ ngoài vùng vẫn sửa được các trường khác và vẫn xóa được tọa độ.
+	 */
+	private requireCoordinateOnUpdate(
+		dto: UpdatePropertyDto,
+		current: PropertyAddressSource,
+		ward: Ward,
+	): void {
+		const sent = sentPoint(dto);
+		if (sent !== null) {
+			this.requireCoordinateAllowed(sent, ward, 'sent');
+			return;
+		}
+		const touchesCoordinate = dto.latitude !== undefined;
+		const changesWard = ward.code !== current.wardCode;
+		if (
+			!touchesCoordinate &&
+			changesWard &&
+			current.latitude !== null &&
+			current.longitude !== null
+		) {
+			this.requireCoordinateAllowed(
+				{ latitude: current.latitude, longitude: current.longitude },
+				ward,
+				'stored',
+			);
+		}
+	}
+
+	/**
+	 * Hai lớp kiểm tọa độ của spec 0012. Lớp 1: nằm trong một trong hai khung bao quanh thành phố
+	 * (`COORDINATE_OUT_OF_AREA`). Lớp 2: nằm trong hộp của phường đã chọn nới 500 m (`COORDINATE_FAR_FROM_WARD`);
+	 * phường không có hộp (admin thêm qua API, hay seed chưa chạy) thì bỏ lớp 2. Đứng sau mọi kiểm danh mục
+	 * (`WARD_UNKNOWN`, `AMENITY_UNKNOWN`) và trước mọi lần ghi, nên lỗi thì không ghi gì. Lỗi nằm ở cả cặp, không
+	 * chỉ ra được một trong hai số là sai, nên báo cả `latitude` lẫn `longitude`. `origin` chỉ để chọn câu lỗi:
+	 * `sent` là tọa độ vừa gửi, `stored` là tọa độ đang lưu bị phường mới làm trượt.
+	 */
+	private requireCoordinateAllowed(
+		point: { latitude: number; longitude: number },
+		ward: Ward,
+		origin: CoordinateOrigin,
+	): void {
+		if (!isInsideCity(point.latitude, point.longitude)) {
+			throw coordinateError(ErrorCode.COORDINATE_OUT_OF_AREA, {
+				latitude:
+					origin === 'sent'
+						? 'Vĩ độ nằm ngoài khu vực Thành phố Hồ Chí Minh.'
+						: `Vĩ độ đang lưu của nhà trọ nằm ngoài khu vực Thành phố Hồ Chí Minh. ${STORED_HINT}`,
+				longitude:
+					origin === 'sent'
+						? 'Kinh độ nằm ngoài khu vực Thành phố Hồ Chí Minh.'
+						: `Kinh độ đang lưu của nhà trọ nằm ngoài khu vực Thành phố Hồ Chí Minh. ${STORED_HINT}`,
+			});
+		}
+		const bounds = toWardBounds(ward);
+		if (bounds === null) return;
+		if (isNearWard(point.latitude, point.longitude, bounds)) return;
+		throw coordinateError(ErrorCode.COORDINATE_FAR_FROM_WARD, {
+			latitude:
+				origin === 'sent'
+					? `Vĩ độ cách xa ${ward.name}. ${SENT_HINT}`
+					: `Vĩ độ đang lưu của nhà trọ quá xa ${ward.name}. ${STORED_HINT}`,
+			longitude:
+				origin === 'sent'
+					? `Kinh độ cách xa ${ward.name}. ${SENT_HINT}`
+					: `Kinh độ đang lưu của nhà trọ quá xa ${ward.name}. ${STORED_HINT}`,
+		});
 	}
 
 	private async requireAmenities(

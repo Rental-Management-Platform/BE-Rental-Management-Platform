@@ -8,6 +8,26 @@ export interface WardResponse {
 	readonly provinceName: string;
 }
 
+/**
+ * Hộp bao thô của một phường theo vĩ độ và kinh độ (độ), chưa nới lề 0.0045 độ (spec 0012 AC-7). FE ghim trong
+ * hộp thô này thì backend luôn nhận, vì backend còn nới thêm khoảng 500 m mỗi phía.
+ */
+export interface WardBoundsResponse {
+	readonly minLatitude: number;
+	readonly maxLatitude: number;
+	readonly minLongitude: number;
+	readonly maxLongitude: number;
+}
+
+/**
+ * Phường trong danh mục (`GET /wards`, `POST /wards`, `PATCH /wards/:code`) kèm `bounds`; `null` khi phường chưa
+ * có hộp (admin thêm qua API, hay seed chưa chạy). Phường lồng trong nhà trọ và tin vẫn là `WardResponse`, không
+ * có `bounds` (spec 0012 AC-7).
+ */
+export interface WardCatalogResponse extends WardResponse {
+	readonly bounds: WardBoundsResponse | null;
+}
+
 export interface AmenityResponse {
 	readonly key: string;
 	readonly name: string;

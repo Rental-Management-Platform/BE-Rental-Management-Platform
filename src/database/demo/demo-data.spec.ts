@@ -2,8 +2,13 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { PHONE_PATTERN } from '../../common/phone';
 import { LISTING_LIMITS } from '../../listings/listing-status';
+import { isInsideCity, isNearWard } from '../../properties/coordinate-area';
 import { FEE_KINDS, PROPERTY_LIMITS } from '../../properties/property-fee';
-import { loadAmenitySeed, loadWardSeed } from '../seed-data';
+import {
+	loadAmenitySeed,
+	loadWardBoundsSeed,
+	loadWardSeed,
+} from '../seed-data';
 import { SEED_PLANS } from '../seed-plans';
 import { demoEmail } from './demo-build';
 import {
@@ -97,6 +102,33 @@ describe('demo-data: vừa giới hạn của schema và API', () => {
 					PROPERTY_LIMITS.feeNoteMax,
 				);
 			}
+		}
+	});
+
+	it('mọi tọa độ của nhà trọ demo nằm trong khung thành phố (spec 0012 AC-8)', () => {
+		for (const property of DEMO_PROPERTIES) {
+			expect({
+				key: property.key,
+				inside: isInsideCity(property.latitude, property.longitude),
+			}).toEqual({ key: property.key, inside: true });
+		}
+	});
+
+	it('mọi tọa độ của nhà trọ demo nằm trong hộp phường đã chọn nới 500 m, để sửa lại bằng API vẫn qua (spec 0012 AC-8)', () => {
+		const boxes = new Map(
+			loadWardBoundsSeed().map((item) => [item.code, item]),
+		);
+		for (const property of DEMO_PROPERTIES) {
+			const box = boxes.get(property.wardCode);
+			expect({ key: property.key, hasBox: box !== undefined }).toEqual({
+				key: property.key,
+				hasBox: true,
+			});
+			if (box === undefined) continue;
+			expect({
+				key: property.key,
+				near: isNearWard(property.latitude, property.longitude, box),
+			}).toEqual({ key: property.key, near: true });
 		}
 	});
 

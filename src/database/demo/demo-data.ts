@@ -541,7 +541,7 @@ export const DEMO_PROPERTIES: readonly DemoProperty[] = [
 		name: 'Nhà trọ Quốc Bảo',
 		addressText: '88 Tên Lửa',
 		wardCode: '27448',
-		latitude: 10.7451,
+		latitude: 10.757,
 		longitude: 106.6107,
 		ageDays: 70,
 		amenities: [
@@ -631,7 +631,7 @@ export const DEMO_PROPERTIES: readonly DemoProperty[] = [
 		addressText: '75 Phan Xích Long',
 		wardCode: '27073',
 		latitude: 10.7993,
-		longitude: 106.6869,
+		longitude: 106.681,
 		ageDays: 85,
 		amenities: [
 			'wifi',

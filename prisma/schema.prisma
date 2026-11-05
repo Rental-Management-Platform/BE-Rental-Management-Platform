@@ -142,6 +142,13 @@ model Ward {
   /// Mã tỉnh hoặc thành phố; TP. Hồ Chí Minh là 79.
   provinceCode String   @map("province_code")
   provinceName String   @map("province_name")
+  /// Hộp bao của phường theo vĩ độ và kinh độ (độ), do `npm run seed` điền từ `prisma/seed-data/ward-bounds.json`
+  /// (spec 0012). Bốn cột cùng rỗng hoặc cùng có; CHECK `wards_bounds_check` ở migration. Phường admin thêm qua API
+  /// không có hộp (rỗng): lớp kiểm "gần phường" bỏ qua phường đó.
+  minLatitude  Float?   @map("min_latitude")
+  maxLatitude  Float?   @map("max_latitude")
+  minLongitude Float?   @map("min_longitude")
+  maxLongitude Float?   @map("max_longitude")
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 

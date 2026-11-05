@@ -3124,6 +3124,33 @@
                   "    const wards = pm.response.json();",
                   "    pm.expect(wards).to.have.lengthOf(168);",
                   "    pm.expect(new Set(wards.map((ward) => ward.provinceCode)).size).to.eql(1);",
+                  "});",
+                  "",
+                  "pm.test('mỗi phường có bounds: hộp thô { minLatitude, maxLatitude, minLongitude, maxLongitude } hoặc null', () => {",
+                  "    pm.response.json().forEach((ward) => {",
+                  "        pm.expect(ward).to.have.property('bounds');",
+                  "        if (ward.bounds !== null) {",
+                  "            pm.expect(Object.keys(ward.bounds).sort()).to.eql(['maxLatitude', 'maxLongitude', 'minLatitude', 'minLongitude']);",
+                  "            pm.expect(ward.bounds.minLatitude).to.be.at.most(ward.bounds.maxLatitude);",
+                  "            pm.expect(ward.bounds.minLongitude).to.be.at.most(ward.bounds.maxLongitude);",
+                  "        }",
+                  "    });",
+                  "});",
+                  "",
+                  "pm.test('sau npm run seed cả 168 phường mặc định đều có hộp, và hộp nằm trong hai khung thành phố', () => {",
+                  "    const withBounds = pm.response.json().filter((ward) => ward.bounds !== null);",
+                  "    pm.expect(withBounds).to.have.lengthOf(168);",
+                  "    withBounds.forEach((ward) => {",
+                  "        const b = ward.bounds;",
+                  "        const mainland = b.minLatitude >= 10.2 && b.maxLatitude <= 11.7 && b.minLongitude >= 106.2 && b.maxLongitude <= 107.7;",
+                  "        const island = b.minLatitude >= 8.4 && b.maxLatitude <= 8.9 && b.minLongitude >= 105.9 && b.maxLongitude <= 106.9;",
+                  "        pm.expect(mainland || island, ward.code).to.eql(true);",
+                  "    });",
+                  "});",
+                  "",
+                  "pm.test('Phường Bến Thành (26743) có hộp thô đúng số liệu của ward-bounds.json', () => {",
+                  "    const ward = pm.response.json().find((w) => w.code === '26743');",
+                  "    pm.expect(ward.bounds).to.eql({ minLatitude: 10.76341, maxLatitude: 10.77959, minLongitude: 106.68449, maxLongitude: 106.70266 });",
                   "});"
                 ]
               }
@@ -3141,7 +3168,7 @@
                 "wards"
               ]
             },
-            "description": "Công khai. Mảng `{ code, name, provinceCode, provinceName }` xếp theo tên tiếng Việt. `name` đã kèm loại đơn vị (Phường, Xã, Đặc khu). Sau seed mặc định có đúng 168 đơn vị của Thành phố Hồ Chí Minh (113 phường, 54 xã, 1 đặc khu), không có quận huyện.",
+            "description": "Công khai. Mảng `{ code, name, provinceCode, provinceName, bounds }` xếp theo tên tiếng Việt. `name` đã kèm loại đơn vị (Phường, Xã, Đặc khu). Sau seed mặc định có đúng 168 đơn vị của Thành phố Hồ Chí Minh (113 phường, 54 xã, 1 đặc khu), không có quận huyện. `bounds` là hộp thô của phường `{ minLatitude, maxLatitude, minLongitude, maxLongitude }` (độ), hoặc `null` khi phường chưa có hộp (admin thêm qua API). FE dùng hộp này để zoom bản đồ về phường và giới hạn chỗ ghim; ghim trong hộp thô thì backend luôn nhận, vì backend còn nới thêm khoảng 500 m mỗi phía (spec 0012).",
             "auth": {
               "type": "noauth"
             }
@@ -3195,7 +3222,7 @@
     },
     {
       "name": "08 Nhà trọ của chủ trọ",
-      "description": "Chủ trọ tạo, xem, sửa và xóa mềm nhà trọ của mình (spec nhà trọ và tin đăng 0002, mốc 2). Chạy từ trên xuống, ngay sau folder 07 (cần đã `npm run seed` để có phường và tiện ích). Hai request đầu đăng ký hai chủ trọ mới: chủ trọ thứ nhất dùng `userToken`, chủ trọ thứ hai dùng `otherLandlordToken` để thử lỗi NOT_RESOURCE_OWNER. Mỗi lần chạy tốn 2 lần trong giới hạn 10 lần đăng ký mỗi giờ theo IP, và tối đa 6 lần cho mỗi API ghi (kể cả các request thử lỗi), dưới giới hạn 30 lần mỗi giờ cho mỗi API ghi nhà trọ; hai chủ trọ mới mỗi lượt nên lượt chạy sau không bị dồn. Xóa nhà trọ còn tin bị 409 PROPERTY_HAS_LISTINGS chỉ thử được sau khi có API đăng tin (mốc 3).",
+      "description": "Chủ trọ tạo, xem, sửa và xóa mềm nhà trọ của mình (spec nhà trọ và tin đăng 0002, mốc 2). Chạy từ trên xuống, ngay sau folder 07 (cần đã `npm run seed` để có phường và tiện ích). Hai request đầu đăng ký hai chủ trọ mới: chủ trọ thứ nhất dùng `userToken`, chủ trọ thứ hai dùng `otherLandlordToken` để thử lỗi NOT_RESOURCE_OWNER. Mỗi lần chạy tốn 2 lần trong giới hạn 10 lần đăng ký mỗi giờ theo IP, và tối đa 10 lần cho mỗi API ghi (kể cả các request thử lỗi), dưới giới hạn 30 lần mỗi giờ cho mỗi API ghi nhà trọ; hai chủ trọ mới mỗi lượt nên lượt chạy sau không bị dồn. Xóa nhà trọ còn tin bị 409 PROPERTY_HAS_LISTINGS chỉ thử được sau khi có API đăng tin (mốc 3).",
       "item": [
         {
           "name": "Đăng ký chủ trọ thứ nhất",
@@ -3764,6 +3791,449 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"Nhà trọ Lạ\",\n  \"addressText\": \"1 Đường Một\",\n  \"wardCode\": \"{{wardCode}}\",\n  \"latitude\": 10.77\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: tọa độ ở Hà Nội, ngoài khung thành phố",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 400 COORDINATE_OUT_OF_AREA', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    pm.expect(pm.response.json().code).to.eql('COORDINATE_OUT_OF_AREA');",
+                  "});",
+                  "pm.test('errors có đúng hai dòng latitude và longitude, cùng mã', () => {",
+                  "    const errors = pm.response.json().errors;",
+                  "    pm.expect(errors.map((e) => e.field).sort()).to.eql(['latitude', 'longitude']);",
+                  "    pm.expect(errors.every((e) => e.code === 'COORDINATE_OUT_OF_AREA')).to.eql(true);",
+                  "});",
+                  "pm.test('message tiếng Việt', () => pm.expect(pm.response.json().message).to.eql('Tọa độ nằm ngoài khu vực Thành phố Hồ Chí Minh.'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/properties",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties"
+              ]
+            },
+            "description": "Mong đợi 400 COORDINATE_OUT_OF_AREA: điểm ngoài cả hai khung bao quanh Thành phố Hồ Chí Minh (đất liền: vĩ độ 10.2 đến 11.7, kinh độ 106.2 đến 107.7; Côn Đảo: vĩ độ 8.4 đến 8.9, kinh độ 105.9 đến 106.9). `errors` có hai dòng `latitude` và `longitude`. Không có dòng nào được tạo. FE tự ghim tọa độ từ địa chỉ; backend chỉ kiểm lại.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Nhà trọ Lạc Đường\",\n  \"addressText\": \"1 Đường Một\",\n  \"wardCode\": \"{{wardCode}}\",\n  \"latitude\": 21.0285,\n  \"longitude\": 105.8542\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: phường lạ kèm tọa độ ở Hà Nội (WARD_UNKNOWN đứng trước)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 400 WARD_UNKNOWN, không phải COORDINATE_OUT_OF_AREA', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    pm.expect(pm.response.json().code).to.eql('WARD_UNKNOWN');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/properties",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties"
+              ]
+            },
+            "description": "Thứ tự lỗi: kiểm danh mục (WARD_UNKNOWN, AMENITY_UNKNOWN) đứng trước kiểm tọa độ.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Nhà trọ Lạc Đường\",\n  \"addressText\": \"1 Đường Một\",\n  \"wardCode\": \"00000\",\n  \"latitude\": 21.0285,\n  \"longitude\": 105.8542\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: tọa độ trong khung thành phố nhưng xa phường đã chọn (COORDINATE_FAR_FROM_WARD)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 400 COORDINATE_FAR_FROM_WARD', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    pm.expect(pm.response.json().code).to.eql('COORDINATE_FAR_FROM_WARD');",
+                  "});",
+                  "pm.test('errors có đúng hai dòng latitude và longitude, cùng mã, câu lỗi nêu tên phường', () => {",
+                  "    const errors = pm.response.json().errors;",
+                  "    pm.expect(errors.map((e) => e.field).sort()).to.eql(['latitude', 'longitude']);",
+                  "    pm.expect(errors.every((e) => e.code === 'COORDINATE_FAR_FROM_WARD')).to.eql(true);",
+                  "    pm.expect(errors.every((e) => /(Phường|Xã|Đặc khu) /.test(e.message))).to.eql(true);",
+                  "});",
+                  "pm.test('message tiếng Việt', () => pm.expect(pm.response.json().message).to.eql('Tọa độ quá xa phường hoặc xã đã chọn.'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/properties",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties"
+              ]
+            },
+            "description": "Điểm (10.346, 107.0843) ở Vũng Tàu: trong khung thành phố (lớp 1 qua) nhưng cách xa hộp của phường đã chọn nới 500 m (lớp 2). Mong đợi 400 COORDINATE_FAR_FROM_WARD, `errors` có hai dòng `latitude` và `longitude` và câu lỗi nêu tên phường. Không có dòng nào được tạo. Phường không có hộp (admin thêm qua API) thì bỏ lớp 2. FE tự ghim tọa độ từ địa chỉ, nên ghim trong `bounds` của phường lấy từ GET /wards.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Nhà trọ Lạc Phường\",\n  \"addressText\": \"1 Đường Một\",\n  \"wardCode\": \"{{wardCode}}\",\n  \"latitude\": 10.346,\n  \"longitude\": 107.0843\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Đổi sang Đặc khu Côn Đảo kèm tọa độ trên đảo (PATCH wardCode, latitude, longitude)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('phường và tọa độ Côn Đảo được lưu', () => {",
+                  "    const property = pm.response.json();",
+                  "    pm.expect(property.ward.code).to.eql('26732');",
+                  "    pm.expect([property.latitude, property.longitude]).to.eql([8.6934, 106.6086]);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/properties/{{propertyId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "{{propertyId}}"
+              ]
+            },
+            "description": "Côn Đảo là khung thứ hai, và điểm này nằm trong hộp của Đặc khu Côn Đảo (mã 26732), nên được nhận. Phải gửi `wardCode` mới cùng tọa độ: điểm trên đảo xa phường Bến Thành đang lưu, nên chỉ gửi tọa độ sẽ bị 400 COORDINATE_FAR_FROM_WARD. Request kế tiếp thử đổi phường mà không gửi tọa độ.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"wardCode\": \"26732\",\n  \"latitude\": 8.6934,\n  \"longitude\": 106.6086\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: chỉ đổi phường khi tọa độ đang lưu ở Côn Đảo (COORDINATE_FAR_FROM_WARD, tọa độ đang lưu)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 400 COORDINATE_FAR_FROM_WARD', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    pm.expect(pm.response.json().code).to.eql('COORDINATE_FAR_FROM_WARD');",
+                  "});",
+                  "pm.test('errors có đúng hai dòng latitude và longitude, cùng mã, câu lỗi nêu tên phường', () => {",
+                  "    const errors = pm.response.json().errors;",
+                  "    pm.expect(errors.map((e) => e.field).sort()).to.eql(['latitude', 'longitude']);",
+                  "    pm.expect(errors.every((e) => e.code === 'COORDINATE_FAR_FROM_WARD')).to.eql(true);",
+                  "    pm.expect(errors.every((e) => /(Phường|Xã|Đặc khu) /.test(e.message))).to.eql(true);",
+                  "});",
+                  "pm.test('message tiếng Việt', () => pm.expect(pm.response.json().message).to.eql('Tọa độ quá xa phường hoặc xã đã chọn.'));",
+                  "pm.test('câu lỗi nói đây là tọa độ đang lưu và bảo gửi tọa độ mới hoặc null', () => {",
+                  "    pm.response.json().errors.forEach((e) => {",
+                  "        pm.expect(e.message).to.include('đang lưu');",
+                  "        pm.expect(e.message).to.include('null');",
+                  "    });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/properties/{{propertyId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "{{propertyId}}"
+              ]
+            },
+            "description": "Nhà trọ đang giữ tọa độ trên Côn Đảo. PATCH chỉ đổi phường sang phường khác (không gửi tọa độ) thì tọa độ đang lưu bị kiểm với phường mới, và trượt thì 400 COORDINATE_FAR_FROM_WARD. Câu lỗi nói rõ đây là tọa độ đang lưu và bảo gửi tọa độ mới (hoặc `latitude` và `longitude` đều `null`) cùng phường mới. Không trường nào đổi. Gửi đúng phường đang lưu, hoặc không gửi `wardCode`, thì không kiểm gì (nhà trọ cũ có tọa độ lệch vẫn sửa được tên, phí, tiện ích).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"wardCode\": \"{{wardCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: sửa nhà trọ với tọa độ giữa biển (PATCH)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 400 COORDINATE_OUT_OF_AREA', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    pm.expect(pm.response.json().code).to.eql('COORDINATE_OUT_OF_AREA');",
+                  "});",
+                  "pm.test('errors có đúng hai dòng latitude và longitude, cùng mã', () => {",
+                  "    const errors = pm.response.json().errors;",
+                  "    pm.expect(errors.map((e) => e.field).sort()).to.eql(['latitude', 'longitude']);",
+                  "    pm.expect(errors.every((e) => e.code === 'COORDINATE_OUT_OF_AREA')).to.eql(true);",
+                  "});",
+                  "pm.test('message tiếng Việt', () => pm.expect(pm.response.json().message).to.eql('Tọa độ nằm ngoài khu vực Thành phố Hồ Chí Minh.'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/properties/{{propertyId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "{{propertyId}}"
+              ]
+            },
+            "description": "Điểm (9.5, 106.5) nằm giữa biển, giữa hai khung. Mong đợi 400 COORDINATE_OUT_OF_AREA và không trường nào đổi, kể cả `name` gửi kèm.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Tên không được đổi\",\n  \"latitude\": 9.5,\n  \"longitude\": 106.5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Sau lỗi tọa độ: nhà trọ không đổi (GET)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('tên và tọa độ y như trước lần PATCH bị từ chối', () => {",
+                  "    const property = pm.response.json();",
+                  "    pm.expect(property.name).to.not.eql('Tên không được đổi');",
+                  "    pm.expect([property.latitude, property.longitude]).to.eql([8.6934, 106.6086]);",
+                  "});",
+                  "pm.test('phường vẫn là Đặc khu Côn Đảo (lần đổi phường bị từ chối không ghi gì)', () => pm.expect(pm.response.json().ward.code).to.eql('26732'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/properties/{{propertyId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "{{propertyId}}"
+              ]
+            },
+            "description": "Đọc lại sau PATCH bị từ chối: tên và tọa độ giữ nguyên."
+          }
+        },
+        {
+          "name": "Trả phường về như cũ và xóa tọa độ (PATCH wardCode, latitude và longitude null)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('phường về như cũ, tọa độ đã xóa', () => {",
+                  "    const property = pm.response.json();",
+                  "    pm.expect(property.ward.code).to.eql(pm.collectionVariables.get('wardCode'));",
+                  "    pm.expect([property.latitude, property.longitude]).to.eql([null, null]);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/properties/{{propertyId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "{{propertyId}}"
+              ]
+            },
+            "description": "Đổi phường về `{{wardCode}}` và gửi `latitude`, `longitude` đều `null` để xóa tọa độ. `null` cả hai luôn xóa được và khi đó tọa độ cũ không bị kiểm với phường mới. Trả nhà trọ về trạng thái các request sau cần.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"wardCode\": \"{{wardCode}}\",\n  \"latitude\": null,\n  \"longitude\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: sửa nhà trọ với tọa độ xa phường (PATCH, COORDINATE_FAR_FROM_WARD)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lỗi 400 COORDINATE_FAR_FROM_WARD', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    pm.expect(pm.response.json().code).to.eql('COORDINATE_FAR_FROM_WARD');",
+                  "});",
+                  "pm.test('errors có đúng hai dòng latitude và longitude, cùng mã, câu lỗi nêu tên phường', () => {",
+                  "    const errors = pm.response.json().errors;",
+                  "    pm.expect(errors.map((e) => e.field).sort()).to.eql(['latitude', 'longitude']);",
+                  "    pm.expect(errors.every((e) => e.code === 'COORDINATE_FAR_FROM_WARD')).to.eql(true);",
+                  "    pm.expect(errors.every((e) => /(Phường|Xã|Đặc khu) /.test(e.message))).to.eql(true);",
+                  "});",
+                  "pm.test('message tiếng Việt', () => pm.expect(pm.response.json().message).to.eql('Tọa độ quá xa phường hoặc xã đã chọn.'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/properties/{{propertyId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "{{propertyId}}"
+              ]
+            },
+            "description": "Cặp tọa độ gửi lên được kiểm với phường hiện có của nhà trọ (hoặc phường mới nếu gửi kèm `wardCode`). Điểm Vũng Tàu xa phường Bến Thành nên 400 COORDINATE_FAR_FROM_WARD và không trường nào đổi, kể cả `name` gửi kèm.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Tên không được đổi\",\n  \"latitude\": 10.346,\n  \"longitude\": 107.0843\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -16933,7 +17403,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
-                  "pm.test('đúng 4 trường', () => pm.expect(Object.keys(pm.response.json()).sort()).to.eql(['code', 'name', 'provinceCode', 'provinceName']));"
+                  "pm.test('đúng 5 trường, bounds là null vì phường admin thêm không có hộp (spec 0012 AC-7)', () => { const b = pm.response.json(); pm.expect(Object.keys(b).sort()).to.eql(['bounds', 'code', 'name', 'provinceCode', 'provinceName']); pm.expect(b.bounds).to.eql(null); });"
                 ]
               }
             }
@@ -17062,7 +17532,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
-                  "pm.test('có phường vừa tạo', () => pm.expect(pm.response.json().map((w) => w.code)).to.include(pm.collectionVariables.get('catWardCode')));"
+                  "pm.test('có phường vừa tạo', () => pm.expect(pm.response.json().map((w) => w.code)).to.include(pm.collectionVariables.get('catWardCode')));",
+                  "pm.test('phường vừa tạo có bounds là null (khóa vẫn có mặt)', () => { const ward = pm.response.json().find((w) => w.code === pm.collectionVariables.get('catWardCode')); pm.expect(ward).to.have.property('bounds', null); });"
                 ]
               }
             }
@@ -17094,7 +17565,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
-                  "pm.test('tên mới, mã giữ nguyên', () => { const b = pm.response.json(); pm.expect(b.name).to.eql('Phường Thử Đã Đổi'); pm.expect(b.code).to.eql(pm.collectionVariables.get('catWardCode')); });"
+                  "pm.test('tên mới, mã giữ nguyên', () => { const b = pm.response.json(); pm.expect(b.name).to.eql('Phường Thử Đã Đổi'); pm.expect(b.code).to.eql(pm.collectionVariables.get('catWardCode')); });",
+                  "pm.test('bounds vẫn là null sau khi đổi tên', () => pm.expect(pm.response.json().bounds).to.eql(null));"
                 ]
               }
             }
@@ -17471,7 +17943,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
-                  "pm.test('tên mới', () => pm.expect(pm.response.json().name).to.eql('Phường Đổi Tên Thử'));"
+                  "pm.test('tên mới', () => pm.expect(pm.response.json().name).to.eql('Phường Đổi Tên Thử'));",
+                  "pm.test('phường thật giữ nguyên bounds sau khi đổi tên (hộp là dữ kiện danh mục, API admin không sửa)', () => { const bounds = pm.response.json().bounds; pm.expect(bounds).to.be.an('object'); pm.expect(bounds.minLatitude).to.be.at.most(bounds.maxLatitude); });"
                 ]
               }
             }

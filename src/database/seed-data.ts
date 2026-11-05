@@ -1,5 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import type { GeoBox } from '../properties/coordinate-area';
+
+/** Một dòng của `ward-bounds.json`: mã phường và hộp bao của nó (spec 0012). */
+export interface WardBoundsSeed extends GeoBox {
+	readonly code: string;
+}
 
 export interface WardSeed {
 	readonly code: string;
@@ -83,6 +89,60 @@ export function loadWardSeed(dir: string = SEED_DATA_DIR): WardSeed[] {
 		wards.map((ward) => ward.code),
 	);
 	return wards;
+}
+
+function readNumber(
+	item: Record<string, unknown>,
+	field: string,
+	where: string,
+	min: number,
+	max: number,
+): number {
+	const value = item[field];
+	if (typeof value !== 'number' || !Number.isFinite(value)) {
+		throw new Error(`${where}: trường "${field}" phải là số.`);
+	}
+	if (value < min || value > max) {
+		throw new Error(
+			`${where}: trường "${field}" phải trong khoảng ${min} đến ${max}, gặp ${value}.`,
+		);
+	}
+	return value;
+}
+
+/**
+ * Đọc và kiểm `ward-bounds.json` (spec 0012 AC-6): hộp bao của từng phường để kiểm tọa độ nhà trọ. Kiểm đúng
+ * những gì `CHECK wards_bounds_check` đòi (bốn số, min không lớn hơn max, trong miền ±90 và ±180) để dữ liệu
+ * hỏng dừng ở đây, không dừng giữa chừng khi ghi vào DB. Dữ liệu hỏng thì ném lỗi rõ ràng chứ không seed nửa chừng.
+ */
+export function loadWardBoundsSeed(
+	dir: string = SEED_DATA_DIR,
+): WardBoundsSeed[] {
+	const file = 'ward-bounds.json';
+	const bounds = readList(file, dir).map((item, index) => {
+		const where = `${file}[${index}]`;
+		if (!isRecord(item)) throw new Error(`${where}: phải là một object.`);
+		const code = readText(item, 'code', where);
+		if (!WARD_CODE.test(code)) {
+			throw new Error(
+				`${where}: mã phường phải gồm đúng 5 chữ số, gặp "${code}".`,
+			);
+		}
+		const minLatitude = readNumber(item, 'minLatitude', where, -90, 90);
+		const maxLatitude = readNumber(item, 'maxLatitude', where, -90, 90);
+		const minLongitude = readNumber(item, 'minLongitude', where, -180, 180);
+		const maxLongitude = readNumber(item, 'maxLongitude', where, -180, 180);
+		if (minLatitude > maxLatitude || minLongitude > maxLongitude) {
+			throw new Error(`${where}: giá trị min lớn hơn max.`);
+		}
+		return { code, minLatitude, maxLatitude, minLongitude, maxLongitude };
+	});
+	assertUnique(
+		file,
+		'code',
+		bounds.map((item) => item.code),
+	);
+	return bounds;
 }
 
 /** Đọc và kiểm `amenities.json`; khóa phải khớp `CHECK` của bảng `amenities`. */

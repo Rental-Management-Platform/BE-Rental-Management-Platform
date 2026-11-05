@@ -1,7 +1,11 @@
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { loadAmenitySeed, loadWardSeed } from './seed-data';
+import {
+	CITY_BOXES,
+	COORDINATE_MARGIN_DEGREES,
+} from '../properties/coordinate-area';
+import { loadAmenitySeed, loadWardBoundsSeed, loadWardSeed } from './seed-data';
 
 /**
  * Dữ liệu địa chỉ theo đơn vị hành chính hai cấp sau sáp nhập (xem prisma/seed-data/README.md): tỉnh hoặc
@@ -133,5 +137,174 @@ describe('seed-data: bộ nạp từ chối dữ liệu hỏng', () => {
 	it('nhận dữ liệu hợp lệ', () => {
 		write('wards.json', [ward]);
 		expect(loadWardSeed(dir)).toEqual([ward]);
+	});
+});
+
+/**
+ * Hộp bao của 168 phường (spec 0012 AC-6), dựng từ ranh giới của `thanglequoc/vietnamese-provinces-database` tag
+ * `v5.2.0` bằng `src/database/scripts/build-ward-bounds.ts` (xem prisma/seed-data/README.md). Test này canh để
+ * file luôn khớp `wards.json` và vừa hai khung thành phố, nên đổi một trong hai mà quên dựng lại sẽ báo ngay.
+ */
+describe('seed-data: hộp bao phường (ward-bounds.json)', () => {
+	const wards = loadWardSeed();
+	const bounds = loadWardBoundsSeed();
+
+	it('có đúng 168 dòng, mã trùng từng mã trong wards.json, không thiếu không thừa', () => {
+		expect(bounds).toHaveLength(168);
+		expect(bounds.map((item) => item.code).sort()).toEqual(
+			wards.map((ward) => ward.code).sort(),
+		);
+	});
+
+	it('đã sắp theo mã', () => {
+		const codes = bounds.map((item) => item.code);
+		expect([...codes].sort()).toEqual(codes);
+	});
+
+	it('min không lớn hơn max và trong miền ±90, ±180 (vừa CHECK wards_bounds_check)', () => {
+		for (const item of bounds) {
+			expect(item.minLatitude).toBeLessThanOrEqual(item.maxLatitude);
+			expect(item.minLongitude).toBeLessThanOrEqual(item.maxLongitude);
+			expect(Math.abs(item.minLatitude)).toBeLessThanOrEqual(90);
+			expect(Math.abs(item.maxLatitude)).toBeLessThanOrEqual(90);
+			expect(Math.abs(item.minLongitude)).toBeLessThanOrEqual(180);
+			expect(Math.abs(item.maxLongitude)).toBeLessThanOrEqual(180);
+		}
+	});
+
+	it('mọi số làm tròn đến không quá 5 chữ số thập phân', () => {
+		for (const item of bounds) {
+			for (const value of [
+				item.minLatitude,
+				item.maxLatitude,
+				item.minLongitude,
+				item.maxLongitude,
+			]) {
+				expect(
+					Math.abs(value * 1e5 - Math.round(value * 1e5)),
+				).toBeLessThan(1e-6);
+			}
+		}
+	});
+
+	it('mỗi hộp nới 0.0045 độ nằm trọn trong một trong hai khung thành phố, nên điểm trong hộp thô luôn qua lớp 1', () => {
+		for (const item of bounds) {
+			const widened = {
+				minLatitude: item.minLatitude - COORDINATE_MARGIN_DEGREES,
+				maxLatitude: item.maxLatitude + COORDINATE_MARGIN_DEGREES,
+				minLongitude: item.minLongitude - COORDINATE_MARGIN_DEGREES,
+				maxLongitude: item.maxLongitude + COORDINATE_MARGIN_DEGREES,
+			};
+			const fits = CITY_BOXES.some(
+				(box) =>
+					widened.minLatitude >= box.minLatitude &&
+					widened.maxLatitude <= box.maxLatitude &&
+					widened.minLongitude >= box.minLongitude &&
+					widened.maxLongitude <= box.maxLongitude,
+			);
+			expect({ code: item.code, fits }).toEqual({
+				code: item.code,
+				fits: true,
+			});
+		}
+	});
+
+	it('Côn Đảo (26732) nằm trong khung Côn Đảo, 167 đơn vị còn lại nằm trong khung đất liền', () => {
+		const [mainland, island] = CITY_BOXES;
+		for (const item of bounds) {
+			const box = item.code === '26732' ? island : mainland;
+			expect(item.minLatitude).toBeGreaterThanOrEqual(
+				box?.minLatitude ?? 0,
+			);
+			expect(item.maxLatitude).toBeLessThanOrEqual(box?.maxLatitude ?? 0);
+			expect(item.minLongitude).toBeGreaterThanOrEqual(
+				box?.minLongitude ?? 0,
+			);
+			expect(item.maxLongitude).toBeLessThanOrEqual(
+				box?.maxLongitude ?? 0,
+			);
+		}
+	});
+
+	it('phường nhỏ nhất (Bình Tây, 27367) và lớn nhất trên đất liền (An Thới Đông, 27673) có cỡ đúng như đã đo', () => {
+		const sizeOf = (code: string) => {
+			const item = bounds.find((candidate) => candidate.code === code);
+			if (item === undefined) throw new Error(`thiếu ${code}`);
+			return {
+				height: (item.maxLatitude - item.minLatitude) * 111.3,
+				width: (item.maxLongitude - item.minLongitude) * 109,
+			};
+		};
+		expect(sizeOf('27367').height).toBeCloseTo(0.92, 1);
+		expect(sizeOf('27367').width).toBeCloseTo(1.86, 1);
+		expect(sizeOf('27673').height).toBeGreaterThan(20);
+	});
+});
+
+describe('seed-data: bộ nạp hộp phường từ chối dữ liệu hỏng', () => {
+	let dir: string;
+
+	beforeEach(() => {
+		dir = mkdtempSync(join(tmpdir(), 'seed-bounds-'));
+	});
+
+	afterEach(() => {
+		rmSync(dir, { recursive: true, force: true });
+	});
+
+	const write = (content: unknown): void => {
+		writeFileSync(join(dir, 'ward-bounds.json'), JSON.stringify(content));
+	};
+	const row = {
+		code: '26743',
+		minLatitude: 10.76341,
+		maxLatitude: 10.77959,
+		minLongitude: 106.68449,
+		maxLongitude: 106.70266,
+	};
+
+	it('không phải mảng', () => {
+		write({ bounds: [] });
+		expect(() => loadWardBoundsSeed(dir)).toThrow('phải là một mảng');
+	});
+
+	it('mã phường không đủ 5 chữ số', () => {
+		write([{ ...row, code: '760' }]);
+		expect(() => loadWardBoundsSeed(dir)).toThrow('5 chữ số');
+	});
+
+	it('mã phường trùng', () => {
+		write([row, row]);
+		expect(() => loadWardBoundsSeed(dir)).toThrow('bị trùng');
+	});
+
+	it('thiếu một số hoặc không phải số', () => {
+		write([
+			Object.fromEntries(
+				Object.entries(row).filter(([key]) => key !== 'maxLongitude'),
+			),
+		]);
+		expect(() => loadWardBoundsSeed(dir)).toThrow('"maxLongitude"');
+		write([{ ...row, minLatitude: '10.7' }]);
+		expect(() => loadWardBoundsSeed(dir)).toThrow('"minLatitude"');
+	});
+
+	it('min lớn hơn max (vi phạm CHECK)', () => {
+		write([{ ...row, minLatitude: 11, maxLatitude: 10 }]);
+		expect(() => loadWardBoundsSeed(dir)).toThrow('min lớn hơn max');
+		write([{ ...row, minLongitude: 107, maxLongitude: 106 }]);
+		expect(() => loadWardBoundsSeed(dir)).toThrow('min lớn hơn max');
+	});
+
+	it('ngoài miền ±90 và ±180 (vi phạm CHECK)', () => {
+		write([{ ...row, maxLatitude: 91 }]);
+		expect(() => loadWardBoundsSeed(dir)).toThrow('"maxLatitude"');
+		write([{ ...row, maxLongitude: 181 }]);
+		expect(() => loadWardBoundsSeed(dir)).toThrow('"maxLongitude"');
+	});
+
+	it('nhận dữ liệu hợp lệ', () => {
+		write([row]);
+		expect(loadWardBoundsSeed(dir)).toEqual([row]);
 	});
 });

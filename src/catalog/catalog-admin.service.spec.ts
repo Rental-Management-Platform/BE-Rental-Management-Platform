@@ -19,6 +19,10 @@ function ward(overrides: Partial<Ward> = {}): Ward {
 		name: 'Phường Bến Thành',
 		provinceCode: '79',
 		provinceName: 'Thành phố Hồ Chí Minh',
+		minLatitude: null,
+		maxLatitude: null,
+		minLongitude: null,
+		maxLongitude: null,
 		createdAt: now,
 		updatedAt: now,
 		...overrides,
@@ -143,9 +147,12 @@ describe('CatalogAdminService phường (spec 0002 AC-2)', () => {
 			provinceName: 'Thành phố Hồ Chí Minh',
 		};
 
-		it('tạo và trả đúng bốn trường, không lộ cột nội bộ', async () => {
+		it('tạo và trả bốn trường cộng bounds null, không lộ cột nội bộ; API không nhận hộp (spec 0012 AC-7)', async () => {
 			const h = build();
-			expect(await h.service.createWard(input)).toEqual(input);
+			expect(await h.service.createWard(input)).toEqual({
+				...input,
+				bounds: null,
+			});
 			expect(argsOf(h.repository.createWard)).toEqual([[input]]);
 		});
 
@@ -158,6 +165,22 @@ describe('CatalogAdminService phường (spec 0002 AC-2)', () => {
 	});
 
 	describe('updateWard', () => {
+		it('sửa phường đang có hộp thì bounds giữ nguyên trong phản hồi (spec 0012 AC-7)', async () => {
+			const bounds = {
+				minLatitude: 10.76341,
+				maxLatitude: 10.77959,
+				minLongitude: 106.68449,
+				maxLongitude: 106.70266,
+			};
+			const h = build({
+				updated: ward({ provinceName: 'Tên mới', ...bounds }),
+			});
+			const result = await h.service.updateWard('26743', {
+				provinceName: 'Tên mới',
+			});
+			expect(result.bounds).toEqual(bounds);
+		});
+
 		it('phường không có thì 404 NOT_FOUND và không ghi gì', async () => {
 			const h = build({ current: null });
 			expect(

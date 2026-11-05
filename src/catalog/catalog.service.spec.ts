@@ -4,14 +4,19 @@ import { CatalogService } from './catalog.service';
 
 const now = new Date('2026-10-14T00:00:00Z');
 
-function ward(code: string, name: string): Ward {
+function ward(code: string, name: string, bounds: Partial<Ward> = {}): Ward {
 	return {
 		code,
 		name,
 		provinceCode: '79',
 		provinceName: 'Thành phố Hồ Chí Minh',
+		minLatitude: null,
+		maxLatitude: null,
+		minLongitude: null,
+		maxLongitude: null,
 		createdAt: now,
 		updatedAt: now,
+		...bounds,
 	};
 }
 
@@ -37,7 +42,7 @@ function serviceWith(wards: Ward[], amenities: Amenity[] = []): CatalogService {
 
 describe('CatalogService', () => {
 	describe('listWards', () => {
-		it('trả đúng bốn trường, không lộ cột nội bộ', async () => {
+		it('trả bốn trường cũ cộng bounds, không lộ cột nội bộ', async () => {
 			const [first] = await serviceWith([
 				ward('26734', 'Phường Sài Gòn'),
 			]).listWards();
@@ -46,7 +51,39 @@ describe('CatalogService', () => {
 				name: 'Phường Sài Gòn',
 				provinceCode: '79',
 				provinceName: 'Thành phố Hồ Chí Minh',
+				bounds: null,
 			});
+		});
+
+		it('phường có hộp thì bounds là bốn số của hộp thô, chưa nới lề (spec 0012 AC-7)', async () => {
+			const [first] = await serviceWith([
+				ward('26743', 'Phường Bến Thành', {
+					minLatitude: 10.76341,
+					maxLatitude: 10.77959,
+					minLongitude: 106.68449,
+					maxLongitude: 106.70266,
+				}),
+			]).listWards();
+			expect(first?.bounds).toEqual({
+				minLatitude: 10.76341,
+				maxLatitude: 10.77959,
+				minLongitude: 106.68449,
+				maxLongitude: 106.70266,
+			});
+		});
+
+		it('phường không có hộp thì bounds là null chứ không bỏ trường (spec 0012 AC-7)', async () => {
+			const result = await serviceWith([
+				ward('1', 'Phường A', {
+					minLatitude: 10.1,
+					maxLatitude: 10.2,
+					minLongitude: 106.1,
+					maxLongitude: 106.2,
+				}),
+				ward('2', 'Phường B'),
+			]).listWards();
+			expect(result[0]?.bounds).not.toBeNull();
+			expect(result[1]).toHaveProperty('bounds', null);
 		});
 
 		it('xếp theo tên đầy đủ theo thứ tự chữ cái tiếng Việt', async () => {

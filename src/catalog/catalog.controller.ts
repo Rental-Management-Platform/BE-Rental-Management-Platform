@@ -14,7 +14,10 @@ import { RequirePermissions } from '../common/auth/require-permissions.decorator
 import { CatalogAdminService } from './catalog-admin.service';
 import { CatalogService } from './catalog.service';
 import { CreateAmenityDto, UpdateAmenityDto } from './dto/amenity.dto';
-import type { AmenityResponse, WardResponse } from './dto/catalog.response';
+import type {
+	AmenityResponse,
+	WardCatalogResponse,
+} from './dto/catalog.response';
 import { CreateWardDto, UpdateWardDto } from './dto/ward.dto';
 
 /**
@@ -30,13 +33,13 @@ export class WardsController {
 
 	@Public()
 	@Get()
-	list(): Promise<WardResponse[]> {
+	list(): Promise<WardCatalogResponse[]> {
 		return this.catalog.listWards();
 	}
 
 	@Post()
 	@RequirePermissions('catalog:create')
-	create(@Body() dto: CreateWardDto): Promise<WardResponse> {
+	create(@Body() dto: CreateWardDto): Promise<WardCatalogResponse> {
 		return this.admin.createWard(dto);
 	}
 
@@ -45,7 +48,7 @@ export class WardsController {
 	update(
 		@Param('code') code: string,
 		@Body() dto: UpdateWardDto,
-	): Promise<WardResponse> {
+	): Promise<WardCatalogResponse> {
 		return this.admin.updateWard(code, dto);
 	}
 

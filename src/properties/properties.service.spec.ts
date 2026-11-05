@@ -7,9 +7,11 @@ import type { Prisma } from '../generated/prisma/client';
 import type { ListingsRepository } from '../listings/listings.repository';
 import type { CreatePropertyDto } from './dto/create-property.dto';
 import type { UpdatePropertyDto } from './dto/update-property.dto';
+import { COORDINATE_MARGIN_DEGREES } from './coordinate-area';
 import {
 	amenityRow,
 	BEN_THANH,
+	BEN_THANH_BOUNDS,
 	fee,
 	OWNER_ID,
 	PROPERTY_ID,
@@ -49,6 +51,8 @@ interface Harness {
 function build(
 	options: {
 		current?: PropertyDetail | null;
+		/** Dòng nhà trọ đang lưu mà `findAddressSource` đọc sau khi khóa (tên, địa chỉ, phường, tọa độ). */
+		stored?: PropertyDetail;
 		locked?: { landlordId: string } | null;
 		liveListings?: number;
 		titles?: { id: string; title: string }[];
@@ -62,8 +66,16 @@ function build(
 		create: jest.fn(() => Promise.resolve(PROPERTY_ID)),
 		findById: jest.fn(() => Promise.resolve(current)),
 		findAddressSource: jest.fn(() => {
-			const { name, addressText, wardCode, ward } = propertyDetail();
-			return Promise.resolve({ name, addressText, wardCode, ward });
+			const { name, addressText, wardCode, ward, latitude, longitude } =
+				options.stored ?? propertyDetail();
+			return Promise.resolve({
+				name,
+				addressText,
+				wardCode,
+				ward,
+				latitude,
+				longitude,
+			});
 		}),
 		findPageByLandlord: jest.fn(() =>
 			Promise.resolve({
@@ -476,8 +488,8 @@ describe('PropertiesService.update (AC-3, AC-7)', () => {
 				updateDto({
 					fees: [{ kind: 'water', price: 5, unit: 'per_m3' }],
 					amenityKeys: ['wifi'],
-					latitude: 10,
-					longitude: 106,
+					latitude: 10.5,
+					longitude: 106.5,
 				}),
 			);
 			expect(listings.setSearchKey).not.toHaveBeenCalled();
@@ -520,6 +532,220 @@ describe('PropertiesService.update (AC-3, AC-7)', () => {
 		await expect(
 			service.update(owner, PROPERTY_ID, updateDto({ name: 'Tên mới' })),
 		).rejects.toMatchObject({ code: ErrorCode.PROPERTY_NOT_FOUND });
+	});
+});
+
+/** Hà Nội, (0, 0), giữa biển giữa hai khung, ngoài khơi phía đông: bốn điểm ngoài của spec 0012 AC-1. */
+const OUTSIDE_POINTS = [
+	{ latitude: 21.0285, longitude: 105.8542 },
+	{ latitude: 0, longitude: 0 },
+	{ latitude: 9.5, longitude: 106.5 },
+	{ latitude: 10.5, longitude: 108.5 },
+];
+
+/** Hai trường lỗi của `COORDINATE_OUT_OF_AREA`: cùng mã, câu riêng, cả hai đều có. */
+function expectOutOfAreaOn(error: unknown): void {
+	expect(error).toBeInstanceOf(AppException);
+	const { code, fieldErrors } = error as AppException;
+	expect(code).toBe(ErrorCode.COORDINATE_OUT_OF_AREA);
+	expect(fieldErrors.map((item) => item.field)).toEqual([
+		'latitude',
+		'longitude',
+	]);
+	for (const item of fieldErrors) {
+		expect(item.code).toBe(ErrorCode.COORDINATE_OUT_OF_AREA);
+		expect(item.message.length).toBeGreaterThan(0);
+	}
+	expect(fieldErrors[0]?.message).not.toBe(fieldErrors[1]?.message);
+}
+
+describe('PropertiesService: khung thành phố khi tạo (spec 0012 AC-1, AC-3, AC-4)', () => {
+	it.each(OUTSIDE_POINTS)(
+		'tọa độ ngoài khung %j thì 400 COORDINATE_OUT_OF_AREA và không ghi gì',
+		async (point) => {
+			const { service, repository } = build();
+			const error: unknown = await service
+				.create(owner, createDto(point))
+				.catch((caught: unknown) => caught);
+			expectOutOfAreaOn(error);
+			expect(repository.create).not.toHaveBeenCalled();
+		},
+	);
+
+	it('điểm trong khung đất liền được nhận và lưu nguyên xi', async () => {
+		const { service, repository } = build();
+		await service.create(
+			owner,
+			createDto({ latitude: 10.7721, longitude: 106.698 }),
+		);
+		expect(repository.create).toHaveBeenCalledWith(
+			expect.objectContaining({ latitude: 10.7721, longitude: 106.698 }),
+			tx,
+		);
+	});
+
+	it('điểm trên Côn Đảo và đúng biên khung được nhận', async () => {
+		const { service, repository } = build();
+		await service.create(
+			owner,
+			createDto({ latitude: 8.6934, longitude: 106.6086 }),
+		);
+		await service.create(
+			owner,
+			createDto({ latitude: 10.2, longitude: 107.7 }),
+		);
+		expect(repository.create).toHaveBeenCalledTimes(2);
+	});
+
+	it('không gửi tọa độ, hoặc gửi null cả hai, thì lưu null và không kiểm gì', async () => {
+		const { service, repository } = build();
+		await service.create(owner, createDto());
+		await service.create(
+			owner,
+			createDto({ latitude: null, longitude: null }),
+		);
+		expect(repository.create).toHaveBeenCalledTimes(2);
+		expect(repository.create).toHaveBeenLastCalledWith(
+			expect.objectContaining({ latitude: null, longitude: null }),
+			tx,
+		);
+	});
+
+	it('thứ tự lỗi: mã phường lạ kèm điểm ở Hà Nội ra WARD_UNKNOWN', async () => {
+		const { service } = build();
+		await expect(
+			service.create(
+				owner,
+				createDto({ wardCode: '00000', ...OUTSIDE_POINTS[0] }),
+			),
+		).rejects.toMatchObject({ code: ErrorCode.WARD_UNKNOWN });
+	});
+
+	it('thứ tự lỗi: tiện ích lạ kèm điểm ở Hà Nội ra AMENITY_UNKNOWN', async () => {
+		const { service } = build({ unknownAmenities: ['pool'] });
+		await expect(
+			service.create(
+				owner,
+				createDto({ amenityKeys: ['pool'], ...OUTSIDE_POINTS[0] }),
+			),
+		).rejects.toMatchObject({ code: ErrorCode.AMENITY_UNKNOWN });
+	});
+});
+
+describe('PropertiesService: khung thành phố khi sửa (spec 0012 AC-1, AC-3, AC-4, AC-5 a và c)', () => {
+	it.each(OUTSIDE_POINTS)(
+		'tọa độ ngoài khung %j thì 400 COORDINATE_OUT_OF_AREA và không đổi trường nào',
+		async (point) => {
+			const { service, repository } = build();
+			const error: unknown = await service
+				.update(
+					owner,
+					PROPERTY_ID,
+					updateDto({
+						name: 'Tên mới',
+						fees: [{ kind: 'water', price: 5, unit: 'per_m3' }],
+						amenityKeys: ['wifi'],
+						...point,
+					}),
+				)
+				.catch((caught: unknown) => caught);
+			expectOutOfAreaOn(error);
+			expect(repository.update).not.toHaveBeenCalled();
+			expect(repository.replaceFees).not.toHaveBeenCalled();
+			expect(repository.replaceAmenities).not.toHaveBeenCalled();
+		},
+	);
+
+	it('điểm trong khung được nhận và ghi cả cặp', async () => {
+		const { service, repository } = build();
+		await service.update(
+			owner,
+			PROPERTY_ID,
+			updateDto({ latitude: 8.6934, longitude: 106.6086 }),
+		);
+		expect(repository.update).toHaveBeenCalledWith(
+			PROPERTY_ID,
+			{ latitude: 8.6934, longitude: 106.6086 },
+			tx,
+		);
+	});
+
+	it('gửi null cả hai luôn xóa được tọa độ', async () => {
+		const { service, repository } = build();
+		await service.update(
+			owner,
+			PROPERTY_ID,
+			updateDto({ latitude: null, longitude: null }),
+		);
+		expect(repository.update).toHaveBeenCalledWith(
+			PROPERTY_ID,
+			{ latitude: null, longitude: null },
+			tx,
+		);
+	});
+
+	it('không gửi tọa độ thì không kiểm gì: nhà trọ cũ đang giữ tọa độ ngoài vùng vẫn sửa được tên, địa chỉ, phí, tiện ích', async () => {
+		const stale = propertyDetail({
+			latitude: 21.0285,
+			longitude: 105.8542,
+		});
+		const { service, repository } = build({ current: stale });
+		await service.update(
+			owner,
+			PROPERTY_ID,
+			updateDto({
+				name: 'Tên mới',
+				addressText: '99 Hai Bà Trưng',
+				fees: [{ kind: 'water', price: 5, unit: 'per_m3' }],
+				amenityKeys: ['wifi'],
+			}),
+		);
+		expect(repository.update).toHaveBeenCalledWith(
+			PROPERTY_ID,
+			{ name: 'Tên mới', addressText: '99 Hai Bà Trưng' },
+			tx,
+		);
+	});
+
+	it('thứ tự lỗi: 404 rồi 403 đứng trước tọa độ sai', async () => {
+		const missing = build({ locked: null });
+		await expect(
+			missing.service.update(
+				owner,
+				PROPERTY_ID,
+				updateDto({ ...OUTSIDE_POINTS[0] }),
+			),
+		).rejects.toMatchObject({ code: ErrorCode.PROPERTY_NOT_FOUND });
+		const other = build();
+		await expect(
+			other.service.update(
+				stranger,
+				PROPERTY_ID,
+				updateDto({ ...OUTSIDE_POINTS[0] }),
+			),
+		).rejects.toMatchObject({ code: ErrorCode.NOT_RESOURCE_OWNER });
+	});
+
+	it('thứ tự lỗi: mã phường lạ kèm điểm ở Hà Nội ra WARD_UNKNOWN', async () => {
+		const { service } = build();
+		await expect(
+			service.update(
+				owner,
+				PROPERTY_ID,
+				updateDto({ wardCode: '00000', ...OUTSIDE_POINTS[0] }),
+			),
+		).rejects.toMatchObject({ code: ErrorCode.WARD_UNKNOWN });
+	});
+
+	it('thứ tự lỗi: tiện ích lạ kèm điểm ở Hà Nội ra AMENITY_UNKNOWN', async () => {
+		const { service } = build({ unknownAmenities: ['pool'] });
+		await expect(
+			service.update(
+				owner,
+				PROPERTY_ID,
+				updateDto({ amenityKeys: ['pool'], ...OUTSIDE_POINTS[0] }),
+			),
+		).rejects.toMatchObject({ code: ErrorCode.AMENITY_UNKNOWN });
 	});
 });
 
@@ -569,5 +795,468 @@ describe('PropertiesService.remove (AC-4)', () => {
 		});
 		expect(listings.countLiveByProperty).not.toHaveBeenCalled();
 		expect(repository.markDeleted).not.toHaveBeenCalled();
+	});
+});
+
+/** Phường có hộp thật (Bến Thành, Bình Tây) và phường không có hộp (Tân Định), cho các ca lớp 2 của spec 0012. */
+const BEN_THANH_BOXED = { ...BEN_THANH, ...BEN_THANH_BOUNDS };
+const BINH_TAY_BOXED = {
+	...BEN_THANH,
+	code: '27367',
+	name: 'Phường Bình Tây',
+	minLatitude: 10.74643,
+	maxLatitude: 10.75474,
+	minLongitude: 106.63679,
+	maxLongitude: 106.65386,
+};
+const BOXED_WARDS = {
+	[BEN_THANH.code]: BEN_THANH_BOXED,
+	[BINH_TAY_BOXED.code]: BINH_TAY_BOXED,
+	[TAN_DINH.code]: TAN_DINH,
+};
+
+const IN_BEN_THANH = { latitude: 10.7721, longitude: 106.698 };
+const IN_BINH_TAY = { latitude: 10.7505, longitude: 106.645 };
+/** Vũng Tàu: trong khung thành phố nhưng xa mọi phường nội thành. */
+const VUNG_TAU = { latitude: 10.346, longitude: 107.0843 };
+const HA_NOI = { latitude: 21.0285, longitude: 105.8542 };
+/** Biên của hộp Bến Thành đã nới, tính bằng đúng biểu thức trong code. */
+const EDGE_NORTH = BEN_THANH_BOUNDS.maxLatitude + COORDINATE_MARGIN_DEGREES;
+const JUST = 0.000001;
+
+/** Hai trường lỗi của `COORDINATE_FAR_FROM_WARD`: cùng mã, câu riêng, đều nêu tên phường. */
+function expectFarFromWardOn(error: unknown, wardName: string): AppException {
+	expect(error).toBeInstanceOf(AppException);
+	const { code, fieldErrors } = error as AppException;
+	expect(code).toBe(ErrorCode.COORDINATE_FAR_FROM_WARD);
+	expect(fieldErrors.map((item) => item.field)).toEqual([
+		'latitude',
+		'longitude',
+	]);
+	for (const item of fieldErrors) {
+		expect(item.code).toBe(ErrorCode.COORDINATE_FAR_FROM_WARD);
+		expect(item.message).toContain(wardName);
+	}
+	expect(fieldErrors[0]?.message).not.toBe(fieldErrors[1]?.message);
+	return error as AppException;
+}
+
+describe('PropertiesService: hộp phường khi tạo (spec 0012 AC-2, AC-3, AC-4)', () => {
+	it('điểm trong hộp phường đã chọn được nhận và lưu nguyên xi', async () => {
+		const { service, repository } = build({ wards: BOXED_WARDS });
+		await service.create(owner, createDto(IN_BEN_THANH));
+		expect(repository.create).toHaveBeenCalledWith(
+			expect.objectContaining(IN_BEN_THANH),
+			tx,
+		);
+	});
+
+	it('điểm trong khung thành phố nhưng ở xa phường đã chọn thì 400 COORDINATE_FAR_FROM_WARD nêu tên phường, không ghi gì', async () => {
+		const { service, repository } = build({ wards: BOXED_WARDS });
+		const error: unknown = await service
+			.create(owner, createDto(VUNG_TAU))
+			.catch((caught: unknown) => caught);
+		expectFarFromWardOn(error, 'Phường Bến Thành');
+		expect(repository.create).not.toHaveBeenCalled();
+	});
+
+	it('điểm của phường này mà chọn phường kia thì 400; chọn đúng phường thì được nhận', async () => {
+		const { service, repository } = build({ wards: BOXED_WARDS });
+		const wrong: unknown = await service
+			.create(owner, createDto({ wardCode: '27367', ...IN_BEN_THANH }))
+			.catch((caught: unknown) => caught);
+		expectFarFromWardOn(wrong, 'Phường Bình Tây');
+		expect(repository.create).not.toHaveBeenCalled();
+
+		await service.create(
+			owner,
+			createDto({ wardCode: '27367', ...IN_BINH_TAY }),
+		);
+		expect(repository.create).toHaveBeenCalledTimes(1);
+	});
+
+	it('đúng biên hộp đã nới được nhận, lệch thêm một phần triệu độ thì 400', async () => {
+		const { service, repository } = build({ wards: BOXED_WARDS });
+		await service.create(
+			owner,
+			createDto({
+				latitude: EDGE_NORTH,
+				longitude: IN_BEN_THANH.longitude,
+			}),
+		);
+		expect(repository.create).toHaveBeenCalledTimes(1);
+
+		const error: unknown = await service
+			.create(
+				owner,
+				createDto({
+					latitude: EDGE_NORTH + JUST,
+					longitude: IN_BEN_THANH.longitude,
+				}),
+			)
+			.catch((caught: unknown) => caught);
+		expectFarFromWardOn(error, 'Phường Bến Thành');
+		expect(repository.create).toHaveBeenCalledTimes(1);
+	});
+
+	it('phường không có hộp thì bỏ lớp 2: mọi điểm trong khung thành phố được nhận', async () => {
+		const { service, repository } = build({ wards: BOXED_WARDS });
+		await service.create(
+			owner,
+			createDto({ wardCode: TAN_DINH.code, ...VUNG_TAU }),
+		);
+		expect(repository.create).toHaveBeenCalledWith(
+			expect.objectContaining(VUNG_TAU),
+			tx,
+		);
+	});
+
+	it('lớp 1 đứng trước lớp 2: điểm ngoài khung thành phố ra COORDINATE_OUT_OF_AREA, không phải FAR_FROM_WARD', async () => {
+		const { service } = build({ wards: BOXED_WARDS });
+		const error: unknown = await service
+			.create(owner, createDto(HA_NOI))
+			.catch((caught: unknown) => caught);
+		expectOutOfAreaOn(error);
+	});
+
+	it('thứ tự lỗi: mã phường lạ ra WARD_UNKNOWN, tiện ích lạ ra AMENITY_UNKNOWN, đều trước điểm xa phường', async () => {
+		const unknownWard = build({ wards: BOXED_WARDS });
+		await expect(
+			unknownWard.service.create(
+				owner,
+				createDto({ wardCode: '00000', ...VUNG_TAU }),
+			),
+		).rejects.toMatchObject({ code: ErrorCode.WARD_UNKNOWN });
+
+		const unknownAmenity = build({
+			wards: BOXED_WARDS,
+			unknownAmenities: ['pool'],
+		});
+		await expect(
+			unknownAmenity.service.create(
+				owner,
+				createDto({ amenityKeys: ['pool'], ...VUNG_TAU }),
+			),
+		).rejects.toMatchObject({ code: ErrorCode.AMENITY_UNKNOWN });
+	});
+
+	it('không gửi tọa độ, hoặc null cả hai, thì không kiểm gì dù phường có hộp', async () => {
+		const { service, repository } = build({ wards: BOXED_WARDS });
+		await service.create(owner, createDto());
+		await service.create(
+			owner,
+			createDto({ latitude: null, longitude: null }),
+		);
+		expect(repository.create).toHaveBeenCalledTimes(2);
+	});
+});
+
+describe('PropertiesService: hộp phường khi sửa (spec 0012 AC-2, AC-3, AC-5)', () => {
+	/** Nhà trọ đang lưu ở Bến Thành (có hộp) với một điểm trong phường. */
+	const storedAtBenThanh = propertyDetail({
+		ward: BEN_THANH_BOXED,
+		...IN_BEN_THANH,
+	});
+
+	it('AC-5 a: gửi cặp số mà không gửi wardCode thì kiểm với phường đang lưu', async () => {
+		const ok = build({ wards: BOXED_WARDS, stored: storedAtBenThanh });
+		await ok.service.update(
+			owner,
+			PROPERTY_ID,
+			updateDto({ latitude: 10.77, longitude: 106.69 }),
+		);
+		expect(ok.repository.update).toHaveBeenCalledTimes(1);
+
+		const far = build({ wards: BOXED_WARDS, stored: storedAtBenThanh });
+		const error: unknown = await far.service
+			.update(owner, PROPERTY_ID, updateDto(VUNG_TAU))
+			.catch((caught: unknown) => caught);
+		expectFarFromWardOn(error, 'Phường Bến Thành');
+		expect(far.repository.update).not.toHaveBeenCalled();
+	});
+
+	it('AC-5 a: gửi wardCode kèm cặp số thì kiểm với phường MỚI, không phải phường đang lưu', async () => {
+		const wrong = build({ wards: BOXED_WARDS, stored: storedAtBenThanh });
+		const error: unknown = await wrong.service
+			.update(
+				owner,
+				PROPERTY_ID,
+				updateDto({ wardCode: '27367', ...IN_BEN_THANH }),
+			)
+			.catch((caught: unknown) => caught);
+		const exception = expectFarFromWardOn(error, 'Phường Bình Tây');
+		// Tọa độ vừa gửi, không phải tọa độ đang lưu: câu lỗi không nói "đang lưu".
+		expect(exception.fieldErrors[0]?.message).not.toContain('đang lưu');
+		expect(wrong.repository.update).not.toHaveBeenCalled();
+
+		const right = build({ wards: BOXED_WARDS, stored: storedAtBenThanh });
+		await right.service.update(
+			owner,
+			PROPERTY_ID,
+			updateDto({ wardCode: '27367', ...IN_BINH_TAY }),
+		);
+		expect(right.repository.update).toHaveBeenCalledWith(
+			PROPERTY_ID,
+			{ wardCode: '27367', ...IN_BINH_TAY },
+			tx,
+		);
+	});
+
+	it('AC-5 b: chỉ đổi wardCode sang phường xa tọa độ đang lưu thì 400, câu nói đây là tọa độ đang lưu, không ghi gì', async () => {
+		const { service, repository } = build({
+			wards: BOXED_WARDS,
+			stored: storedAtBenThanh,
+		});
+		const error: unknown = await service
+			.update(owner, PROPERTY_ID, updateDto({ wardCode: '27367' }))
+			.catch((caught: unknown) => caught);
+		const exception = expectFarFromWardOn(error, 'Phường Bình Tây');
+		for (const item of exception.fieldErrors) {
+			expect(item.message).toContain('đang lưu');
+			expect(item.message).toContain('null');
+		}
+		expect(repository.update).not.toHaveBeenCalled();
+		expect(repository.replaceFees).not.toHaveBeenCalled();
+		expect(repository.replaceAmenities).not.toHaveBeenCalled();
+	});
+
+	it('AC-5 b: đổi phường kèm tọa độ mới hợp lệ, hoặc kèm null cả hai, thì thành công', async () => {
+		const withPoint = build({
+			wards: BOXED_WARDS,
+			stored: storedAtBenThanh,
+		});
+		await withPoint.service.update(
+			owner,
+			PROPERTY_ID,
+			updateDto({ wardCode: '27367', ...IN_BINH_TAY }),
+		);
+		expect(withPoint.repository.update).toHaveBeenCalledTimes(1);
+
+		const cleared = build({ wards: BOXED_WARDS, stored: storedAtBenThanh });
+		await cleared.service.update(
+			owner,
+			PROPERTY_ID,
+			updateDto({ wardCode: '27367', latitude: null, longitude: null }),
+		);
+		expect(cleared.repository.update).toHaveBeenCalledWith(
+			PROPERTY_ID,
+			{ wardCode: '27367', latitude: null, longitude: null },
+			tx,
+		);
+	});
+
+	it('AC-5 b: tọa độ đang lưu vẫn nằm trong hộp nới của phường mới thì đổi phường được', async () => {
+		const neighbour = {
+			...BEN_THANH_BOXED,
+			code: '26750',
+			name: 'Phường Kề Bên',
+			minLatitude: IN_BEN_THANH.latitude - 0.001,
+			maxLatitude: IN_BEN_THANH.latitude + 0.001,
+			minLongitude: IN_BEN_THANH.longitude - 0.001,
+			maxLongitude: IN_BEN_THANH.longitude + 0.001,
+		};
+		const { service, repository } = build({
+			wards: { ...BOXED_WARDS, [neighbour.code]: neighbour },
+			stored: storedAtBenThanh,
+		});
+		await service.update(
+			owner,
+			PROPERTY_ID,
+			updateDto({ wardCode: neighbour.code }),
+		);
+		expect(repository.update).toHaveBeenCalledWith(
+			PROPERTY_ID,
+			{ wardCode: neighbour.code },
+			tx,
+		);
+	});
+
+	it('AC-5 b: nhà trọ chưa có tọa độ thì đổi phường bình thường', async () => {
+		const { service, repository } = build({
+			wards: BOXED_WARDS,
+			stored: propertyDetail({ ward: BEN_THANH_BOXED }),
+		});
+		await service.update(
+			owner,
+			PROPERTY_ID,
+			updateDto({ wardCode: '27367' }),
+		);
+		expect(repository.update).toHaveBeenCalledTimes(1);
+	});
+
+	it('AC-5 b: gửi null cả hai khi đổi phường là xóa tọa độ, tọa độ cũ không bị kiểm', async () => {
+		const legacy = propertyDetail({ ward: BEN_THANH_BOXED, ...HA_NOI });
+		const { service, repository } = build({
+			wards: BOXED_WARDS,
+			stored: legacy,
+		});
+		await service.update(
+			owner,
+			PROPERTY_ID,
+			updateDto({ wardCode: '27367', latitude: null, longitude: null }),
+		);
+		expect(repository.update).toHaveBeenCalledTimes(1);
+	});
+
+	it('AC-5 b: tọa độ đang lưu ngoài khung thành phố (dòng cũ) mà đổi phường thì 400 OUT_OF_AREA, câu nói tọa độ đang lưu', async () => {
+		const legacy = propertyDetail({ ward: BEN_THANH_BOXED, ...HA_NOI });
+		const { service, repository } = build({
+			wards: BOXED_WARDS,
+			stored: legacy,
+		});
+		const error: unknown = await service
+			.update(owner, PROPERTY_ID, updateDto({ wardCode: '27367' }))
+			.catch((caught: unknown) => caught);
+		expect(error).toBeInstanceOf(AppException);
+		const { code, fieldErrors } = error as AppException;
+		expect(code).toBe(ErrorCode.COORDINATE_OUT_OF_AREA);
+		expect(fieldErrors.map((item) => item.field)).toEqual([
+			'latitude',
+			'longitude',
+		]);
+		for (const item of fieldErrors) {
+			expect(item.message).toContain('đang lưu');
+		}
+		expect(repository.update).not.toHaveBeenCalled();
+	});
+
+	it('AC-5 b: đổi sang phường không có hộp thì chỉ còn lớp 1 cho tọa độ đang lưu', async () => {
+		const inCity = build({
+			wards: BOXED_WARDS,
+			stored: propertyDetail({ ward: BEN_THANH_BOXED, ...VUNG_TAU }),
+		});
+		// Vũng Tàu đang lưu ở Bến Thành là dòng cũ lệch phường; sang Tân Định (không hộp) thì chỉ cần trong khung.
+		await inCity.service.update(
+			owner,
+			PROPERTY_ID,
+			updateDto({ wardCode: TAN_DINH.code }),
+		);
+		expect(inCity.repository.update).toHaveBeenCalledTimes(1);
+
+		const legacy = build({
+			wards: BOXED_WARDS,
+			stored: propertyDetail({ ward: BEN_THANH_BOXED, ...HA_NOI }),
+		});
+		await expect(
+			legacy.service.update(
+				owner,
+				PROPERTY_ID,
+				updateDto({ wardCode: TAN_DINH.code }),
+			),
+		).rejects.toMatchObject({ code: ErrorCode.COORDINATE_OUT_OF_AREA });
+	});
+
+	it('AC-5 c: không gửi tọa độ và gửi đúng phường đang lưu thì không kiểm gì, dòng cũ lệch phường vẫn sửa được', async () => {
+		const stale = propertyDetail({ ward: BEN_THANH_BOXED, ...VUNG_TAU });
+		const { service, repository } = build({
+			wards: BOXED_WARDS,
+			stored: stale,
+		});
+		await service.update(
+			owner,
+			PROPERTY_ID,
+			updateDto({ wardCode: BEN_THANH.code, name: 'Tên mới' }),
+		);
+		expect(repository.update).toHaveBeenCalledWith(
+			PROPERTY_ID,
+			{ wardCode: BEN_THANH.code, name: 'Tên mới' },
+			tx,
+		);
+	});
+
+	it('AC-5 c: sửa tên, phí, tiện ích của dòng cũ lệch phường mà không đụng phường lẫn tọa độ thì không kiểm gì', async () => {
+		const stale = propertyDetail({ ward: BEN_THANH_BOXED, ...VUNG_TAU });
+		const { service, repository } = build({
+			wards: BOXED_WARDS,
+			stored: stale,
+		});
+		await service.update(
+			owner,
+			PROPERTY_ID,
+			updateDto({
+				name: 'Tên mới',
+				fees: [{ kind: 'water', price: 5, unit: 'per_m3' }],
+				amenityKeys: ['wifi'],
+			}),
+		);
+		expect(repository.update).toHaveBeenCalledTimes(1);
+		expect(repository.replaceFees).toHaveBeenCalledTimes(1);
+	});
+
+	it('AC-4: gửi null cả hai luôn xóa được tọa độ, kể cả dòng cũ lệch phường', async () => {
+		const stale = propertyDetail({ ward: BEN_THANH_BOXED, ...VUNG_TAU });
+		const { service, repository } = build({
+			wards: BOXED_WARDS,
+			stored: stale,
+		});
+		await service.update(
+			owner,
+			PROPERTY_ID,
+			updateDto({ latitude: null, longitude: null }),
+		);
+		expect(repository.update).toHaveBeenCalledWith(
+			PROPERTY_ID,
+			{ latitude: null, longitude: null },
+			tx,
+		);
+	});
+
+	it('AC-3: 404 rồi 403 đứng trước tọa độ xa phường; WARD_UNKNOWN và AMENITY_UNKNOWN cũng trước', async () => {
+		const missing = build({ wards: BOXED_WARDS, locked: null });
+		await expect(
+			missing.service.update(owner, PROPERTY_ID, updateDto(VUNG_TAU)),
+		).rejects.toMatchObject({ code: ErrorCode.PROPERTY_NOT_FOUND });
+
+		const other = build({ wards: BOXED_WARDS, stored: storedAtBenThanh });
+		await expect(
+			other.service.update(stranger, PROPERTY_ID, updateDto(VUNG_TAU)),
+		).rejects.toMatchObject({ code: ErrorCode.NOT_RESOURCE_OWNER });
+
+		const unknownWard = build({
+			wards: BOXED_WARDS,
+			stored: storedAtBenThanh,
+		});
+		await expect(
+			unknownWard.service.update(
+				owner,
+				PROPERTY_ID,
+				updateDto({ wardCode: '00000', ...VUNG_TAU }),
+			),
+		).rejects.toMatchObject({ code: ErrorCode.WARD_UNKNOWN });
+
+		const unknownAmenity = build({
+			wards: BOXED_WARDS,
+			stored: storedAtBenThanh,
+			unknownAmenities: ['pool'],
+		});
+		await expect(
+			unknownAmenity.service.update(
+				owner,
+				PROPERTY_ID,
+				updateDto({ amenityKeys: ['pool'], ...VUNG_TAU }),
+			),
+		).rejects.toMatchObject({ code: ErrorCode.AMENITY_UNKNOWN });
+	});
+
+	it('AC-5 d: tọa độ đang lưu được đọc sau khi khóa dòng, trong cùng giao dịch', async () => {
+		const { service, repository } = build({
+			wards: BOXED_WARDS,
+			stored: storedAtBenThanh,
+		});
+		await service.update(
+			owner,
+			PROPERTY_ID,
+			updateDto({ wardCode: BINH_TAY_BOXED.code, ...IN_BINH_TAY }),
+		);
+		const lockOrder = repository.lockLiveById.mock.invocationCallOrder[0];
+		const readOrder =
+			repository.findAddressSource.mock.invocationCallOrder[0];
+		expect(lockOrder).toBeDefined();
+		expect(readOrder).toBeDefined();
+		expect(lockOrder ?? 0).toBeLessThan(readOrder ?? 0);
+		expect(repository.findAddressSource).toHaveBeenCalledWith(
+			PROPERTY_ID,
+			tx,
+		);
 	});
 });

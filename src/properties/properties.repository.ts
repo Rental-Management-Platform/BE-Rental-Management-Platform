@@ -25,12 +25,17 @@ export type PropertyListRow = Prisma.PropertyGetPayload<{
 	include: typeof listInclude;
 }>;
 
-/** Phần của nhà trọ làm nên `search_key` của tin: tên, địa chỉ và phường. */
+/**
+ * Phần của nhà trọ làm nên `search_key` của tin (tên, địa chỉ và phường), cộng tọa độ đang lưu: khi PATCH chỉ đổi
+ * phường, tọa độ đang lưu phải qua luật với phường mới (spec 0012 AC-5 b).
+ */
 export interface PropertyAddressSource {
 	readonly name: string;
 	readonly addressText: string;
 	readonly wardCode: string;
 	readonly ward: Ward;
+	readonly latitude: number | null;
+	readonly longitude: number | null;
 }
 
 export interface NewFee {
@@ -108,7 +113,11 @@ export class PropertiesRepository {
 		});
 	}
 
-	/** Tên, địa chỉ và phường hiện tại của nhà trọ đang giữ khóa dòng: nguồn của `search_key` trước khi sửa. */
+	/**
+	 * Tên, địa chỉ, phường và tọa độ hiện tại của nhà trọ đang giữ khóa dòng: nguồn của `search_key` và của luật
+	 * đổi phường (spec 0012 AC-5 b) trước khi sửa. Phải đọc sau `lockLiveById`, trong cùng giao dịch, để hai PATCH
+	 * đồng thời không cùng thấy một tọa độ cũ (AC-5 d).
+	 */
 	findAddressSource(
 		id: string,
 		tx: Prisma.TransactionClient,
@@ -120,6 +129,8 @@ export class PropertiesRepository {
 				addressText: true,
 				wardCode: true,
 				ward: true,
+				latitude: true,
+				longitude: true,
 			},
 		});
 	}

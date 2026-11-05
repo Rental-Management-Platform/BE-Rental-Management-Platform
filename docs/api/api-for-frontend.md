@@ -233,6 +233,8 @@ Lưu ý: **một trường có thể xuất hiện nhiều lần** trong `errors
 | `USER_NOT_FOUND` | 404 | Không có người dùng với id này | Hiện `message` |
 | `WARD_UNKNOWN` | 400 | Mã phường hoặc xã (`wardCode`) không có trong `GET /wards`. `errors` có một dòng `field: "wardCode"` | Lỗi lập trình hoặc danh mục đã đổi: tải lại `GET /wards` rồi cho chọn lại |
 | `AMENITY_UNKNOWN` | 400 | Có khóa tiện ích (`amenityKeys`) không có trong `GET /amenities`. `errors` có một dòng `field: "amenityKeys"` nêu các khóa lạ | Tải lại `GET /amenities` rồi cho chọn lại |
+| `COORDINATE_OUT_OF_AREA` | 400 | Tạo hoặc sửa nhà trọ với cặp `latitude`, `longitude` nằm ngoài cả hai khung bao quanh Thành phố Hồ Chí Minh (từ 2026-11-05, mục 6.17). `errors` có hai dòng, `field` là `latitude` và `longitude`, cùng `code` | Đánh dấu cả hai ô tọa độ và hiện `message`; cho chủ trọ ghim lại trên bản đồ hoặc xóa tọa độ (không bắt buộc) |
+| `COORDINATE_FAR_FROM_WARD` | 400 | Tạo hoặc sửa nhà trọ với cặp `latitude`, `longitude` nằm trong khung thành phố nhưng cách xa phường hoặc xã đã chọn: ngoài hộp của phường nới thêm khoảng 500 m mỗi phía (từ 2026-11-05, mục 6.17). Cũng gặp khi **chỉ đổi phường** mà tọa độ đang lưu của nhà trọ không hợp phường mới (câu lỗi khi đó nói rõ là "tọa độ đang lưu"). `errors` có hai dòng, `field` là `latitude` và `longitude`, cùng `code`, câu lỗi nêu tên phường | Đánh dấu cả hai ô tọa độ và hiện `message`; mời chủ trọ ghim lại trong hoặc sát ranh giới phường (zoom bản đồ về `bounds` của phường, mục 6.15), hoặc gửi `latitude` và `longitude` đều `null` để xóa |
 | `CATALOG_CODE_TAKEN` | 409 | Admin tạo phường (mã) hoặc tiện ích (khóa) trùng với mục đã có (mục 6.30) | Báo lỗi ở ô mã hoặc khóa |
 | `CATALOG_IN_USE` | 409 | Admin xóa phường hoặc tiện ích còn nhà trọ đang dùng, kể cả nhà trọ đã xóa mềm (mục 6.30) | Báo "đang có nhà trọ dùng, không xóa được", gợi ý đổi tên |
 | `PROPERTY_NOT_FOUND` | 404 | Nhà trọ không có, hoặc đã xóa mềm | Quay về danh sách nhà trọ |
@@ -676,13 +678,21 @@ Danh sách này **thay toàn bộ** quyền của loại (không phải thêm ho
 
 ```json
 [
-  { "code": "26732", "name": "Đặc khu Côn Đảo", "provinceCode": "79", "provinceName": "Thành phố Hồ Chí Minh" },
-  { "code": "26743", "name": "Phường Bến Thành", "provinceCode": "79", "provinceName": "Thành phố Hồ Chí Minh" },
-  { "code": "26737", "name": "Phường Tân Định", "provinceCode": "79", "provinceName": "Thành phố Hồ Chí Minh" }
+  {
+    "code": "26732", "name": "Đặc khu Côn Đảo", "provinceCode": "79", "provinceName": "Thành phố Hồ Chí Minh",
+    "bounds": { "minLatitude": 8.57705, "maxLatitude": 8.77875, "minLongitude": 106.0881, "maxLongitude": 106.74358 }
+  },
+  {
+    "code": "26743", "name": "Phường Bến Thành", "provinceCode": "79", "provinceName": "Thành phố Hồ Chí Minh",
+    "bounds": { "minLatitude": 10.76341, "maxLatitude": 10.77959, "minLongitude": 106.68449, "maxLongitude": 106.70266 }
+  },
+  { "code": "99001", "name": "Phường Admin Mới Thêm", "provinceCode": "79", "provinceName": "Thành phố Hồ Chí Minh", "bounds": null }
 ]
 ```
 
 Cần nhớ:
+- **`bounds` (từ 2026-11-05)** là hộp bao **thô** của phường theo độ: `{ minLatitude, maxLatitude, minLongitude, maxLongitude }`, hoặc `null` khi phường chưa có hộp (phường do admin thêm qua API thì luôn `null`). Key `bounds` luôn có mặt. FE dùng để **zoom bản đồ về phường** và **giới hạn chỗ ghim tọa độ nhà trọ**. Hộp chưa cộng lề: backend nhận điểm trong hộp này và còn nới thêm khoảng 500 m mỗi phía (0.0045 độ), nên điểm ghim trong `bounds` thì luôn được nhận (mục 6.17). Phường `bounds: null` thì không giới hạn chỗ ghim ngoài khu vực thành phố. Chỉ migration và seed ghi hộp, admin không sửa được (mục 6.30).
+- `bounds` chỉ có ở **danh mục phường** (`GET /wards`, `POST /wards`, `PATCH /wards/:code`). Phường lồng trong nhà trọ (`ward`) và trong tin (`ward`) giữ nguyên hình dạng cũ, không có `bounds`.
 - `name` là **tên đầy đủ kèm loại đơn vị** (`Phường ...`, `Xã ...`, `Đặc khu ...`), hiển thị thẳng được, không cần tự ghép "Phường" vào trước.
 - `code` là mã 5 chữ số theo danh mục hành chính mới. **Dùng `code` để lưu và so sánh**, đừng so chuỗi `name` (cách đặt dấu thanh theo nguồn, ví dụ `Hoà`, người dùng có thể gõ `Hòa`; tìm kiếm tin sẽ bỏ dấu nên không bị ảnh hưởng).
 - Bản demo có **168 đơn vị của Thành phố Hồ Chí Minh** (113 phường, 54 xã, 1 đặc khu), kể cả các phường thuộc Bình Dương và Bà Rịa Vũng Tàu cũ vì hai tỉnh đó đã sáp nhập vào thành phố. Mỗi phần tử có sẵn `provinceCode` và `provinceName` nên thêm tỉnh khác sau này không đổi API.
@@ -727,7 +737,7 @@ Cần nhớ:
 - **`fullAddress` do backend ghép sẵn**: `addressText`, tên phường hoặc xã, tên tỉnh hoặc thành phố, nối bằng dấu phẩy, không có quận huyện. **FE hiển thị thẳng, đừng tự ghép.** Backend ghép lúc đọc nên admin đổi tên phường là mọi địa chỉ đổi theo.
 - **`addressText` chỉ là số nhà và tên đường** ("12 Lê Lợi"). Đừng cho người dùng gõ phường, xã, tỉnh vào đây: phường lấy từ ô chọn (`GET /wards`, gửi `wardCode`), tỉnh đi theo phường.
 - `fees` luôn xếp theo thứ tự cố định `electricity, water, internet, parking, service, other` (chỉ có những khoản đã khai). `amenities` xếp theo tên tiếng Việt. `note` của phí là `null` khi không có, không bao giờ chuỗi rỗng.
-- `latitude` và `longitude` là `null` khi chưa có tọa độ.
+- `latitude` và `longitude` là `null` khi chưa có tọa độ. Nhà trọ cũ có thể còn giữ tọa độ nằm ngoài khu vực thành phố hoặc lệch xa phường đã ghi (lưu từ trước 2026-11-05): backend trả đúng như đã lưu, không sửa, và chỉ kiểm lại khi chủ trọ gửi tọa độ mới hoặc đổi phường.
 - Không có `landlordId` trong kết quả: chủ nhà trọ là người đang đăng nhập.
 
 **Các khoản phí** (`fees`): tối đa **một khoản cho mỗi loại** trong 6 loại, nên tối đa 6 khoản.
@@ -748,13 +758,27 @@ Cần nhớ:
 | `name` | chuỗi | có | 2 đến 100 ký tự (đã cắt khoảng trắng đầu cuối) |
 | `addressText` | chuỗi | có | 5 đến 200 ký tự, chỉ số nhà và tên đường |
 | `wardCode` | chuỗi | có | Đúng 5 chữ số, phải có trong `GET /wards` |
-| `latitude`, `longitude` | số | không | **Gửi cùng nhau hoặc không gửi.** Vĩ độ từ -90 đến 90, kinh độ từ -180 đến 180. Gửi `null` cả hai cũng được (coi như không có) |
+| `latitude`, `longitude` | số | không | **Gửi cùng nhau hoặc không gửi.** Vĩ độ từ -90 đến 90, kinh độ từ -180 đến 180, **và cặp điểm phải nằm trong khu vực Thành phố Hồ Chí Minh, gần phường đã chọn** (xem "Tọa độ" ngay dưới bảng). Gửi `null` cả hai cũng được (coi như không có) |
 | `fees` | mảng | không | Tối đa 6 khoản, mỗi loại một khoản (xem bảng trên) |
 | `amenityKeys` | mảng chuỗi | không | Tối đa 30 khóa, không trùng, mỗi khóa phải có trong `GET /amenities` |
 
+**Tọa độ (từ 2026-11-05)**: backend chỉ **kiểm lại** điểm mà FE gửi lên, **không tự tìm tọa độ từ địa chỉ** và không gọi dịch vụ bản đồ nào. Việc đổi địa chỉ thành điểm trên bản đồ (và cho chủ trọ kéo ghim) là của FE, bằng dịch vụ bản đồ của FE. Điểm gửi lên phải nằm trong **một trong hai khung** (đúng biên tính là trong):
+
+| Khung | Vĩ độ | Kinh độ |
+|---|---|---|
+| Đất liền (gồm khu Bình Dương và Bà Rịa Vũng Tàu cũ) | 10.2 đến 11.7 | 106.2 đến 107.7 |
+| Côn Đảo | 8.4 đến 8.9 | 105.9 đến 106.9 |
+
+Khung rộng hơn thành phố khoảng 11 km mỗi phía, chỉ để chặn điểm sai rõ ràng (Hà Nội, nước ngoài, giữa biển). Ngoài cả hai khung thì **400 `COORDINATE_OUT_OF_AREA`**, `errors` có hai dòng (`field` là `latitude` và `longitude`, cùng `code`); FE đánh dấu cả hai ô và hiện `message`. Lỗi thì không có gì được lưu.
+
+**Điểm còn phải gần phường đã chọn (từ 2026-11-05, lớp thứ hai)**: ngoài hai khung, điểm phải nằm trong **hộp của phường đã chọn (`wardCode`) nới thêm 0.0045 độ mỗi phía, khoảng 500 m**, ở cả vĩ độ lẫn kinh độ (đúng biên tính là trong). Hộp thô của từng phường là `bounds` trong `GET /wards` (mục 6.15), nên **ghim trong `bounds` thì luôn được nhận**. Điểm trong khung thành phố nhưng ngoài hộp đã nới thì **400 `COORDINATE_FAR_FROM_WARD`**, `errors` có hai dòng (`latitude` và `longitude`, cùng `code`), câu lỗi nêu tên phường, ví dụ "Vĩ độ cách xa Phường Bến Thành. Hãy ghim lại trong hoặc sát ranh giới phường này."; lỗi thì không có gì được lưu. Lưu ý:
+- Đây là hộp chữ nhật bao quanh phường, **không phải đường ranh chính xác**: góc hộp không thuộc phường vẫn được nhận, và phường nhỏ (khoảng 0.9 km × 1.9 km) thì lề 500 m là đáng kể. Mục tiêu là "gần đúng phường", không phải "trong ranh giới".
+- Phường **chưa có hộp** (`bounds: null`, ví dụ phường admin vừa thêm) thì bỏ lớp này, chỉ còn hai khung thành phố.
+- Không gửi tọa độ, hoặc gửi `null` cả hai thì không kiểm gì, ở phường nào cũng được.
+
 **201 Created**: nhà trọ vừa tạo (hình dạng ở trên). Không gửi `landlordId` hay trường nào ngoài bảng (bị 400).
 
-**Lỗi**: 400 `VALIDATION_FAILED` (gồm hai khoản phí cùng loại, quá 6 khoản, chỉ một tọa độ, tiện ích trùng) · 400 `WARD_UNKNOWN` · 400 `AMENITY_UNKNOWN` · 403 `PERMISSION_DENIED` · 429 `RATE_LIMITED` (quá 30 lần ghi mỗi giờ). Lỗi thì **không có gì được lưu** (nhà trọ, phí và tiện ích được lưu cùng lúc hoặc không gì cả).
+**Lỗi**: 400 `VALIDATION_FAILED` (gồm hai khoản phí cùng loại, quá 6 khoản, chỉ một tọa độ, tọa độ ngoài miền ±90 và ±180, tiện ích trùng) · 400 `WARD_UNKNOWN` · 400 `AMENITY_UNKNOWN` · 400 `COORDINATE_OUT_OF_AREA` · 400 `COORDINATE_FAR_FROM_WARD` (hai mã tọa độ đứng sau hai mã danh mục: gửi cùng lúc phường lạ và tọa độ sai thì nhận `WARD_UNKNOWN`; điểm ngoài khung thành phố nhận `COORDINATE_OUT_OF_AREA`, không phải `COORDINATE_FAR_FROM_WARD`) · 403 `PERMISSION_DENIED` · 429 `RATE_LIMITED` (quá 30 lần ghi mỗi giờ). Lỗi thì **không có gì được lưu** (nhà trọ, phí và tiện ích được lưu cùng lúc hoặc không gì cả).
 
 #### Danh sách nhà trọ của tôi
 
@@ -780,11 +804,14 @@ Body có các trường như lúc tạo, **mọi trường đều tùy chọn**,
 - Trường không gửi thì **giữ nguyên**. Gửi `{}` cũng được (không đổi gì, chỉ cập nhật `updatedAt`).
 - `fees` và `amenityKeys` nếu gửi thì **thay cả danh sách** bằng danh sách mới, nên FE gửi lại danh sách đầy đủ sau khi người dùng chỉnh; mảng rỗng `[]` là xóa hết.
 - **Xóa tọa độ** bằng `"latitude": null, "longitude": null` (cả hai). Đặt tọa độ mới thì gửi cả hai số. Gửi chỉ một trong hai, hoặc một số một `null`, là 400.
+- **Tọa độ mới phải nằm trong hai khung thành phố và gần phường** (bảng và luật ở phần Tạo nhà trọ), nếu không là 400 `COORDINATE_OUT_OF_AREA` hoặc `COORDINATE_FAR_FROM_WARD` và nhà trọ không đổi gì. Cặp số được kiểm với **phường hiệu lực**: `wardCode` trong body nếu có, nếu không thì phường đang lưu của nhà trọ. Gửi `null` cả hai thì luôn xóa được tọa độ, kể cả nhà trọ cũ đang giữ tọa độ ngoài vùng. **Không gửi tọa độ và không đổi phường thì không kiểm gì**: nhà trọ cũ có tọa độ lệch vẫn sửa được tên, địa chỉ, phí, tiện ích (gửi đúng phường đang lưu cũng không tính là đổi phường).
+- **Đổi phường (`wardCode` khác phường đang lưu) mà không gửi tọa độ** thì tọa độ **đang lưu** của nhà trọ (nếu có) được kiểm với phường mới bằng cả hai lớp. Nếu trượt thì 400 `COORDINATE_OUT_OF_AREA` hoặc `COORDINATE_FAR_FROM_WARD`, `errors` vẫn là `latitude` và `longitude`, và câu lỗi nói rõ đây là **tọa độ đang lưu** và bảo gửi tọa độ mới (hoặc `latitude` và `longitude` đều `null`) cùng phường mới. Nên khi chủ trọ đổi ô chọn phường, FE gửi kèm tọa độ mới ghim trong `bounds` của phường mới (hoặc `null` nếu không giữ tọa độ). Nhà trọ chưa có tọa độ thì đổi phường bình thường.
+- Hai PATCH đồng thời lên cùng một nhà trọ được xếp lần lượt (backend khóa dòng nhà trọ), nên tọa độ lưu xong luôn hợp phường lưu xong.
 - Đổi `name`, `addressText` hay `wardCode` sẽ làm mới khóa tìm kiếm của các tin của nhà trọ (ô tìm kiếm ở `GET /listings` tìm thấy tên và địa chỉ mới ngay).
 
 **200 OK**: nhà trọ sau khi sửa.
 
-**Lỗi**: 400 `VALIDATION_FAILED` · 400 `WARD_UNKNOWN` · 400 `AMENITY_UNKNOWN` · 400 `INVALID_ID` · 404 `PROPERTY_NOT_FOUND` · 403 `NOT_RESOURCE_OWNER` · 403 `PERMISSION_DENIED` · 429 `RATE_LIMITED`. Lỗi thì không có gì bị đổi.
+**Lỗi**: 400 `VALIDATION_FAILED` · 400 `WARD_UNKNOWN` · 400 `AMENITY_UNKNOWN` · 400 `COORDINATE_OUT_OF_AREA` · 400 `COORDINATE_FAR_FROM_WARD` · 400 `INVALID_ID` · 404 `PROPERTY_NOT_FOUND` · 403 `NOT_RESOURCE_OWNER` · 403 `PERMISSION_DENIED` · 429 `RATE_LIMITED`. Lỗi thì không có gì bị đổi. Thứ tự kiểm: 401, 403 `PERMISSION_DENIED`, 429, 400 `VALIDATION_FAILED` (hoặc `INVALID_ID`), 404, 403 `NOT_RESOURCE_OWNER`, 400 `WARD_UNKNOWN`, 400 `AMENITY_UNKNOWN`, 400 `COORDINATE_OUT_OF_AREA`, 400 `COORDINATE_FAR_FROM_WARD`.
 
 #### Xóa nhà trọ
 
@@ -1372,14 +1399,14 @@ Danh sách đọc công khai ở 6.15 và 6.16. Phần ghi (thêm, đổi tên, 
 
 | API | Quyền | Body | Kết quả |
 |---|---|---|---|
-| `POST /wards` | `catalog:create` | `code`, `name`, `provinceCode`, `provinceName` | 201, một phường |
-| `PATCH /wards/:code` | `catalog:update` | `name?`, `provinceName?` | 200, phường sau khi sửa |
+| `POST /wards` | `catalog:create` | `code`, `name`, `provinceCode`, `provinceName` (không nhận hộp) | 201, một phường kèm `bounds: null` |
+| `PATCH /wards/:code` | `catalog:update` | `name?`, `provinceName?` | 200, phường sau khi sửa, `bounds` giữ nguyên |
 | `DELETE /wards/:code` | `catalog:delete` | không | 204 |
 | `POST /amenities` | `catalog:create` | `key`, `name` | 201, một tiện ích |
 | `PATCH /amenities/:key` | `catalog:update` | `name` | 200, tiện ích sau khi sửa |
 | `DELETE /amenities/:key` | `catalog:delete` | không | 204 |
 
-Phản hồi là đúng hình dạng của 6.15 (`code`, `name`, `provinceCode`, `provinceName`) và 6.16 (`key`, `name`).
+Phản hồi là đúng hình dạng của 6.15 (`code`, `name`, `provinceCode`, `provinceName`, `bounds`) và 6.16 (`key`, `name`). Phường admin vừa tạo có `bounds: null`; API không nhận hộp, và `PATCH` giữ nguyên `bounds` của phường (hộp là dữ kiện danh mục, chỉ migration và seed ghi).
 
 Luật dữ liệu:
 - **Phường**: `code` đúng 5 chữ số; `provinceCode` đúng 2 chữ số; `name` và `provinceName` từ 2 đến 100 ký tự sau khi cắt khoảng trắng. `name` là tên đầy đủ kèm loại đơn vị ("Phường Bến Thành"). **Không có trường quận huyện**: trường lạ bị 400. `code` và `provinceCode` là khóa của dòng, **không đổi được** (gửi chúng ở `PATCH` là 400). `PATCH` với thân rỗng trả 200 và không đổi gì.
@@ -1391,7 +1418,7 @@ Cần nhớ:
 - **Đổi tên phường làm mới tìm kiếm**: trong cùng giao dịch với việc đổi tên, backend dựng lại từ khóa tìm kiếm của mọi tin chưa xóa thuộc phường đó. Ngay sau `PATCH`, tìm theo tên mới ra tin (6.19) và tìm theo tên cũ không còn ra nữa. `fullAddress` ghép lúc đọc nên cũng đổi ngay ở nhà trọ, tin công khai và tin của chủ trọ. Chỉ đổi `provinceName` thì từ khóa không đổi.
 - Xóa bị chặn khi còn nhà trọ dùng, nên gặp 409 `CATALOG_IN_USE` thì báo "mục này đang được nhà trọ sử dụng nên chưa thể xóa". Nhà trọ đã xóa mềm vẫn giữ tham chiếu, nên một phường hay tiện ích từng được dùng thì không bao giờ xóa được.
 - Danh sách công khai (6.15, 6.16) thấy thay đổi ngay. FE đang lưu tạm danh sách trong phiên thì nên tải lại sau khi admin sửa.
-- `npm run seed` chỉ thêm dòng còn thiếu, nên phường hoặc tiện ích mẫu mà admin đã xóa sẽ quay lại ở lần chạy seed sau; tên admin đã sửa thì seed không ghi đè.
+- `npm run seed` chỉ thêm dòng còn thiếu, nên phường hoặc tiện ích mẫu mà admin đã xóa sẽ quay lại ở lần chạy seed sau; tên admin đã sửa thì seed không ghi đè. Ngoại lệ có chủ đích: hộp (`bounds`) của phường đã có mà còn rỗng thì seed điền (hộp đã có giá trị thì không bao giờ ghi đè); phường admin thêm giữ `bounds: null`.
 
 ### 6.31 Hồ sơ công khai của chủ trọ
 
@@ -1867,7 +1894,7 @@ Hai ô: mật khẩu hiện tại, mật khẩu mới. Gọi `POST /auth/change-
    - Tên, ô **số nhà và tên đường** (`addressText`), ô chọn **phường hoặc xã** từ `GET /wards` (gửi `code`), và dòng chỉ-đọc hiện tên tỉnh hoặc thành phố đi theo phường đã chọn (`provinceName`). **Không có ô quận huyện.**
    - Phí: tối đa 6 dòng, mỗi loại phí chỉ chọn một lần (ẩn loại đã chọn khỏi danh sách), mỗi dòng gồm giá, đơn vị tính và ghi chú tùy chọn.
    - Tiện ích: nhiều ô chọn từ `GET /amenities` (gửi `key`).
-   - Tọa độ (không bắt buộc): nếu có thì phải đủ cả vĩ độ và kinh độ.
+   - Tọa độ (không bắt buộc): nếu có thì phải đủ cả vĩ độ và kinh độ, nằm trong khu vực thành phố (hai khung ở 6.17) và gần phường đã chọn. **FE tự ghim**: dùng dịch vụ bản đồ của FE để đổi địa chỉ thành điểm và cho chủ trọ kéo ghim; backend không tìm tọa độ từ địa chỉ. Khi chủ trọ chọn phường, **zoom bản đồ về `bounds` của phường** (`GET /wards`, mục 6.15) và giới hạn chỗ ghim trong hộp đó: ghim trong `bounds` thì luôn được nhận. Phường có `bounds: null` thì chỉ zoom về cả thành phố. Gặp 400 `COORDINATE_OUT_OF_AREA` hoặc `COORDINATE_FAR_FROM_WARD` thì đánh dấu cả hai ô tọa độ, hiện `message`, mời ghim lại hoặc bỏ tọa độ. **Khi sửa nhà trọ và đổi ô chọn phường**, gửi kèm tọa độ mới trong `bounds` của phường mới (hoặc `latitude` và `longitude` đều `null`); nếu chỉ gửi `wardCode` mà tọa độ đang lưu không hợp phường mới thì nhận `COORDINATE_FAR_FROM_WARD` với câu "tọa độ đang lưu ...".
    - Khi sửa, gửi lại **toàn bộ** `fees` và `amenityKeys` (backend thay cả danh sách). Chỉ gửi các trường người dùng đã đổi cũng được.
 3. **Xóa**: hỏi xác nhận; gặp 409 `PROPERTY_HAS_LISTINGS` thì báo phải xóa các tin trước.
 4. Lỗi `VALIDATION_FAILED` hiện dưới từng ô theo `errors[].field`; với phí, `field` có dạng `fees.0.price` (số thứ tự trong mảng đã gửi).
@@ -2105,6 +2132,25 @@ Tính đến 2026-10-22 **không còn tính năng nào đã lên kế hoạch m�
 ## 11. Nhật ký thay đổi
 
 Mới nhất ở trên cùng. Mục nào **phá vỡ** cách FE đang gọi sẽ ghi rõ "ĐỔI KHÁC VỚI TRƯỚC".
+
+### 2026-11-05 · Tọa độ nhà trọ phải gần phường đã chọn, và `GET /wards` có `bounds` (mốc 2 của giới hạn tọa độ: hộp của từng phường; phần giới hạn tọa độ xong)
+
+- **ĐỔI KHÁC VỚI TRƯỚC**: `POST /properties` và `PATCH /properties/:id` (mục 6.17) giờ trả thêm **400 `COORDINATE_FAR_FROM_WARD`** (mã mới, đã thêm vào bảng mã lỗi ở mục 3 và kiểu `ErrorCode` ở Phụ lục B) khi cặp `latitude`, `longitude` nằm trong khung thành phố nhưng ngoài **hộp của phường đã chọn nới thêm 0.0045 độ mỗi phía (khoảng 500 m)**; đúng biên tính là trong. `errors` có hai dòng (`latitude` và `longitude`, cùng `code`), câu lỗi nêu tên phường. Lỗi thì không có gì được lưu. Điểm ngoài cả hai khung vẫn nhận `COORDINATE_OUT_OF_AREA` (khung kiểm trước).
+- **ĐỔI KHÁC VỚI TRƯỚC (đổi phường)**: `PATCH /properties/:id` chỉ đổi `wardCode` sang phường khác, không gửi tọa độ, mà nhà trọ đang có tọa độ: tọa độ **đang lưu** được kiểm với phường mới bằng cả hai lớp, và trượt thì 400 `COORDINATE_OUT_OF_AREA` hoặc `COORDINATE_FAR_FROM_WARD` với câu nói rõ đây là tọa độ đang lưu. FE nên gửi kèm tọa độ mới ghim trong `bounds` của phường mới, hoặc `latitude` và `longitude` đều `null`. Nhà trọ chưa có tọa độ thì đổi phường bình thường. Gửi đúng phường đang lưu, hoặc không gửi `wardCode`, thì không kiểm gì.
+- **Thêm `bounds`**: `GET /wards`, `POST /wards` và `PATCH /wards/:code` (mục 6.15 và 6.30) mỗi phường trả thêm `bounds`: `{ minLatitude, maxLatitude, minLongitude, maxLongitude }` (hộp thô, chưa nới lề) hoặc `null`. Các trường cũ giữ nguyên, nên FE cũ không bị vỡ. Sau `npm run seed`, cả 168 phường mặc định có hộp; phường admin thêm qua API luôn `null` (API không nhận hộp). Phường lồng trong nhà trọ và tin (`ward`) **không đổi**, không có `bounds`. FE dùng `bounds` để zoom bản đồ về phường và giới hạn chỗ ghim.
+- **Thứ tự kiểm lỗi**: `VALIDATION_FAILED`, `WARD_UNKNOWN`, `AMENITY_UNKNOWN`, `COORDINATE_OUT_OF_AREA`, `COORDINATE_FAR_FROM_WARD`. Ở `PATCH`, 404 và 403 `NOT_RESOURCE_OWNER` đứng trước `WARD_UNKNOWN`.
+- **Không đổi**: miền ±90 và ±180 cùng luật "gửi cả hai hoặc không gửi"; quyền; giới hạn 30 lần ghi mỗi giờ; hình dạng nhà trọ và tin; các `GET` nhà trọ và tin trả tọa độ đã lưu nguyên xi, kể cả dòng cũ lệch phường. Không gửi tọa độ và không đổi phường thì không kiểm gì, và `null` cả hai luôn xóa được tọa độ.
+- **Giới hạn đã biết**: hộp là hình chữ nhật bao quanh, không phải đường ranh chính xác, nên góc hộp không thuộc phường vẫn qua; hộp Côn Đảo rộng (phần lớn là biển). Backend vẫn **không** tự tìm tọa độ từ địa chỉ và không gọi dịch vụ bản đồ nào: FE tự ghim.
+- **Dữ liệu demo**: hai nhà trọ demo (Phú Nhuận, Bình Trị Đông) đã dời vào trong hộp phường của chúng; chạy lại `npm run seed:demo` để cập nhật. Muốn có hộp phường trên DB hiện có: `npm run migration:deploy` rồi `npm run seed` (một lần). Nếu seed chưa chạy thì hộp rỗng và lớp "gần phường" im lặng tắt cho tới khi seed chạy.
+
+### 2026-11-05 · Tọa độ nhà trọ phải nằm trong khu vực thành phố (mốc 1 của giới hạn tọa độ: hai khung bao quanh thành phố)
+
+- **ĐỔI KHÁC VỚI TRƯỚC**: `POST /properties` và `PATCH /properties/:id` (mục 6.17) giờ trả **400 `COORDINATE_OUT_OF_AREA`** (mã mới, đã thêm vào bảng mã lỗi ở mục 3 và kiểu `ErrorCode` ở Phụ lục B) khi cặp `latitude`, `longitude` nằm ngoài cả hai khung: đất liền (vĩ độ 10.2 đến 11.7, kinh độ 106.2 đến 107.7) và Côn Đảo (vĩ độ 8.4 đến 8.9, kinh độ 105.9 đến 106.9); đúng biên tính là trong. Trước đây mọi cặp trong miền ±90 và ±180 đều được lưu, kể cả Hà Nội hay giữa biển. `errors` có hai dòng (`latitude` và `longitude`, cùng `code`). Lỗi thì không có gì được lưu hay đổi.
+- **Thứ tự kiểm lỗi**: sau `VALIDATION_FAILED` (miền ±90 và ±180, chỉ một tọa độ: giữ nguyên), `WARD_UNKNOWN` và `AMENITY_UNKNOWN`. Ở `PATCH`, 404 và 403 `NOT_RESOURCE_OWNER` đứng trước.
+- **Không gửi tọa độ thì không kiểm gì**, và gửi `null` cả hai luôn xóa được tọa độ. Nhà trọ cũ đang giữ tọa độ ngoài vùng vẫn đọc ra đúng như đã lưu và vẫn sửa được tên, địa chỉ, phí, tiện ích; chỉ bị kiểm khi gửi tọa độ mới.
+- **FE tự ghim tọa độ từ địa chỉ** bằng dịch vụ bản đồ của FE; backend không tìm tọa độ từ địa chỉ và không gọi dịch vụ bản đồ nào, chỉ kiểm lại điểm gửi lên.
+- **Mốc 2 (cùng ngày)**: kiểm điểm có gần đúng phường đã chọn không (mã `COORDINATE_FAR_FROM_WARD`) và `bounds` của từng phường trong `GET /wards` để FE zoom bản đồ. Xem mục ngay trên.
+- **Không đổi**: quyền `property:create` và `property:update`, giới hạn 30 lần ghi mỗi giờ, hình dạng nhà trọ và tin, các `GET`. Không bảng, cột hay migration mới.
 
 ### 2026-11-02 · Không xóa được ảnh cuối cùng của tin (mốc 2 của đăng tin kèm ảnh; phần đăng tin kèm ảnh xong)
 
@@ -2573,7 +2619,8 @@ interface ApiError {
   code: ErrorCode;
   message: string; // tiếng Việt, hiển thị thẳng được
   // Có ở VALIDATION_FAILED và vài lỗi nêu rõ trường sai (WARD_UNKNOWN, AMENITY_UNKNOWN,
-  // PERMISSION_UNKNOWN, PERMISSION_ADMIN_ONLY, PLAN_NAME_TAKEN). Một trường có thể lặp nhiều lần.
+  // COORDINATE_OUT_OF_AREA, COORDINATE_FAR_FROM_WARD, PERMISSION_UNKNOWN, PERMISSION_ADMIN_ONLY, PLAN_NAME_TAKEN).
+  // Một trường có thể lặp nhiều lần.
   errors?: FieldError[];
   requestId: string;
 }
@@ -2587,7 +2634,7 @@ type ErrorCode =
   | 'PERMISSION_UNKNOWN' | 'PERMISSION_ADMIN_ONLY' | 'SYSTEM_TYPE_PROTECTED' | 'ACCOUNT_TYPE_NOT_FOUND'
   | 'USER_NOT_FOUND' | 'CANNOT_LOCK_SELF' | 'ACCOUNT_ALREADY_LOCKED' | 'ACCOUNT_NOT_LOCKED'
   | 'WARD_UNKNOWN' | 'AMENITY_UNKNOWN' | 'CATALOG_CODE_TAKEN' | 'CATALOG_IN_USE'
-  | 'PROPERTY_NOT_FOUND' | 'PROPERTY_HAS_LISTINGS'
+  | 'PROPERTY_NOT_FOUND' | 'PROPERTY_HAS_LISTINGS' | 'COORDINATE_OUT_OF_AREA' | 'COORDINATE_FAR_FROM_WARD'
   | 'LISTING_NOT_FOUND' | 'LISTING_STATE_INVALID' | 'LISTING_HIDDEN_BY_ADMIN' | 'LISTING_IMAGE_LIMIT' | 'LISTING_IMAGE_REQUIRED' | 'IMAGE_INVALID'
   | 'MEMBERSHIP_REQUIRED' | 'LISTING_QUOTA_REACHED'
   | 'PLAN_NOT_FOUND' | 'PLAN_NAME_TAKEN' | 'PLAN_IN_USE' | 'PLAN_INACTIVE'
@@ -2607,7 +2654,11 @@ interface PermissionCatalogEntry { module: string; actions: string[]; ownerScope
 interface AccountTypeView { key: AccountType; name: string; description: string | null; permissions: PermissionKey[] }
 
 // ---------- Danh mục, nhà trọ ----------
-interface Ward { code: string; name: string; provinceCode: string; provinceName: string }
+interface Ward { code: string; name: string; provinceCode: string; provinceName: string } // lồng trong nhà trọ và tin: không có bounds
+/** Hộp bao thô của phường, độ; chưa nới lề 0.0045 độ (khoảng 500 m) mà backend cộng khi kiểm tọa độ. */
+interface WardBounds { minLatitude: number; maxLatitude: number; minLongitude: number; maxLongitude: number }
+/** Phường trong danh mục (GET /wards, POST /wards, PATCH /wards/:code). `bounds` null khi phường chưa có hộp (admin thêm qua API). */
+interface CatalogWard extends Ward { bounds: WardBounds | null }
 interface Amenity { key: string; name: string }
 type FeeKind = 'electricity' | 'water' | 'internet' | 'parking' | 'service' | 'other';
 type FeeUnit = 'per_kwh' | 'per_m3' | 'per_month' | 'per_person_month' | 'per_vehicle_month';
@@ -2748,7 +2799,7 @@ Dùng để dựng kiểm tra ở FE cho khớp backend, **nhằm báo lỗi s�
 | `name` | 2 đến 100 ký tự |
 | `addressText` | 5 đến 200 ký tự (chỉ số nhà và đường) |
 | `wardCode` | Đúng 5 chữ số và có trong `GET /wards` |
-| `latitude`, `longitude` | Gửi **cùng nhau**: số trong [-90, 90] và [-180, 180]; hoặc cùng `null` để xóa (PATCH); hoặc không gửi |
+| `latitude`, `longitude` | Gửi **cùng nhau**: số trong [-90, 90] và [-180, 180]; hoặc cùng `null` để xóa (PATCH); hoặc không gửi. Cặp số còn phải nằm trong một trong hai khung thành phố: đất liền (vĩ độ 10.2 đến 11.7, kinh độ 106.2 đến 107.7) hoặc Côn Đảo (vĩ độ 8.4 đến 8.9, kinh độ 105.9 đến 106.9), đúng biên tính là trong; ngoài thì 400 `COORDINATE_OUT_OF_AREA`. Rồi phải nằm trong hộp của phường đã chọn nới 0.0045 độ mỗi phía (khoảng 500 m; đúng biên tính là trong), nếu không là 400 `COORDINATE_FAR_FROM_WARD`; phường có `bounds: null` thì bỏ kiểm này. Đổi `wardCode` mà không gửi tọa độ thì tọa độ đang lưu cũng bị kiểm với phường mới (PATCH, mục 6.17) |
 | `fees` | Mảng ≤ 6 khoản, mỗi `kind` một khoản |
 | `fees[].kind` | `electricity`, `water`, `internet`, `parking`, `service`, `other` |
 | `fees[].price` | Số nguyên từ 0 đến 100.000.000 |

@@ -71,6 +71,10 @@ export enum ErrorCode {
 	// Theo dõi chủ trọ và hồ sơ công khai (spec 0005)
 	LANDLORD_NOT_FOUND = 'LANDLORD_NOT_FOUND',
 	CANNOT_FOLLOW_SELF = 'CANNOT_FOLLOW_SELF',
+
+	// Giới hạn tọa độ nhà trọ (spec 0012)
+	COORDINATE_OUT_OF_AREA = 'COORDINATE_OUT_OF_AREA',
+	COORDINATE_FAR_FROM_WARD = 'COORDINATE_FAR_FROM_WARD',
 }
 
 export interface ErrorDefinition {
@@ -316,6 +320,16 @@ export const ERRORS: Record<ErrorCode, ErrorDefinition> = {
 	[ErrorCode.CANNOT_FOLLOW_SELF]: {
 		status: HttpStatus.CONFLICT,
 		message: 'Bạn không thể theo dõi chính mình.',
+	},
+	// Tọa độ nằm ngoài cả hai khung bao quanh Thành phố Hồ Chí Minh (spec 0012 AC-1).
+	[ErrorCode.COORDINATE_OUT_OF_AREA]: {
+		status: HttpStatus.BAD_REQUEST,
+		message: 'Tọa độ nằm ngoài khu vực Thành phố Hồ Chí Minh.',
+	},
+	// Tọa độ trong khung thành phố nhưng quá xa hộp của phường đã chọn (spec 0012 AC-2).
+	[ErrorCode.COORDINATE_FAR_FROM_WARD]: {
+		status: HttpStatus.BAD_REQUEST,
+		message: 'Tọa độ quá xa phường hoặc xã đã chọn.',
 	},
 };
 

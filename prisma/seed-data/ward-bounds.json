@@ -1,0 +1,1178 @@
+[
+  {
+    "code": "25747",
+    "minLatitude": 10.93977,
+    "maxLatitude": 10.99666,
+    "minLongitude": 106.62977,
+    "maxLongitude": 106.68927
+  },
+  {
+    "code": "25750",
+    "minLatitude": 10.96358,
+    "maxLatitude": 11.01165,
+    "minLongitude": 106.64562,
+    "maxLongitude": 106.70716
+  },
+  {
+    "code": "25760",
+    "minLatitude": 10.99656,
+    "maxLatitude": 11.11291,
+    "minLongitude": 106.65321,
+    "maxLongitude": 106.72284
+  },
+  {
+    "code": "25768",
+    "minLatitude": 11.01145,
+    "maxLatitude": 11.08547,
+    "minLongitude": 106.55582,
+    "maxLongitude": 106.6477
+  },
+  {
+    "code": "25771",
+    "minLatitude": 10.97868,
+    "maxLatitude": 11.05846,
+    "minLongitude": 106.61592,
+    "maxLongitude": 106.66459
+  },
+  {
+    "code": "25777",
+    "minLatitude": 11.23804,
+    "maxLatitude": 11.42705,
+    "minLongitude": 106.32897,
+    "maxLongitude": 106.47262
+  },
+  {
+    "code": "25780",
+    "minLatitude": 11.3863,
+    "maxLatitude": 11.50104,
+    "minLongitude": 106.36289,
+    "maxLongitude": 106.57324
+  },
+  {
+    "code": "25792",
+    "minLatitude": 11.22678,
+    "maxLatitude": 11.42845,
+    "minLongitude": 106.44756,
+    "maxLongitude": 106.5765
+  },
+  {
+    "code": "25807",
+    "minLatitude": 11.17045,
+    "maxLatitude": 11.32602,
+    "minLongitude": 106.37215,
+    "maxLongitude": 106.51577
+  },
+  {
+    "code": "25813",
+    "minLatitude": 11.12203,
+    "maxLatitude": 11.28653,
+    "minLongitude": 106.57948,
+    "maxLongitude": 106.68345
+  },
+  {
+    "code": "25819",
+    "minLatitude": 11.29219,
+    "maxLatitude": 11.38786,
+    "minLongitude": 106.5295,
+    "maxLongitude": 106.65898
+  },
+  {
+    "code": "25822",
+    "minLatitude": 11.21264,
+    "maxLatitude": 11.33424,
+    "minLongitude": 106.56739,
+    "maxLongitude": 106.68374
+  },
+  {
+    "code": "25837",
+    "minLatitude": 11.11714,
+    "maxLatitude": 11.25922,
+    "minLongitude": 106.62148,
+    "maxLongitude": 106.72172
+  },
+  {
+    "code": "25840",
+    "minLatitude": 11.07302,
+    "maxLatitude": 11.26293,
+    "minLongitude": 106.4974,
+    "maxLongitude": 106.59842
+  },
+  {
+    "code": "25843",
+    "minLatitude": 11.0455,
+    "maxLatitude": 11.2195,
+    "minLongitude": 106.42899,
+    "maxLongitude": 106.57342
+  },
+  {
+    "code": "25846",
+    "minLatitude": 11.07205,
+    "maxLatitude": 11.13349,
+    "minLongitude": 106.58079,
+    "maxLongitude": 106.65889
+  },
+  {
+    "code": "25849",
+    "minLatitude": 11.03418,
+    "maxLatitude": 11.13304,
+    "minLongitude": 106.60415,
+    "maxLongitude": 106.69416
+  },
+  {
+    "code": "25858",
+    "minLatitude": 11.23012,
+    "maxLatitude": 11.38411,
+    "minLongitude": 106.77527,
+    "maxLongitude": 106.95298
+  },
+  {
+    "code": "25864",
+    "minLatitude": 11.27832,
+    "maxLatitude": 11.49186,
+    "minLongitude": 106.70425,
+    "maxLongitude": 106.8087
+  },
+  {
+    "code": "25867",
+    "minLatitude": 11.2489,
+    "maxLatitude": 11.40302,
+    "minLongitude": 106.64371,
+    "maxLongitude": 106.74056
+  },
+  {
+    "code": "25882",
+    "minLatitude": 11.18837,
+    "maxLatitude": 11.31884,
+    "minLongitude": 106.70432,
+    "maxLongitude": 106.85441
+  },
+  {
+    "code": "25888",
+    "minLatitude": 11.00888,
+    "maxLatitude": 11.17395,
+    "minLongitude": 106.76035,
+    "maxLongitude": 106.8757
+  },
+  {
+    "code": "25891",
+    "minLatitude": 10.96541,
+    "maxLatitude": 11.03402,
+    "minLongitude": 106.70247,
+    "maxLongitude": 106.79628
+  },
+  {
+    "code": "25906",
+    "minLatitude": 11.0868,
+    "maxLatitude": 11.2555,
+    "minLongitude": 106.80956,
+    "maxLongitude": 106.92141
+  },
+  {
+    "code": "25909",
+    "minLatitude": 11.01985,
+    "maxLatitude": 11.18983,
+    "minLongitude": 106.83703,
+    "maxLongitude": 106.96667
+  },
+  {
+    "code": "25912",
+    "minLatitude": 11.06531,
+    "maxLatitude": 11.21054,
+    "minLongitude": 106.67901,
+    "maxLongitude": 106.76252
+  },
+  {
+    "code": "25915",
+    "minLatitude": 11.0877,
+    "maxLatitude": 11.21773,
+    "minLongitude": 106.71249,
+    "maxLongitude": 106.83801
+  },
+  {
+    "code": "25920",
+    "minLatitude": 11.01278,
+    "maxLatitude": 11.11081,
+    "minLongitude": 106.70855,
+    "maxLongitude": 106.78321
+  },
+  {
+    "code": "25942",
+    "minLatitude": 10.86563,
+    "maxLatitude": 10.93722,
+    "minLongitude": 106.73417,
+    "maxLongitude": 106.79463
+  },
+  {
+    "code": "25945",
+    "minLatitude": 10.90649,
+    "maxLatitude": 10.98082,
+    "minLongitude": 106.7453,
+    "maxLongitude": 106.80204
+  },
+  {
+    "code": "25951",
+    "minLatitude": 10.86716,
+    "maxLatitude": 10.92075,
+    "minLongitude": 106.76857,
+    "maxLongitude": 106.83943
+  },
+  {
+    "code": "25966",
+    "minLatitude": 10.8735,
+    "maxLatitude": 10.93938,
+    "minLongitude": 106.68026,
+    "maxLongitude": 106.71348
+  },
+  {
+    "code": "25969",
+    "minLatitude": 10.92806,
+    "maxLatitude": 10.99753,
+    "minLongitude": 106.68926,
+    "maxLongitude": 106.72739
+  },
+  {
+    "code": "25975",
+    "minLatitude": 10.92678,
+    "maxLatitude": 10.99218,
+    "minLongitude": 106.71606,
+    "maxLongitude": 106.75393
+  },
+  {
+    "code": "25978",
+    "minLatitude": 10.92075,
+    "maxLatitude": 10.96359,
+    "minLongitude": 106.64996,
+    "maxLongitude": 106.70729
+  },
+  {
+    "code": "25987",
+    "minLatitude": 10.86567,
+    "maxLatitude": 10.93515,
+    "minLongitude": 106.69494,
+    "maxLongitude": 106.74176
+  },
+  {
+    "code": "26506",
+    "minLatitude": 10.32028,
+    "maxLatitude": 10.38729,
+    "minLongitude": 107.05485,
+    "maxLongitude": 107.10134
+  },
+  {
+    "code": "26526",
+    "minLatitude": 10.34895,
+    "maxLatitude": 10.38807,
+    "minLongitude": 107.0755,
+    "maxLongitude": 107.11906
+  },
+  {
+    "code": "26536",
+    "minLatitude": 10.36748,
+    "maxLatitude": 10.41447,
+    "minLongitude": 107.07226,
+    "maxLongitude": 107.13215
+  },
+  {
+    "code": "26542",
+    "minLatitude": 10.3765,
+    "maxLatitude": 10.47405,
+    "minLongitude": 107.11876,
+    "maxLongitude": 107.21205
+  },
+  {
+    "code": "26545",
+    "minLatitude": 10.41436,
+    "maxLatitude": 10.48428,
+    "minLongitude": 107.03962,
+    "maxLongitude": 107.15517
+  },
+  {
+    "code": "26560",
+    "minLatitude": 10.46284,
+    "maxLatitude": 10.52712,
+    "minLongitude": 107.16403,
+    "maxLongitude": 107.20484
+  },
+  {
+    "code": "26566",
+    "minLatitude": 10.45455,
+    "maxLatitude": 10.55996,
+    "minLongitude": 107.11311,
+    "maxLongitude": 107.18485
+  },
+  {
+    "code": "26572",
+    "minLatitude": 10.49468,
+    "maxLatitude": 10.56322,
+    "minLongitude": 107.18144,
+    "maxLongitude": 107.24733
+  },
+  {
+    "code": "26575",
+    "minLatitude": 10.57775,
+    "maxLatitude": 10.66738,
+    "minLongitude": 107.15996,
+    "maxLongitude": 107.25808
+  },
+  {
+    "code": "26584",
+    "minLatitude": 10.55623,
+    "maxLatitude": 10.67853,
+    "minLongitude": 107.29553,
+    "maxLongitude": 107.3685
+  },
+  {
+    "code": "26590",
+    "minLatitude": 10.60781,
+    "maxLatitude": 10.75044,
+    "minLongitude": 107.2432,
+    "maxLongitude": 107.32199
+  },
+  {
+    "code": "26596",
+    "minLatitude": 10.6808,
+    "maxLatitude": 10.77484,
+    "minLongitude": 107.13841,
+    "maxLongitude": 107.30049
+  },
+  {
+    "code": "26608",
+    "minLatitude": 10.62428,
+    "maxLatitude": 10.72381,
+    "minLongitude": 107.15949,
+    "maxLongitude": 107.26944
+  },
+  {
+    "code": "26617",
+    "minLatitude": 10.53809,
+    "maxLatitude": 10.62833,
+    "minLongitude": 107.16942,
+    "maxLongitude": 107.31078
+  },
+  {
+    "code": "26620",
+    "minLatitude": 10.44934,
+    "maxLatitude": 10.59191,
+    "minLongitude": 107.3329,
+    "maxLongitude": 107.46076
+  },
+  {
+    "code": "26632",
+    "minLatitude": 10.48934,
+    "maxLatitude": 10.61299,
+    "minLongitude": 107.40076,
+    "maxLongitude": 107.51857
+  },
+  {
+    "code": "26638",
+    "minLatitude": 10.66942,
+    "maxLatitude": 10.80491,
+    "minLongitude": 107.34939,
+    "maxLongitude": 107.50488
+  },
+  {
+    "code": "26641",
+    "minLatitude": 10.57656,
+    "maxLatitude": 10.67875,
+    "minLongitude": 107.35121,
+    "maxLongitude": 107.50031
+  },
+  {
+    "code": "26647",
+    "minLatitude": 10.64441,
+    "maxLatitude": 10.77141,
+    "minLongitude": 107.44339,
+    "maxLongitude": 107.54986
+  },
+  {
+    "code": "26656",
+    "minLatitude": 10.50049,
+    "maxLatitude": 10.65637,
+    "minLongitude": 107.49085,
+    "maxLongitude": 107.57193
+  },
+  {
+    "code": "26659",
+    "minLatitude": 10.42322,
+    "maxLatitude": 10.51484,
+    "minLongitude": 107.1749,
+    "maxLongitude": 107.2577
+  },
+  {
+    "code": "26662",
+    "minLatitude": 10.37786,
+    "maxLatitude": 10.4387,
+    "minLongitude": 107.17133,
+    "maxLongitude": 107.25456
+  },
+  {
+    "code": "26680",
+    "minLatitude": 10.45854,
+    "maxLatitude": 10.57732,
+    "minLongitude": 107.23998,
+    "maxLongitude": 107.37699
+  },
+  {
+    "code": "26686",
+    "minLatitude": 10.37951,
+    "maxLatitude": 10.49849,
+    "minLongitude": 107.24439,
+    "maxLongitude": 107.37688
+  },
+  {
+    "code": "26704",
+    "minLatitude": 10.54552,
+    "maxLatitude": 10.65817,
+    "minLongitude": 106.99625,
+    "maxLongitude": 107.09275
+  },
+  {
+    "code": "26710",
+    "minLatitude": 10.47206,
+    "maxLatitude": 10.5569,
+    "minLongitude": 107.04475,
+    "maxLongitude": 107.14808
+  },
+  {
+    "code": "26713",
+    "minLatitude": 10.46265,
+    "maxLatitude": 10.59025,
+    "minLongitude": 106.99719,
+    "maxLongitude": 107.11444
+  },
+  {
+    "code": "26725",
+    "minLatitude": 10.61477,
+    "maxLatitude": 10.71648,
+    "minLongitude": 107.07351,
+    "maxLongitude": 107.16899
+  },
+  {
+    "code": "26728",
+    "minLatitude": 10.5322,
+    "maxLatitude": 10.62933,
+    "minLongitude": 107.0769,
+    "maxLongitude": 107.17429
+  },
+  {
+    "code": "26732",
+    "minLatitude": 8.57705,
+    "maxLatitude": 8.77875,
+    "minLongitude": 106.0881,
+    "maxLongitude": 106.74358
+  },
+  {
+    "code": "26737",
+    "minLatitude": 10.78462,
+    "maxLatitude": 10.79695,
+    "minLongitude": 106.68482,
+    "maxLongitude": 106.70343
+  },
+  {
+    "code": "26740",
+    "minLatitude": 10.76722,
+    "maxLatitude": 10.79274,
+    "minLongitude": 106.69497,
+    "maxLongitude": 106.71527
+  },
+  {
+    "code": "26743",
+    "minLatitude": 10.76341,
+    "maxLatitude": 10.77959,
+    "minLongitude": 106.68449,
+    "maxLongitude": 106.70266
+  },
+  {
+    "code": "26758",
+    "minLatitude": 10.75333,
+    "maxLatitude": 10.7684,
+    "minLongitude": 106.68165,
+    "maxLongitude": 106.69825
+  },
+  {
+    "code": "26767",
+    "minLatitude": 10.82999,
+    "maxLatitude": 10.90427,
+    "minLongitude": 106.67576,
+    "maxLongitude": 106.71822
+  },
+  {
+    "code": "26773",
+    "minLatitude": 10.85301,
+    "maxLatitude": 10.90356,
+    "minLongitude": 106.64688,
+    "maxLongitude": 106.6891
+  },
+  {
+    "code": "26782",
+    "minLatitude": 10.85216,
+    "maxLatitude": 10.89479,
+    "minLongitude": 106.62481,
+    "maxLongitude": 106.65087
+  },
+  {
+    "code": "26785",
+    "minLatitude": 10.8427,
+    "maxLatitude": 10.87716,
+    "minLongitude": 106.60724,
+    "maxLongitude": 106.6376
+  },
+  {
+    "code": "26791",
+    "minLatitude": 10.81808,
+    "maxLatitude": 10.85656,
+    "minLongitude": 106.6033,
+    "maxLongitude": 106.64296
+  },
+  {
+    "code": "26800",
+    "minLatitude": 10.84867,
+    "maxLatitude": 10.89386,
+    "minLongitude": 106.75006,
+    "maxLongitude": 106.80859
+  },
+  {
+    "code": "26803",
+    "minLatitude": 10.84514,
+    "maxLatitude": 10.89643,
+    "minLongitude": 106.71305,
+    "maxLongitude": 106.75192
+  },
+  {
+    "code": "26809",
+    "minLatitude": 10.82038,
+    "maxLatitude": 10.87287,
+    "minLongitude": 106.69778,
+    "maxLongitude": 106.75185
+  },
+  {
+    "code": "26824",
+    "minLatitude": 10.81296,
+    "maxLatitude": 10.86098,
+    "minLongitude": 106.73888,
+    "maxLongitude": 106.77438
+  },
+  {
+    "code": "26833",
+    "minLatitude": 10.82596,
+    "maxLatitude": 10.90161,
+    "minLongitude": 106.80761,
+    "maxLongitude": 106.85746
+  },
+  {
+    "code": "26842",
+    "minLatitude": 10.81467,
+    "maxLatitude": 10.87171,
+    "minLongitude": 106.76905,
+    "maxLongitude": 106.82607
+  },
+  {
+    "code": "26848",
+    "minLatitude": 10.79441,
+    "maxLatitude": 10.84105,
+    "minLongitude": 106.75697,
+    "maxLongitude": 106.79345
+  },
+  {
+    "code": "26857",
+    "minLatitude": 10.76474,
+    "maxLatitude": 10.84151,
+    "minLongitude": 106.80639,
+    "maxLongitude": 106.88205
+  },
+  {
+    "code": "26860",
+    "minLatitude": 10.75955,
+    "maxLatitude": 10.82707,
+    "minLongitude": 106.78112,
+    "maxLongitude": 106.8453
+  },
+  {
+    "code": "26876",
+    "minLatitude": 10.8209,
+    "maxLatitude": 10.85172,
+    "minLongitude": 106.67659,
+    "maxLongitude": 106.70107
+  },
+  {
+    "code": "26878",
+    "minLatitude": 10.8386,
+    "maxLatitude": 10.86068,
+    "minLongitude": 106.65571,
+    "maxLongitude": 106.67693
+  },
+  {
+    "code": "26882",
+    "minLatitude": 10.82824,
+    "maxLatitude": 10.86078,
+    "minLongitude": 106.63196,
+    "maxLongitude": 106.65706
+  },
+  {
+    "code": "26884",
+    "minLatitude": 10.82618,
+    "maxLatitude": 10.85204,
+    "minLongitude": 106.66358,
+    "maxLongitude": 106.68213
+  },
+  {
+    "code": "26890",
+    "minLatitude": 10.80999,
+    "maxLatitude": 10.83449,
+    "minLongitude": 106.67276,
+    "maxLongitude": 106.69435
+  },
+  {
+    "code": "26898",
+    "minLatitude": 10.83071,
+    "maxLatitude": 10.85144,
+    "minLongitude": 106.64012,
+    "maxLongitude": 106.66533
+  },
+  {
+    "code": "26905",
+    "minLatitude": 10.80525,
+    "maxLatitude": 10.83911,
+    "minLongitude": 106.68386,
+    "maxLongitude": 106.71356
+  },
+  {
+    "code": "26911",
+    "minLatitude": 10.80838,
+    "maxLatitude": 10.8356,
+    "minLongitude": 106.71392,
+    "maxLongitude": 106.75153
+  },
+  {
+    "code": "26929",
+    "minLatitude": 10.80244,
+    "maxLatitude": 10.82101,
+    "minLongitude": 106.69491,
+    "maxLongitude": 106.71753
+  },
+  {
+    "code": "26944",
+    "minLatitude": 10.79164,
+    "maxLatitude": 10.8112,
+    "minLongitude": 106.68704,
+    "maxLongitude": 106.7114
+  },
+  {
+    "code": "26956",
+    "minLatitude": 10.78524,
+    "maxLatitude": 10.81433,
+    "minLongitude": 106.70634,
+    "maxLongitude": 106.72747
+  },
+  {
+    "code": "26968",
+    "minLatitude": 10.78447,
+    "maxLatitude": 10.80864,
+    "minLongitude": 106.65176,
+    "maxLongitude": 106.66683
+  },
+  {
+    "code": "26977",
+    "minLatitude": 10.79078,
+    "maxLatitude": 10.81959,
+    "minLongitude": 106.65926,
+    "maxLongitude": 106.67613
+  },
+  {
+    "code": "26983",
+    "minLatitude": 10.77477,
+    "maxLatitude": 10.80938,
+    "minLongitude": 106.64162,
+    "maxLongitude": 106.65547
+  },
+  {
+    "code": "26995",
+    "minLatitude": 10.7689,
+    "maxLatitude": 10.79028,
+    "minLongitude": 106.64803,
+    "maxLongitude": 106.66463
+  },
+  {
+    "code": "27004",
+    "minLatitude": 10.78597,
+    "maxLatitude": 10.81099,
+    "minLongitude": 106.63465,
+    "maxLongitude": 106.64811
+  },
+  {
+    "code": "27007",
+    "minLatitude": 10.80105,
+    "maxLatitude": 10.83737,
+    "minLongitude": 106.6279,
+    "maxLongitude": 106.67863
+  },
+  {
+    "code": "27013",
+    "minLatitude": 10.80324,
+    "maxLatitude": 10.82467,
+    "minLongitude": 106.60735,
+    "maxLongitude": 106.63578
+  },
+  {
+    "code": "27019",
+    "minLatitude": 10.79313,
+    "maxLatitude": 10.8093,
+    "minLongitude": 106.60985,
+    "maxLongitude": 106.63829
+  },
+  {
+    "code": "27022",
+    "minLatitude": 10.78065,
+    "maxLatitude": 10.79578,
+    "minLongitude": 106.61415,
+    "maxLongitude": 106.63784
+  },
+  {
+    "code": "27028",
+    "minLatitude": 10.7582,
+    "maxLatitude": 10.78477,
+    "minLongitude": 106.61875,
+    "maxLongitude": 106.63603
+  },
+  {
+    "code": "27031",
+    "minLatitude": 10.75898,
+    "maxLatitude": 10.79579,
+    "minLongitude": 106.63175,
+    "maxLongitude": 106.6477
+  },
+  {
+    "code": "27043",
+    "minLatitude": 10.79917,
+    "maxLatitude": 10.81415,
+    "minLongitude": 106.66753,
+    "maxLongitude": 106.68849
+  },
+  {
+    "code": "27058",
+    "minLatitude": 10.79252,
+    "maxLatitude": 10.80399,
+    "minLongitude": 106.67759,
+    "maxLongitude": 106.69246
+  },
+  {
+    "code": "27073",
+    "minLatitude": 10.78795,
+    "maxLatitude": 10.80019,
+    "minLongitude": 106.66591,
+    "maxLongitude": 106.68197
+  },
+  {
+    "code": "27094",
+    "minLatitude": 10.75917,
+    "maxLatitude": 10.81978,
+    "minLongitude": 106.70809,
+    "maxLongitude": 106.75698
+  },
+  {
+    "code": "27097",
+    "minLatitude": 10.77356,
+    "maxLatitude": 10.8146,
+    "minLongitude": 106.73592,
+    "maxLongitude": 106.78991
+  },
+  {
+    "code": "27112",
+    "minLatitude": 10.74171,
+    "maxLatitude": 10.7834,
+    "minLongitude": 106.74423,
+    "maxLongitude": 106.81002
+  },
+  {
+    "code": "27139",
+    "minLatitude": 10.77362,
+    "maxLatitude": 10.79583,
+    "minLongitude": 106.68,
+    "maxLongitude": 106.69808
+  },
+  {
+    "code": "27142",
+    "minLatitude": 10.77784,
+    "maxLatitude": 10.79138,
+    "minLongitude": 106.66427,
+    "maxLongitude": 106.68448
+  },
+  {
+    "code": "27154",
+    "minLatitude": 10.76543,
+    "maxLatitude": 10.77673,
+    "minLongitude": 106.6744,
+    "maxLongitude": 106.68941
+  },
+  {
+    "code": "27163",
+    "minLatitude": 10.76768,
+    "maxLatitude": 10.78692,
+    "minLongitude": 106.65886,
+    "maxLongitude": 106.68166
+  },
+  {
+    "code": "27169",
+    "minLatitude": 10.75841,
+    "maxLatitude": 10.78077,
+    "minLongitude": 106.65597,
+    "maxLongitude": 106.66893
+  },
+  {
+    "code": "27190",
+    "minLatitude": 10.7599,
+    "maxLatitude": 10.77784,
+    "minLongitude": 106.66712,
+    "maxLongitude": 106.68277
+  },
+  {
+    "code": "27211",
+    "minLatitude": 10.76532,
+    "maxLatitude": 10.77525,
+    "minLongitude": 106.63757,
+    "maxLongitude": 106.65208
+  },
+  {
+    "code": "27226",
+    "minLatitude": 10.75887,
+    "maxLatitude": 10.77844,
+    "minLongitude": 106.64644,
+    "maxLongitude": 106.66
+  },
+  {
+    "code": "27232",
+    "minLatitude": 10.75777,
+    "maxLatitude": 10.76957,
+    "minLongitude": 106.63417,
+    "maxLongitude": 106.65124
+  },
+  {
+    "code": "27238",
+    "minLatitude": 10.7534,
+    "maxLatitude": 10.76384,
+    "minLongitude": 106.63533,
+    "maxLongitude": 106.66152
+  },
+  {
+    "code": "27259",
+    "minLatitude": 10.75239,
+    "maxLatitude": 10.76949,
+    "minLongitude": 106.70119,
+    "maxLongitude": 106.72209
+  },
+  {
+    "code": "27265",
+    "minLatitude": 10.75239,
+    "maxLatitude": 10.76533,
+    "minLongitude": 106.69694,
+    "maxLongitude": 106.71115
+  },
+  {
+    "code": "27286",
+    "minLatitude": 10.75183,
+    "maxLatitude": 10.76171,
+    "minLongitude": 106.68658,
+    "maxLongitude": 106.70605
+  },
+  {
+    "code": "27301",
+    "minLatitude": 10.75091,
+    "maxLatitude": 10.76543,
+    "minLongitude": 106.67503,
+    "maxLongitude": 106.68704
+  },
+  {
+    "code": "27316",
+    "minLatitude": 10.74869,
+    "maxLatitude": 10.76129,
+    "minLongitude": 106.66555,
+    "maxLongitude": 106.6773
+  },
+  {
+    "code": "27343",
+    "minLatitude": 10.74611,
+    "maxLatitude": 10.75924,
+    "minLongitude": 106.6505,
+    "maxLongitude": 106.66707
+  },
+  {
+    "code": "27349",
+    "minLatitude": 10.74514,
+    "maxLatitude": 10.76203,
+    "minLongitude": 106.62311,
+    "maxLongitude": 106.63978
+  },
+  {
+    "code": "27364",
+    "minLatitude": 10.7266,
+    "maxLatitude": 10.74924,
+    "minLongitude": 106.62021,
+    "maxLongitude": 106.64002
+  },
+  {
+    "code": "27367",
+    "minLatitude": 10.74643,
+    "maxLatitude": 10.75474,
+    "minLongitude": 106.63679,
+    "maxLongitude": 106.65386
+  },
+  {
+    "code": "27373",
+    "minLatitude": 10.73352,
+    "maxLatitude": 10.7486,
+    "minLongitude": 106.6339,
+    "maxLongitude": 106.65504
+  },
+  {
+    "code": "27418",
+    "minLatitude": 10.73241,
+    "maxLatitude": 10.75203,
+    "minLongitude": 106.66151,
+    "maxLongitude": 106.69291
+  },
+  {
+    "code": "27424",
+    "minLatitude": 10.68978,
+    "maxLatitude": 10.74291,
+    "minLongitude": 106.59452,
+    "maxLongitude": 106.66569
+  },
+  {
+    "code": "27427",
+    "minLatitude": 10.70628,
+    "maxLatitude": 10.75022,
+    "minLongitude": 106.60379,
+    "maxLongitude": 106.66976
+  },
+  {
+    "code": "27439",
+    "minLatitude": 10.7763,
+    "maxLatitude": 10.82629,
+    "minLongitude": 106.59309,
+    "maxLongitude": 106.62014
+  },
+  {
+    "code": "27442",
+    "minLatitude": 10.7564,
+    "maxLatitude": 10.82751,
+    "minLongitude": 106.56771,
+    "maxLongitude": 106.60331
+  },
+  {
+    "code": "27448",
+    "minLatitude": 10.75596,
+    "maxLatitude": 10.78084,
+    "minLongitude": 106.59048,
+    "maxLongitude": 106.62526
+  },
+  {
+    "code": "27457",
+    "minLatitude": 10.72206,
+    "maxLatitude": 10.76524,
+    "minLongitude": 106.55828,
+    "maxLongitude": 106.6066
+  },
+  {
+    "code": "27460",
+    "minLatitude": 10.71099,
+    "maxLatitude": 10.75825,
+    "minLongitude": 106.59754,
+    "maxLongitude": 106.62443
+  },
+  {
+    "code": "27475",
+    "minLatitude": 10.7191,
+    "maxLatitude": 10.7525,
+    "minLongitude": 106.69019,
+    "maxLongitude": 106.72088
+  },
+  {
+    "code": "27478",
+    "minLatitude": 10.7375,
+    "maxLatitude": 10.77758,
+    "minLongitude": 106.71583,
+    "maxLongitude": 106.75301
+  },
+  {
+    "code": "27484",
+    "minLatitude": 10.70317,
+    "maxLatitude": 10.74514,
+    "minLongitude": 106.73045,
+    "maxLongitude": 106.76967
+  },
+  {
+    "code": "27487",
+    "minLatitude": 10.69782,
+    "maxLatitude": 10.73843,
+    "minLongitude": 106.71236,
+    "maxLongitude": 106.73787
+  },
+  {
+    "code": "27496",
+    "minLatitude": 10.92497,
+    "maxLatitude": 11.01571,
+    "minLongitude": 106.42601,
+    "maxLongitude": 106.51552
+  },
+  {
+    "code": "27508",
+    "minLatitude": 11.04345,
+    "maxLatitude": 11.16024,
+    "minLongitude": 106.43712,
+    "maxLongitude": 106.53384
+  },
+  {
+    "code": "27511",
+    "minLatitude": 10.98654,
+    "maxLatitude": 11.07446,
+    "minLongitude": 106.4397,
+    "maxLongitude": 106.55427
+  },
+  {
+    "code": "27526",
+    "minLatitude": 10.96299,
+    "maxLatitude": 11.10991,
+    "minLongitude": 106.35668,
+    "maxLongitude": 106.45686
+  },
+  {
+    "code": "27541",
+    "minLatitude": 10.9231,
+    "maxLatitude": 11.05444,
+    "minLongitude": 106.51551,
+    "maxLongitude": 106.62559
+  },
+  {
+    "code": "27544",
+    "minLatitude": 10.91443,
+    "maxLatitude": 11.0458,
+    "minLongitude": 106.56601,
+    "maxLongitude": 106.65736
+  },
+  {
+    "code": "27553",
+    "minLatitude": 10.91595,
+    "maxLatitude": 11.00717,
+    "minLongitude": 106.48731,
+    "maxLongitude": 106.58561
+  },
+  {
+    "code": "27559",
+    "minLatitude": 10.8638,
+    "maxLatitude": 10.92867,
+    "minLongitude": 106.56302,
+    "maxLongitude": 106.62197
+  },
+  {
+    "code": "27568",
+    "minLatitude": 10.86737,
+    "maxLatitude": 10.92577,
+    "minLongitude": 106.59794,
+    "maxLongitude": 106.69267
+  },
+  {
+    "code": "27577",
+    "minLatitude": 10.85552,
+    "maxLatitude": 10.92088,
+    "minLongitude": 106.49561,
+    "maxLongitude": 106.60619
+  },
+  {
+    "code": "27592",
+    "minLatitude": 10.8261,
+    "maxLatitude": 10.8769,
+    "minLongitude": 106.52868,
+    "maxLongitude": 106.61552
+  },
+  {
+    "code": "27595",
+    "minLatitude": 10.67133,
+    "maxLatitude": 10.74464,
+    "minLongitude": 106.52718,
+    "maxLongitude": 106.60877
+  },
+  {
+    "code": "27601",
+    "minLatitude": 10.80202,
+    "maxLatitude": 10.87365,
+    "minLongitude": 106.51581,
+    "maxLongitude": 106.59517
+  },
+  {
+    "code": "27604",
+    "minLatitude": 10.7629,
+    "maxLatitude": 10.83486,
+    "minLongitude": 106.50567,
+    "maxLongitude": 106.58915
+  },
+  {
+    "code": "27610",
+    "minLatitude": 10.7109,
+    "maxLatitude": 10.79374,
+    "minLongitude": 106.46365,
+    "maxLongitude": 106.5734
+  },
+  {
+    "code": "27619",
+    "minLatitude": 10.66893,
+    "maxLatitude": 10.74142,
+    "minLongitude": 106.62187,
+    "maxLongitude": 106.695
+  },
+  {
+    "code": "27628",
+    "minLatitude": 10.62555,
+    "maxLatitude": 10.69299,
+    "minLongitude": 106.60538,
+    "maxLongitude": 106.68602
+  },
+  {
+    "code": "27637",
+    "minLatitude": 10.64855,
+    "maxLatitude": 10.69746,
+    "minLongitude": 106.54891,
+    "maxLongitude": 106.62372
+  },
+  {
+    "code": "27655",
+    "minLatitude": 10.66504,
+    "maxLatitude": 10.72547,
+    "minLongitude": 106.67326,
+    "maxLongitude": 106.77647
+  },
+  {
+    "code": "27658",
+    "minLatitude": 10.57559,
+    "maxLatitude": 10.69436,
+    "minLongitude": 106.67844,
+    "maxLongitude": 106.78367
+  },
+  {
+    "code": "27664",
+    "minLatitude": 10.3766,
+    "maxLatitude": 10.53186,
+    "minLongitude": 106.85802,
+    "maxLongitude": 106.97476
+  },
+  {
+    "code": "27667",
+    "minLatitude": 10.51648,
+    "maxLatitude": 10.6745,
+    "minLongitude": 106.73828,
+    "maxLongitude": 106.93668
+  },
+  {
+    "code": "27673",
+    "minLatitude": 10.39584,
+    "maxLatitude": 10.61825,
+    "minLongitude": 106.74168,
+    "maxLongitude": 106.87333
+  },
+  {
+    "code": "27676",
+    "minLatitude": 10.4538,
+    "maxLatitude": 10.61329,
+    "minLongitude": 106.91799,
+    "maxLongitude": 107.02768
+  }
+]

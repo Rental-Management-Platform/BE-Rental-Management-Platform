@@ -13,6 +13,10 @@ export const WARD = {
 	name: 'Phường Bến Thành',
 	provinceCode: '79',
 	provinceName: 'Thành phố Hồ Chí Minh',
+	minLatitude: null,
+	maxLatitude: null,
+	minLongitude: null,
+	maxLongitude: null,
 	createdAt: now,
 	updatedAt: now,
 };

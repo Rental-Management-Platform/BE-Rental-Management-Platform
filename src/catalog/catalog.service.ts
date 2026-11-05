@@ -1,8 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma, Ward } from '../generated/prisma/client';
 import { CatalogRepository } from './catalog.repository';
-import { toAmenityResponse, toWardResponse } from './catalog.mapper';
-import type { AmenityResponse, WardResponse } from './dto/catalog.response';
+import { toAmenityResponse, toWardCatalogResponse } from './catalog.mapper';
+import type {
+	AmenityResponse,
+	WardCatalogResponse,
+} from './dto/catalog.response';
 
 /** So sánh tên theo thứ tự chữ cái tiếng Việt (a, ă, â, b ... d, đ ...), không phụ thuộc collation của DB. */
 const VIETNAMESE = new Intl.Collator('vi');
@@ -16,10 +19,10 @@ export class CatalogService {
 	constructor(private readonly repository: CatalogRepository) {}
 
 	/** Phường, xã, đặc khu xếp theo tên đầy đủ (kèm loại đơn vị), tên trùng thì theo mã. */
-	async listWards(): Promise<WardResponse[]> {
+	async listWards(): Promise<WardCatalogResponse[]> {
 		const rows = await this.repository.findAllWards();
 		return rows
-			.map(toWardResponse)
+			.map(toWardCatalogResponse)
 			.sort(
 				(a, b) =>
 					VIETNAMESE.compare(a.name, b.name) ||

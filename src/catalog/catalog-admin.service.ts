@@ -7,8 +7,11 @@ import type { Prisma } from '../generated/prisma/client';
 import { ListingsRepository } from '../listings/listings.repository';
 import { CatalogRepository } from './catalog.repository';
 import type { CatalogDeleteResult } from './catalog.repository';
-import { toAmenityResponse, toWardResponse } from './catalog.mapper';
-import type { AmenityResponse, WardResponse } from './dto/catalog.response';
+import { toAmenityResponse, toWardCatalogResponse } from './catalog.mapper';
+import type {
+	AmenityResponse,
+	WardCatalogResponse,
+} from './dto/catalog.response';
 
 /**
  * Admin tạo, sửa tên và xóa phường và tiện ích (spec 0002 AC-2). Quyền `catalog:*` kiểm ở controller. Mã trùng
@@ -29,12 +32,12 @@ export class CatalogAdminService {
 		name: string;
 		provinceCode: string;
 		provinceName: string;
-	}): Promise<WardResponse> {
+	}): Promise<WardCatalogResponse> {
 		const created = await this.repository.createWard(input);
 		if (created === null) {
 			throw new AppException(ErrorCode.CATALOG_CODE_TAKEN);
 		}
-		return toWardResponse(created);
+		return toWardCatalogResponse(created);
 	}
 
 	/**
@@ -46,7 +49,7 @@ export class CatalogAdminService {
 	async updateWard(
 		code: string,
 		changes: { name?: string; provinceName?: string },
-	): Promise<WardResponse> {
+	): Promise<WardCatalogResponse> {
 		const updated = await this.transactions.run(async (tx) => {
 			const current = await this.repository.findWardByCode(code, tx);
 			if (current === null) throw new AppException(ErrorCode.NOT_FOUND);
@@ -57,7 +60,7 @@ export class CatalogAdminService {
 			}
 			return ward;
 		});
-		return toWardResponse(updated);
+		return toWardCatalogResponse(updated);
 	}
 
 	async deleteWard(code: string): Promise<void> {
