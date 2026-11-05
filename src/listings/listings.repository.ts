@@ -336,6 +336,36 @@ export class ListingsRepository {
 	}
 
 	/**
+	 * Chủ trọ của tin: `properties.landlord_id` của nhà trọ chứa tin, hoặc `null` khi không có tin. Không lọc trạng
+	 * hay xóa mềm: người gọi đã kiểm tin hiện công khai bằng `isPubliclyVisible`; hàm này chỉ trả nguồn của
+	 * `conversations.landlord_id` (spec 0013, "Value sourcing").
+	 */
+	async findLandlordIdOf(listingId: string): Promise<string | null> {
+		const row = await this.prisma.listing.findUnique({
+			where: { id: listingId },
+			select: { property: { select: { landlordId: true } } },
+		});
+		return row?.property.landlordId ?? null;
+	}
+
+	/**
+	 * Trong các id đưa vào, những tin đang hiện công khai: đúng `publicListingFrom` cộng `publicListingCondition`
+	 * (cùng `now` và hạn mức dùng thử) nên khớp với việc khách mở được chi tiết tin. Một truy vấn cho cả trang hộp
+	 * thư (spec 0013 AC-7). Id không có, đã xóa mềm hay không còn hiện thì vắng mặt trong kết quả.
+	 */
+	async findPublicIds(
+		ids: readonly string[],
+		visibility: PublicVisibility,
+	): Promise<ReadonlySet<string>> {
+		if (ids.length === 0) return new Set();
+		const rows = await this.prisma.$queryRaw<{ id: string }[]>`
+			SELECT l.id ${publicListingFrom(visibility.now)}
+			WHERE l.id IN (${Prisma.join(ids.map((id) => Prisma.sql`${id}::uuid`))})
+				AND ${publicListingCondition(visibility.now, visibility.trialListingLimit)}`;
+		return new Set(rows.map((row) => row.id));
+	}
+
+	/**
 	 * Một trang tin đã lưu của `userId`, mới lưu trước, kèm tổng số (spec 0006 AC-4, AC-5). Đọc hai bước như
 	 * `findPublicPage`. Bước một: hai câu SQL thô chạy song song, dùng đúng `publicListingFrom` và
 	 * `publicListingCondition` (cùng `now` và hạn mức dùng thử) rồi nối thêm `favorites` của người gọi, nên một tin

@@ -58,3 +58,32 @@ describe('mã lỗi của hồ sơ chủ trọ (spec 0005)', () => {
 		expect(ErrorCode.CANNOT_FOLLOW_SELF).toBe('CANNOT_FOLLOW_SELF');
 	});
 });
+
+describe('mã lỗi của chat (spec 0013)', () => {
+	it('CONVERSATION_NOT_FOUND là 404 kèm câu tiếng Việt', () => {
+		expect(ERRORS[ErrorCode.CONVERSATION_NOT_FOUND]).toEqual({
+			status: HttpStatus.NOT_FOUND,
+			message: 'Không tìm thấy cuộc trò chuyện.',
+		});
+	});
+
+	it('CANNOT_CHAT_WITH_SELF là 409 kèm câu tiếng Việt', () => {
+		expect(ERRORS[ErrorCode.CANNOT_CHAT_WITH_SELF]).toEqual({
+			status: HttpStatus.CONFLICT,
+			message: 'Bạn không thể nhắn tin cho chính mình.',
+		});
+	});
+
+	it('CHAT_PEER_UNAVAILABLE là 409 kèm câu tiếng Việt', () => {
+		expect(ERRORS[ErrorCode.CHAT_PEER_UNAVAILABLE]).toEqual({
+			status: HttpStatus.CONFLICT,
+			message: 'Người kia hiện không nhận được tin nhắn.',
+		});
+	});
+
+	it('giá trị của mã trùng tên mã: FE dựa vào chuỗi này', () => {
+		expect(ErrorCode.CONVERSATION_NOT_FOUND).toBe('CONVERSATION_NOT_FOUND');
+		expect(ErrorCode.CANNOT_CHAT_WITH_SELF).toBe('CANNOT_CHAT_WITH_SELF');
+		expect(ErrorCode.CHAT_PEER_UNAVAILABLE).toBe('CHAT_PEER_UNAVAILABLE');
+	});
+});

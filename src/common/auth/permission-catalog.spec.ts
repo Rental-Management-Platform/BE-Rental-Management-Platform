@@ -158,8 +158,68 @@ describe('permission catalog', () => {
 		});
 	});
 
+	describe('quyền chat (spec 0013)', () => {
+		const chatKeys = [
+			'conversation:read',
+			'conversation:create',
+			'conversation:update',
+			'message:create',
+		] as const;
+
+		it.each(chatKeys)('%s là khóa hợp lệ và không chỉ admin giữ', (key) => {
+			expect(isPermissionKey(key)).toBe(true);
+			expect(isAdminOnly(key)).toBe(false);
+		});
+
+		it('admin vẫn giữ đủ bốn khóa vì manage mọi module: Service mới là nơi chặn admin (AC-8)', () => {
+			for (const key of chatKeys)
+				expect(ADMIN_PERMISSIONS).toContain(key);
+		});
+
+		it('hai module chat chỉ áp cho tài nguyên của chính người gọi và không có hành động chỉ admin', () => {
+			const entries = describeCatalog().filter((entry) =>
+				['conversation', 'message'].includes(entry.module),
+			);
+			expect(entries.map((entry) => entry.module).sort()).toEqual([
+				'conversation',
+				'message',
+			]);
+			for (const entry of entries) {
+				expect(entry.ownerScoped).toBe(true);
+				expect(entry.adminActions).toEqual([]);
+			}
+			expect(
+				entries.find((entry) => entry.module === 'conversation')
+					?.actions,
+			).toEqual(['read', 'create', 'update']);
+			expect(
+				entries.find((entry) => entry.module === 'message')?.actions,
+			).toEqual(['create']);
+		});
+
+		it('chủ trọ mặc định giữ ba khóa nhưng không giữ conversation:create (trả lời được, không tự mở)', () => {
+			const landlord = [
+				'conversation:read',
+				'conversation:update',
+				'message:create',
+			] as const;
+			expect(hasPermissions(landlord, ['conversation:read'])).toBe(true);
+			expect(hasPermissions(landlord, ['message:create'])).toBe(true);
+			expect(hasPermissions(landlord, ['conversation:create'])).toBe(
+				false,
+			);
+		});
+
+		it('tenant giữ đủ bốn khóa nên token gộp conversation thành conversation:manage', () => {
+			expect(compressPermissions(chatKeys).sort()).toEqual([
+				'conversation:manage',
+				'message:manage',
+			]);
+		});
+	});
+
 	describe('phạm vi MVP', () => {
-		it('đúng 12 module của MVP', () => {
+		it('đúng 14 module của MVP', () => {
 			expect(
 				describeCatalog()
 					.map((entry) => entry.module)
@@ -178,6 +238,8 @@ describe('permission catalog', () => {
 					'plan',
 					'order',
 					'subscription',
+					'conversation',
+					'message',
 				].sort(),
 			);
 		});

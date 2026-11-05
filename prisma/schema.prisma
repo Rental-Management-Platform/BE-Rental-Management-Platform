@@ -50,6 +50,12 @@ model User {
   followers       Follow[]        @relation("FollowedLandlord")
   /// Các tin người này đã lưu (spec 0006 lưu tin yêu thích).
   favorites       Favorite[]
+  /// Cuộc trò chuyện người này mở với tư cách người nhắn (spec 0013 chat).
+  conversationsAsTenant   Conversation[] @relation("ConversationTenant")
+  /// Cuộc trò chuyện về tin của người này với tư cách chủ trọ (spec 0013 chat).
+  conversationsAsLandlord Conversation[] @relation("ConversationLandlord")
+  /// Tin nhắn người này đã gửi (spec 0013 chat).
+  messagesSent            Message[]
 
   @@index([accountType], map: "users_account_type_idx")
   @@map("users")
@@ -254,6 +260,8 @@ model Listing {
   images    ListingImage[]
   /// Những người đã lưu tin này; chỉ dùng để nối, không bao giờ trả danh sách ra ngoài (spec 0006).
   favorites Favorite[]
+  /// Các cuộc trò chuyện về tin này (spec 0013 chat).
+  conversations Conversation[]
 
   // Hai chỉ mục một phần (created_at DESC, id DESC) và (price, id) cho điều kiện hiển thị viết SQL ở migration.
   @@index([propertyId], map: "listings_property_id_idx")
@@ -392,4 +400,56 @@ model Favorite {
   // Thứ tự "mới lưu trước" của danh sách đã lưu.
   @@index([userId, createdAt(sort: Desc), listingId(sort: Desc)], map: "favorites_user_id_created_at_idx")
   @@map("favorites")
+}
+
+/// Cuộc trò chuyện giữa một người nhắn và chủ trọ của một tin (spec 0013): một dòng cho mỗi cặp (tin, người nhắn).
+/// Không có đường sửa hay xóa. Bốn CHECK viết tay ở migration: `conversations_tenant_landlord_check`
+/// (tenant_id <> landlord_id) và `conversations_seq_check` (last_seq >= 0, hai mốc đọc trong 0 đến last_seq).
+model Conversation {
+  id              String   @id(map: "conversations_pkey") @default(dbgenerated("uuidv7()")) @db.Uuid
+  listingId       String   @map("listing_id") @db.Uuid
+  /// Người nhắn, luôn lấy từ access token. Khóa ngoại không ép được "phải có quyền mở": Service kiểm trước khi ghi.
+  tenantId        String   @map("tenant_id") @db.Uuid
+  /// Chủ trọ của tin, chép từ nhà trọ chứa tin lúc tạo và không đổi sau đó.
+  landlordId      String   @map("landlord_id") @db.Uuid
+  /// Số tin hiện có, cũng là `seq` của tin cuối. Chỉ tăng, qua một câu UPDATE khóa hàng.
+  lastSeq         Int      @default(0) @map("last_seq")
+  /// Mốc đã đọc của mỗi bên: số `seq` lớn nhất họ đã đọc (hoặc đã gửi). Không bao giờ vượt `last_seq`.
+  tenantReadSeq   Int      @default(0) @map("tenant_read_seq")
+  landlordReadSeq Int      @default(0) @map("landlord_read_seq")
+  /// Giờ của tin cuối, để sắp hộp thư. Luôn do câu lệnh ghi đặt, nên không có giá trị mặc định.
+  lastMessageAt   DateTime @map("last_message_at") @db.Timestamptz(6)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  listing  Listing   @relation(fields: [listingId], references: [id], onDelete: Restrict, map: "conversations_listing_id_fk")
+  tenant   User      @relation("ConversationTenant", fields: [tenantId], references: [id], onDelete: Restrict, map: "conversations_tenant_id_fk")
+  landlord User      @relation("ConversationLandlord", fields: [landlordId], references: [id], onDelete: Restrict, map: "conversations_landlord_id_fk")
+  messages Message[]
+
+  // Mỗi cặp (tin, người nhắn) chỉ có một cuộc trò chuyện.
+  @@unique([listingId, tenantId], map: "conversations_listing_id_tenant_id_unique")
+  // Hộp thư của mỗi bên: mới nhất trước, mỗi nhánh của `tenant_id = ? OR landlord_id = ?` có chỉ mục riêng.
+  @@index([tenantId, lastMessageAt(sort: Desc), id(sort: Desc)], map: "conversations_tenant_id_last_message_at_idx")
+  @@index([landlordId, lastMessageAt(sort: Desc), id(sort: Desc)], map: "conversations_landlord_id_last_message_at_idx")
+  @@map("conversations")
+}
+
+/// Tin nhắn (spec 0013): bất biến, chỉ chữ. CHECK viết tay ở migration: `messages_seq_check` (seq >= 1) và
+/// `messages_body_check` (char_length(body) từ 1 đến 1000).
+model Message {
+  id             String   @id(map: "messages_pkey") @default(dbgenerated("uuidv7()")) @db.Uuid
+  conversationId String   @map("conversation_id") @db.Uuid
+  /// Số thứ tự trong cuộc trò chuyện, từ 1, liên tiếp, không trùng. Cũng là con trỏ để hỏi "có gì mới sau N".
+  seq            Int
+  /// Người gửi, luôn lấy từ access token; là một trong hai bên của cuộc trò chuyện (Service giữ).
+  senderId       String   @map("sender_id") @db.Uuid
+  body           String
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Restrict, map: "messages_conversation_id_fk")
+  sender       User         @relation(fields: [senderId], references: [id], onDelete: Restrict, map: "messages_sender_id_fk")
+
+  // Cũng là chỉ mục để đọc và hỏi lại theo `seq`.
+  @@unique([conversationId, seq], map: "messages_conversation_id_seq_unique")
+  @@map("messages")
 }

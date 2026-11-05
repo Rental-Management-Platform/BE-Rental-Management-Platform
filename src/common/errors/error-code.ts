@@ -75,6 +75,11 @@ export enum ErrorCode {
 	// Giới hạn tọa độ nhà trọ (spec 0012)
 	COORDINATE_OUT_OF_AREA = 'COORDINATE_OUT_OF_AREA',
 	COORDINATE_FAR_FROM_WARD = 'COORDINATE_FAR_FROM_WARD',
+
+	// Chat giữa người tìm trọ và chủ trọ (spec 0013)
+	CONVERSATION_NOT_FOUND = 'CONVERSATION_NOT_FOUND',
+	CANNOT_CHAT_WITH_SELF = 'CANNOT_CHAT_WITH_SELF',
+	CHAT_PEER_UNAVAILABLE = 'CHAT_PEER_UNAVAILABLE',
 }
 
 export interface ErrorDefinition {
@@ -330,6 +335,21 @@ export const ERRORS: Record<ErrorCode, ErrorDefinition> = {
 	[ErrorCode.COORDINATE_FAR_FROM_WARD]: {
 		status: HttpStatus.BAD_REQUEST,
 		message: 'Tọa độ quá xa phường hoặc xã đã chọn.',
+	},
+	// Không có cuộc trò chuyện, hoặc người gọi không phải một trong hai bên; hai trường hợp không phân biệt được (spec 0013 AC-8).
+	[ErrorCode.CONVERSATION_NOT_FOUND]: {
+		status: HttpStatus.NOT_FOUND,
+		message: 'Không tìm thấy cuộc trò chuyện.',
+	},
+	// Chủ trọ của tin (được admin cấp `conversation:create`) mở cuộc trò chuyện với tin của chính mình (spec 0013 AC-2).
+	[ErrorCode.CANNOT_CHAT_WITH_SELF]: {
+		status: HttpStatus.CONFLICT,
+		message: 'Bạn không thể nhắn tin cho chính mình.',
+	},
+	// Tài khoản bên kia bị khóa hoặc đã xóa mềm: gửi bị từ chối, đọc vẫn chạy (spec 0013 AC-5).
+	[ErrorCode.CHAT_PEER_UNAVAILABLE]: {
+		status: HttpStatus.CONFLICT,
+		message: 'Người kia hiện không nhận được tin nhắn.',
 	},
 };
 

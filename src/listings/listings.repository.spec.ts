@@ -152,6 +152,88 @@ describe('ListingsRepository.isPubliclyVisible (spec 0002 AC-8, spec 0004 AC-9)'
 	});
 });
 
+describe('ListingsRepository.findLandlordIdOf (spec 0013, "Value sourcing")', () => {
+	function build(row: unknown) {
+		const findUnique = jest.fn(() => Promise.resolve(row));
+		const repository = new ListingsRepository({
+			listing: { findUnique },
+		} as unknown as PrismaService);
+		return { repository, findUnique };
+	}
+
+	it('chủ trọ là landlord_id của nhà trọ chứa tin, đọc theo id tin', async () => {
+		const { repository, findUnique } = build({
+			property: { landlordId: 'chu-tro-1' },
+		});
+		await expect(repository.findLandlordIdOf('tin-1')).resolves.toBe(
+			'chu-tro-1',
+		);
+		expect(findUnique).toHaveBeenCalledWith({
+			where: { id: 'tin-1' },
+			select: { property: { select: { landlordId: true } } },
+		});
+	});
+
+	it('không có tin thì null', async () => {
+		await expect(
+			build(null).repository.findLandlordIdOf('tin-x'),
+		).resolves.toBeNull();
+	});
+});
+
+describe('ListingsRepository.findPublicIds (spec 0013 AC-7, AC-9)', () => {
+	function build(rows: { id: string }[]) {
+		const queryRaw = jest.fn(() => Promise.resolve(rows));
+		const repository = new ListingsRepository({
+			$queryRaw: queryRaw,
+		} as unknown as PrismaService);
+		return { repository, queryRaw };
+	}
+
+	it('một truy vấn cho cả trang, dùng đúng hai mảnh SQL công khai cùng `now` và hạn mức dùng thử', async () => {
+		const { repository, queryRaw } = build([{ id: 'tin-1' }]);
+		await repository.findPublicIds(['tin-1', 'tin-2'], {
+			now: NOW,
+			trialListingLimit: 2,
+		});
+		expect(queryRaw).toHaveBeenCalledTimes(1);
+		const call = (queryRaw.mock.calls as unknown as unknown[][])[0] ?? [];
+		const strings = call[0] as readonly string[];
+		const staticText = strings.join('?').replace(/\s+/g, ' ');
+		expect(staticText).toContain('SELECT l.id');
+		expect(staticText).toContain('WHERE l.id IN (');
+		const parts = call
+			.slice(1)
+			.filter((part): part is Prisma.Sql => typeof part === 'object');
+		const text = parts.map((part) => flat(part)).join(' ');
+		expect(text).toContain('LEFT JOIN LATERAL');
+		expect(text).toContain("l.status = 'visible'");
+		expect(text).toContain('plan.max_listings');
+		// Mỗi id đi vào bằng tham số kèm phép ép ::uuid, không nối chuỗi.
+		const idList = parts.find((part) => flat(part).includes('::uuid'));
+		expect(idList?.values).toEqual(['tin-1', 'tin-2']);
+	});
+
+	it('trả tập id đang hiện công khai; id vắng mặt trong kết quả thì không có trong tập', async () => {
+		const found = await build([{ id: 'tin-2' }]).repository.findPublicIds(
+			['tin-1', 'tin-2'],
+			{ now: NOW, trialListingLimit: 2 },
+		);
+		expect(found.has('tin-2')).toBe(true);
+		expect(found.has('tin-1')).toBe(false);
+	});
+
+	it('không có id nào thì tập rỗng và không truy vấn', async () => {
+		const { repository, queryRaw } = build([]);
+		const found = await repository.findPublicIds([], {
+			now: NOW,
+			trialListingLimit: 2,
+		});
+		expect(found.size).toBe(0);
+		expect(queryRaw).not.toHaveBeenCalled();
+	});
+});
+
 /** Đối số của một lần gọi thẻ mẫu `$queryRaw`: đoạn chữ tĩnh nối bằng `?`, rồi các giá trị chèn vào theo thứ tự. */
 function rawCall(queryRaw: jest.Mock): { text: string; values: unknown[] } {
 	const call = (queryRaw.mock.calls as unknown as unknown[][])[0] ?? [];

@@ -28,6 +28,9 @@ export type RateLimitGroup =
 	| 'followWrite'
 	| 'favoriteWrite'
 	| 'profileWrite'
+	| 'conversationStart'
+	| 'messageWrite'
+	| 'chatRead'
 	| 'publicRead'
 	| 'publicDetail';
 
@@ -77,6 +80,11 @@ export const RATE_LIMITS: Readonly<
 	favoriteWrite: { user: { limit: 120, ttlMs: HOUR } },
 	// Spec hồ sơ cá nhân (0008) AC-9, con số bạn duyệt ngày 2026-10-21: sửa hồ sơ. Chỉ `PATCH /me/profile`; `GET` không giới hạn.
 	profileWrite: { user: { limit: 30, ttlMs: HOUR } },
+	// Spec chat (0013) AC-12. Hai con số đầu bạn duyệt ngày 2026-11-05: mở cuộc trò chuyện mới và gửi tin. Mỗi route đếm riêng.
+	conversationStart: { user: { limit: 20, ttlMs: HOUR } },
+	messageWrite: { user: { limit: 30, ttlMs: MINUTE } },
+	// Con số 120 là đề xuất của spec để FE hỏi lại vài giây một lần: hộp thư, chi tiết, tin nhắn, đếm chưa đọc, đánh dấu đã đọc.
+	chatRead: { user: { limit: 120, ttlMs: MINUTE } },
 	// Danh sách công khai. 300 lần mỗi phút theo IP đủ rộng cho nhiều sinh viên dùng chung một IP ký túc xá.
 	publicRead: { ip: { limit: 300, ttlMs: MINUTE } },
 	// Chi tiết tin công khai. Bộ đếm `user` chỉ chạy khi request có người đăng nhập (xem `hasUser`), để một

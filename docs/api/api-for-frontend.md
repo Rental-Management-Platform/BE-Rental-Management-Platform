@@ -1,6 +1,6 @@
 # Tài liệu API và nghiệp vụ cho Frontend
 
-Cập nhật lần cuối: 2026-10-23 (xem mục [Nhật ký thay đổi](#11-nhật-ký-thay-đổi) để biết thay đổi gần nhất).
+Cập nhật lần cuối: 2026-11-05 (xem mục [Nhật ký thay đổi](#11-nhật-ký-thay-đổi) để biết thay đổi gần nhất).
 
 File này do đội backend giữ và **cập nhật cùng mỗi thay đổi API**. Mục đích: để bên FE hiểu hệ thống làm gì, mỗi màn hình cần gọi API nào, xử lý lỗi ra sao, và **vì sao** hệ thống quyết định như vậy (nguyên tắc nghiệp vụ ở mục 8). Đi kèm file này là bộ request thử trong Postman: [`postman-collection.json`](postman-collection.json) (import vào Postman để gọi thử từng API).
 
@@ -85,6 +85,7 @@ Mỗi tài khoản chỉ thuộc **một** loại, chọn lúc đăng ký và **
 | Tin đang hiện trên hồ sơ chủ trọ: danh sách có phân trang, mỗi phần tử như tin ở danh sách tìm trọ, kể cả `isFavorite` (`GET /landlords/:id/listings`) | Có (mới, 2026-10-21, mục 6.36) |
 | Admin xem đơn mua gói của mọi chủ trọ: lọc theo trạng thái, chủ trọ, gói, ngày tạo, kèm số đơn và tổng tiền đã trả của đúng tập lọc (`GET /orders/all`) | Có (mới, 2026-10-21, mục 6.37) |
 | Admin xem thống kê doanh thu theo ngày trả: tổng, theo gói, theo ngày hoặc tháng giờ Việt Nam (`GET /orders/revenue`) | Có (mới, 2026-10-21, mục 6.38) |
+| Chat giữa người tìm trọ và chủ trọ: mở cuộc trò chuyện từ một tin, gửi tin, đọc tin theo con trỏ `seq`, chi tiết, hộp thư, đếm tin chưa đọc và đánh dấu đã đọc (`POST /listings/:id/conversations`, `POST` và `GET /conversations/:id/messages`, `GET /conversations/:id`, `GET /me/conversations`, `GET /me/conversations/unread-count`, `POST /conversations/:id/read`). Hỏi lại bằng REST, chưa có kênh đẩy | Có (mới, 2026-11-05, mục 6.39) |
 
 ---
 
@@ -216,7 +217,7 @@ Lưu ý: **một trường có thể xuất hiện nhiều lần** trong `errors
 | `SESSION_REVOKED` | 401 | Phiên đã bị hủy (đăng xuất, đổi hoặc đặt lại mật khẩu, bị khóa, bị thu hồi, hoặc phát hiện dùng lại token) | Chuyển trang đăng nhập |
 | `SESSION_EXPIRED` | 401 | Phiên hết hạn (30 ngày sau lần đăng nhập) | Chuyển trang đăng nhập |
 | `UNAUTHORIZED` | 401 | Lỗi 401 chung do thư viện sinh, không thuộc các mã token ở trên (hiếm gặp) | Coi như chưa đăng nhập, chuyển trang đăng nhập |
-| `ACCOUNT_LOCKED` | 403 | Tài khoản bị admin khóa | Hiện `message`, không cho dùng tiếp |
+| `ACCOUNT_LOCKED` | 403 | Tài khoản bị admin khóa (ở hai API gửi của chat, 6.39, là chính người gửi vừa bị khóa dù token còn hạn) | Hiện `message`, không cho dùng tiếp |
 | `ORIGIN_NOT_ALLOWED` | 403 | `Origin` của request không nằm trong danh sách cho phép (chỉ ở refresh và logout) | Báo backend thêm origin của FE |
 | `PERMISSION_DENIED` | 403 | Đã đăng nhập nhưng không có quyền làm việc này | Hiện thông báo không đủ quyền |
 | `NOT_RESOURCE_OWNER` | 403 | Thao tác trên dữ liệu của người khác (nhà trọ, tin, đơn của người khác) | Hiện `message`, quay về danh sách của mình |
@@ -239,7 +240,7 @@ Lưu ý: **một trường có thể xuất hiện nhiều lần** trong `errors
 | `CATALOG_IN_USE` | 409 | Admin xóa phường hoặc tiện ích còn nhà trọ đang dùng, kể cả nhà trọ đã xóa mềm (mục 6.30) | Báo "đang có nhà trọ dùng, không xóa được", gợi ý đổi tên |
 | `PROPERTY_NOT_FOUND` | 404 | Nhà trọ không có, hoặc đã xóa mềm | Quay về danh sách nhà trọ |
 | `PROPERTY_HAS_LISTINGS` | 409 | Xóa nhà trọ còn tin chưa xóa | Báo "xóa các tin của nhà trọ này trước" |
-| `LISTING_NOT_FOUND` | 404 | Tin không có hoặc đã xóa; ở route công khai còn gồm tin không hiển thị công khai vì bất kỳ lý do nào (đang ẩn, chủ trọ bị khóa...), kể cả với chính chủ, và đường dẫn không lấy được mã tin; ở API kiểm duyệt của admin (6.29) là tin không có hoặc đã xóa mềm; ở `POST /listings/:id/favorite` (6.33) là tin không hiện công khai vì bất kỳ lý do nào (bỏ lưu thì không bao giờ trả mã này) | Hiện "tin không còn", quay về danh sách |
+| `LISTING_NOT_FOUND` | 404 | Tin không có hoặc đã xóa; ở route công khai còn gồm tin không hiển thị công khai vì bất kỳ lý do nào (đang ẩn, chủ trọ bị khóa...), kể cả với chính chủ, và đường dẫn không lấy được mã tin; ở API kiểm duyệt của admin (6.29) là tin không có hoặc đã xóa mềm; ở `POST /listings/:id/favorite` (6.33) là tin không hiện công khai vì bất kỳ lý do nào (bỏ lưu thì không bao giờ trả mã này); ở `POST /listings/:id/conversations` (6.39) cũng là tin không hiện công khai vì bất kỳ lý do nào | Hiện "tin không còn", quay về danh sách |
 | `LISTING_STATE_INVALID` | 409 | Chuyển trạng thái tin không hợp lệ (ẩn tin không đang hiện, hiện tin đã hiện, ẩn tin đang bị admin ẩn); ở API kiểm duyệt của admin (6.29) là ẩn tin đã bị admin ẩn hoặc gỡ ẩn tin không bị admin ẩn | Tải lại tin (`GET /me/listings/:id`) rồi cập nhật nút |
 | `LISTING_HIDDEN_BY_ADMIN` | 403 | Chủ trọ cố hiện lại tin đang bị admin ẩn | Hiện nhãn "bị quản trị viên ẩn" kèm `moderationReason`, ẩn nút "Hiện" |
 | `LISTING_IMAGE_LIMIT` | 409 | Tải ảnh lên tin đã đủ 5 ảnh | Tắt nút tải khi `images` đã đủ 5 ảnh; báo "hãy xóa bớt một ảnh trước" |
@@ -255,6 +256,9 @@ Lưu ý: **một trường có thể xuất hiện nhiều lần** trong `errors
 | `ORDER_STATE_INVALID` | 409 | Thanh toán đơn đã hủy, hoặc hủy đơn đã trả | Tải lại đơn rồi cập nhật nút |
 | `LANDLORD_NOT_FOUND` | 404 | Mở hồ sơ công khai (6.31), danh sách tin của chủ trọ (6.36), theo dõi hoặc bỏ theo dõi (6.32) một id không phải chủ trọ đang hoạt động: không có, là tài khoản người tìm trọ hoặc admin, chủ trọ đang bị khóa hoặc đã xóa | Hiện "không tìm thấy chủ trọ", quay về trang trước. Chủ trọ được mở khóa thì hồ sơ trở lại |
 | `CANNOT_FOLLOW_SELF` | 409 | Theo dõi chính tài khoản của mình (6.32; chỉ gặp khi tài khoản có quyền `follow:create`, ví dụ người tìm trọ gõ id của mình hoặc chủ trọ được admin cấp quyền) | Hiện `message`. Ẩn nút theo dõi trên hồ sơ của chính mình |
+| `CONVERSATION_NOT_FOUND` | 404 | Chat (6.39): không có cuộc trò chuyện với id này, **hoặc người gọi không phải một trong hai bên của nó** (hai trường hợp không phân biệt được, kể cả với người khác đang có cuộc trò chuyện riêng) | Hiện "không tìm thấy cuộc trò chuyện", quay về hộp thư |
+| `CANNOT_CHAT_WITH_SELF` | 409 | Mở cuộc trò chuyện với tin của chính mình (6.39; chỉ gặp khi admin đã cấp `conversation:create` cho chủ trọ) | Ẩn nút nhắn trên tin của chính mình |
+| `CHAT_PEER_UNAVAILABLE` | 409 | Gửi tin cho người bên kia đang bị khóa hoặc đã xóa (6.39). Không ghi gì; đọc lịch sử vẫn được. Mở khóa thì gửi lại được | Vô hiệu ô nhập và hiện `message` ("Người kia hiện không nhận được tin nhắn."), vẫn cho đọc |
 | `CANNOT_LOCK_SELF` | 409 | Admin tự khóa chính mình | Hiện `message` |
 | `ACCOUNT_ALREADY_LOCKED` | 409 | Khóa tài khoản đang bị khóa | Làm mới trạng thái trên giao diện |
 | `ACCOUNT_NOT_LOCKED` | 409 | Mở khóa tài khoản không bị khóa | Làm mới trạng thái trên giao diện |
@@ -265,7 +269,7 @@ Lưu ý: **một trường có thể xuất hiện nhiều lần** trong `errors
 
 ### Lỗi 429 `RATE_LIMITED`: gọi quá nhanh
 
-Chỉ **sáu API đăng nhập và mật khẩu, các API ghi nhà trọ, tin, tải ảnh, đơn, theo dõi chủ trọ, lưu tin và sửa hồ sơ, và sáu API đọc (hai của tin, một của bảng giá, hai của hồ sơ chủ trọ gồm hồ sơ và danh sách tin, một của tin đã lưu)** có giới hạn (các API đọc khác thì chưa). Body lỗi cùng dạng như mọi lỗi khác (có `requestId`), kèm header **`Retry-After`**: số giây còn phải đợi (số nguyên, ít nhất 1). Mỗi API đếm riêng, nên bị chặn đăng nhập không làm hỏng việc đọc `GET /auth/me` hay đăng xuất.
+Chỉ **sáu API đăng nhập và mật khẩu, các API ghi nhà trọ, tin, tải ảnh, đơn, theo dõi chủ trọ, lưu tin, sửa hồ sơ và hai API ghi của chat, và chín API đọc (hai của tin, một của bảng giá, hai của hồ sơ chủ trọ gồm hồ sơ và danh sách tin, một của tin đã lưu, ba của chat)** có giới hạn (các API đọc khác thì chưa). Body lỗi cùng dạng như mọi lỗi khác (có `requestId`), kèm header **`Retry-After`**: số giây còn phải đợi (số nguyên, ít nhất 1). Mỗi API đếm riêng, nên bị chặn đăng nhập không làm hỏng việc đọc `GET /auth/me` hay đăng xuất.
 
 | API | Giới hạn theo IP | Giới hạn theo email (hoặc người dùng) | Bị chặn trong |
 |---|---|---|---|
@@ -282,6 +286,9 @@ Chỉ **sáu API đăng nhập và mật khẩu, các API ghi nhà trọ, tin, t
 | `POST /landlords/:id/follow`, `DELETE /landlords/:id/follow` | không | 60 lần mỗi giờ **cho mỗi API** (hai API đếm riêng, theo người dùng đang đăng nhập) | 1 giờ |
 | `POST /listings/:id/favorite`, `DELETE /listings/:id/favorite` | không | 120 lần mỗi giờ **cho mỗi API** (hai API đếm riêng, theo người dùng đang đăng nhập) | 1 giờ |
 | `PATCH /me/profile` | không | 30 lần mỗi giờ (theo người dùng đang đăng nhập). `GET /me/profile` không bị giới hạn | 1 giờ |
+| `POST /listings/:id/conversations` (mở cuộc trò chuyện) | không | 20 lần mỗi giờ (theo người dùng đang đăng nhập) | 1 giờ |
+| `POST /conversations/:id/messages` (gửi tin) | không | 30 lần mỗi phút (theo người dùng đang đăng nhập) | 1 phút |
+| `GET /me/conversations`, `GET /conversations/:id`, `GET /conversations/:id/messages`, `GET /me/conversations/unread-count`, `POST /conversations/:id/read` | không | 120 lần mỗi phút **cho mỗi API** (năm API đếm riêng, theo người dùng đang đăng nhập) | 1 phút |
 | `GET /listings` (công khai) | 300 lần mỗi phút | không | 1 phút |
 | `GET /plans` (công khai) | 300 lần mỗi phút | không | 1 phút |
 | `GET /landlords/:id` (công khai, hồ sơ chủ trọ) | 300 lần mỗi phút | không | 1 phút |
@@ -390,8 +397,8 @@ Admin có tất cả quyền. Quyền của `landlord` và `tenant` nằm trong 
 
 | Loại | Quyền mặc định |
 |---|---|
-| `tenant` (7 quyền) | `profile:read`, `profile:update`, `favorite:read`, `favorite:create`, `favorite:delete`, `follow:create`, `follow:delete` |
-| `landlord` (14 quyền) | `profile:read`, `profile:update`, `property:read`, `property:create`, `property:update`, `property:delete`, `listing:read`, `listing:create`, `listing:update`, `listing:delete`, `order:create`, `order:read`, `order:cancel`, `subscription:read` |
+| `tenant` (11 quyền) | `profile:read`, `profile:update`, `favorite:read`, `favorite:create`, `favorite:delete`, `follow:create`, `follow:delete`, `conversation:read`, `conversation:create`, `conversation:update`, `message:create` |
+| `landlord` (17 quyền) | `profile:read`, `profile:update`, `property:read`, `property:create`, `property:update`, `property:delete`, `listing:read`, `listing:create`, `listing:update`, `listing:delete`, `order:create`, `order:read`, `order:cancel`, `subscription:read`, `conversation:read`, `conversation:update`, `message:create` |
 | `admin` | Tất cả |
 
 Quyền admin chỉnh được **chỉ gồm hành động lẻ** của các module không dành riêng cho admin. Các hành động trong cột "Chỉ admin" bên dưới và mọi khóa `module:manage` không thể cấp cho landlord hay tenant.
@@ -407,6 +414,7 @@ Bảng này gom **quyền mặc định** với **luật cố định trong code
 | Hồ sơ cá nhân (`/me/profile`) | Không (401) | Có. Xóa được số điện thoại | Có. **Không** xóa được số điện thoại | Có |
 | Lưu tin, bỏ lưu, danh sách tin đã lưu | Không (401) | Có | Mặc định 403 (admin cấp quyền `favorite:*` thì được) | **Luôn 403**, kể cả có quyền |
 | Theo dõi, bỏ theo dõi chủ trọ | Không (401) | Có (không theo dõi chính mình: 409 `CANNOT_FOLLOW_SELF`) | Mặc định 403 (admin cấp quyền `follow:*` thì được) | **Luôn 403**, kể cả có quyền |
+| Chat (mục 6.39): mở cuộc trò chuyện từ một tin, gửi tin, đọc tin, hộp thư, đếm và đánh dấu chưa đọc | Không (401) | Có: mở cuộc trò chuyện, nhắn, đọc, đánh dấu đã đọc | Trả lời, đọc và đánh dấu đã đọc cuộc trò chuyện của mình. **Mở** cuộc trò chuyện: mặc định 403 (admin cấp `conversation:create` thì được, nhưng với tin của chính mình là 409 `CANNOT_CHAT_WITH_SELF`) | **Luôn 403**, kể cả có quyền |
 | Nhà trọ (`/properties`) | Không (401) | Mặc định 403 | Có, **chỉ nhà trọ của mình** | Có quyền nhưng cũng chỉ nhà trọ của chính mình (thực tế không dùng) |
 | Tin của mình: đăng, sửa, ẩn, hiện, xóa, tải ảnh, `/me/listings` | Không (401) | Mặc định 403 | Có, **chỉ tin của mình**. Đăng và hiện lại còn phải trong hạn mức (`MEMBERSHIP_REQUIRED`, `LISTING_QUOTA_REACHED`) | Đăng tin: 403 `MEMBERSHIP_REQUIRED` (không có kỳ dùng thử). Sửa, xóa tin người khác: 403 `NOT_RESOURCE_OWNER` |
 | Kỳ dùng thử và hạn mức (`GET /me/membership`) | Không (401) | 403 | Có | Gọi được nhưng luôn `state = expired`, `listingLimit = 0` |
@@ -415,10 +423,11 @@ Bảng này gom **quyền mặc định** với **luật cố định trong code
 | Khóa, mở khóa, thu hồi phiên, danh sách người dùng | Không | 403 | 403 | Có |
 | Quản lý gói, tham số hệ thống, phường và tiện ích, quyền loại tài khoản, đơn mọi chủ trọ, doanh thu | Không | 403 | 403 | Có (một số API đọc lại tài khoản admin từ database mỗi lần gọi, Phụ lục A) |
 
-Ba luật cố định đáng nhớ:
+Bốn luật cố định đáng nhớ:
 - **Chủ sở hữu áp cho mọi loại tài khoản, kể cả admin.** Dữ liệu của người khác (nhà trọ, tin, đơn) luôn là 403 `NOT_RESOURCE_OWNER`. Admin tác động lên dữ liệu người khác chỉ qua quyền riêng: ẩn tin, khóa tài khoản.
 - **Chỉ tài khoản `landlord` tạo được đơn mua gói.** Admin không mua gói.
 - **Admin không lưu tin và không theo dõi chủ trọ**, dù `permissions` của admin liệt kê đủ `favorite:*` và `follow:*` (admin có mọi quyền trong danh mục). FE ẩn nút theo loại tài khoản **và** theo `permissions`.
+- **Admin không dùng chat**: cả bảy API chat (6.39) trả 403 `PERMISSION_DENIED` cho admin dù `permissions` có `conversation:*` và `message:create`. Chỉ hai bên của một cuộc trò chuyện đọc được nó; người ngoài nhận 404.
 
 ### Danh mục quyền hiện có
 
@@ -438,8 +447,10 @@ Ba luật cố định đáng nhớ:
 | `plan` | read, create, update, delete | | tất cả | có (mục 6.26) |
 | `order` | create, read, cancel, report | có | `report` | `create`, `read`, `cancel` (mục 6.27); `report` (mục 6.37 và 6.38) |
 | `subscription` | read | có | | có (mục 6.25, `GET /me/membership`) |
+| `conversation` | read, create, update | có | | cả ba có API (mục 6.39): `read` cho các API đọc và đếm chưa đọc, `create` cho mở cuộc trò chuyện, `update` cho đánh dấu đã đọc. Admin giữ cả ba nhưng vẫn bị 403 |
+| `message` | create | có | | có (mục 6.39). Admin giữ nhưng vẫn bị 403 |
 
-Danh mục chỉ có **12 module** của bản MVP. Các module `contact`, `report`, `verification`, `boost`, `product`, `inspection`, `ad`, `expense`, `finance`, `dashboard`, `stats` và hai hành động `order:refund`, `order:gift` đã bị gỡ (xem nhật ký 2026-10-12). Khóa của chúng không còn hợp lệ: gửi lên `PATCH /account-types/:key` sẽ nhận 400 `PERMISSION_UNKNOWN`.
+Danh mục chỉ có **14 module** của bản MVP (thêm `conversation` và `message` ngày 2026-11-05). Các module `contact`, `report`, `verification`, `boost`, `product`, `inspection`, `ad`, `expense`, `finance`, `dashboard`, `stats` và hai hành động `order:refund`, `order:gift` đã bị gỡ (xem nhật ký 2026-10-12). Khóa của chúng không còn hợp lệ: gửi lên `PATCH /account-types/:key` sẽ nhận 400 `PERMISSION_UNKNOWN`.
 
 ### Quyền đổi thì FE thấy khi nào
 
@@ -1864,6 +1875,187 @@ Cần nhớ:
 - Đo ở khoảng 50 nghìn đơn giả lập: toàn bộ thời gian gom theo tháng khoảng 47 mili giây, gom theo ngày khoảng 53 mili giây, một khoảng ngày khoảng 31 mili giây (trung vị, đo bằng đồng hồ phía gọi). Không có chỉ mục riêng cho ngày trả; chấp nhận ở bản demo.
 - **Chưa có** doanh thu theo từng chủ trọ, đếm đơn chờ và đơn hủy, so sánh với kỳ trước, xuất CSV, múi giờ chọn được (đã hoãn).
 
+### 6.39 Chat giữa người tìm trọ và chủ trọ
+
+`POST /listings/:id/conversations` · cần quyền `conversation:create`
+`POST /conversations/:id/messages` · cần quyền `message:create`
+`GET /conversations/:id/messages` · cần quyền `conversation:read`
+`GET /conversations/:id` · cần quyền `conversation:read`
+`GET /me/conversations` · cần quyền `conversation:read`
+`GET /me/conversations/unread-count` · cần quyền `conversation:read`
+`POST /conversations/:id/read` · cần quyền `conversation:update`
+
+Người tìm trọ nhắn thẳng cho chủ trọ từ một tin đang hiện công khai, chủ trọ thấy hộp thư và trả lời. **Mỗi cặp (tin, người nhắn) là một cuộc trò chuyện**: cùng một người hỏi hai tin của một chủ trọ thì có hai cuộc trò chuyện riêng, và hỏi lại cùng một tin thì nhắn tiếp vào cuộc trò chuyện cũ. Tin nhắn lưu trong database. **Chưa có kênh đẩy thời gian thực**: FE hỏi lại vài giây một lần bằng các API đọc ở dưới (mục "Hỏi lại"). Cả bảy API **bắt buộc đăng nhập**, và mọi phản hồi thành công, cùng các lỗi 400, 404, 409 do chính route trả, có `Cache-Control: private, no-store` (đừng cho proxy hay CDN cache).
+
+Mặc định `tenant` giữ cả bốn quyền chat; `landlord` giữ `conversation:read`, `conversation:update`, `message:create` và **không** giữ `conversation:create`, nên chủ trọ **trả lời** được nhưng không tự mở được cuộc trò chuyện. **Admin giữ mọi quyền nhưng cả bảy API đều trả 403 `PERMISSION_DENIED`** (chat không có góc nhìn kiểm duyệt; muốn dừng người lạm dụng thì khóa tài khoản). Tin nhắn chỉ có chữ, 1 đến 1000 ký tự, **không sửa, không xóa**.
+
+#### Mở cuộc trò chuyện (hoặc nhắn tiếp từ một tin)
+
+`POST /listings/:id/conversations` · body `{ "body": "Phòng còn trống không ạ?" }`
+
+`:id` là **`id`** của tin (không phải `slug-mã`). Người nhắn luôn là người trong access token, chủ trọ luôn lấy từ tin; không nhận `tenantId` hay `landlordId` từ body (gửi trường lạ là 400). Route này đọc lại tài khoản từ database mỗi lần gọi, nên tài khoản vừa bị khóa dừng nhắn ngay (403 `ACCOUNT_LOCKED`).
+
+**201 Created**: `{ "conversation": <phần tử cuộc trò chuyện>, "message": <tin vừa gửi> }`. Lần đầu là cuộc trò chuyện mới kèm tin số 1; gọi lại với cùng tin thì `conversation.id` giữ nguyên và `message.seq` tăng (kể cả khi bấm đúp hoặc hai tab gửi cùng lúc: luôn đúng một cuộc trò chuyện, `seq` liên tiếp, không trùng, không hở).
+
+```json
+{
+  "conversation": {
+    "id": "0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8d51",
+    "myRole": "tenant",
+    "listing": {
+      "id": "0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8d11",
+      "code": "k3m9x2ab",
+      "slug": "phong-tro-gan-dai-hoc",
+      "title": "Phòng trọ gần đại học",
+      "price": 3000000,
+      "coverImageUrl": "/api/v1/media/public/0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8d21.jpg",
+      "isPublic": true
+    },
+    "otherUser": { "id": "0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8d01", "name": "Anh Nam" },
+    "lastMessage": {
+      "seq": 1, "senderId": "0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8d02", "isMine": true,
+      "body": "Phòng còn trống không ạ?", "createdAt": "2026-11-05T03:10:00.000Z"
+    },
+    "lastMessageAt": "2026-11-05T03:10:00.000Z",
+    "createdAt": "2026-11-05T03:10:00.000Z",
+    "unreadCount": 0
+  },
+  "message": {
+    "id": "0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8d61",
+    "seq": 1,
+    "senderId": "0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8d02",
+    "isMine": true,
+    "body": "Phòng còn trống không ạ?",
+    "createdAt": "2026-11-05T03:10:00.000Z"
+  }
+}
+```
+
+| Lỗi | Khi nào |
+|---|---|
+| 401 `TOKEN_MISSING`, `TOKEN_INVALID`, `TOKEN_EXPIRED` | Chưa đăng nhập hoặc token hết hạn |
+| 403 `PERMISSION_DENIED` | Không có `conversation:create` (chủ trọ mặc định), hoặc là admin |
+| 403 `ACCOUNT_LOCKED` | Tài khoản của chính người gọi vừa bị khóa |
+| 429 `RATE_LIMITED` | Quá 20 lần mỗi giờ theo người dùng (mục 3) |
+| 400 `INVALID_ID` | `:id` không phải UUID |
+| 400 `VALIDATION_FAILED` | `body` sai luật (bảng ở mục "Nội dung tin nhắn"), `errors[].field` là `body`; hoặc có trường lạ |
+| 404 `LISTING_NOT_FOUND` | Tin không hiện công khai vì bất kỳ lý do nào (không có, đã xóa, bị chủ trọ hay admin ẩn, chủ trọ bị khóa, hết dùng thử và hết gói, bị ẩn bớt vì vượt hạn mức): giống hệt chi tiết tin, để không ai dò được tin đang ẩn. **Chỉ việc mở cuộc trò chuyện mới cần tin đang hiện** |
+| 409 `CANNOT_CHAT_WITH_SELF` | Chủ trọ của tin chính là người gọi (chỉ gặp khi admin đã cấp `conversation:create` cho chủ trọ) |
+
+Không trường hợp lỗi nào ghi dòng. Thứ tự kiểm lỗi: đăng nhập, quyền, đọc lại tài khoản, giới hạn tần suất, rồi `INVALID_ID` và `VALIDATION_FAILED`, rồi (admin: 403), tin có hiện không (404), tự nhắn cho mình (409).
+
+#### Gửi tin vào cuộc trò chuyện
+
+`POST /conversations/:id/messages` · body `{ "body": "Còn phòng nhé bạn" }`
+
+`:id` là `conversation.id`. **Cả hai bên** dùng được (người nhắn và chủ trọ), miễn là người gọi có `message:create` (mặc định cả `tenant` và `landlord`). Chủ trọ trả lời được cuộc trò chuyện do người tìm trọ mở. Cũng đọc lại tài khoản từ database mỗi lần gọi.
+
+**201 Created**: tin vừa gửi (`{ id, seq, senderId, isMine, body, createdAt }`). `seq` bằng số tin trước đó cộng một, đúng thứ tự dù nhiều người gửi cùng lúc. FE nối thẳng tin này vào cuối danh sách, không cần chờ lần hỏi lại kế tiếp.
+
+| Lỗi | Khi nào |
+|---|---|
+| 401, 403 `PERMISSION_DENIED`, 403 `ACCOUNT_LOCKED` | Như trên. Admin luôn 403 |
+| 429 `RATE_LIMITED` | Quá 30 lần mỗi phút theo người dùng |
+| 400 `INVALID_ID`, 400 `VALIDATION_FAILED` | `:id` không phải UUID; `body` sai luật |
+| 404 `CONVERSATION_NOT_FOUND` | Không có cuộc trò chuyện, **hoặc người gọi không phải một trong hai bên**: hai trường hợp không phân biệt được |
+| 409 `CHAT_PEER_UNAVAILABLE` | Tài khoản bên kia đang bị khóa hoặc đã xóa. Không ghi gì; mở khóa thì gửi lại được |
+
+#### Đọc tin nhắn
+
+`GET /conversations/:id/messages?limit=30&afterSeq=…&beforeSeq=…`
+
+| Query | Kiểu | Mặc định | Luật |
+|---|---|---|---|
+| `limit` | số nguyên | 30 | Từ 1 đến 100 |
+| `afterSeq` | số nguyên | không có | Từ 0 |
+| `beforeSeq` | số nguyên | không có | Từ 1 |
+
+Gửi cả `afterSeq` lẫn `beforeSeq` là 400 `VALIDATION_FAILED`. **200 OK**: `{ "items": [...], "hasMore": true, "lastSeq": 12 }`. `items` **luôn xếp `seq` tăng dần** (cũ ở trên, mới ở dưới), mỗi phần tử có cùng sáu trường như tin vừa gửi. Ba cách đọc:
+
+| Cách gọi | Trả về | `hasMore` cho biết |
+|---|---|---|
+| Không có `afterSeq`, `beforeSeq` | `limit` tin **mới nhất** | Còn tin **cũ hơn** không |
+| `afterSeq=N` | Các tin có `seq` lớn hơn N, tối đa `limit` tin đầu tiên | Còn tin **mới hơn** không |
+| `beforeSeq=N` | `limit` tin ngay trước `seq` N | Còn tin **cũ hơn** không |
+
+`lastSeq` là số tin hiện có của cuộc trò chuyện (không bao giờ nhỏ hơn `seq` của một phần tử trong `items`). **Đọc không đổi gì ở phía server**; các `GET` chat không đánh dấu đã đọc. Muốn tắt chấm "chưa đọc" thì gọi `POST /conversations/:id/read` (bên dưới).
+
+Lỗi: 401, 403 `PERMISSION_DENIED` (admin luôn), 429 (quá 120 lần mỗi phút cho API này), 400 `INVALID_ID`, 400 `VALIDATION_FAILED` (tham số ngoài biên hoặc không phải số nguyên, hoặc cả hai con trỏ), 404 `CONVERSATION_NOT_FOUND`. Người bị khóa vẫn đọc được lịch sử (đọc theo token).
+
+#### Chi tiết một cuộc trò chuyện và hộp thư
+
+`GET /conversations/:id` trả đúng một **phần tử cuộc trò chuyện** (như `conversation` ở ví dụ trên). Người ngoài và id không có cùng nhận 404 `CONVERSATION_NOT_FOUND`.
+
+`GET /me/conversations?page=1&pageSize=20&listingId=…` trả `{ "items": [...], "total": 7, "page": 1, "pageSize": 20 }`: các cuộc trò chuyện mà người gọi là người nhắn **hoặc** là chủ trọ, **cái có tin mới nhất nằm trên**. `page`, `pageSize` theo quy ước phân trang ở mục 2; `listingId` (UUID, tùy chọn) lọc theo một tin, dùng để biết người đó đã có cuộc trò chuyện với tin này chưa. `listingId` sai dạng hoặc tham số lạ là 400 `VALIDATION_FAILED`.
+
+Ý nghĩa các trường của phần tử:
+
+| Trường | Ý nghĩa |
+|---|---|
+| `myRole` | `tenant` nếu người gọi là **người mở** cuộc trò chuyện, ngược lại `landlord` |
+| `listing` | `id`, `code`, `slug`, `title`, `price` của tin. Tin đã bị xóa mềm vẫn hiện đủ các trường này |
+| `listing.isPublic` | `true` khi **khách mở được tin ở `GET /listings/:slugCode` ngay lúc đọc**. `false` khi tin đang ẩn, đã xóa, chủ trọ bị khóa, hết dùng thử và hết gói, hoặc bị ẩn bớt vì vượt hạn mức |
+| `listing.coverImageUrl` | Ảnh bìa, hoặc `null`. **Luôn `null` khi `isPublic` là `false`** vì `/media/public` chỉ phát ảnh của tin đang hiện |
+| `otherUser` | `{ id, name }` của người bên kia. `name` có thể `null`. **Không có số điện thoại hay email** |
+| `lastMessage` | Tin cuối: `{ seq, senderId, isMine, body, createdAt }` (không có `id`) |
+| `lastMessageAt`, `createdAt` | Giờ của tin cuối và giờ mở cuộc trò chuyện (ISO UTC) |
+| `unreadCount` | Số tin **của bên kia** mà người gọi chưa đọc (số nguyên từ 0). Gửi tin dời mốc đã đọc của chính người gửi, nên tin của mình không bao giờ tính. Ở `conversation` của route mở luôn là `0`. Chỉ là con số: **không có** mốc đã đọc của ai trong phản hồi |
+
+#### Đếm tin chưa đọc (cái chuông)
+
+`GET /me/conversations/unread-count` · không tham số
+
+**200 OK**: `{ "unreadConversations": 2, "unreadMessages": 5 }`. Số cuộc trò chuyện còn tin chưa đọc và tổng số tin chưa đọc, cộng cả hai vai của người gọi (người mở và chủ trọ), mỗi cuộc trò chuyện đúng một lần. Người chưa có cuộc trò chuyện nào nhận `{ "unreadConversations": 0, "unreadMessages": 0 }`. Dùng cho cái chuông ở đầu trang; hiện số cuộc hay số tin là tùy giao diện.
+
+Lỗi: 401, 403 `PERMISSION_DENIED` (admin luôn), 429 (quá 120 lần mỗi phút cho API này). Người bị khóa vẫn gọi được (đọc theo token).
+
+#### Đánh dấu đã đọc
+
+`POST /conversations/:id/read` · body `{ "upToSeq": 12 }`
+
+`:id` là `conversation.id`. `upToSeq` là số nguyên từ 0 đến 2147483647, thường là `seq` lớn nhất mà màn hình đang hiện. Backend đặt mốc đã đọc của người gọi thành **lớn hơn trong hai số: mốc cũ, và `upToSeq` đã bị kẹp xuống số tin hiện có**. Nên mốc **không bao giờ lùi** và **không bao giờ vượt tin cuối**: gửi số nhỏ hơn mốc cũ, hay lớn hơn số tin, đều là 200, không phải lỗi. Gọi lặp an toàn.
+
+**Tin đến sau lúc FE nhìn vẫn còn chưa đọc.** FE đã thấy tới `seq` 12, bên kia vừa gửi `seq` 13; gọi với `upToSeq: 12` thì còn đúng 1 tin chưa đọc. Chỉ route này và việc gửi tin làm đổi mốc đã đọc; mọi `GET` thì không.
+
+**200 OK** (không phải 201, vì không tạo gì): một phần tử cuộc trò chuyện như `GET /conversations/:id`, với `unreadCount` mới. FE cập nhật dòng hộp thư từ phản hồi này, không cần gọi lại. Nên gọi sau khi vẽ xong tin của bên kia ở màn hình cuộc trò chuyện, với `upToSeq` bằng `seq` lớn nhất đang hiện, và chỉ khi tab đang hiện (`document.hidden` là `false`), vì tab ẩn nghĩa là người dùng chưa thấy tin.
+
+| Lỗi | Khi nào |
+|---|---|
+| 401 | Chưa đăng nhập hoặc token hết hạn |
+| 403 `PERMISSION_DENIED` | Không có `conversation:update`, hoặc là admin |
+| 429 `RATE_LIMITED` | Quá 120 lần mỗi phút cho API này |
+| 400 `INVALID_ID` | `:id` không phải UUID |
+| 400 `VALIDATION_FAILED` | `upToSeq` thiếu, âm, không phải số nguyên, là chuỗi (`"3"` cũng sai), hoặc lớn hơn 2147483647; hoặc có trường lạ. `errors[].field` là `upToSeq` (hoặc tên trường lạ) |
+| 404 `CONVERSATION_NOT_FOUND` | Không có cuộc trò chuyện, **hoặc người gọi không phải một trong hai bên**: hai trường hợp không phân biệt được |
+
+API này **không đọc lại tài khoản từ database** và **không kiểm người kia**: đánh dấu đã đọc luôn được, kể cả khi mình hay bên kia đang bị khóa.
+
+#### Nội dung tin nhắn (`body`)
+
+- Là chuỗi. Backend **bỏ khoảng trắng hai đầu**, rồi kiểm: không rỗng, **tối đa 1000 ký tự** (một emoji là một ký tự), không chứa ký tự NUL (`\u0000`). Xuống dòng ở giữa được giữ nguyên.
+- Sai (thiếu, rỗng, toàn khoảng trắng, quá dài, không phải chuỗi, có NUL) là 400 `VALIDATION_FAILED` với `errors[].field` là `body`, ở cả hai API gửi.
+- Nội dung là **chữ thô, lưu nguyên**: backend không lọc HTML hay liên kết. **FE phải escape khi hiển thị** (React/Next.js tự escape nếu dùng `{body}`; đừng dùng `dangerouslySetInnerHTML`). Giữ xuống dòng bằng `white-space: pre-wrap`.
+
+#### Hỏi lại (polling)
+
+Chưa có kênh đẩy, nên FE tự hỏi lại khi màn hình đang mở:
+- **Trong một cuộc trò chuyện đang mở**: mỗi 3 đến 5 giây gọi `GET /conversations/:id/messages?afterSeq=<seq lớn nhất đang có>`. Có phần tử thì nối vào cuối; `hasMore` là `true` thì gọi tiếp ngay. Khi vừa mở màn hình thì gọi không tham số lấy `limit` tin mới nhất. Kéo lên để xem cũ hơn thì gọi `beforeSeq=<seq nhỏ nhất đang có>`.
+- **Khử trùng theo `seq`**: tin mình vừa gửi (kết quả của `POST`) có thể lại xuất hiện ở lần hỏi lại kế tiếp; chỉ nhận tin có `seq` chưa có.
+- **Hộp thư**: gọi `GET /me/conversations` mỗi vài giây khi đang ở trang hộp thư. Chấm "chưa đọc" của từng dòng lấy từ `unreadCount`.
+- **Cái chuông**: gọi `GET /me/conversations/unread-count` mỗi 15 đến 30 giây trên mọi trang khi đã đăng nhập (đây là API nhẹ nhất, chỉ hai con số). Sau khi gọi `POST /conversations/:id/read`, cập nhật chuông ngay thay vì chờ lần hỏi lại kế tiếp.
+- Mỗi API đọc giới hạn 120 lần mỗi phút (đếm riêng từng API), tức tối đa 2 lần mỗi giây: hỏi mỗi 3 đến 5 giây là dư. Gặp 429 thì giãn khoảng hỏi ra, **đừng** thử lại ngay (mục 3).
+- Tắt việc hỏi lại khi tab ẩn (`document.hidden`) để tiết kiệm request.
+
+Cần nhớ:
+- **Cuộc trò chuyện sống tiếp khi tin đổi.** Sau khi tin bị ẩn, xóa, hoặc chủ trọ hết dùng thử và hết gói, hai bên **vẫn đọc và gửi được** (miễn tài khoản hai bên còn hoạt động); chỉ `listing.isPublic` thành `false`. FE hiện nhãn "tin không còn hiển thị", ẩn đường dẫn sang tin, nhưng vẫn cho nhắn.
+- **Người kia bị khóa hoặc đã xóa**: gửi nhận 409 `CHAT_PEER_UNAVAILABLE`; vẫn đọc được lịch sử, hộp thư. FE vô hiệu ô nhập khi gặp mã này và hiện `message`. Mở khóa xong thì gửi lại được. **Chính mình bị khóa** thì hai API gửi nhận 403 `ACCOUNT_LOCKED` ngay (đọc lại database); các API đọc vẫn theo token như thường.
+- **Chủ trọ không có nút "Nhắn cho chủ trọ"** (không có `conversation:create`). Ẩn nút theo `permissions` của `GET /auth/me`; khách thì giữ nút nhưng dẫn tới đăng nhập. Chủ trọ **trả lời** từ hộp thư. Một chủ trọ được admin cấp `conversation:create` thì mở được cuộc trò chuyện với tin của chủ trọ khác, nhưng nhắn cho tin của chính mình là 409 `CANNOT_CHAT_WITH_SELF`.
+- **Chưa có "đã xem" cho bên kia**: chat không cho người gửi biết bên kia đã đọc chưa (không có mốc đã đọc của ai trong phản hồi). `unreadCount` chỉ là số tin của bên kia mà **mình** chưa đọc. Gửi tin dời mốc đã đọc của chính người gửi tới tin cuối, nên nếu mình gửi tin từ một tab khác thì tin của bên kia chưa kịp xem cũng được tính là đã đọc.
+- **Không** có thông báo email hay đẩy: chủ trọ chỉ thấy tin khi mở trang. **Không** có sửa, xóa, báo cáo, chặn người, ảnh hay tệp trong tin nhắn.
+- Không có số điện thoại, email hay mốc đã đọc của ai trong bất kỳ phản hồi chat nào.
+- Không dòng nhật ký hay thông báo lỗi nào chứa nội dung tin nhắn.
+- Thứ tự `seq` là thứ tự đúng của cuộc trò chuyện; `createdAt` chỉ để hiển thị giờ.
+
 ---
 
 ## 7. Luồng màn hình gợi ý
@@ -1985,6 +2177,16 @@ Mẹo khi demo:
 - **Dựng cảnh "vượt hạn mức"**: admin hạ `trial_listing_limit` (6.24), các tin đăng sau cùng của chủ trọ đang dùng thử biến khỏi công khai nhưng vẫn `visible`; chủ trọ thấy tin nào bị ẩn bớt ở cờ `isPublic` của `GET /me/listings` (6.21).
 - **Thanh toán là thanh toán thử**: không có tiền thật, tổng tiền ở màn hình admin cũng vậy; nói rõ với người xem.
 
+### Chat với chủ trọ (người tìm trọ) và hộp thư (cả hai bên)
+
+1. **Nút "Nhắn cho chủ trọ"** ở trang chi tiết tin (6.20): hiện khi `permissions` có `conversation:create` (người tìm trọ). Khách bấm thì dẫn tới đăng nhập; chủ trọ và admin không có nút. Trước khi mở khung chat, gọi `GET /me/conversations?listingId=<id tin>`: có phần tử thì đã có cuộc trò chuyện, mở nó (`GET /conversations/:id/messages`); chưa có thì hiện ô nhập trống.
+2. **Gửi tin đầu**: `POST /listings/:id/conversations`. Dùng `conversation.id` trả về cho các lần sau (`POST /conversations/:id/messages`). 404 `LISTING_NOT_FOUND` thì báo "tin không còn".
+3. **Màn hình cuộc trò chuyện**: tải `limit` tin mới nhất, vẽ theo thứ tự trả về (cũ ở trên). Hỏi lại bằng `afterSeq` mỗi 3 đến 5 giây, kéo lên thì gọi `beforeSeq` (mục 6.39, "Hỏi lại"). Tin do mình gửi dùng `isMine` để canh phải; khử trùng theo `seq`. Hiện nội dung bằng văn bản đã escape, giữ xuống dòng.
+4. **Hộp thư**: `GET /me/conversations` (phân trang, mới nhất trên). Mỗi dòng: ảnh bìa (`listing.coverImageUrl`, `null` thì ảnh thay thế), `listing.title`, `otherUser.name` (`null` thì ghi "Người dùng"), `lastMessage.body` cắt ngắn, `lastMessageAt`. Chủ trọ thấy cuộc trò chuyện của mọi tin của mình ở đây và trả lời từ đây.
+5. **Tin không còn hiển thị** (`listing.isPublic` là `false`): vẫn cho nhắn, nhưng ẩn đường dẫn sang tin và ghi nhãn "tin không còn hiển thị".
+6. **Người kia không nhận được** (409 `CHAT_PEER_UNAVAILABLE`): vô hiệu ô nhập, hiện `message`, vẫn cho đọc lịch sử.
+7. **Chấm "chưa đọc" và cái chuông**: dòng hộp thư có `unreadCount` lớn hơn 0 thì in đậm hoặc hiện chấm; cái chuông ở đầu trang hiện số từ `GET /me/conversations/unread-count` (hỏi lại 15 đến 30 giây). Mở một cuộc trò chuyện thì sau khi vẽ tin, gọi `POST /conversations/:id/read` với `seq` lớn nhất đang hiện, rồi cập nhật dòng hộp thư từ phản hồi và cái chuông ở lần hỏi lại kế tiếp (mục 6.39, "Đánh dấu đã đọc").
+
 ### Hiển thị theo quyền
 
 Ẩn hoặc làm mờ nút khi thiếu quyền (dựa vào `permissions` của `/auth/me`), nhưng **backend vẫn là nơi kiểm cuối**: gặp 403 `PERMISSION_DENIED` thì báo không đủ quyền chứ đừng coi là lỗi hệ thống.
@@ -1996,9 +2198,9 @@ Mẹo khi demo:
 ### 8.1 Nguyên tắc chung (đọc trước, rồi mới đọc từng quy tắc)
 
 1. **Mọi trạng thái kiểu "đang hiện", "còn hạn" đều tính lúc đọc, không có cờ lưu sẵn.** Hạn mức tin, tin có hiện công khai không, số ngày dùng thử còn lại, gói đang chạy, số người theo dõi, tổng lượt xem đều tính từ dữ liệu gốc mỗi lần gọi. Hệ quả cho FE: đừng tự tính hạn dùng thử hay hạn mức; sau mỗi thao tác có ảnh hưởng (đăng, ẩn, hiện, xóa tin, mua gói, admin khóa tài khoản hay đổi tham số) thì gọi lại API đọc liên quan; đừng cache lâu các con số này.
-2. **Hai lớp kiểm: quyền theo loại tài khoản và luật cố định trong code.** Quyền (`permissions`) của `landlord` và `tenant` admin chỉnh được. Còn luật chủ sở hữu (`NOT_RESOURCE_OWNER`, áp cả admin), "chỉ chủ trọ mua gói", "admin không theo dõi, không lưu tin" thì cố định. FE ẩn nút theo `permissions` nhưng luôn xử lý 403, vì backend là nơi quyết định cuối.
+2. **Hai lớp kiểm: quyền theo loại tài khoản và luật cố định trong code.** Quyền (`permissions`) của `landlord` và `tenant` admin chỉnh được. Còn luật chủ sở hữu (`NOT_RESOURCE_OWNER`, áp cả admin), "chỉ chủ trọ mua gói", "admin không theo dõi, không lưu tin, không chat" thì cố định. FE ẩn nút theo `permissions` nhưng luôn xử lý 403, vì backend là nơi quyết định cuối.
 3. **Xóa là xóa mềm** (nhà trọ, tin, tài khoản): dữ liệu biến khỏi API nhưng vẫn giữ chỗ. Email và số điện thoại của tài khoản đã xóa vẫn báo `EMAIL_TAKEN`, `PHONE_TAKEN`; phường hoặc tiện ích từng được nhà trọ dùng không xóa được (`CATALOG_IN_USE`).
-4. **Ghi lặp lại an toàn ở các thao tác "đặt trạng thái"**: theo dõi, bỏ theo dõi, lưu, bỏ lưu, thanh toán đơn đã trả, hủy đơn đã hủy đều trả 200 với kết quả đúng của lần trước, và nhiều lần gọi cùng lúc cũng không tạo bản trùng. Ngược lại **các thao tác tạo mới không an toàn khi bấm đúp**: tạo nhà trọ, đăng tin, tạo đơn, tải ảnh sẽ tạo thêm một bản. FE khóa nút trong lúc đang gửi.
+4. **Ghi lặp lại an toàn ở các thao tác "đặt trạng thái"**: theo dõi, bỏ theo dõi, lưu, bỏ lưu, thanh toán đơn đã trả, hủy đơn đã hủy đều trả 200 với kết quả đúng của lần trước, và nhiều lần gọi cùng lúc cũng không tạo bản trùng. Ngược lại **các thao tác tạo mới không an toàn khi bấm đúp**: tạo nhà trọ, đăng tin, tạo đơn, tải ảnh, gửi tin chat sẽ tạo thêm một bản. FE khóa nút trong lúc đang gửi.
 5. **Khi hai bên đua nhau thì có luật thắng thua cố định.** Admin ẩn tin đúng lúc chủ trọ ẩn hoặc hiện: admin thắng. Mỗi chủ trọ chỉ có tối đa một đơn chờ: tạo đơn mới thì đơn chờ cũ tự hủy. Hai yêu cầu đăng tin cùng lúc khi chỉ còn một chỗ: đúng một yêu cầu thành công (kiểm hạn mức và ghi nằm trong cùng một giao dịch có khóa).
 6. **Mọi API công khai dùng chung một luật hiển thị**, nên "mở được ở trang chi tiết" và "có trong danh sách, trong tin đã lưu, trong tin của chủ trọ, trong `publicListingCount`, và có ảnh xem được" là cùng một điều kiện. FE tin vào `total`, không lọc thêm.
 7. **Không lộ thông tin qua mã lỗi.** Tin đang ẩn trả 404 giống tin không tồn tại (kể cả với chính chủ ở route công khai); sai email và sai mật khẩu cùng một lỗi; "quên mật khẩu" luôn cùng một câu; chủ trọ bị khóa trả 404 như không tồn tại. FE đừng cố phân biệt các trường hợp này trong giao diện công khai.
@@ -2071,6 +2273,7 @@ Mẹo khi demo:
 - **Lượt xem** tính một lần cho mỗi người xem trong 30 phút, chủ tin không tính (6.20).
 - **Theo dõi chủ trọ** (6.32): chỉ người tìm trọ, mỗi cặp một lần, gọi lại an toàn, admin và chủ trọ mặc định không theo dõi được. Các con số trên hồ sơ (6.31) tính lúc đọc nên luôn khớp với dữ liệu thật; theo dõi chỉ làm tăng một con số, chưa có thông báo hay danh sách.
 - **Lưu tin yêu thích** (6.33): chỉ người tìm trọ, mỗi cặp (người dùng, tin) một lần, gọi lại an toàn, không giới hạn số tin, chỉ lưu được tin đang hiện công khai, bỏ lưu không kiểm tin. Danh sách đã lưu dùng đúng luật hiển thị công khai của 6.19 nên luôn khớp với những gì khách mở được; dòng lưu không bị xóa khi tin biến, nên tin hiện lại là quay về. Admin và chủ trọ mặc định không lưu được.
+- **Chat** (từ 2026-11-05, 6.39). Mỗi cặp (tin, người nhắn) một cuộc trò chuyện; chủ trọ của cuộc trò chuyện chép từ tin lúc mở. Chỉ người có `conversation:create` (mặc định người tìm trọ) mở được, và chỉ với tin đang hiện công khai; sau đó cuộc trò chuyện sống tiếp dù tin ẩn hay hết hạn mức, miễn tài khoản hai bên còn hoạt động. Hai bên đọc và gửi được, người ngoài (kể cả admin) thì không. Tin nhắn chỉ có chữ, 1 đến 1000 ký tự, không sửa, không xóa, đánh số `seq` liên tiếp theo từng cuộc trò chuyện; thứ tự hiển thị theo `seq`. Số tin chưa đọc là phép trừ theo mốc đã đọc của từng bên: gửi tin dời mốc của chính người gửi, `POST /conversations/:id/read` dời mốc của người gọi (không bao giờ lùi, không vượt tin cuối), mọi `GET` không đổi mốc. Không có kênh đẩy, FE hỏi lại; không có email thông báo.
 - **Đơn của mọi chủ trọ (admin)** (từ 2026-10-21, 6.37). Chỉ admin xem được (`order:report`); chủ trọ chỉ thấy đơn của mình (6.27). `summary.paidAmount` là tổng giá đã chốt của các đơn `paid` trong đúng tập lọc, tính lúc đọc nên luôn bằng phép cộng tay các dòng. Đó là tiền của thanh toán thử, chưa phải tiền thật.
 - **Thống kê doanh thu (admin)** (từ 2026-10-21, 6.38). Chỉ tính đơn `paid`, theo giá đã chốt trên đơn và theo **ngày trả**. Một ngày hay một tháng ở mọi nơi trong API là ngày hay tháng theo giờ Việt Nam. Ba tổng của phản hồi (ngoài cùng, `byPlan`, `series`) luôn bằng nhau. Là tiền của thanh toán thử.
 - **Khóa tài khoản**: tài khoản bị khóa không đăng nhập, không refresh được và mọi phiên bị hủy lúc khóa. Đăng nhập sai mật khẩu vẫn báo `INVALID_CREDENTIALS` (không lộ tài khoản có bị khóa hay không); chỉ khi đúng mật khẩu mới báo `ACCOUNT_LOCKED`. Admin không tự khóa mình được.
@@ -2098,6 +2301,7 @@ Mẹo khi demo:
 - **Phép nối kỳ gói ở đọc công khai chưa đo riêng** ở hàng chục nghìn tin; nó cộng thêm vào chi phí đã nói ở trên. Chấp nhận ở bản demo.
 - **`isPublic` và `GET /me/membership` chỉ nhìn tin và hạn mức**, không nhìn tài khoản đã bị khóa hay nhà trọ đã xóa: `isPublic` là `true` nghĩa là tin nằm trong hạn mức, còn khóa tài khoản chặn tin ở API công khai theo luật ở mục 8. Chủ trọ vừa bị khóa chỉ còn gọi được trong tối đa 15 phút (token còn hạn). Đừng tự tính hạn dùng thử hay hạn mức ở FE, luôn lấy từ `GET /me/membership`.
 - **Chủ trọ đăng ký trước 2026-10-16** nhận hạn dùng thử bằng thời điểm chạy migration cộng 30 ngày (không phải thời điểm họ đăng ký).
+- **Chat** (6.39) **không có kênh đẩy**: FE hỏi lại vài giây một lần, mỗi người đang mở trang tốn vài request mỗi phút, và bộ đếm giới hạn (120 lần mỗi phút cho mỗi API đọc) nằm trong bộ nhớ nên mất khi backend khởi động lại. **Không có email hay thông báo**: chủ trọ chỉ biết có tin khi mở trang. Đếm chưa đọc chỉ là phép trừ theo mốc: gửi tin dời mốc đã đọc của chính người gửi tới tin cuối, nên một tin của bên kia chưa kịp xem sẽ được tính là đã đọc nếu mình gửi tin từ một tab khác; chưa có "đã xem" cho bên kia. **Không sửa, không xóa, không báo cáo, không chặn người**; một tin xấu ở lại mãi, admin không xem được cuộc trò chuyện để điều tra, chỉ khóa được tài khoản. Cuộc trò chuyện sống tiếp dù tin bị admin ẩn vì vi phạm, cho tới khi tài khoản chủ trọ bị khóa. Nội dung là chữ thô: FE phải escape. Tin nhắn lưu mãi, chưa có chính sách giữ hay xóa. Một người hỏi ba tin của cùng một chủ trọ ra ba cuộc trò chuyện riêng. Không chống gửi trùng khi bấm đúp (mỗi lần gửi là một tin): FE khóa nút trong lúc gửi.
 - **Chưa có kháng nghị** khi bị ẩn tin: chủ trọ sửa tin xong vẫn phải liên hệ admin ngoài hệ thống.
 - **Lịch sử kiểm duyệt chưa có API đọc.** Mỗi lần ẩn hoặc gỡ ẩn tin ghi một dòng vào bảng `moderation_logs`, nhưng ra ngoài chỉ có `moderationReason` (lý do ẩn gần nhất) trong API tin. Lý do gỡ ẩn và các lần ẩn cũ chỉ xem được trong cơ sở dữ liệu.
 - **Đổi tên phường dựng lại từ khóa từng tin một** trong một giao dịch, nên phường có hàng chục nghìn tin sẽ đổi tên chậm. Một tin đang được đăng đúng lúc phường đổi tên có thể mang tên phường cũ trong từ khóa tìm kiếm cho tới lần sửa tin kế tiếp (hiển thị `fullAddress` vẫn đúng vì ghép lúc đọc). Chấp nhận ở bản demo.
@@ -2121,6 +2325,8 @@ Mẹo khi demo:
 
 Tính đến 2026-10-22 **không còn tính năng nào đã lên kế hoạch mà backend chưa làm**: hai mục từng nằm ở đây (dùng thử và hạn mức tin, mua gói và thanh toán thử) đã xong và nằm ở mục 6 (6.24 đến 6.27). Phần "Chưa có" của từng API nằm ngay trong mục của nó, và những việc đã hoãn nằm ở mục 9.
 
+**Chat đã xong cả hai mốc (2026-11-05, mục 6.39).** Có cả đếm tin chưa đọc và đánh dấu đã đọc, nên FE dựng được chấm "chưa đọc" và cái chuông. Việc "liên hệ chủ trọ" từng bỏ khỏi kế hoạch (dưới đây) nay được thay bằng chat.
+
 **Đã bỏ khỏi kế hoạch (2026-10-11), FE đừng làm màn hình cho các phần này:** duyệt tin trước khi hiển thị, thanh toán qua VNPay, xác thực chủ trọ bằng giấy tờ, báo cáo tin xấu, liên hệ chủ trọ có giới hạn mỗi ngày, đẩy tin và tin nổi bật, kiểm tra tại chỗ, quảng cáo, báo cáo thu chi và dashboard, thống kê cho chủ trọ, tìm quanh địa điểm mốc, đổi loại tài khoản.
 
 **Một ngoại lệ nhỏ (2026-10-21):** admin đã có hai API đọc để kiểm tra tiền của thanh toán thử: danh sách đơn của mọi chủ trọ (mục 6.37) và thống kê doanh thu theo gói, theo ngày hoặc tháng (mục 6.38). Đó chỉ là dữ liệu thô: **vẫn không có** dashboard dựng sẵn, biểu đồ, xuất file, báo cáo thu chi hay thống kê cho chủ trọ; FE tự vẽ nếu cần.
@@ -2132,6 +2338,25 @@ Tính đến 2026-10-22 **không còn tính năng nào đã lên kế hoạch m�
 ## 11. Nhật ký thay đổi
 
 Mới nhất ở trên cùng. Mục nào **phá vỡ** cách FE đang gọi sẽ ghi rõ "ĐỔI KHÁC VỚI TRƯỚC".
+
+### 2026-11-05 · Chat: đếm tin chưa đọc và đánh dấu đã đọc (mốc 2 của chat; phần chat xong)
+
+- **Hai API mới** (mục 6.39), cần đăng nhập: `GET /me/conversations/unread-count` (trả `{ unreadConversations, unreadMessages }`, cho cái chuông) và `POST /conversations/:id/read` (body `{ "upToSeq": số nguyên }`, trả **200** một phần tử cuộc trò chuyện với `unreadCount` mới). Mốc đã đọc chỉ tăng và không vượt tin cuối; gọi lặp an toàn; tin đến sau lúc FE nhìn vẫn còn chưa đọc.
+- **Thêm trường, không đổi gì đang chạy**: mỗi phần tử cuộc trò chuyện (hộp thư, `GET /conversations/:id`, `conversation` của route mở, kết quả của `read`) có thêm **`unreadCount`**, số tin của bên kia mà người gọi chưa đọc (số nguyên từ 0; luôn `0` ở route mở). Các trường cũ giữ nguyên. Mốc đã đọc của ai vẫn **không** có trong phản hồi.
+- **Quyền**: không có khóa mới. `conversation:read` cho `unread-count`, `conversation:update` cho `read`; cả hai đã có sẵn từ mốc 1 (mặc định `tenant` và `landlord` đều giữ). Admin vẫn bị 403 ở cả bảy API chat. Hai API mới lấy quyền từ token như các API đọc, nên đổi quyền có hiệu lực sau lần refresh kế tiếp.
+- **Giới hạn tần suất**: cả hai thuộc nhóm đọc, 120 lần mỗi phút theo người dùng, **mỗi API đếm riêng** (năm API trong nhóm này). Hỏi `unread-count` mỗi 15 đến 30 giây là dư.
+- **Chấm "chưa đọc" và cái chuông** dựng được từ bây giờ (mục 7, bước 7 của luồng chat). Bộ request Postman folder 25 có thêm các request cho hai API mới.
+- **Giới hạn đã biết**: gửi tin dời mốc đã đọc của chính người gửi tới tin cuối, nên một tin của bên kia chưa kịp xem sẽ được tính là đã đọc nếu mình gửi tin từ một tab khác. Chưa có "đã xem" cho bên kia.
+
+### 2026-11-05 · Chat giữa người tìm trọ và chủ trọ: mở cuộc trò chuyện, gửi tin, đọc tin, hộp thư (mốc 1 của chat)
+
+- **API mới** (mục 6.39), cả năm cần đăng nhập: `POST /listings/:id/conversations` (mở cuộc trò chuyện hoặc nhắn tiếp từ một tin, 201 `{ conversation, message }`), `POST /conversations/:id/messages` (gửi tin, 201), `GET /conversations/:id/messages` (đọc theo con trỏ `seq`: `limit`, `afterSeq`, `beforeSeq`, trả `{ items, hasMore, lastSeq }`), `GET /conversations/:id` (một phần tử) và `GET /me/conversations` (hộp thư có phân trang, lọc `listingId`). Tin nhắn chỉ có chữ, 1 đến 1000 ký tự. Hỏi lại bằng REST, chưa có kênh đẩy.
+- **Quyền mới**: `conversation:read`, `conversation:create`, `conversation:update`, `message:create` (danh mục thành 14 module). Mặc định `tenant` giữ cả bốn, `landlord` giữ ba (không có `conversation:create`, nên chỉ trả lời, không tự mở). **Admin giữ mọi quyền nhưng cả năm API đều trả 403 `PERMISSION_DENIED`.** Cần chạy `npm run migration:deploy` trên database hiện có để thêm khóa mặc định; token cấp trước đó chưa mang quyền mới đến lần refresh kế tiếp (tối đa 15 phút), `GET /auth/me` thấy ngay.
+- **Mã lỗi mới** (đã thêm vào bảng mục 3 và kiểu `ErrorCode` ở Phụ lục B): `CONVERSATION_NOT_FOUND` (404), `CANNOT_CHAT_WITH_SELF` (409), `CHAT_PEER_UNAVAILABLE` (409).
+- **Giới hạn tần suất mới** (mục 3): mở cuộc trò chuyện 20 lần mỗi giờ, gửi tin 30 lần mỗi phút, mỗi API đọc 120 lần mỗi phút, đều theo người dùng, mỗi API đếm riêng.
+- **Hai API gửi đọc lại tài khoản từ database mỗi lần gọi**: tài khoản vừa bị khóa nhận 403 `ACCOUNT_LOCKED` ngay. Người bên kia bị khóa hoặc đã xóa thì gửi nhận 409 `CHAT_PEER_UNAVAILABLE`, đọc vẫn được.
+- **Không đổi**: mọi API cũ. Chỉ `isPublic` của chat dùng chung luật hiển thị công khai với danh sách và chi tiết tin.
+- **Mốc 2** (đếm tin chưa đọc và đánh dấu đã đọc) nằm ở mục nhật ký ngay trên. Bộ request Postman có folder 25 cho các API chat.
 
 ### 2026-11-05 · Tọa độ nhà trọ phải gần phường đã chọn, và `GET /wards` có `bounds` (mốc 2 của giới hạn tọa độ: hộp của từng phường; phần giới hạn tọa độ xong)
 
@@ -2460,14 +2685,14 @@ Mỗi lần backend thêm, đổi hoặc bỏ một API, mã lỗi, quy tắc ng
 
 ## Phụ lục A. Bảng tra nhanh mọi API
 
-Tổng cộng **69 API**. Mọi đường dẫn nằm dưới `/api/v1`. Quy ước cột:
+Tổng cộng **74 API**. Mọi đường dẫn nằm dưới `/api/v1`. Quy ước cột:
 - **Cần**: "công khai" là không cần đăng nhập; "công khai + token tùy chọn" là route đọc đăng nhập tùy chọn (mục 2, mục 4.1); "đăng nhập" là chỉ cần access token hợp lệ; `module:hành_động` là quyền cần có (lấy từ `permissions` của `GET /auth/me`). **"đọc lại DB"** nghĩa là backend không tin quyền trong token mà đọc lại tài khoản từ database mỗi lần gọi: admin vừa bị khóa nhận 403 `ACCOUNT_LOCKED`, admin đã bị xóa nhận 401 `TOKEN_INVALID`, dù token còn hạn.
 - **Giới hạn**: giới hạn tần suất (mục 3); ô ghi "không" nghĩa là API đó không bị giới hạn. "Theo người" là theo tài khoản đang đăng nhập. Mỗi API có bộ đếm riêng, kể cả khi dùng chung một con số.
 - **OK**: mã HTTP khi thành công.
 
 **Thứ tự kiểm lỗi chung** (mọi API): 401 (token) → 403 (quyền, hoặc `ACCOUNT_LOCKED` ở API "đọc lại DB") → 429 (giới hạn tần suất) → 400 (`INVALID_ID`, `VALIDATION_FAILED`) → 404 hoặc 403 `NOT_RESOURCE_OWNER` (tồn tại và chủ sở hữu) → luật nghiệp vụ (409, 403 hạn mức...). Thứ tự riêng từng API nằm ở mục tương ứng ở mục 6.
 
-**Phản hồi có `Cache-Control: private, no-store`** (đừng cho proxy hay CDN cache): `GET /listings`, `GET /listings/:slugCode`, `GET /landlords/:id`, `GET /landlords/:id/listings`, `POST` và `DELETE /landlords/:id/follow`, `POST` và `DELETE /listings/:id/favorite`, `GET /me/favorites`, `GET` và `PATCH /me/profile`, `GET /users`, `GET /orders/all`, `GET /orders/revenue`. Ảnh `/media/public/...` thì `public, max-age=86400`.
+**Phản hồi có `Cache-Control: private, no-store`** (đừng cho proxy hay CDN cache): `GET /listings`, `GET /listings/:slugCode`, `GET /landlords/:id`, `GET /landlords/:id/listings`, `POST` và `DELETE /landlords/:id/follow`, `POST` và `DELETE /listings/:id/favorite`, `GET /me/favorites`, `GET` và `PATCH /me/profile`, `GET /users`, `GET /orders/all`, `GET /orders/revenue`, và cả bảy API chat (A.9). Ảnh `/media/public/...` thì `public, max-age=86400`.
 
 ### A.1 Hệ thống và đăng nhập
 
@@ -2586,11 +2811,25 @@ Admin không bị giới hạn tần suất ở nhóm này.
 | `GET /orders/all` | `order:report`, đọc lại DB | 200 | 6.37 |
 | `GET /orders/revenue` | `order:report`, đọc lại DB | 200 | 6.38 |
 
+### A.9 Chat giữa người tìm trọ và chủ trọ
+
+Admin gọi cả bảy API này luôn nhận 403 `PERMISSION_DENIED` dù có quyền. Giới hạn tính theo người dùng đang đăng nhập, mỗi API một bộ đếm.
+
+| API | Cần | Giới hạn | OK | Mục |
+|---|---|---|---|---|
+| `POST /listings/:id/conversations` | `conversation:create`, đọc lại DB | 20 mỗi giờ | 201 | 6.39 |
+| `POST /conversations/:id/messages` | `message:create`, đọc lại DB | 30 mỗi phút | 201 | 6.39 |
+| `GET /conversations/:id/messages` | `conversation:read` | 120 mỗi phút | 200 | 6.39 |
+| `GET /conversations/:id` | `conversation:read` | 120 mỗi phút | 200 | 6.39 |
+| `GET /me/conversations` | `conversation:read` | 120 mỗi phút | 200 | 6.39 |
+| `GET /me/conversations/unread-count` | `conversation:read` | 120 mỗi phút | 200 | 6.39 |
+| `POST /conversations/:id/read` | `conversation:update` | 120 mỗi phút | 200 | 6.39 |
+
 ---
 
 ## Phụ lục B. Kiểu TypeScript của phản hồi
 
-Sao chép được thẳng vào FE. Kiểu viết tay theo đúng code backend (thời điểm 2026-10-23); khi API đổi, mục 12 yêu cầu sửa lại phụ lục này. Mọi `Date` của backend đi qua JSON thành chuỗi ISO 8601 UTC, nên ở đây là `IsoDateTime`. Mọi số tiền là số nguyên đồng.
+Sao chép được thẳng vào FE. Kiểu viết tay theo đúng code backend (thời điểm 2026-11-05); khi API đổi, mục 12 yêu cầu sửa lại phụ lục này. Mọi `Date` của backend đi qua JSON thành chuỗi ISO 8601 UTC, nên ở đây là `IsoDateTime`. Mọi số tiền là số nguyên đồng.
 
 ```ts
 // ---------- Kiểu dùng chung ----------
@@ -2640,6 +2879,7 @@ type ErrorCode =
   | 'PLAN_NOT_FOUND' | 'PLAN_NAME_TAKEN' | 'PLAN_IN_USE' | 'PLAN_INACTIVE'
   | 'ORDER_NOT_FOUND' | 'ORDER_STATE_INVALID'
   | 'LANDLORD_NOT_FOUND' | 'CANNOT_FOLLOW_SELF'
+  | 'CONVERSATION_NOT_FOUND' | 'CANNOT_CHAT_WITH_SELF' | 'CHAT_PEER_UNAVAILABLE'
   | 'DB_UNAVAILABLE' | 'INTERNAL_ERROR' | 'HTTP_ERROR';
 
 // ---------- Đăng nhập, tài khoản ----------
@@ -2713,6 +2953,21 @@ interface LandlordProfile {
   isFollowing: boolean | null; // null với khách
 }
 
+// ---------- Chat ----------
+interface ChatMessage { id: Uuid; seq: number; senderId: Uuid; isMine: boolean; body: string; createdAt: IsoDateTime } // đừng nhầm với MessageResponse { message: string } ở trên
+interface ConversationItem { // phần tử hộp thư, GET /conversations/:id, và conversation của route mở
+  id: Uuid;
+  myRole: 'tenant' | 'landlord'; // 'tenant' khi người gọi là người mở cuộc trò chuyện
+  listing: { id: Uuid; code: string; slug: string; title: string; price: number; coverImageUrl: string | null; isPublic: boolean }; // coverImageUrl luôn null khi isPublic = false
+  otherUser: { id: Uuid; name: string | null }; // không có số điện thoại hay email
+  lastMessage: Omit<ChatMessage, 'id'>;
+  lastMessageAt: IsoDateTime; createdAt: IsoDateTime;
+  unreadCount: number; // số tin của bên kia mà người gọi chưa đọc; luôn 0 ở conversation của route mở
+}
+interface UnreadSummary { unreadConversations: number; unreadMessages: number } // GET /me/conversations/unread-count
+interface OpenConversationResult { conversation: ConversationItem; message: ChatMessage } // POST /listings/:id/conversations
+interface ChatMessagesPage { items: ChatMessage[]; hasMore: boolean; lastSeq: number } // items luôn seq tăng dần
+
 // ---------- Dùng thử, gói, đơn ----------
 type MembershipState = 'plan' | 'trial' | 'expired';
 interface Subscription { orderCode: string; planName: string; startsAt: IsoDateTime; endsAt: IsoDateTime; daysLeft: number; paidUntil: IsoDateTime }
@@ -2758,6 +3013,7 @@ interface PropertyBody { name: string; addressText: string; wardCode: string; la
 interface ListingBody { title: string; description: string; price: number; areaM2: number; deposit?: number | null; availableFrom?: DateOnly | null } // PATCH: mọi trường tùy chọn
 interface PlanBody { name: string; price: number; maxListings: number; durationDays?: number; isActive?: boolean } // PATCH: mọi trường tùy chọn
 interface CreateOrderBody { planId: Uuid }
+interface SendMessageBody { body: string } // mở cuộc trò chuyện và gửi tin
 interface UpdateSettingBody { value: number }
 interface UpdateAccountTypeBody { permissions: PermissionKey[] } // thay toàn bộ danh sách
 ```
@@ -2835,6 +3091,15 @@ Dùng để dựng kiểm tra ở FE cho khớp backend, **nhằm báo lỗi s�
 | `GET /orders/all` | `status`, `landlordId` (UUID), `planId` (UUID), `from` và `to` (`YYYY-MM-DD` có thật, năm 2000 đến 2100; `to` không trước `from`) |
 | `GET /orders/revenue` | `from`, `to` như trên; `groupBy` là `day` hoặc `month` (mặc định `month`); **không** nhận `page`, `pageSize`, `status` |
 | `GET /landlords/:id/listings`, `GET /me/favorites` | Chỉ nhận `page`, `pageSize` |
+
+**Chat**
+
+| Trường | Luật |
+|---|---|
+| `body` (mở cuộc trò chuyện, gửi tin) | Chuỗi, bỏ khoảng trắng hai đầu, 1 đến 1000 ký tự Unicode (một emoji là một ký tự), không chứa ký tự NUL; xuống dòng ở giữa được giữ. Không nhận trường nào khác |
+| `GET /conversations/:id/messages` `limit` | Số nguyên từ 1 đến 100, mặc định 30 |
+| `afterSeq`, `beforeSeq` | `afterSeq` số nguyên từ 0, `beforeSeq` số nguyên từ 1, tối đa 2147483647; **không gửi cả hai** (400) |
+| `GET /me/conversations` | `page`, `pageSize` như mục chung; `listingId` (UUID, tùy chọn); không nhận tham số khác |
 
 **Gói, đơn, tham số, danh mục (admin)**
 

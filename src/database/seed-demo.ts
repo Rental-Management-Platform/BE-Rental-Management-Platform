@@ -66,8 +66,8 @@ async function writeImages(
 
 /**
  * Xóa mọi thứ thuộc các tài khoản demo (nhận ra bằng đuôi email), theo thứ tự các khóa ngoại cho phép, và trả
- * khóa ảnh của chúng để xóa tệp sau khi giao dịch đã xong. Cũng xóa lượt lưu và theo dõi của người thật trỏ vào
- * tin hay chủ trọ demo, vì các dòng đó mất chỗ trỏ tới.
+ * khóa ảnh của chúng để xóa tệp sau khi giao dịch đã xong. Cũng xóa lượt lưu, theo dõi và cuộc trò chuyện (kèm tin
+ * nhắn) của người thật trỏ vào tin hay chủ trọ demo, vì các dòng đó mất chỗ trỏ tới.
  */
 async function deleteDemoData(tx: Prisma.TransactionClient): Promise<string[]> {
 	const users = await tx.user.findMany({
@@ -110,6 +110,32 @@ async function deleteDemoData(tx: Prisma.TransactionClient): Promise<string[]> {
 				{ actorId: { in: userIds } },
 			],
 		},
+	});
+	// Chat (spec 0013): cuộc trò chuyện của người thật về tin demo, hoặc của tài khoản demo, cũng mất chỗ trỏ tới.
+	// Tin nhắn chỉ do hai bên của cuộc trò chuyện gửi nên xóa theo cuộc trò chuyện là đủ; tin trước, rồi cuộc trò chuyện.
+	const conversations = await tx.conversation.findMany({
+		where: {
+			OR: [
+				{ listingId: { in: listingIds } },
+				{ tenantId: { in: userIds } },
+				{ landlordId: { in: userIds } },
+			],
+		},
+		select: { id: true },
+	});
+	const conversationIds = conversations.map(
+		(conversation) => conversation.id,
+	);
+	await tx.message.deleteMany({
+		where: {
+			OR: [
+				{ conversationId: { in: conversationIds } },
+				{ senderId: { in: userIds } },
+			],
+		},
+	});
+	await tx.conversation.deleteMany({
+		where: { id: { in: conversationIds } },
 	});
 	await tx.listing.deleteMany({ where: { id: { in: listingIds } } });
 	await tx.property.deleteMany({ where: { id: { in: propertyIds } } });

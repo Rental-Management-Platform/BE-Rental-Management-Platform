@@ -84,16 +84,19 @@ describe('hasUser', () => {
 describe('giới hạn tần suất: bảng RATE_LIMITS', () => {
 	const groups = Object.keys(RATE_LIMITS) as RateLimitGroup[];
 
-	it('có đủ mười lăm nhóm: spec đăng nhập AC-10, đổi mật khẩu, nhà trọ và ảnh tin AC-15 (spec 0002), đơn mua gói (spec 0004 AC-13), theo dõi chủ trọ (spec 0005 AC-9), lưu tin yêu thích (spec 0006 AC-8) và sửa hồ sơ (spec 0008 AC-9)', () => {
+	it('có đủ mười tám nhóm: spec đăng nhập AC-10, đổi mật khẩu, nhà trọ và ảnh tin AC-15 (spec 0002), đơn mua gói (spec 0004 AC-13), theo dõi chủ trọ (spec 0005 AC-9), lưu tin yêu thích (spec 0006 AC-8), sửa hồ sơ (spec 0008 AC-9) và chat (spec 0013 AC-12)', () => {
 		expect([...groups].sort()).toEqual(
 			[
 				'changePassword',
+				'chatRead',
+				'conversationStart',
 				'favoriteWrite',
 				'followWrite',
 				'forgotPassword',
 				'listingImage',
 				'listingWrite',
 				'login',
+				'messageWrite',
 				'orderWrite',
 				'profileWrite',
 				'propertyWrite',
@@ -137,6 +140,9 @@ describe('giới hạn tần suất: bảng RATE_LIMITS', () => {
 		expect(Object.keys(RATE_LIMITS.followWrite)).toEqual(['user']);
 		expect(Object.keys(RATE_LIMITS.favoriteWrite)).toEqual(['user']);
 		expect(Object.keys(RATE_LIMITS.profileWrite)).toEqual(['user']);
+		expect(Object.keys(RATE_LIMITS.conversationStart)).toEqual(['user']);
+		expect(Object.keys(RATE_LIMITS.messageWrite)).toEqual(['user']);
+		expect(Object.keys(RATE_LIMITS.chatRead)).toEqual(['user']);
 		expect(Object.keys(RATE_LIMITS.publicRead)).toEqual(['ip']);
 		expect(Object.keys(RATE_LIMITS.publicDetail).sort()).toEqual([
 			'ip',
@@ -151,7 +157,7 @@ describe('giới hạn tần suất: bảng RATE_LIMITS', () => {
 		expect(withEmail.sort()).toEqual(['forgotPassword', 'login']);
 	});
 
-	it('con số đúng bảng đã chốt ngày 2026-10-12, cộng nhóm nhà trọ và ảnh tin chốt ngày 2026-10-14, nhóm đơn chốt ngày 2026-10-19, các nhóm theo dõi, lưu tin chốt ngày 2026-10-20 và nhóm sửa hồ sơ chốt ngày 2026-10-21', () => {
+	it('con số đúng bảng đã chốt ngày 2026-10-12, cộng nhóm nhà trọ và ảnh tin chốt ngày 2026-10-14, nhóm đơn chốt ngày 2026-10-19, các nhóm theo dõi, lưu tin chốt ngày 2026-10-20, nhóm sửa hồ sơ chốt ngày 2026-10-21 và hai nhóm chat đầu chốt ngày 2026-11-05 (nhóm đọc là đề xuất của spec)', () => {
 		const minute = 60 * 1000;
 		const hour = 60 * minute;
 		expect(RATE_LIMITS).toEqual({
@@ -174,6 +180,9 @@ describe('giới hạn tần suất: bảng RATE_LIMITS', () => {
 			followWrite: { user: { limit: 60, ttlMs: hour } },
 			favoriteWrite: { user: { limit: 120, ttlMs: hour } },
 			profileWrite: { user: { limit: 30, ttlMs: hour } },
+			conversationStart: { user: { limit: 20, ttlMs: hour } },
+			messageWrite: { user: { limit: 30, ttlMs: minute } },
+			chatRead: { user: { limit: 120, ttlMs: minute } },
 			publicRead: { ip: { limit: 300, ttlMs: minute } },
 			publicDetail: {
 				ip: { limit: 300, ttlMs: minute },

@@ -73,6 +73,17 @@ export const PERMISSION_CATALOG = {
 		ownerScoped: true,
 		adminActions: [],
 	},
+	// Chat giữa người tìm trọ và chủ trọ (spec 0013). Admin giữ `manage` như mọi module nhưng Service chặn cả bảy route.
+	conversation: {
+		actions: ['read', 'create', 'update'],
+		ownerScoped: true,
+		adminActions: [],
+	},
+	message: {
+		actions: ['create'],
+		ownerScoped: true,
+		adminActions: [],
+	},
 } as const satisfies Record<string, ModuleDefinition>;
 
 export type PermissionModule = keyof typeof PERMISSION_CATALOG;

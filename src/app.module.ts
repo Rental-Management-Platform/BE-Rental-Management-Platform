@@ -4,6 +4,7 @@ import { AccountTypesModule } from './account-types/account-types.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
+import { ChatModule } from './chat/chat.module';
 import { CatalogModule } from './catalog/catalog.module';
 import { AllExceptionsFilter } from './common/errors/all-exceptions.filter';
 import { FavoritesModule } from './favorites/favorites.module';
@@ -38,6 +39,7 @@ import { UsersModule } from './users/users.module';
 		OrdersModule,
 		LandlordsModule,
 		FavoritesModule,
+		ChatModule,
 	],
 	controllers: [AppController],
 	providers: [

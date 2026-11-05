@@ -732,6 +732,42 @@
       "key": "dupOtherEmail",
       "value": "",
       "description": "Email thứ hai để thử trùng số điện thoại (folder 24)."
+    },
+    {
+      "key": "chatPropertyId",
+      "value": ""
+    },
+    {
+      "key": "chatListingId",
+      "value": ""
+    },
+    {
+      "key": "chatListingId2",
+      "value": ""
+    },
+    {
+      "key": "chatLandlordId",
+      "value": ""
+    },
+    {
+      "key": "chatConversationId",
+      "value": ""
+    },
+    {
+      "key": "chatConversationId2",
+      "value": ""
+    },
+    {
+      "key": "chatLastSeq",
+      "value": ""
+    },
+    {
+      "key": "chatBellConversations",
+      "value": ""
+    },
+    {
+      "key": "chatBellMessages",
+      "value": ""
     }
   ],
   "auth": {
@@ -1565,10 +1601,12 @@
                 "exec": [
                   "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
                   "",
-                  "pm.test('đúng 12 module của MVP, không còn module đã hoãn', () => {",
+                  "pm.test('đúng 14 module của MVP (có conversation và message), không còn module đã hoãn', () => {",
                   "    const modules = pm.response.json().map((entry) => entry.module);",
-                  "    pm.expect(modules).to.have.lengthOf(12);",
+                  "    pm.expect(modules).to.have.lengthOf(14);",
                   "    pm.expect(modules).to.include('plan');",
+                  "    pm.expect(modules).to.include('conversation');",
+                  "    pm.expect(modules).to.include('message');",
                   "    ['contact', 'report', 'verification', 'boost', 'product', 'inspection', 'ad', 'expense', 'finance', 'dashboard', 'stats'].forEach((gone) => pm.expect(modules).to.not.include(gone));",
                   "});"
                 ]
@@ -1587,7 +1625,7 @@
                 "permissions"
               ]
             },
-            "description": "Cần quyền `account_type:read`. Danh mục 12 module của MVP, hành động, module nào chỉ áp cho dữ liệu của chính người gọi (`ownerScoped`) và hành động nào chỉ admin được giữ (`adminActions`). Dùng để vẽ màn hình chọn quyền."
+            "description": "Cần quyền `account_type:read`. Danh mục 14 module của MVP, hành động, module nào chỉ áp cho dữ liệu của chính người gọi (`ownerScoped`) và hành động nào chỉ admin được giữ (`adminActions`). Dùng để vẽ màn hình chọn quyền."
           }
         },
         {
@@ -1656,10 +1694,10 @@
                 "tenant"
               ]
             },
-            "description": "Cần quyền `account_type:update`, kiểm lại DB mỗi lần gọi. THAY TOÀN BỘ danh sách quyền của loại (không phải thêm bớt). Danh sách trùng được bỏ trùng. Request này gửi danh sách mặc định của tenant trừ `favorite:create`. Token cũ của tenant giữ quyền cũ đến khi refresh (tối đa 15 phút).",
+            "description": "Cần quyền `account_type:update`, kiểm lại DB mỗi lần gọi. THAY TOÀN BỘ danh sách quyền của loại (không phải thêm bớt). Danh sách trùng được bỏ trùng. Request này gửi danh sách mặc định của tenant (gồm bốn khóa chat) trừ `favorite:create`. Token cũ của tenant giữ quyền cũ đến khi refresh (tối đa 15 phút).",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"permissions\": [\n    \"favorite:delete\",\n    \"favorite:read\",\n    \"follow:create\",\n    \"follow:delete\",\n    \"profile:read\",\n    \"profile:update\"\n  ]\n}",
+              "raw": "{\n  \"permissions\": [\n    \"conversation:create\",\n    \"conversation:read\",\n    \"conversation:update\",\n    \"favorite:delete\",\n    \"favorite:read\",\n    \"follow:create\",\n    \"follow:delete\",\n    \"message:create\",\n    \"profile:read\",\n    \"profile:update\"\n  ]\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1699,10 +1737,10 @@
                 "tenant"
               ]
             },
-            "description": "Gửi lại đúng danh sách quyền mặc định của tenant (7 quyền: hồ sơ, lưu phòng, theo dõi chủ trọ).",
+            "description": "Gửi lại đúng danh sách quyền mặc định của tenant (11 quyền: hồ sơ, lưu phòng, theo dõi chủ trọ, chat). Phải khớp quyền mặc định của migration, nếu không các folder sau mất quyền của tenant.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"permissions\": [\n    \"favorite:create\",\n    \"favorite:delete\",\n    \"favorite:read\",\n    \"follow:create\",\n    \"follow:delete\",\n    \"profile:read\",\n    \"profile:update\"\n  ]\n}",
+              "raw": "{\n  \"permissions\": [\n    \"conversation:create\",\n    \"conversation:read\",\n    \"conversation:update\",\n    \"favorite:create\",\n    \"favorite:delete\",\n    \"favorite:read\",\n    \"follow:create\",\n    \"follow:delete\",\n    \"message:create\",\n    \"profile:read\",\n    \"profile:update\"\n  ]\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -30543,6 +30581,3973 @@
             },
             "auth": {
               "type": "noauth"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "25 Chat giữa người tìm trọ và chủ trọ",
+      "description": "Chat giữa người tìm trọ và chủ trọ (spec 0013, mốc 1 và 2: có đếm tin chưa đọc và đánh dấu đã đọc). **Chạy sau folder 09** (dùng `userToken`, `tenantToken`, `otherLandlordToken`, `adminToken` và `wardCode`) và từ trên xuống. Không thêm lần đăng ký hay đăng nhập admin nào. Folder tự dựng một nhà trọ và hai tin (cần `--working-dir docs/api` cho tệp ảnh), mở hai cuộc trò chuyện, gửi, đọc theo con trỏ `seq`, thử cách ly, ẩn và hiện tin, khóa và mở khóa chủ trọ, đếm tin chưa đọc (`unreadCount`, `GET /me/conversations/unread-count`) và đánh dấu đã đọc (`POST /conversations/:id/read`), rồi dọn (xóa tin, nhà trọ, trả hạn mức dùng thử về 2), nên chạy lại được; cuộc trò chuyện và tin nhắn thì ở lại vì không xóa được qua API. Nếu chạy dở: chạy riêng \"Admin mở khóa chủ trọ\" và \"trả hạn mức dùng thử về 2\". Giới hạn tần suất (20 lần mở mỗi giờ, 30 lần gửi mỗi phút, 120 lần đọc mỗi phút cho mỗi API đọc) **không** được thử ở đây vì sẽ ăn hết lượt của `tenantToken`; đã kiểm bằng script riêng.",
+      "item": [
+        {
+          "name": "Chủ trọ lấy id của mình (GET /auth/me)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('chatLandlordId', pm.response.json().user.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            },
+            "description": "Cần `userToken` (chủ trọ của folder 01 và 08). Lưu `chatLandlordId` để admin khóa và mở khóa ở phần người kia bị khóa.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Nâng hạn mức dùng thử lên 10 để dựng tin (PATCH /settings/trial_listing_limit)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('hạn mức dùng thử là 10', () => pm.expect(pm.response.json().value).to.eql(10));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/settings/trial_listing_limit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "settings",
+                "trial_listing_limit"
+              ]
+            },
+            "description": "Dùng `adminToken` có sẵn (không đăng nhập admin lại: giới hạn 10 lần mỗi 15 phút theo email). Trả về 2 ở request cuối; nếu chạy dở thì chạy riêng request cuối.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Tạo nhà trọ để đăng tin (POST /properties)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('chatPropertyId', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/properties",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties"
+              ]
+            },
+            "description": "Cần `userToken` và `wardCode` (folder 07). Lưu `chatPropertyId`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Nhà trọ thử chat\",\n  \"addressText\": \"7 Đường Thử\",\n  \"wardCode\": \"{{wardCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Đăng tin A (POST /properties/:propertyId/listings)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('chatListingId', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/properties/{{chatPropertyId}}/listings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "{{chatPropertyId}}",
+                "listings"
+              ]
+            },
+            "description": "Tin hiện ngay. Lưu `chatListingId`. Đường này chỉ nhận `multipart/form-data` (spec 0011): cần `--working-dir docs/api` trong Newman.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "Phòng thử chat A",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Phòng sạch sẽ thoáng mát giờ giấc tự do",
+                  "type": "text"
+                },
+                {
+                  "key": "price",
+                  "value": "3000000",
+                  "type": "text"
+                },
+                {
+                  "key": "areaM2",
+                  "value": "20",
+                  "type": "text"
+                },
+                {
+                  "key": "images",
+                  "type": "file",
+                  "src": "sample-listing.png"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Đăng tin B (POST /properties/:propertyId/listings)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('chatListingId2', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/properties/{{chatPropertyId}}/listings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "{{chatPropertyId}}",
+                "listings"
+              ]
+            },
+            "description": "Tin thứ hai của cùng chủ trọ, để thấy hai cuộc trò chuyện riêng. Lưu `chatListingId2`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "Phòng thử chat B",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Phòng sạch sẽ thoáng mát giờ giấc tự do",
+                  "type": "text"
+                },
+                {
+                  "key": "price",
+                  "value": "3000000",
+                  "type": "text"
+                },
+                {
+                  "key": "areaM2",
+                  "value": "20",
+                  "type": "text"
+                },
+                {
+                  "key": "images",
+                  "type": "file",
+                  "src": "sample-listing.png"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: khách mở cuộc trò chuyện (POST /listings/:id/conversations)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 401', () => pm.response.to.have.status(401));",
+                  "pm.test('mã lỗi TOKEN_MISSING', () => pm.expect(pm.response.json().code).to.eql('TOKEN_MISSING'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{chatListingId}}/conversations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{chatListingId}}",
+                "conversations"
+              ]
+            },
+            "description": "Chat bắt buộc đăng nhập: khách nhận 401.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Chào\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: chủ trọ không mở được cuộc trò chuyện (POST /listings/:id/conversations)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 403', () => pm.response.to.have.status(403));",
+                  "pm.test('mã lỗi PERMISSION_DENIED', () => pm.expect(pm.response.json().code).to.eql('PERMISSION_DENIED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{chatListingId}}/conversations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{chatListingId}}",
+                "conversations"
+              ]
+            },
+            "description": "Chủ trọ mặc định không giữ `conversation:create`: chủ trọ trả lời, không tự mở.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Chào\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: admin không dùng chat (POST /listings/:id/conversations)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 403', () => pm.response.to.have.status(403));",
+                  "pm.test('mã lỗi PERMISSION_DENIED', () => pm.expect(pm.response.json().code).to.eql('PERMISSION_DENIED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{chatListingId}}/conversations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{chatListingId}}",
+                "conversations"
+              ]
+            },
+            "description": "Admin giữ mọi quyền nhưng Service chặn: 403 `PERMISSION_DENIED`, không ghi dòng nào.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Chào\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "[ghi] Người tìm trọ mở cuộc trò chuyện với tin A (POST /listings/:id/conversations)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test('trả đúng hai khóa conversation và message', () => pm.expect(Object.keys(body).sort()).to.eql(['conversation', 'message']));",
+                  "pm.test('tin số 1 là của mình, đã bỏ khoảng trắng hai đầu', () => { pm.expect(body.message.seq).to.eql(1); pm.expect(body.message.isMine).to.eql(true); pm.expect(body.message.body).to.eql('Phòng còn trống không ạ?'); });",
+                  "pm.test('message đúng sáu trường', () => pm.expect(Object.keys(body.message).sort()).to.eql(['body', 'createdAt', 'id', 'isMine', 'senderId', 'seq']));",
+                  "pm.test('conversation: myRole tenant, tin đúng và đang công khai, có ảnh bìa', () => { const c = body.conversation; pm.expect(c.myRole).to.eql('tenant'); pm.expect(c.listing.id).to.eql(pm.collectionVariables.get('chatListingId')); pm.expect(c.listing.isPublic).to.eql(true); pm.expect(c.listing.coverImageUrl).to.be.a('string'); });",
+                  "pm.test('otherUser là chủ trọ của tin', () => pm.expect(body.conversation.otherUser.id).to.eql(pm.collectionVariables.get('chatLandlordId')));",
+                  "pm.test('unreadCount 0: mở đã dời mốc đã đọc của người nhắn tới tin vừa gửi', () => pm.expect(body.conversation.unreadCount).to.eql(0));",
+                  "pm.test('lastMessage khớp tin vừa gửi', () => { pm.expect(body.conversation.lastMessage.seq).to.eql(1); pm.expect(body.conversation.lastMessageAt).to.eql(body.message.createdAt); });",
+                  "pm.test('không có số điện thoại, email hay mốc đọc trong phản hồi', () => pm.expect(pm.response.text()).to.not.match(/phone|email|read_?seq/i));",
+                  "pm.test('Cache-Control là private, no-store', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('private, no-store'));",
+                  "pm.collectionVariables.set('chatConversationId', body.conversation.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{chatListingId}}/conversations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{chatListingId}}",
+                "conversations"
+              ]
+            },
+            "description": "Cần `tenantToken` (folder 01). Người nhắn là người trong token, chủ trọ lấy từ tin. Nội dung bị bỏ khoảng trắng hai đầu. Lưu `chatConversationId`. Giới hạn 20 lần mỗi giờ theo người dùng.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"   Phòng còn trống không ạ?   \"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "[ghi] Mở lại từ cùng tin: nhắn tiếp vào đúng cuộc trò chuyện (POST /listings/:id/conversations)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "pm.test('cùng cuộc trò chuyện, seq 2', () => { const b = pm.response.json(); pm.expect(b.conversation.id).to.eql(pm.collectionVariables.get('chatConversationId')); pm.expect(b.message.seq).to.eql(2); pm.expect(b.conversation.lastMessage.seq).to.eql(2); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{chatListingId}}/conversations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{chatListingId}}",
+                "conversations"
+              ]
+            },
+            "description": "Mỗi cặp (tin, người nhắn) chỉ có một cuộc trò chuyện: cùng `conversation.id`, tin có `seq` 2.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Gọi lại lần hai\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "[ghi] Cùng người hỏi tin B: cuộc trò chuyện riêng (POST /listings/:id/conversations)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "pm.test('cuộc trò chuyện mới, seq 1', () => { const b = pm.response.json(); pm.expect(b.conversation.id).to.not.eql(pm.collectionVariables.get('chatConversationId')); pm.expect(b.message.seq).to.eql(1); });",
+                  "pm.collectionVariables.set('chatConversationId2', pm.response.json().conversation.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{chatListingId2}}/conversations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{chatListingId2}}",
+                "conversations"
+              ]
+            },
+            "description": "Cùng chủ trọ, tin khác: cuộc trò chuyện khác, `seq` bắt đầu lại từ 1. Lưu `chatConversationId2`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Cho hỏi tin B\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "[ghi] Chủ trọ trả lời (POST /conversations/:id/messages)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "pm.test('tin seq 3 của chủ trọ, isMine true', () => { const m = pm.response.json(); pm.expect(m.seq).to.eql(3); pm.expect(m.isMine).to.eql(true); pm.expect(m.senderId).to.eql(pm.collectionVariables.get('chatLandlordId')); pm.expect(Object.keys(m).sort()).to.eql(['body', 'createdAt', 'id', 'isMine', 'senderId', 'seq']); });",
+                  "pm.test('Cache-Control là private, no-store', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('private, no-store'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/conversations/{{chatConversationId}}/messages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conversations",
+                "{{chatConversationId}}",
+                "messages"
+              ]
+            },
+            "description": "Cần quyền `message:create` (mặc định cả `tenant` và `landlord`). Chủ trọ trả lời được cuộc trò chuyện do người tìm trọ mở. Giới hạn 30 lần mỗi phút theo người dùng.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Còn phòng nhé bạn\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "[ghi] Người tìm trọ nhắn tiếp (POST /conversations/:id/messages)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "pm.test('seq 4, giữ xuống dòng', () => { const m = pm.response.json(); pm.expect(m.seq).to.eql(4); pm.expect(m.body).to.eql('Dạ cảm ơn, mai em qua xem\\nKhoảng 9 giờ ạ'); });",
+                  "pm.collectionVariables.set('chatLastSeq', pm.response.json().seq);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/conversations/{{chatConversationId}}/messages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conversations",
+                "{{chatConversationId}}",
+                "messages"
+              ]
+            },
+            "description": "Xuống dòng ở giữa được giữ nguyên.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Dạ cảm ơn, mai em qua xem\\nKhoảng 9 giờ ạ\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: body rỗng (POST /conversations/:id/messages)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('mã lỗi VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));",
+                  "pm.test('errors có trường body', () => pm.expect(pm.response.json().errors.map((e) => e.field)).to.include('body'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/conversations/{{chatConversationId}}/messages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conversations",
+                "{{chatConversationId}}",
+                "messages"
+              ]
+            },
+            "description": "Nội dung sai luật: 400 `VALIDATION_FAILED` kèm trường `body`, không ghi dòng nào. Cùng luật ở mở cuộc trò chuyện.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: body toàn khoảng trắng (POST /conversations/:id/messages)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('mã lỗi VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));",
+                  "pm.test('errors có trường body', () => pm.expect(pm.response.json().errors.map((e) => e.field)).to.include('body'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/conversations/{{chatConversationId}}/messages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conversations",
+                "{{chatConversationId}}",
+                "messages"
+              ]
+            },
+            "description": "Nội dung sai luật: 400 `VALIDATION_FAILED` kèm trường `body`, không ghi dòng nào. Cùng luật ở mở cuộc trò chuyện.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"   \\n  \"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: body 1001 ký tự (POST /conversations/:id/messages)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('mã lỗi VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));",
+                  "pm.test('errors có trường body', () => pm.expect(pm.response.json().errors.map((e) => e.field)).to.include('body'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/conversations/{{chatConversationId}}/messages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conversations",
+                "{{chatConversationId}}",
+                "messages"
+              ]
+            },
+            "description": "Nội dung sai luật: 400 `VALIDATION_FAILED` kèm trường `body`, không ghi dòng nào. Cùng luật ở mở cuộc trò chuyện.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: body không phải chuỗi (POST /conversations/:id/messages)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('mã lỗi VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));",
+                  "pm.test('errors có trường body', () => pm.expect(pm.response.json().errors.map((e) => e.field)).to.include('body'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/conversations/{{chatConversationId}}/messages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conversations",
+                "{{chatConversationId}}",
+                "messages"
+              ]
+            },
+            "description": "Nội dung sai luật: 400 `VALIDATION_FAILED` kèm trường `body`, không ghi dòng nào. Cùng luật ở mở cuộc trò chuyện.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": 123\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: body có ký tự NUL (POST /conversations/:id/messages)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('mã lỗi VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));",
+                  "pm.test('errors có trường body', () => pm.expect(pm.response.json().errors.map((e) => e.field)).to.include('body'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/conversations/{{chatConversationId}}/messages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conversations",
+                "{{chatConversationId}}",
+                "messages"
+              ]
+            },
+            "description": "Nội dung sai luật: 400 `VALIDATION_FAILED` kèm trường `body`, không ghi dòng nào. Cùng luật ở mở cuộc trò chuyện.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"xin\\u0000chào\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: mở cuộc trò chuyện với body rỗng (POST /listings/:id/conversations)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('mã lỗi VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));",
+                  "pm.test('errors có trường body', () => pm.expect(pm.response.json().errors.map((e) => e.field)).to.include('body'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{chatListingId}}/conversations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{chatListingId}}",
+                "conversations"
+              ]
+            },
+            "description": "Kiểm body chạy trước khi tra tin. Không ghi dòng nào.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: mở cuộc trò chuyện với id không phải UUID (POST /listings/:id/conversations)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('mã lỗi INVALID_ID', () => pm.expect(pm.response.json().code).to.eql('INVALID_ID'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/listings/abc/conversations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "abc",
+                "conversations"
+              ]
+            },
+            "description": "400 `INVALID_ID`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Chào\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: mở cuộc trò chuyện với tin không có (POST /listings/:id/conversations)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 404', () => pm.response.to.have.status(404));",
+                  "pm.test('mã lỗi LISTING_NOT_FOUND', () => pm.expect(pm.response.json().code).to.eql('LISTING_NOT_FOUND'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/listings/00000000-0000-7000-8000-000000000000/conversations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "00000000-0000-7000-8000-000000000000",
+                "conversations"
+              ]
+            },
+            "description": "Tin không hiện công khai vì bất kỳ lý do nào (không có, đã xóa, đang ẩn, chủ trọ bị khóa...) đều là 404 `LISTING_NOT_FOUND`, như chi tiết tin.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Chào\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: gửi vào cuộc trò chuyện không có (POST /conversations/:id/messages)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 404', () => pm.response.to.have.status(404));",
+                  "pm.test('mã lỗi CONVERSATION_NOT_FOUND', () => pm.expect(pm.response.json().code).to.eql('CONVERSATION_NOT_FOUND'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/conversations/00000000-0000-7000-8000-000000000000/messages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conversations",
+                "00000000-0000-7000-8000-000000000000",
+                "messages"
+              ]
+            },
+            "description": "404 `CONVERSATION_NOT_FOUND`: giống hệt trường hợp người gọi không phải một trong hai bên.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Chào\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: gửi với id cuộc trò chuyện không phải UUID (POST /conversations/:id/messages)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('mã lỗi INVALID_ID', () => pm.expect(pm.response.json().code).to.eql('INVALID_ID'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/conversations/abc/messages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conversations",
+                "abc",
+                "messages"
+              ]
+            },
+            "description": "400 `INVALID_ID`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Chào\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: người ngoài gửi vào cuộc trò chuyện của người khác (POST /conversations/:id/messages)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 404', () => pm.response.to.have.status(404));",
+                  "pm.test('mã lỗi CONVERSATION_NOT_FOUND', () => pm.expect(pm.response.json().code).to.eql('CONVERSATION_NOT_FOUND'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/conversations/{{chatConversationId}}/messages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conversations",
+                "{{chatConversationId}}",
+                "messages"
+              ]
+            },
+            "description": "Cần `otherLandlordToken` (folder 08): một chủ trọ khác, không phải một trong hai bên. 404 `CONVERSATION_NOT_FOUND`, không phân biệt được với id không có.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{otherLandlordToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Chen ngang\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: người ngoài đọc tin nhắn (GET /conversations/:id/messages)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 404', () => pm.response.to.have.status(404));",
+                  "pm.test('mã lỗi CONVERSATION_NOT_FOUND', () => pm.expect(pm.response.json().code).to.eql('CONVERSATION_NOT_FOUND'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/conversations/{{chatConversationId}}/messages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conversations",
+                "{{chatConversationId}}",
+                "messages"
+              ]
+            },
+            "description": "404 `CONVERSATION_NOT_FOUND`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{otherLandlordToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: người ngoài đọc chi tiết (GET /conversations/:id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 404', () => pm.response.to.have.status(404));",
+                  "pm.test('mã lỗi CONVERSATION_NOT_FOUND', () => pm.expect(pm.response.json().code).to.eql('CONVERSATION_NOT_FOUND'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/conversations/{{chatConversationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conversations",
+                "{{chatConversationId}}"
+              ]
+            },
+            "description": "404 `CONVERSATION_NOT_FOUND`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{otherLandlordToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: admin đọc cuộc trò chuyện của người khác (GET /conversations/:id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 403', () => pm.response.to.have.status(403));",
+                  "pm.test('mã lỗi PERMISSION_DENIED', () => pm.expect(pm.response.json().code).to.eql('PERMISSION_DENIED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/conversations/{{chatConversationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conversations",
+                "{{chatConversationId}}"
+              ]
+            },
+            "description": "Admin giữ `conversation:read` nhưng Service chặn: 403 `PERMISSION_DENIED`, không phải 404.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: khách đọc hộp thư (GET /me/conversations)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 401', () => pm.response.to.have.status(401));",
+                  "pm.test('mã lỗi TOKEN_MISSING', () => pm.expect(pm.response.json().code).to.eql('TOKEN_MISSING'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me/conversations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "conversations"
+              ]
+            },
+            "description": "401 `TOKEN_MISSING`.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Đọc tin nhắn: không tham số lấy tin mới nhất theo thứ tự cũ đến mới (GET /conversations/:id/messages)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('đủ 4 tin seq 1 đến 4, tăng dần, hasMore false, lastSeq 4', () => { pm.expect(b.items.map((m) => m.seq)).to.eql([1, 2, 3, 4]); pm.expect(b.hasMore).to.eql(false); pm.expect(b.lastSeq).to.eql(4); });",
+                  "pm.test('isMine đúng theo người gọi (tin 3 là của chủ trọ)', () => pm.expect(b.items.map((m) => m.isMine)).to.eql([true, true, false, true]));",
+                  "pm.test('trả đúng ba khóa', () => pm.expect(Object.keys(b).sort()).to.eql(['hasMore', 'items', 'lastSeq']));",
+                  "pm.test('Cache-Control là private, no-store', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('private, no-store'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/conversations/{{chatConversationId}}/messages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conversations",
+                "{{chatConversationId}}",
+                "messages"
+              ]
+            },
+            "description": "Không `afterSeq`, `beforeSeq`: `limit` (mặc định 30) tin mới nhất, `items` luôn xếp `seq` tăng dần, `lastSeq` là số tin hiện có. Đọc không đổi gì ở server.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Đọc tin nhắn: limit=2 lấy hai tin mới nhất, còn tin cũ hơn (GET /conversations/:id/messages)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('seq 3 và 4, hasMore true', () => { const b = pm.response.json(); pm.expect(b.items.map((m) => m.seq)).to.eql([3, 4]); pm.expect(b.hasMore).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/conversations/{{chatConversationId}}/messages?limit=2",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conversations",
+                "{{chatConversationId}}",
+                "messages"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "2"
+                }
+              ]
+            },
+            "description": "`hasMore` ở chế độ này cho biết còn tin **cũ hơn** không.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Đọc tin nhắn: afterSeq=1&limit=2 hỏi lại tin mới (GET /conversations/:id/messages)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('seq 2 và 3, hasMore true', () => { const b = pm.response.json(); pm.expect(b.items.map((m) => m.seq)).to.eql([2, 3]); pm.expect(b.hasMore).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/conversations/{{chatConversationId}}/messages?afterSeq=1&limit=2",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conversations",
+                "{{chatConversationId}}",
+                "messages"
+              ],
+              "query": [
+                {
+                  "key": "afterSeq",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "2"
+                }
+              ]
+            },
+            "description": "Cách FE hỏi lại: các tin có `seq` lớn hơn N, tối đa `limit` tin đầu tiên. `hasMore` cho biết còn tin **mới hơn** không.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Đọc tin nhắn: afterSeq bằng tin cuối thì rỗng (GET /conversations/:id/messages)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('rỗng, hasMore false, lastSeq 4', () => { const b = pm.response.json(); pm.expect(b.items).to.eql([]); pm.expect(b.hasMore).to.eql(false); pm.expect(b.lastSeq).to.eql(4); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/conversations/{{chatConversationId}}/messages?afterSeq={{chatLastSeq}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conversations",
+                "{{chatConversationId}}",
+                "messages"
+              ],
+              "query": [
+                {
+                  "key": "afterSeq",
+                  "value": "{{chatLastSeq}}"
+                }
+              ]
+            },
+            "description": "Không có gì mới: `items` rỗng, `hasMore` false, `lastSeq` vẫn đúng.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Đọc tin nhắn: beforeSeq=3&limit=1 kéo lên xem tin cũ hơn (GET /conversations/:id/messages)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('seq 2, hasMore true', () => { const b = pm.response.json(); pm.expect(b.items.map((m) => m.seq)).to.eql([2]); pm.expect(b.hasMore).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/conversations/{{chatConversationId}}/messages?beforeSeq=3&limit=1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conversations",
+                "{{chatConversationId}}",
+                "messages"
+              ],
+              "query": [
+                {
+                  "key": "beforeSeq",
+                  "value": "3"
+                },
+                {
+                  "key": "limit",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "`limit` tin ngay trước `seq` N. `hasMore` cho biết còn tin cũ hơn không.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: gửi cả afterSeq lẫn beforeSeq (GET /conversations/:id/messages)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('mã lỗi VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/conversations/{{chatConversationId}}/messages?afterSeq=1&beforeSeq=4",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conversations",
+                "{{chatConversationId}}",
+                "messages"
+              ],
+              "query": [
+                {
+                  "key": "afterSeq",
+                  "value": "1"
+                },
+                {
+                  "key": "beforeSeq",
+                  "value": "4"
+                }
+              ]
+            },
+            "description": "Chỉ được dùng một trong hai con trỏ: 400 `VALIDATION_FAILED`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: limit=101 (GET /conversations/:id/messages)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('mã lỗi VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));",
+                  "pm.test('errors có trường limit', () => pm.expect(pm.response.json().errors.map((e) => e.field)).to.include('limit'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/conversations/{{chatConversationId}}/messages?limit=101",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conversations",
+                "{{chatConversationId}}",
+                "messages"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "101"
+                }
+              ]
+            },
+            "description": "`limit` từ 1 đến 100.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: beforeSeq=0 (GET /conversations/:id/messages)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('mã lỗi VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));",
+                  "pm.test('errors có trường beforeSeq', () => pm.expect(pm.response.json().errors.map((e) => e.field)).to.include('beforeSeq'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/conversations/{{chatConversationId}}/messages?beforeSeq=0",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conversations",
+                "{{chatConversationId}}",
+                "messages"
+              ],
+              "query": [
+                {
+                  "key": "beforeSeq",
+                  "value": "0"
+                }
+              ]
+            },
+            "description": "`beforeSeq` từ 1; `afterSeq` từ 0.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Chi tiết cuộc trò chuyện của người tìm trọ (GET /conversations/:id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "const c = pm.response.json();",
+                  "pm.test('đúng tám khóa, myRole tenant, lastMessage seq 4 của mình', () => { pm.expect(Object.keys(c).sort()).to.eql(['createdAt', 'id', 'lastMessage', 'lastMessageAt', 'listing', 'myRole', 'otherUser', 'unreadCount']); pm.expect(c.id).to.eql(pm.collectionVariables.get('chatConversationId')); pm.expect(c.myRole).to.eql('tenant'); pm.expect(c.lastMessage.seq).to.eql(4); pm.expect(c.lastMessage.isMine).to.eql(true); });",
+                  "pm.test('unreadCount 0: người nhắn là người gửi tin cuối nên không có tin chưa đọc', () => pm.expect(c.unreadCount).to.eql(0));",
+                  "pm.test('listing có slug, mã, giá và đang công khai', () => { pm.expect(c.listing.slug).to.eql('phong-thu-chat-a'); pm.expect(c.listing.price).to.eql(3000000); pm.expect(c.listing.isPublic).to.eql(true); });",
+                  "pm.test('Cache-Control là private, no-store', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('private, no-store'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/conversations/{{chatConversationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conversations",
+                "{{chatConversationId}}"
+              ]
+            },
+            "description": "Đúng một phần tử cuộc trò chuyện, cùng dạng với hộp thư.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Chi tiết cuộc trò chuyện nhìn từ chủ trọ (GET /conversations/:id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('myRole landlord, tin cuối không phải của mình, otherUser là người nhắn', () => { const c = pm.response.json(); pm.expect(c.myRole).to.eql('landlord'); pm.expect(c.lastMessage.isMine).to.eql(false); pm.expect(c.otherUser.id).to.not.eql(pm.collectionVariables.get('chatLandlordId')); });",
+                  "pm.test('unreadCount 1: chủ trọ gửi seq 3, người nhắn gửi seq 4 sau đó', () => pm.expect(pm.response.json().unreadCount).to.eql(1));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/conversations/{{chatConversationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conversations",
+                "{{chatConversationId}}"
+              ]
+            },
+            "description": "Cùng cuộc trò chuyện nhưng `myRole` là `landlord`, `isMine` đảo lại và `otherUser` là người tìm trọ.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Hộp thư của người tìm trọ: cuộc trò chuyện có tin mới nhất nằm trên (GET /me/conversations)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('có page, pageSize, total', () => { pm.expect(b.page).to.eql(1); pm.expect(b.pageSize).to.eql(20); pm.expect(b.total).to.be.at.least(2); });",
+                  "pm.test('mọi phần tử có unreadCount là số nguyên không âm', () => pm.expect(b.items.every((i) => Number.isInteger(i.unreadCount) && i.unreadCount >= 0)).to.eql(true));",
+                  "pm.test('cuộc trò chuyện A (tin cuối mới hơn) đứng trước B', () => { const ids = b.items.map((i) => i.id); pm.expect(ids.indexOf(pm.collectionVariables.get('chatConversationId'))).to.be.at.least(0); pm.expect(ids.indexOf(pm.collectionVariables.get('chatConversationId'))).to.be.below(ids.indexOf(pm.collectionVariables.get('chatConversationId2'))); });",
+                  "pm.test('Cache-Control là private, no-store', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('private, no-store'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me/conversations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "conversations"
+              ]
+            },
+            "description": "Các cuộc trò chuyện mà người gọi là người nhắn hoặc chủ trọ, `last_message_at` giảm dần. Tin B mở sau nhưng cuộc trò chuyện A có tin mới hơn nên A nằm trên.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Hộp thư: lọc theo một tin bằng listingId (GET /me/conversations)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('đúng một cuộc trò chuyện về tin A', () => { const b = pm.response.json(); pm.expect(b.total).to.eql(1); pm.expect(b.items[0].id).to.eql(pm.collectionVariables.get('chatConversationId')); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me/conversations?listingId={{chatListingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "conversations"
+              ],
+              "query": [
+                {
+                  "key": "listingId",
+                  "value": "{{chatListingId}}"
+                }
+              ]
+            },
+            "description": "Dùng để biết người đó đã có cuộc trò chuyện với tin đang xem chưa.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Hộp thư: phân trang pageSize=1 (GET /me/conversations)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('một phần tử, total ít nhất 2', () => { const b = pm.response.json(); pm.expect(b.items.length).to.eql(1); pm.expect(b.pageSize).to.eql(1); pm.expect(b.total).to.be.at.least(2); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me/conversations?page=1&pageSize=1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "conversations"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "Một phần tử mỗi trang, `total` vẫn là tổng.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Hộp thư của chủ trọ thấy cuộc trò chuyện của mình (GET /me/conversations)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('có cuộc trò chuyện A với myRole landlord', () => { const b = pm.response.json(); pm.expect(b.total).to.eql(1); pm.expect(b.items[0].id).to.eql(pm.collectionVariables.get('chatConversationId')); pm.expect(b.items[0].myRole).to.eql('landlord'); });",
+                  "pm.test('phần tử có unreadCount 1 (tin seq 4 của người nhắn)', () => pm.expect(pm.response.json().items[0].unreadCount).to.eql(1));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me/conversations?listingId={{chatListingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "conversations"
+              ],
+              "query": [
+                {
+                  "key": "listingId",
+                  "value": "{{chatListingId}}"
+                }
+              ]
+            },
+            "description": "Chủ trọ thấy người hỏi tin của mình, `myRole` là `landlord`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: hộp thư với listingId không phải UUID (GET /me/conversations)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('mã lỗi VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));",
+                  "pm.test('errors có trường listingId', () => pm.expect(pm.response.json().errors.map((e) => e.field)).to.include('listingId'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me/conversations?listingId=abc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "conversations"
+              ],
+              "query": [
+                {
+                  "key": "listingId",
+                  "value": "abc"
+                }
+              ]
+            },
+            "description": "400 `VALIDATION_FAILED`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: admin đọc hộp thư (GET /me/conversations)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 403', () => pm.response.to.have.status(403));",
+                  "pm.test('mã lỗi PERMISSION_DENIED', () => pm.expect(pm.response.json().code).to.eql('PERMISSION_DENIED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me/conversations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "conversations"
+              ]
+            },
+            "description": "Admin không dùng chat: 403 `PERMISSION_DENIED`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[ghi] Chủ trọ ẩn tin A (POST /listings/:id/hide)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{chatListingId}}/hide",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{chatListingId}}",
+                "hide"
+              ]
+            },
+            "description": "Để thấy cuộc trò chuyện sống tiếp khi tin biến khỏi công khai.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Tin đã ẩn: cuộc trò chuyện vẫn đọc được, isPublic false, ảnh bìa null (GET /conversations/:id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('isPublic false, coverImageUrl null, tiêu đề còn', () => { const l = pm.response.json().listing; pm.expect(l.isPublic).to.eql(false); pm.expect(l.coverImageUrl).to.eql(null); pm.expect(l.title).to.eql('Phòng thử chat A'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/conversations/{{chatConversationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conversations",
+                "{{chatConversationId}}"
+              ]
+            },
+            "description": "`listing.isPublic` đúng bằng việc khách mở được tin ở `GET /listings/:slugCode` ngay lúc đọc. Tin vẫn giữ tiêu đề, mã và giá; ảnh bìa là `null` vì `/media/public` không phát ảnh của tin đang ẩn.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: tin đã ẩn thì không mở lại được qua route mở (POST /listings/:id/conversations)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 404', () => pm.response.to.have.status(404));",
+                  "pm.test('mã lỗi LISTING_NOT_FOUND', () => pm.expect(pm.response.json().code).to.eql('LISTING_NOT_FOUND'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{chatListingId}}/conversations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{chatListingId}}",
+                "conversations"
+              ]
+            },
+            "description": "Chỉ việc mở cuộc trò chuyện cần tin đang hiện công khai: 404 `LISTING_NOT_FOUND`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Chào\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "[ghi] Tin đã ẩn: người tìm trọ vẫn nhắn được (POST /conversations/:id/messages)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "pm.test('seq 5', () => pm.expect(pm.response.json().seq).to.eql(5));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/conversations/{{chatConversationId}}/messages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conversations",
+                "{{chatConversationId}}",
+                "messages"
+              ]
+            },
+            "description": "Cuộc trò chuyện sống tiếp khi tin đổi (miễn tài khoản hai bên còn hoạt động).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Tin ẩn rồi mà vẫn nhắn được\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "[ghi] Chủ trọ hiện lại tin A (POST /listings/:id/show)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{chatListingId}}/show",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{chatListingId}}",
+                "show"
+              ]
+            },
+            "description": "Hiện lại thì `isPublic` về `true` và ảnh bìa trở lại.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Tin hiện lại: isPublic true (GET /conversations/:id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('isPublic true, có ảnh bìa', () => { const l = pm.response.json().listing; pm.expect(l.isPublic).to.eql(true); pm.expect(l.coverImageUrl).to.be.a('string'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/conversations/{{chatConversationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conversations",
+                "{{chatConversationId}}"
+              ]
+            },
+            "description": "Cờ tính lúc đọc, không lưu sẵn.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[ghi] Admin khóa chủ trọ (POST /users/:id/lock)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{chatLandlordId}}/lock",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{chatLandlordId}}",
+                "lock"
+              ]
+            },
+            "description": "Khóa chủ trọ `userToken`. Token của họ vẫn còn hạn nên các request sau dùng được. **Nếu chạy dở, chạy riêng request \"Admin mở khóa chủ trọ\" ở cuối.**",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Kiểm thử chat\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: gửi cho chủ trọ đang bị khóa (POST /conversations/:id/messages)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 409', () => pm.response.to.have.status(409));",
+                  "pm.test('mã lỗi CHAT_PEER_UNAVAILABLE', () => pm.expect(pm.response.json().code).to.eql('CHAT_PEER_UNAVAILABLE'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/conversations/{{chatConversationId}}/messages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conversations",
+                "{{chatConversationId}}",
+                "messages"
+              ]
+            },
+            "description": "Người bên kia không nhận được: 409 `CHAT_PEER_UNAVAILABLE`, không ghi gì.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Gửi cho chủ trọ bị khóa\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Người bên kia bị khóa: vẫn đọc được lịch sử (GET /conversations/:id/messages)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('còn đủ 5 tin', () => pm.expect(pm.response.json().lastSeq).to.eql(5));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/conversations/{{chatConversationId}}/messages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conversations",
+                "{{chatConversationId}}",
+                "messages"
+              ]
+            },
+            "description": "Đọc lịch sử, hộp thư và chi tiết vẫn chạy.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: chính chủ trọ bị khóa gửi tin (POST /conversations/:id/messages)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 403', () => pm.response.to.have.status(403));",
+                  "pm.test('mã lỗi ACCOUNT_LOCKED', () => pm.expect(pm.response.json().code).to.eql('ACCOUNT_LOCKED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/conversations/{{chatConversationId}}/messages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conversations",
+                "{{chatConversationId}}",
+                "messages"
+              ]
+            },
+            "description": "Hai API gửi đọc lại tài khoản từ database: tài khoản vừa bị khóa nhận 403 `ACCOUNT_LOCKED` ngay dù token còn hạn.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Tôi đang bị khóa\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "[ghi] Admin mở khóa chủ trọ (POST /users/:id/unlock)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{chatLandlordId}}/unlock",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{chatLandlordId}}",
+                "unlock"
+              ]
+            },
+            "description": "Mở khóa thì gửi lại được.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Kiểm thử chat xong\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "[ghi] Mở khóa xong: người tìm trọ gửi lại được (POST /conversations/:id/messages)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "pm.test('seq 6', () => pm.expect(pm.response.json().seq).to.eql(6));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/conversations/{{chatConversationId}}/messages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conversations",
+                "{{chatConversationId}}",
+                "messages"
+              ]
+            },
+            "description": "Cuộc trò chuyện còn nguyên.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Mở khóa rồi, gửi lại được\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Cái chuông của chủ trọ: trước khi đọc (GET /me/conversations/unread-count)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('đúng hai khóa unreadConversations, unreadMessages', () => pm.expect(Object.keys(pm.response.json()).sort()).to.eql(['unreadConversations', 'unreadMessages']));",
+                  "const b = pm.response.json();",
+                  "pm.test('cả hai là số nguyên; ít nhất 2 cuộc (A và B) và 4 tin (3 của A, 1 của B)', () => { pm.expect(Number.isInteger(b.unreadConversations)).to.eql(true); pm.expect(Number.isInteger(b.unreadMessages)).to.eql(true); pm.expect(b.unreadConversations).to.be.at.least(2); pm.expect(b.unreadMessages).to.be.at.least(4); });",
+                  "pm.test('Cache-Control là private, no-store', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('private, no-store'));",
+                  "pm.collectionVariables.set('chatBellConversations', b.unreadConversations);",
+                  "pm.collectionVariables.set('chatBellMessages', b.unreadMessages);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me/conversations/unread-count",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "conversations",
+                "unread-count"
+              ]
+            },
+            "description": "Cần quyền `conversation:read`. Trả số cuộc trò chuyện còn tin chưa đọc và tổng số tin chưa đọc, cộng cả hai vai của người gọi. Giới hạn 120 lần mỗi phút theo người dùng, đếm riêng với các API đọc khác. Lưu hai số để so ở request sau.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Chủ trọ còn 3 tin chưa đọc ở cuộc A (GET /conversations/:id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('unreadCount 3', () => pm.expect(pm.response.json().unreadCount).to.eql(3));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/conversations/{{chatConversationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conversations",
+                "{{chatConversationId}}"
+              ]
+            },
+            "description": "`unreadCount` bằng số tin của bên kia sau mốc đã đọc của mình (seq 4, 5, 6). Các `GET` không đổi mốc.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[ghi] Chủ trọ đánh dấu đã đọc tới seq 5 (POST /conversations/:id/read)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "const c = pm.response.json();",
+                  "pm.test('đúng phần tử cuộc trò chuyện A, myRole landlord, unreadCount 1', () => { pm.expect(c.id).to.eql(pm.collectionVariables.get('chatConversationId')); pm.expect(c.myRole).to.eql('landlord'); pm.expect(c.unreadCount).to.eql(1); });",
+                  "pm.test('đúng tám khóa, không lộ mốc đã đọc', () => { pm.expect(Object.keys(c).sort()).to.eql(['createdAt', 'id', 'lastMessage', 'lastMessageAt', 'listing', 'myRole', 'otherUser', 'unreadCount']); pm.expect(pm.response.text()).to.not.match(/read_?seq/i); });",
+                  "pm.test('Cache-Control là private, no-store', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('private, no-store'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/conversations/{{chatConversationId}}/read",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conversations",
+                "{{chatConversationId}}",
+                "read"
+              ]
+            },
+            "description": "Cần quyền `conversation:update`. Trả **200** (không phải 201) một phần tử cuộc trò chuyện với `unreadCount` mới. Mốc mới là `GREATEST(mốc cũ, LEAST(upToSeq, số tin hiện có))`: tin seq 6 vẫn chưa đọc. Giới hạn 120 lần mỗi phút theo người dùng.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"upToSeq\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "[ghi] Gọi lặp cùng giá trị: an toàn (POST /conversations/:id/read)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('unreadCount vẫn 1', () => pm.expect(pm.response.json().unreadCount).to.eql(1));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/conversations/{{chatConversationId}}/read",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conversations",
+                "{{chatConversationId}}",
+                "read"
+              ]
+            },
+            "description": "Gọi lặp không đổi gì: vẫn 200, `unreadCount` vẫn 1.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"upToSeq\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "[ghi] upToSeq nhỏ hơn mốc cũ: mốc không lùi (POST /conversations/:id/read)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('unreadCount vẫn 1, không tăng lại', () => pm.expect(pm.response.json().unreadCount).to.eql(1));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/conversations/{{chatConversationId}}/read",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conversations",
+                "{{chatConversationId}}",
+                "read"
+              ]
+            },
+            "description": "Số nhỏ hơn mốc cũ không phải lỗi và không kéo mốc lùi: `unreadCount` vẫn 1, không quay lại 4.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"upToSeq\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "[ghi] upToSeq lớn hơn số tin: kẹp về tin cuối (POST /conversations/:id/read)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('unreadCount 0', () => pm.expect(pm.response.json().unreadCount).to.eql(0));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/conversations/{{chatConversationId}}/read",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conversations",
+                "{{chatConversationId}}",
+                "read"
+              ]
+            },
+            "description": "Số lớn hơn số tin không phải lỗi: mốc bị kẹp về tin cuối (seq 6), nên không bao giờ vượt `last_seq`. `unreadCount` về 0.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"upToSeq\": 2147483647\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Cái chuông của chủ trọ: sau khi đọc cuộc A (GET /me/conversations/unread-count)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('giảm đúng 1 cuộc và 3 tin', () => { pm.expect(b.unreadConversations).to.eql(Number(pm.collectionVariables.get('chatBellConversations')) - 1); pm.expect(b.unreadMessages).to.eql(Number(pm.collectionVariables.get('chatBellMessages')) - 3); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me/conversations/unread-count",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "conversations",
+                "unread-count"
+              ]
+            },
+            "description": "Giảm đúng 1 cuộc trò chuyện và 3 tin so với lần lấy trước (cuộc B vẫn còn 1 tin chưa đọc).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[ghi] Người tìm trọ đánh dấu đã đọc cuộc A (POST /conversations/:id/read)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('myRole tenant, unreadCount 0', () => { const c = pm.response.json(); pm.expect(c.myRole).to.eql('tenant'); pm.expect(c.unreadCount).to.eql(0); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/conversations/{{chatConversationId}}/read",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conversations",
+                "{{chatConversationId}}",
+                "read"
+              ]
+            },
+            "description": "Mỗi bên có mốc riêng: người tìm trọ đã gửi seq 6 nên mốc của họ đã ở 6, `unreadCount` 0. Việc này không đụng mốc của chủ trọ.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"upToSeq\": 6\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Cái chuông của người tìm trọ (GET /me/conversations/unread-count)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('đúng hai khóa unreadConversations, unreadMessages', () => pm.expect(Object.keys(pm.response.json()).sort()).to.eql(['unreadConversations', 'unreadMessages']));",
+                  "pm.test('hai số nguyên không âm', () => { const b = pm.response.json(); pm.expect(Number.isInteger(b.unreadConversations) && b.unreadConversations >= 0).to.eql(true); pm.expect(Number.isInteger(b.unreadMessages) && b.unreadMessages >= 0).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me/conversations/unread-count",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "conversations",
+                "unread-count"
+              ]
+            },
+            "description": "Mỗi người có chuông riêng, chỉ đếm tin của bên kia.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[ghi] Chủ trọ đọc nốt cuộc B (POST /conversations/:id/read)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('đúng cuộc B, unreadCount 0', () => { const c = pm.response.json(); pm.expect(c.id).to.eql(pm.collectionVariables.get('chatConversationId2')); pm.expect(c.unreadCount).to.eql(0); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/conversations/{{chatConversationId2}}/read",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conversations",
+                "{{chatConversationId2}}",
+                "read"
+              ]
+            },
+            "description": "Dọn dấu chưa đọc của cuộc B để chạy lại folder không để lại tin chưa đọc.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"upToSeq\": 2147483647\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: khách đánh dấu đã đọc (POST /conversations/:id/read)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 401', () => pm.response.to.have.status(401));",
+                  "pm.test('mã lỗi TOKEN_MISSING', () => pm.expect(pm.response.json().code).to.eql('TOKEN_MISSING'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/conversations/{{chatConversationId}}/read",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conversations",
+                "{{chatConversationId}}",
+                "read"
+              ]
+            },
+            "description": "401 `TOKEN_MISSING`.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"upToSeq\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: khách xem cái chuông (GET /me/conversations/unread-count)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 401', () => pm.response.to.have.status(401));",
+                  "pm.test('mã lỗi TOKEN_MISSING', () => pm.expect(pm.response.json().code).to.eql('TOKEN_MISSING'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me/conversations/unread-count",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "conversations",
+                "unread-count"
+              ]
+            },
+            "description": "401 `TOKEN_MISSING`.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: admin đánh dấu đã đọc (POST /conversations/:id/read)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 403', () => pm.response.to.have.status(403));",
+                  "pm.test('mã lỗi PERMISSION_DENIED', () => pm.expect(pm.response.json().code).to.eql('PERMISSION_DENIED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/conversations/{{chatConversationId}}/read",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conversations",
+                "{{chatConversationId}}",
+                "read"
+              ]
+            },
+            "description": "Admin giữ `conversation:update` nhưng Service chặn: 403 `PERMISSION_DENIED`, không ghi dòng nào.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"upToSeq\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: admin xem cái chuông (GET /me/conversations/unread-count)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 403', () => pm.response.to.have.status(403));",
+                  "pm.test('mã lỗi PERMISSION_DENIED', () => pm.expect(pm.response.json().code).to.eql('PERMISSION_DENIED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me/conversations/unread-count",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "conversations",
+                "unread-count"
+              ]
+            },
+            "description": "403 `PERMISSION_DENIED`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: người ngoài đánh dấu đã đọc (POST /conversations/:id/read)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 404', () => pm.response.to.have.status(404));",
+                  "pm.test('mã lỗi CONVERSATION_NOT_FOUND', () => pm.expect(pm.response.json().code).to.eql('CONVERSATION_NOT_FOUND'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/conversations/{{chatConversationId}}/read",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conversations",
+                "{{chatConversationId}}",
+                "read"
+              ]
+            },
+            "description": "Người không phải một trong hai bên: 404 `CONVERSATION_NOT_FOUND`, không phân biệt được với id không có.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{otherLandlordToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"upToSeq\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: id không phải UUID (POST /conversations/:id/read)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('mã lỗi INVALID_ID', () => pm.expect(pm.response.json().code).to.eql('INVALID_ID'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/conversations/abc/read",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conversations",
+                "abc",
+                "read"
+              ]
+            },
+            "description": "400 `INVALID_ID`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"upToSeq\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: thiếu upToSeq (POST /conversations/:id/read)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('mã lỗi VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));",
+                  "pm.test('errors có trường upToSeq', () => pm.expect(pm.response.json().errors.map((e) => e.field)).to.include('upToSeq'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/conversations/{{chatConversationId}}/read",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conversations",
+                "{{chatConversationId}}",
+                "read"
+              ]
+            },
+            "description": "400 `VALIDATION_FAILED`, `errors[].field` là `upToSeq`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: upToSeq âm (POST /conversations/:id/read)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('mã lỗi VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));",
+                  "pm.test('errors có trường upToSeq', () => pm.expect(pm.response.json().errors.map((e) => e.field)).to.include('upToSeq'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/conversations/{{chatConversationId}}/read",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conversations",
+                "{{chatConversationId}}",
+                "read"
+              ]
+            },
+            "description": "Từ 0 trở lên. 400 `VALIDATION_FAILED`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"upToSeq\": -1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: upToSeq là chuỗi (POST /conversations/:id/read)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('mã lỗi VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));",
+                  "pm.test('errors có trường upToSeq', () => pm.expect(pm.response.json().errors.map((e) => e.field)).to.include('upToSeq'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/conversations/{{chatConversationId}}/read",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conversations",
+                "{{chatConversationId}}",
+                "read"
+              ]
+            },
+            "description": "Body không tự đổi kiểu: chuỗi `\"3\"` cũng là 400 `VALIDATION_FAILED`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"upToSeq\": \"3\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Dọn: xóa mềm tin A (DELETE /listings/:id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{chatListingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{chatListingId}}"
+              ]
+            },
+            "description": "Cuộc trò chuyện giữ nguyên (khóa ngoại RESTRICT, chỉ xóa mềm); tin biến khỏi công khai.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Dọn: xóa mềm tin B (DELETE /listings/:id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{chatListingId2}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{chatListingId2}}"
+              ]
+            },
+            "description": "Như trên.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Dọn: xóa nhà trọ (DELETE /properties/:id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/properties/{{chatPropertyId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "{{chatPropertyId}}"
+              ]
+            },
+            "description": "Nhà trọ hết tin chưa xóa nên xóa được.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Dọn: trả hạn mức dùng thử về 2 (PATCH /settings/trial_listing_limit)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('hạn mức dùng thử là 2', () => pm.expect(pm.response.json().value).to.eql(2));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/settings/trial_listing_limit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "settings",
+                "trial_listing_limit"
+              ]
+            },
+            "description": "Trả tham số về mặc định. Nếu chạy dở, chạy riêng request này.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           }
         }

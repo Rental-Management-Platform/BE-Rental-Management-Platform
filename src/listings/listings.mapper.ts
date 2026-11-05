@@ -35,7 +35,7 @@ function toDateOnly(value: Date | null): string | null {
 }
 
 /** `url` của ảnh là đường dẫn tương đối đến route phục vụ ảnh; `storage_key` có dạng `public/<uuid>.<đuôi>`. */
-function toImageUrl(storageKey: string): string {
+export function toImageUrl(storageKey: string): string {
 	return `/api/v1/media/${storageKey}`;
 }
 
