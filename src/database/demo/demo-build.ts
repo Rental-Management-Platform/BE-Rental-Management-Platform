@@ -19,6 +19,12 @@ import type {
 } from './demo-data';
 import { createRng, seedOf } from './demo-images';
 import type { Scene } from './demo-images';
+import {
+	DEMO_CHAT_ASKS,
+	DEMO_CHAT_REPLIES,
+	DEMO_CHATS,
+	DEMO_REVIEWS,
+} from './demo-reviews';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const MINUTE_MS = 60 * 1000;
@@ -77,6 +83,10 @@ export interface DemoRows {
 	readonly moderationLogs: Prisma.ModerationLogCreateManyInput[];
 	readonly follows: Prisma.FollowCreateManyInput[];
 	readonly favorites: Prisma.FavoriteCreateManyInput[];
+	/** Cuộc trò chuyện mẫu: bằng chứng chat của từng đánh giá (spec 0014 AC-4) và các cảnh `DEMO_CHATS`. */
+	readonly conversations: Prisma.ConversationCreateManyInput[];
+	readonly messages: Prisma.MessageCreateManyInput[];
+	readonly reviews: Prisma.ReviewCreateManyInput[];
 }
 
 export function demoEmail(emailName: string): string {
@@ -187,6 +197,9 @@ export function buildDemoRows(
 		moderationLogs: [],
 		follows: [],
 		favorites: [],
+		conversations: [],
+		messages: [],
+		reviews: [],
 	};
 
 	const usedCodes = new Set<string>();
@@ -560,6 +573,165 @@ export function buildDemoRows(
 				),
 			});
 		}
+	}
+
+	// ----- cuộc trò chuyện và đánh giá chủ trọ (spec 0013 và 0014) -----
+	// Dựng SAU theo dõi và lưu yêu thích để không đổi các số ngẫu nhiên của hai phần đó. Cuộc trò chuyện mở trên tin
+	// đăng sớm nhất của chủ trọ, vì tin đó tồn tại lâu nhất nên đủ chỗ cho cuộc trò chuyện xảy ra sau nó.
+	const landlordOfProperty = new Map(
+		DEMO_PROPERTIES.map((property) => [property.key, property.landlord]),
+	);
+	const oldestListing = new Map<string, number>();
+	listingProperty.forEach((propertyKey, index) => {
+		const landlordKey = landlordOfProperty.get(propertyKey) as string;
+		const current = oldestListing.get(landlordKey);
+		if (
+			current === undefined ||
+			listingCreated[index].getTime() < listingCreated[current].getTime()
+		) {
+			oldestListing.set(landlordKey, index);
+		}
+	});
+	const pick = (list: readonly string[]): string =>
+		list[Math.floor(rng() * list.length)];
+
+	/**
+	 * Mở một cuộc trò chuyện giữa người tìm trọ và chủ trọ: tin của người tìm trọ, và tin trả lời của chủ trọ nếu
+	 * `replied`. Giờ nhắn không sớm hơn lúc các bên và tin đã tồn tại. Trả giờ của tin cuối.
+	 */
+	const startChat = (
+		tenantKey: string,
+		landlordKey: string,
+		wantedAt: Date,
+		replied: boolean,
+		tenantRead: boolean,
+	): Date => {
+		const tenantId = tenantIds.get(tenantKey);
+		const landlordId = landlordIds.get(landlordKey);
+		const listingIndex = oldestListing.get(landlordKey);
+		if (
+			tenantId === undefined ||
+			landlordId === undefined ||
+			listingIndex === undefined
+		) {
+			throw new Error(
+				`Cuộc trò chuyện ${tenantKey} và ${landlordKey}: thiếu tài khoản hoặc chủ trọ chưa có tin nào.`,
+			);
+		}
+		const floor = latest(
+			tenantCreated.get(tenantKey) as Date,
+			landlordCreated.get(landlordKey) as Date,
+			listingCreated[listingIndex],
+		);
+		const askAt = latest(
+			wantedAt,
+			new Date(floor.getTime() + 60 * MINUTE_MS),
+		);
+		const replyAt = new Date(
+			askAt.getTime() + (5 + Math.floor(rng() * 115)) * MINUTE_MS,
+		);
+		const lastAt = replied ? replyAt : askAt;
+		if (lastAt.getTime() >= now.getTime()) {
+			throw new Error(
+				`Cuộc trò chuyện ${tenantKey} và ${landlordKey}: tài khoản hoặc tin quá mới so với thời điểm chạy.`,
+			);
+		}
+		const id = randomUUID();
+		rows.conversations.push({
+			id,
+			listingId: listingIds[listingIndex],
+			tenantId,
+			landlordId,
+			lastSeq: replied ? 2 : 1,
+			tenantReadSeq: replied && !tenantRead ? 1 : replied ? 2 : 1,
+			landlordReadSeq: replied ? 2 : 0,
+			lastMessageAt: lastAt,
+			createdAt: askAt,
+		});
+		rows.messages.push({
+			id: randomUUID(),
+			conversationId: id,
+			seq: 1,
+			senderId: tenantId,
+			body: pick(DEMO_CHAT_ASKS),
+			createdAt: askAt,
+		});
+		if (replied) {
+			rows.messages.push({
+				id: randomUUID(),
+				conversationId: id,
+				seq: 2,
+				senderId: landlordId,
+				body: pick(DEMO_CHAT_REPLIES),
+				createdAt: replyAt,
+			});
+		}
+		return lastAt;
+	};
+
+	for (const review of DEMO_REVIEWS) {
+		const authorId = tenantIds.get(review.tenant) as string;
+		const landlordId = landlordIds.get(review.landlord) as string;
+		const wanted = at(review.daysAgo);
+		// Bằng chứng chat: chủ trọ đã trả lời một đến ba ngày trước lúc viết.
+		const chatAt = new Date(
+			wanted.getTime() - Math.floor((1 + rng() * 2) * DAY_MS),
+		);
+		const repliedAt = startChat(
+			review.tenant,
+			review.landlord,
+			chatAt,
+			true,
+			true,
+		);
+		const hour = 60 * MINUTE_MS;
+		const createdAt = latest(wanted, new Date(repliedAt.getTime() + hour));
+		if (createdAt.getTime() >= now.getTime()) {
+			throw new Error(
+				`Đánh giá ${review.tenant} về ${review.landlord}: tài khoản hoặc tin quá mới so với thời điểm chạy.`,
+			);
+		}
+		const id = randomUUID();
+		const updatedAt =
+			review.editedDaysAgo === undefined
+				? createdAt
+				: latest(
+						at(review.editedDaysAgo),
+						new Date(createdAt.getTime() + hour),
+					);
+		rows.reviews.push({
+			id,
+			landlordId,
+			authorId,
+			stars: review.stars,
+			comment: review.comment,
+			status: review.hidden === undefined ? 'visible' : 'hidden_by_admin',
+			createdAt,
+			updatedAt,
+		});
+		if (review.hidden !== undefined) {
+			rows.moderationLogs.push({
+				actorId: input.adminId,
+				targetType: 'review',
+				targetId: id,
+				action: 'hide_review',
+				reason: review.hidden.reason,
+				createdAt: latest(
+					at(review.hidden.daysAgo),
+					new Date(createdAt.getTime() + hour),
+				),
+			});
+		}
+	}
+
+	for (const chat of DEMO_CHATS) {
+		startChat(
+			chat.tenant,
+			chat.landlord,
+			at(chat.daysAgo),
+			chat.replied,
+			chat.tenantUnread !== true,
+		);
 	}
 
 	return rows;

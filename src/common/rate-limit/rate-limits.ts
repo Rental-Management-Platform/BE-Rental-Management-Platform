@@ -31,6 +31,7 @@ export type RateLimitGroup =
 	| 'conversationStart'
 	| 'messageWrite'
 	| 'chatRead'
+	| 'reviewWrite'
 	| 'publicRead'
 	| 'publicDetail';
 
@@ -85,6 +86,8 @@ export const RATE_LIMITS: Readonly<
 	messageWrite: { user: { limit: 30, ttlMs: MINUTE } },
 	// Con số 120 là đề xuất của spec để FE hỏi lại vài giây một lần: hộp thư, chi tiết, tin nhắn, đếm chưa đọc, đánh dấu đã đọc.
 	chatRead: { user: { limit: 120, ttlMs: MINUTE } },
+	// Spec đánh giá chủ trọ (0014) AC-13, con số bạn duyệt ngày 2026-11-07: viết, sửa, xóa đánh giá. Mỗi route đếm riêng.
+	reviewWrite: { user: { limit: 20, ttlMs: HOUR } },
 	// Danh sách công khai. 300 lần mỗi phút theo IP đủ rộng cho nhiều sinh viên dùng chung một IP ký túc xá.
 	publicRead: { ip: { limit: 300, ttlMs: MINUTE } },
 	// Chi tiết tin công khai. Bộ đếm `user` chỉ chạy khi request có người đăng nhập (xem `hasUser`), để một

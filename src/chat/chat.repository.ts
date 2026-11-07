@@ -329,6 +329,27 @@ export class ChatRepository {
 	}
 
 	/**
+	 * Chủ trọ đã trả lời người tìm trọ này chưa (spec 0014 AC-4, điều kiện được đánh giá): có ít nhất một cuộc trò
+	 * chuyện với `tenant_id` là `tenantId`, `landlord_id` là `landlordId`, về bất kỳ tin đăng nào, trong đó chủ trọ đã
+	 * gửi ít nhất một tin. Tin đăng đang ẩn hay đã xóa mềm không ảnh hưởng, và chat không bao giờ sửa hay xóa nên điều
+	 * kiện không mất đi sau khi đạt. Một truy vấn `LIMIT 1`: các cuộc trò chuyện của người nhắn theo chỉ mục `tenant_id`,
+	 * tin theo tiền tố `conversation_id` của khóa (`conversation_id`, `seq`).
+	 */
+	async hasLandlordReplied(
+		tenantId: string,
+		landlordId: string,
+	): Promise<boolean> {
+		const row = await this.prisma.message.findFirst({
+			where: {
+				senderId: landlordId,
+				conversation: { tenantId, landlordId },
+			},
+			select: { id: true },
+		});
+		return row !== null;
+	}
+
+	/**
 	 * Tin cuối của từng cuộc trò chuyện (`seq` bằng `last_seq`), một truy vấn theo khóa (`conversation_id`, `seq`)
 	 * cho cả trang. Cuộc trò chuyện nào không có tin thì vắng mặt (không xảy ra: mở luôn ghi tin 1).
 	 */

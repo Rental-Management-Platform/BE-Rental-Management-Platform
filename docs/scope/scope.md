@@ -1,6 +1,6 @@
 # Scope: Rental Management Platform (backend)
 
-API backend NestJS và PostgreSQL cho nền tảng quản lý cho thuê. Đã làm xong xử lý lỗi tập trung, báo lỗi nhập liệu, token đăng nhập, phân quyền theo loại tài khoản, quên và đổi mật khẩu (hàng 1 đến 6). Còn lại là giới hạn tần suất (hàng 7) và phần nghiệp vụ của MVP: nhà trọ và tin đăng, dùng thử và hạn mức, mua gói thanh toán thử, theo dõi chủ trọ, lưu phòng (hàng 8 đến 12), cùng một việc dọn danh mục quyền (hàng 13). Phạm vi MVP được chốt lại ngày 2026-10-11: bỏ duyệt tin, bỏ VNPay, hoãn các chức năng phụ (xem mục Deferred). Các phần khác sẽ được thêm khi bạn chạy lại `/scope`.
+API backend NestJS và PostgreSQL cho nền tảng quản lý cho thuê. Đã làm xong: xử lý lỗi tập trung, báo lỗi nhập liệu, token đăng nhập, phân quyền theo loại tài khoản, quên và đổi mật khẩu (hàng 1 đến 6), giới hạn tần suất (hàng 7), phần nghiệp vụ của MVP gồm nhà trọ và tin đăng, dùng thử và hạn mức, mua gói thanh toán thử, theo dõi chủ trọ, lưu phòng (hàng 8 đến 12), dọn danh mục quyền (hàng 13), các phần bổ sung sau đó gồm danh sách người dùng cho admin, hồ sơ cá nhân, tin trên hồ sơ chủ trọ, đơn và doanh thu cho admin, đăng tin kèm ảnh, giới hạn tọa độ nhà trọ, chat giữa người tìm trọ và chủ trọ (hàng 14 đến 20), cùng bộ dữ liệu demo cho FE (hàng 21). Còn lại là đánh giá trọ trên hồ sơ chủ trọ (hàng 22) và đóng gói Docker cùng phát hành (hàng 23). Phạm vi MVP được chốt lại ngày 2026-10-11: bỏ duyệt tin, bỏ VNPay, hoãn các chức năng phụ (xem mục Deferred). Các phần khác sẽ được thêm khi bạn chạy lại `/scope`.
 
 **Mô hình kinh doanh:** mọi tài khoản đăng ký miễn phí và chọn một loại lúc đăng ký: chủ trọ (người đăng bài) hoặc người tìm trọ (gồm sinh viên). Người tìm trọ dùng miễn phí mãi. Chủ trọ đăng tin và tin hiện ngay, không có bước duyệt; admin ẩn tin vi phạm sau khi đăng, khóa và mở khóa tài khoản. Chủ trọ dùng thử khoảng một tháng với hạn mức vài tin đang hiện (mặc định 2); muốn đăng thêm, hoặc hết kỳ mà vẫn muốn tin hiện, thì mua gói theo tháng, nên hạn mức tin chính là chỗ thu tiền. Thanh toán chỉ là thanh toán thử, không có tiền thật. Số người theo dõi và lượt xem tích lũy trên tài khoản chủ trọ để họ ở lại mua gói, thay vì bỏ tài khoản lập cái mới lấy miễn phí. Bản này là MVP để demo, ưu tiên gọn; phạm vi chi tiết và lý do nằm ở `docs/specs/0001-backend-foundation/index.md`, mục Phạm vi MVP.
 
@@ -37,11 +37,14 @@ _Đây là các khuyến nghị để việc làm gọn gàng, không phải yê
 | 18 | Đăng tin kèm ảnh trong một lần gọi | Release 18 | done |
 | 19 | Giới hạn lại tọa độ khi đăng nhà trọ | Release 19 | done |
 | 20 | Chat giữa người tìm trọ và chủ trọ | Release 20 | done |
+| 21 | Dữ liệu demo cho FE | Release 21 | done |
+| 22 | Đánh giá trọ trên hồ sơ chủ trọ | Release 22 | done |
+| 23 | Đóng gói Docker và phát hành | Release 23 | planned |
 
 ## Foundations (đã có)
 
 ### A. Cấu hình và database · existing
-Biến môi trường được kiểm khi khởi động, kết nối PostgreSQL, hai migration (bảng `users`, bảng `auth_sessions`). Việc cần làm một lần: database dev `rental_management` do `postgres` sở hữu, nên chạy bằng tài khoản admin `ALTER DATABASE rental_management OWNER TO rental_app;` rồi `npm run migration:deploy`. code in `src/config/`, `src/database/`, `prisma/`
+Biến môi trường được kiểm khi khởi động, kết nối PostgreSQL, các migration trong `prisma/migrations/` (bắt đầu từ bảng `users` và bảng `auth_sessions`, mỗi tính năng sau đó thêm migration của nó). Việc cần làm một lần: database dev `rental_management` do `postgres` sở hữu, nên chạy bằng tài khoản admin `ALTER DATABASE rental_management OWNER TO rental_app;` rồi `npm run migration:deploy`. code in `src/config/`, `src/database/`, `prisma/`
 
 ### B. Người dùng · existing
 Tạo và tìm người dùng trên bảng `users`. code in `src/users/`
@@ -269,6 +272,32 @@ Hiện người xem tin chỉ thấy tên chủ trọ, muốn hỏi thì phải 
    - [x] Mốc 2: chưa đọc và đánh dấu đã đọc: `unreadCount` ở mọi phần tử cuộc trò chuyện, `GET /me/conversations/unread-count`, `POST /conversations/:id/read` (mốc kẹp bằng `GREATEST` và `LEAST`, trả 200), `EXPLAIN` một lần, bộ Postman folder 25 (79 request) và tài liệu FE (AC-10, AC-11, AC-12); không có migration mới; đã chạy thật trên DB thử 2026-11-05 (219 kiểm tra HTTP và SQL, `unreadCount` đối chiếu bằng cách đếm lại từ dòng thô, gồm đua giữa gửi và đánh dấu, quyền, khóa, tin đổi trạng thái và 429; chín điều khiển âm đều bắt được; 1846 bài unit; Newman 671 request và 1455 assertion hai lượt; `EXPLAIN` một lần đều dưới 1,3 ms ở 5 nghìn cuộc và 50 nghìn tin, không chỉnh)
 Spec [0013](../specs/0013-chat-tenant-landlord/index.md) (13 AC, 2 mốc, đã được bạn Accept ngày 2026-11-05; trạng thái spec đi theo tính năng) · code in `src/chat/`, `src/listings/`, `src/common/`, `prisma/` · tài liệu in `docs/api/`
 
+## Release 21: dữ liệu demo cho FE
+
+### 21. Dữ liệu demo cho FE · done
+Để FE có dữ liệu sẵn mà dựng và xem giao diện, lệnh `npm run seed:demo` tạo tài khoản chủ trọ và người tìm trọ giả, nhà trọ, tin kèm ảnh vẽ sẵn, đơn và gói, lượt theo dõi, tin đã lưu, cùng các kịch bản (còn dùng thử, hết dùng thử, gói hết hạn, vượt hạn mức, bị khóa). Thêm `-- --reset` để xóa dữ liệu demo cũ rồi tạo lại. Hàng này được ghi vào scope ngày 2026-11-07, sau khi đã làm xong, vì lúc build chưa có hàng nào cho nó.
+**Done when:** chạy `npm run seed:demo` trên database đã có `npm run seed` thì có đủ tài khoản và tin demo cho FE; chạy lại thì dừng, trừ khi thêm `--reset`; `--reset` chỉ xóa dữ liệu của tài khoản có email đuôi `@demo.example.com` và các dòng của người thật trỏ vào đó.
+- [x] Build it: `/develop demo seed`
+Code in `src/database/seed-demo.ts`, `src/database/demo/`
+
+## Release 22: đánh giá trọ trên hồ sơ chủ trọ
+
+### 22. Đánh giá trọ trên hồ sơ chủ trọ · done
+Hiện hồ sơ chủ trọ (`GET /landlords/:id`) chỉ có các con số: người theo dõi, tổng lượt xem, số tin đang hiện. Theo câu hỏi của bạn ngày 2026-11-07, người xem muốn thấy cả các bài đánh giá trọ ngay trên hồ sơ, cạnh các tin và nút theo dõi. Chưa có bảng, API hay quyền nào cho việc này. Đã thiết kế đầy đủ ở spec 0014 (14 AC, 2 mốc), bạn Accept ngày 2026-11-07: một bảng `reviews`, mỗi cặp (người viết, chủ trọ) một đánh giá gồm 1 đến 5 sao và nhận xét tùy chọn; chỉ người tìm trọ đã có cuộc trò chuyện mà chủ trọ đã trả lời mới viết được; hồ sơ thêm `ratingAverage` và `reviewCount`, danh sách đánh giá có route riêng `GET /landlords/:id/reviews`; người viết sửa và xóa của mình, admin ẩn và gỡ ẩn kèm lý do; chủ trọ chưa trả lời đánh giá; mọi số tính lúc đọc, không bộ đếm lưu sẵn.
+**Done when:** người đủ điều kiện (người tìm trọ đã nhắn với chủ trọ và được họ trả lời) viết được một đánh giá về trọ của chủ trọ; hồ sơ chủ trọ hiện các đánh giá đó; mỗi người không đánh giá trùng và chủ trọ không tự đánh giá mình; có cách xử lý đánh giá vi phạm (admin ẩn và gỡ ẩn kèm lý do); người chưa đủ điều kiện bị từ chối bằng lỗi rõ ràng.
+- [x] Design it (spec): `/architect landlord reviews`
+- [x] Build it: `/develop landlord reviews`
+   - [x] Mốc 1: viết, sửa, xóa, đọc đánh giá và hai con số trên hồ sơ: bảng `reviews` với ràng buộc và khóa quyền mặc định của `tenant`, sáu mã lỗi, nhóm giới hạn `reviewWrite`, điều kiện chat hai chiều (`ChatRepository.hasLandlordReplied`), năm route `/landlords/:id/review` và `/landlords/:id/reviews`, `ratingAverage` và `reviewCount` ở hồ sơ, bước xóa đánh giá trong `seed:demo --reset`, Postman folder 26 và tài liệu FE (AC-1 đến AC-10, AC-13, AC-14)
+   - [x] Mốc 2: kiểm duyệt của admin: `GET /moderation/reviews` có bộ lọc, ẩn và gỡ ẩn kèm lý do và dòng `moderation_logs`, tài liệu và kiểm cuối (AC-11, AC-12)
+Spec [0014](../specs/0014-landlord-reviews/index.md) (14 AC, 2 mốc, đã được bạn Accept ngày 2026-11-07; trạng thái spec đi theo tính năng) · code in `src/reviews/`, `src/landlords/`, `src/chat/`, `src/moderation/`, `src/common/`, `src/database/`, `prisma/` · tài liệu in `docs/api/`
+
+## Release 23: đóng gói Docker và phát hành
+
+### 23. Đóng gói Docker và phát hành · needs a decision
+Chưa có `Dockerfile`, compose, quy trình CI hay route kiểm tra sức khỏe (`/health`), dù spec nền móng 0001 (con `0006-docker-packaging-and-release.md`) đã mô tả cách đóng gói, và các spec 0007 và 0010 đã ghi việc cần làm khi đóng gói (database locale UTF-8, dữ liệu múi giờ trong image Postgres). Hàng này được thêm ngày 2026-11-07 để kế hoạch khớp thực tế; nó không ảnh hưởng tới các tính năng đã xong.
+**Done when:** dựng được image từ mã nguồn, chạy cùng PostgreSQL bằng một lệnh, áp migration và seed trong container, và biết server còn sống qua route kiểm tra sức khỏe; hai điều kiểm trước khi đóng gói đang nằm ở mục Deferred cũng được kiểm xong.
+- [ ] Design it (spec): `/architect docker packaging and release`
+
 ## Deferred
 Ngoài phạm vi bản này, giữ lại để kế hoạch trung thực.
 - **Dịch lỗi PostgreSQL**: trùng giá trị khi đăng ký đồng thời, khóa ngoại, id sai, mất kết nối thành lỗi dễ hiểu · needs a decision
@@ -278,7 +307,7 @@ Ngoài phạm vi bản này, giữ lại để kế hoạch trung thực.
 - **Kiểm hai điều của spec 0002** trước khi đóng gói: băm mật khẩu chạy được trong image Docker (amd64 và arm64), và cookie `SameSite=Strict` đi đúng giữa hai cổng localhost trên Chrome, Firefox, Safari. Spec còn ghi phương án lùi về `bcrypt`, nhưng gói này đã được gỡ khỏi dự án.
 - **Giao dịch nhiều bước và chạy migration trong container**: làm cùng tính năng cần chúng (hàng 5 khi gán vai trò lúc đăng ký, và spec 0006).
 - **Duyệt tin trước khi hiển thị**: đã bỏ hẳn ngày 2026-10-11, thay bằng admin ẩn tin sau khi đăng (hàng 8). Không làm lại trừ khi bạn đổi ý.
-- **Hoãn khỏi MVP (chốt 2026-10-11)**: xác thực chủ trọ và ảnh giấy tờ, báo cáo tin xấu, liên hệ chủ trọ có giới hạn mỗi ngày, đẩy tin và tin nổi bật, kiểm tra tại chỗ, quảng cáo, thu chi và dashboard doanh thu, thống kê cho chủ trọ, tìm quanh địa điểm mốc, lịch sử giá tin, cổng thanh toán thật (VNPay), hoàn tiền và tặng gói, đổi loại tài khoản. Thêm lại bằng `/scope` khi tới lượt · needs a decision
+- **Hoãn khỏi MVP (chốt 2026-10-11)**: xác thực chủ trọ và ảnh giấy tờ, báo cáo tin xấu, liên hệ chủ trọ có giới hạn mỗi ngày (đã được chat ở hàng 20 thay thế, chỉ còn giới hạn theo giờ), đẩy tin và tin nổi bật, kiểm tra tại chỗ, quảng cáo, thu chi và dashboard doanh thu, thống kê cho chủ trọ, tìm quanh địa điểm mốc, lịch sử giá tin, cổng thanh toán thật (VNPay), hoàn tiền và tặng gói, đổi loại tài khoản. Thêm lại bằng `/scope` khi tới lượt · needs a decision
 - **Hoãn từ spec 0004 (2026-10-19)**: email biên nhận và email nhắc sắp hết gói (cần việc nền), đổi sang gói khác có hiệu lực ngay (cắt gói cũ), mua nhiều kỳ trong một đơn, mô tả và thứ tự do admin đặt cho gói, tự hủy đơn chờ quá hạn; cổng thanh toán thật, hoàn tiền và tặng gói đã nằm ở mục hoãn khỏi MVP phía trên · needs a decision
 - **Hoãn từ spec 0003 (2026-10-16)**: email nhắc sắp hết dùng thử (cần việc nền), admin gia hạn dùng thử cho một chủ trọ cụ thể, API công khai cho FE hiện "dùng thử N ngày, M tin" trước khi đăng ký · needs a decision
 - **Hoãn từ spec 0005 (2026-10-20)**: danh sách "đang theo dõi" của người tìm trọ, danh sách tên người theo dõi cho chủ trọ, thông báo khi chủ trọ đăng tin mới (cần việc nền), số người theo dõi trong chi tiết tin, bảng hồ sơ chủ trọ riêng (tên hiển thị, Zalo), chống tăng ảo số người theo dõi · needs a decision
@@ -290,6 +319,7 @@ Ngoài phạm vi bản này, giữ lại để kế hoạch trung thực.
 - **Hoãn từ spec 0011 (2026-11-02)**: sửa tin kèm ảnh trong một lần (PATCH multipart), đổi thứ tự ảnh hoặc chọn ảnh bìa, nén hoặc đổi kích thước hoặc xóa EXIF của ảnh, khóa chống trùng khi đăng tin, giới hạn số trường chữ trong multipart, dọn tệp mồ côi bằng việc nền · needs a decision
 - **Hoãn từ spec 0012 (2026-11-03)**: kiểm tọa độ theo đường ranh phường chính xác (PostGIS), cho `POST /wards` và `PATCH /wards/:code` nhận hộp phường, dọn tọa độ cũ ngoài vùng, endpoint geocode phía backend · needs a decision
 - **Hoãn từ spec 0013 (2026-11-05)**: thông báo khi có tin mới (email hoặc đẩy trình duyệt, cần việc nền), kênh đẩy thời gian thực (SSE hoặc WebSocket), trạng thái đang gõ và trực tuyến, ảnh và tệp trong tin nhắn, sửa hoặc xóa tin nhắn của mình, báo cáo hoặc chặn một người, góc nhìn kiểm duyệt cho admin kèm nhật ký, chống gửi trùng (`clientMessageId`), ghim hoặc tắt tiếng hoặc lưu trữ cuộc trò chuyện, tìm trong tin nhắn, chính sách giữ và xóa tin nhắn, chủ trọ chủ động mở cuộc trò chuyện, mở cuộc trò chuyện từ hồ sơ chủ trọ khi chưa chọn tin, hạn mức mở cuộc trò chuyện theo ngày lưu trong DB · needs a decision
+- **Hoãn từ spec 0014 (2026-11-07)**: chủ trọ trả lời đánh giá, phân bố số sao, lọc hoặc sắp theo sao, nút báo cáo đánh giá, ảnh trong đánh giá, bình chọn "hữu ích", đánh giá riêng cho từng nhà trọ, chống đánh giá giả (tuổi tài khoản hay số tin nhắn tối thiểu), tìm theo chữ trong nhận xét cho admin, giữ lại nội dung đã xóa, thông báo khi có đánh giá mới hoặc khi bị ẩn (cần việc nền), số đánh giá tối thiểu trước khi hiện điểm, dòng đánh giá mẫu trong `seed:demo` · needs a decision
 
 ## Legend
 

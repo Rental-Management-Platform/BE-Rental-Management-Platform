@@ -84,6 +84,13 @@ export const PERMISSION_CATALOG = {
 		ownerScoped: true,
 		adminActions: [],
 	},
+	// Đánh giá chủ trọ (spec 0014). `review:read` chỉ canh route "đánh giá của tôi" (đọc công khai không cần quyền);
+	// `review:moderate` chỉ admin giữ. Admin giữ `manage` nên qua được guard bốn quyền đầu, Service chặn bốn route của người viết.
+	review: {
+		actions: ['read', 'create', 'update', 'delete', 'moderate'],
+		ownerScoped: true,
+		adminActions: ['moderate'],
+	},
 } as const satisfies Record<string, ModuleDefinition>;
 
 export type PermissionModule = keyof typeof PERMISSION_CATALOG;

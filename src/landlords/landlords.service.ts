@@ -8,6 +8,8 @@ import { FavoritesRepository } from '../favorites/favorites.repository';
 import type { PublicListingSummaryResponse } from '../listings/dto/listing.response';
 import { toPublicSummary } from '../listings/listings.mapper';
 import { ListingsRepository } from '../listings/listings.repository';
+import { averageStars } from '../reviews/reviews.mapper';
+import { ReviewsRepository } from '../reviews/reviews.repository';
 import { SettingsService } from '../settings/settings.service';
 import type { LandlordProfileResponse } from './dto/landlord-profile.response';
 import { toLandlordProfile } from './landlords.mapper';
@@ -21,6 +23,7 @@ export class LandlordsService {
 		private readonly listings: ListingsRepository,
 		private readonly settings: SettingsService,
 		private readonly favorites: FavoritesRepository,
+		private readonly reviews: ReviewsRepository,
 	) {}
 
 	/**
@@ -45,18 +48,33 @@ export class LandlordsService {
 				'trial_listing_limit',
 			),
 		};
-		const [followerCount, totalViewCount, publicListingCount, isFollowing] =
-			await Promise.all([
-				this.repository.countActiveFollowers(landlordId),
-				this.listings.sumViewCountByLandlord(landlordId),
-				this.listings.countPublicByLandlord(landlordId, visibility),
-				viewerId === undefined
-					? Promise.resolve(null)
-					: this.repository.isFollowing(viewerId, landlordId),
-			]);
+		const [
+			followerCount,
+			totalViewCount,
+			publicListingCount,
+			reviewSummary,
+			isFollowing,
+		] = await Promise.all([
+			this.repository.countActiveFollowers(landlordId),
+			this.listings.sumViewCountByLandlord(landlordId),
+			this.listings.countPublicByLandlord(landlordId, visibility),
+			this.reviews.summarize(landlordId),
+			viewerId === undefined
+				? Promise.resolve(null)
+				: this.repository.isFollowing(viewerId, landlordId),
+		]);
 		return toLandlordProfile(
 			landlord,
-			{ followerCount, totalViewCount, publicListingCount },
+			{
+				followerCount,
+				totalViewCount,
+				publicListingCount,
+				reviewCount: reviewSummary.count,
+				ratingAverage: averageStars(
+					reviewSummary.count,
+					reviewSummary.starSum,
+				),
+			},
 			isFollowing,
 		);
 	}

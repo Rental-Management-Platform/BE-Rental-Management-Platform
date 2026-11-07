@@ -218,8 +218,65 @@ describe('permission catalog', () => {
 		});
 	});
 
+	describe('quyền đánh giá (spec 0014)', () => {
+		const writerKeys = [
+			'review:read',
+			'review:create',
+			'review:update',
+			'review:delete',
+		] as const;
+
+		it.each(writerKeys)(
+			'%s là khóa hợp lệ và không chỉ admin giữ',
+			(key) => {
+				expect(isPermissionKey(key)).toBe(true);
+				expect(isAdminOnly(key)).toBe(false);
+			},
+		);
+
+		it('review:moderate là khóa hợp lệ và chỉ admin giữ', () => {
+			expect(isPermissionKey('review:moderate')).toBe(true);
+			expect(isAdminOnly('review:moderate')).toBe(true);
+		});
+
+		it('admin giữ đủ năm khóa vì manage mọi module: Service chặn bốn route của người viết (AC-9)', () => {
+			for (const key of [...writerKeys, 'review:moderate'] as const)
+				expect(ADMIN_PERMISSIONS).toContain(key);
+		});
+
+		it('module review chỉ áp cho tài nguyên của chính người gọi và chỉ có hành động moderate dành cho admin', () => {
+			const review = describeCatalog().find(
+				(entry) => entry.module === 'review',
+			);
+			expect(review?.actions).toEqual([
+				'read',
+				'create',
+				'update',
+				'delete',
+				'moderate',
+			]);
+			expect(review?.ownerScoped).toBe(true);
+			expect(review?.adminActions).toEqual(['moderate']);
+		});
+
+		it('tenant mặc định giữ bốn khóa nhưng không giữ review:moderate; chủ trọ không giữ khóa review nào', () => {
+			const tenant = [...writerKeys] as const;
+			for (const key of writerKeys)
+				expect(hasPermissions(tenant, [key])).toBe(true);
+			expect(hasPermissions(tenant, ['review:moderate'])).toBe(false);
+			expect(hasPermissions([], ['review:create'])).toBe(false);
+		});
+
+		it('manage của review bao hàm cả review:moderate: token cũ mang review:manage chỉ an toàn nhờ @FreshAuth() ở route admin', () => {
+			expect(hasPermissions(['review:manage'], ['review:moderate'])).toBe(
+				true,
+			);
+			expect(isAdminOnly('review:manage')).toBe(true);
+		});
+	});
+
 	describe('phạm vi MVP', () => {
-		it('đúng 14 module của MVP', () => {
+		it('đúng 15 module của MVP', () => {
 			expect(
 				describeCatalog()
 					.map((entry) => entry.module)
@@ -240,6 +297,7 @@ describe('permission catalog', () => {
 					'subscription',
 					'conversation',
 					'message',
+					'review',
 				].sort(),
 			);
 		});

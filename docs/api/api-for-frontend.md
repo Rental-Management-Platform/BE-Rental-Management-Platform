@@ -38,7 +38,7 @@ Phụ lục: [A. Bảng tra nhanh mọi API](#phụ-lục-a-bảng-tra-nhanh-m�
 
 ## 1. Hệ thống làm gì
 
-Nền tảng quản lý và cho thuê nhà trọ. Hiện backend đã có phần **tài khoản và phân quyền**, danh mục địa chỉ và tiện ích, **nhà trọ của chủ trọ** (tạo, xem, sửa, xóa mềm) và **tin đăng** (đăng, sửa, ẩn, hiện, xóa; khách xem danh sách và chi tiết); **bảng giá gói** cùng phần admin quản lý gói (mục 6.26), **đơn mua gói và thanh toán thử** (mục 6.27); **gói đổi hạn mức tin** (mục 6.25); **ảnh của tin** (tải lên, xóa và xem ảnh, mục 6.28); **admin kiểm duyệt tin** (tìm, ẩn, gỡ ẩn kèm lý do, mục 6.29) và **admin quản lý danh mục phường và tiện ích** (mục 6.30); **hồ sơ công khai của chủ trọ** với số người theo dõi, tổng lượt xem và số tin đang hiện (mục 6.31), **theo dõi và bỏ theo dõi chủ trọ** (mục 6.32), **lưu tin yêu thích** của người tìm trọ (mục 6.33), cùng **danh sách người dùng cho admin** để tìm tài khoản cần khóa hay mở khóa (mục 6.34), và **hồ sơ cá nhân** để xem và sửa tên, số điện thoại của chính mình (mục 6.35), cùng **danh sách đơn mua gói của mọi chủ trọ** cho admin để kiểm tra ai đã mua gói nào và cộng tiền đã trả (mục 6.37), và **thống kê doanh thu** theo gói, theo ngày hoặc tháng (mục 6.38).
+Nền tảng quản lý và cho thuê nhà trọ. Hiện backend đã có phần **tài khoản và phân quyền**, danh mục địa chỉ và tiện ích, **nhà trọ của chủ trọ** (tạo, xem, sửa, xóa mềm) và **tin đăng** (đăng, sửa, ẩn, hiện, xóa; khách xem danh sách và chi tiết); **bảng giá gói** cùng phần admin quản lý gói (mục 6.26), **đơn mua gói và thanh toán thử** (mục 6.27); **gói đổi hạn mức tin** (mục 6.25); **ảnh của tin** (tải lên, xóa và xem ảnh, mục 6.28); **admin kiểm duyệt tin** (tìm, ẩn, gỡ ẩn kèm lý do, mục 6.29) và **admin quản lý danh mục phường và tiện ích** (mục 6.30); **hồ sơ công khai của chủ trọ** với số người theo dõi, tổng lượt xem và số tin đang hiện (mục 6.31), **theo dõi và bỏ theo dõi chủ trọ** (mục 6.32), **lưu tin yêu thích** của người tìm trọ (mục 6.33), cùng **danh sách người dùng cho admin** để tìm tài khoản cần khóa hay mở khóa (mục 6.34), và **hồ sơ cá nhân** để xem và sửa tên, số điện thoại của chính mình (mục 6.35), cùng **danh sách đơn mua gói của mọi chủ trọ** cho admin để kiểm tra ai đã mua gói nào và cộng tiền đã trả (mục 6.37), và **thống kê doanh thu** theo gói, theo ngày hoặc tháng (mục 6.38), **chat giữa người tìm trọ và chủ trọ** (mục 6.39) và **đánh giá chủ trọ** trên hồ sơ công khai (mục 6.40).
 
 ### Ba loại tài khoản
 
@@ -76,7 +76,7 @@ Mỗi tài khoản chỉ thuộc **một** loại, chọn lúc đăng ký và **
 | Bảng giá gói (công khai); admin tạo, sửa, tắt, xóa gói | Có (mới, 2026-10-19, mục 6.26) |
 | Tạo đơn mua gói, hủy đơn, thanh toán thử, gia hạn nối tiếp, lịch sử đơn | Có (mới, 2026-10-19, mục 6.27) |
 | Gói đổi hạn mức tin và hiển thị công khai; `state = plan` và `subscription` trong `GET /me/membership` | Có (mới, 2026-10-19, mục 6.25) |
-| Hồ sơ công khai của chủ trọ: số người theo dõi, tổng lượt xem tin, số tin đang hiện (`GET /landlords/:id`) | Có (mới, 2026-10-20, mục 6.31) |
+| Hồ sơ công khai của chủ trọ: số người theo dõi, tổng lượt xem tin, số tin đang hiện, số đánh giá và điểm trung bình (`GET /landlords/:id`) | Có (mới, 2026-10-20, mục 6.31) |
 | Theo dõi và bỏ theo dõi chủ trọ (`POST` và `DELETE /landlords/:id/follow`) | Có (mới, 2026-10-20, mục 6.32) |
 | Lưu tin yêu thích: lưu, bỏ lưu, danh sách đã lưu (`POST` và `DELETE /listings/:id/favorite`, `GET /me/favorites`) | Có (mới, 2026-10-21, mục 6.33) |
 | Cờ `isFavorite` ở danh sách và chi tiết tin công khai | Có (mới, 2026-10-21, mục 6.19, 6.20 và 6.33) |
@@ -86,6 +86,7 @@ Mỗi tài khoản chỉ thuộc **một** loại, chọn lúc đăng ký và **
 | Admin xem đơn mua gói của mọi chủ trọ: lọc theo trạng thái, chủ trọ, gói, ngày tạo, kèm số đơn và tổng tiền đã trả của đúng tập lọc (`GET /orders/all`) | Có (mới, 2026-10-21, mục 6.37) |
 | Admin xem thống kê doanh thu theo ngày trả: tổng, theo gói, theo ngày hoặc tháng giờ Việt Nam (`GET /orders/revenue`) | Có (mới, 2026-10-21, mục 6.38) |
 | Chat giữa người tìm trọ và chủ trọ: mở cuộc trò chuyện từ một tin, gửi tin, đọc tin theo con trỏ `seq`, chi tiết, hộp thư, đếm tin chưa đọc và đánh dấu đã đọc (`POST /listings/:id/conversations`, `POST` và `GET /conversations/:id/messages`, `GET /conversations/:id`, `GET /me/conversations`, `GET /me/conversations/unread-count`, `POST /conversations/:id/read`). Hỏi lại bằng REST, chưa có kênh đẩy | Có (mới, 2026-11-05, mục 6.39) |
+| Đánh giá chủ trọ: người tìm trọ đã được chủ trọ trả lời trong chat viết, sửa, xóa một đánh giá (số sao 1 đến 5, nhận xét tùy chọn); danh sách đánh giá công khai; điểm trung bình và số đánh giá trên hồ sơ chủ trọ; admin tìm, ẩn và gỡ ẩn đánh giá kèm lý do (`GET /landlords/:id/reviews`, `GET`, `POST`, `PATCH`, `DELETE /landlords/:id/review`, `GET /moderation/reviews`, `POST /moderation/reviews/:id/hide` và `/unhide`) | Có (mới, 2026-11-07, mục 6.40) |
 
 ---
 
@@ -125,31 +126,31 @@ Sau `seed`, database mới chỉ có admin và danh mục. Để có người, n
 
 **Đăng nhập**: mọi tài khoản dưới đây dùng chung một mật khẩu, là giá trị `DEMO_SEED_PASSWORD` trong `.env` của backend (hỏi người chạy backend). Email có đuôi `@demo.example.com`. Admin là tài khoản của `seed` (`ADMIN_SEED_EMAIL`), không nằm trong bảng.
 
-**Có gì**: 9 chủ trọ, 10 người tìm trọ, 12 nhà trọ ở TP. Hồ Chí Minh (cả khu Bình Dương và Vũng Tàu cũ), 53 tin kèm hơn 200 ảnh minh họa (37 tin đang hiện công khai), 20 đơn (16 đã trả, tổng 3.084.000 đ trải khoảng sáu tháng), 16 kỳ gói, 16 lượt theo dõi và 42 tin đã lưu.
+**Có gì**: 9 chủ trọ, 10 người tìm trọ, 12 nhà trọ ở TP. Hồ Chí Minh (cả khu Bình Dương và Vũng Tàu cũ), 53 tin kèm hơn 200 ảnh minh họa (37 tin đang hiện công khai), 20 đơn (16 đã trả, tổng 3.084.000 đ trải khoảng sáu tháng), 16 kỳ gói, 16 lượt theo dõi, 42 tin đã lưu, **30 đánh giá chủ trọ** (một bị admin ẩn) và 35 cuộc trò chuyện (30 là bằng chứng chat cho các đánh giá, 5 là cảnh riêng ở các bảng bên dưới). Đánh giá chỉ tồn tại khi chủ trọ đã trả lời trong chat, nên mỗi đánh giá có sẵn cuộc trò chuyện của nó.
 
 #### Chủ trọ (mỗi người dựng một trạng thái FE phải xử lý)
 
 | Email | Tên | Trạng thái và nên dùng để thử |
 |---|---|---|
-| `khoa.tran@demo.example.com` | Trần Minh Khoa | `state` `plan`, gói Chuyên nghiệp (50 tin), **đã gia hạn trước một kỳ** nên `paidUntil` xa hơn `endsAt` của kỳ đang chạy. 3 nhà trọ, 16 tin hiện, 1 tin tự ẩn, 6 người theo dõi, 7 đơn đã trả. Dùng cho: bảng điều khiển chủ trọ đầy đủ, danh sách phân trang, lịch sử đơn, hồ sơ công khai nhiều tin |
-| `nhung.le@demo.example.com` | Lê Thị Hồng Nhung | Gói Nâng cao (15 tin). 10 tin hiện, **1 tin bị admin ẩn kèm `moderationReason`**, 1 tin tự ẩn; có tin giá cao ở Quận 1 (8,5 đến 14,5 triệu). Dùng cho: nhãn "bị admin ẩn", nút hiện tin bị chặn (403 `LISTING_HIDDEN_BY_ADMIN`) |
-| `bao.pham@demo.example.com` | Phạm Quốc Bảo | Gói Cơ bản (5 tin) nhưng có **7 tin hiện**: `overLimitCount` là 2 và hai tin đăng sau cùng có `isPublic` `false` (khách không thấy). Có **một tin không ảnh** (`coverImageUrl` `null`). Dùng cho: cảnh báo vượt hạn mức, ảnh trống |
-| `phat.nguyen@demo.example.com` | Nguyễn Hữu Phát | Gói Cơ bản còn chỗ (`remaining` 1). Có một tin chỉ một ảnh |
-| `tam.vo@demo.example.com` | Võ Thanh Tâm | **Đang dùng thử, còn khoảng 3 ngày**, hạn mức 2 tin đã dùng hết (`remaining` 0). Có **một đơn chờ thanh toán** (gói Nâng cao) và một đơn đã hủy: dùng đơn chờ để thử `POST /orders/:id/pay`, sau đó `state` thành `plan` và đăng được tin thứ ba. Dùng cho: biểu ngữ "sắp hết dùng thử" |
-| `mai.dang@demo.example.com` | Đặng Thị Mai | **Hết dùng thử 25 ngày trước, chưa mua gói** (`state` `expired`, `listingLimit` 0). 3 tin vẫn `visible` nhưng khách không thấy; đăng thêm bị 403 `MEMBERSHIP_REQUIRED`; có đơn chờ thanh toán |
-| `huy.hoang@demo.example.com` | Hoàng Gia Huy | **Gói đã hết hạn khoảng 22 ngày** (`state` `expired`). 4 tin ở Vũng Tàu biến khỏi công khai; có một đơn đã hủy |
-| `lan.bui@demo.example.com` | Bùi Ngọc Lan | **Bị admin khóa** 6 ngày trước (gói Nâng cao vẫn còn hạn): đăng nhập 403 `ACCOUNT_LOCKED`, hồ sơ `GET /landlords/:id` trả 404, tin biến khỏi công khai. Admin mở khóa bằng `POST /users/:id/unlock` (6.11) |
-| `ha.ngo@demo.example.com` | Ngô Thị Thu Hà | **Mới đăng ký 2 ngày trước**: còn khoảng 28 ngày dùng thử, chưa có nhà trọ, tin hay đơn nào. Dùng cho: màn hình trống kiểu "tạo nhà trọ đầu tiên" |
+| `khoa.tran@demo.example.com` | Trần Minh Khoa | `state` `plan`, gói Chuyên nghiệp (50 tin), **đã gia hạn trước một kỳ** nên `paidUntil` xa hơn `endsAt` của kỳ đang chạy. 3 nhà trọ, 16 tin hiện, 1 tin tự ẩn, 6 người theo dõi, 7 đơn đã trả. Dùng cho: bảng điều khiển chủ trọ đầy đủ, danh sách phân trang, lịch sử đơn, hồ sơ công khai nhiều tin. **8 đánh giá hiện công khai, trung bình 4,5**, thêm 1 đánh giá của người viết đang bị khóa (không hiện) |
+| `nhung.le@demo.example.com` | Lê Thị Hồng Nhung | Gói Nâng cao (15 tin). 10 tin hiện, **1 tin bị admin ẩn kèm `moderationReason`**, 1 tin tự ẩn; có tin giá cao ở Quận 1 (8,5 đến 14,5 triệu). Dùng cho: nhãn "bị admin ẩn", nút hiện tin bị chặn (403 `LISTING_HIDDEN_BY_ADMIN`). **7 đánh giá hiện (4,3) và 1 đánh giá bị admin ẩn** (của Quân, kèm lý do): dùng để thử màn hình kiểm duyệt đánh giá |
+| `bao.pham@demo.example.com` | Phạm Quốc Bảo | Gói Cơ bản (5 tin) nhưng có **7 tin hiện**: `overLimitCount` là 2 và hai tin đăng sau cùng có `isPublic` `false` (khách không thấy). Có **một tin không ảnh** (`coverImageUrl` `null`). Dùng cho: cảnh báo vượt hạn mức, ảnh trống. 4 đánh giá, trung bình 3,25 hiện là **3,3** (làm tròn nửa lên); Tuấn đã nhắn Bảo nhưng chưa được trả lời |
+| `phat.nguyen@demo.example.com` | Nguyễn Hữu Phát | Gói Cơ bản còn chỗ (`remaining` 1). Có một tin chỉ một ảnh. 3 đánh giá (4,7). Lan Anh và Việt đã được Phát trả lời trong chat mà chưa đánh giá: dùng để thử viết đánh giá |
+| `tam.vo@demo.example.com` | Võ Thanh Tâm | **Đang dùng thử, còn khoảng 3 ngày**, hạn mức 2 tin đã dùng hết (`remaining` 0). Có **một đơn chờ thanh toán** (gói Nâng cao) và một đơn đã hủy: dùng đơn chờ để thử `POST /orders/:id/pay`, sau đó `state` thành `plan` và đăng được tin thứ ba. Dùng cho: biểu ngữ "sắp hết dùng thử". **Đúng 1 đánh giá** (5,0): dùng để thử hiện "1 đánh giá" |
+| `mai.dang@demo.example.com` | Đặng Thị Mai | **Hết dùng thử 25 ngày trước, chưa mua gói** (`state` `expired`, `listingLimit` 0). 3 tin vẫn `visible` nhưng khách không thấy; đăng thêm bị 403 `MEMBERSHIP_REQUIRED`; có đơn chờ thanh toán; **chưa có đánh giá** (`reviewCount` 0, `ratingAverage` `null`) |
+| `huy.hoang@demo.example.com` | Hoàng Gia Huy | **Gói đã hết hạn khoảng 22 ngày** (`state` `expired`). 4 tin ở Vũng Tàu biến khỏi công khai; có một đơn đã hủy; 2 đánh giá (4,5), hồ sơ vẫn xem được |
+| `lan.bui@demo.example.com` | Bùi Ngọc Lan | **Bị admin khóa** 6 ngày trước (gói Nâng cao vẫn còn hạn): đăng nhập 403 `ACCOUNT_LOCKED`, hồ sơ `GET /landlords/:id` trả 404, tin biến khỏi công khai. Admin mở khóa bằng `POST /users/:id/unlock` (6.11). Còn 3 đánh giá trong bảng nhưng không ai thấy; mở khóa thì hồ sơ có lại 3 đánh giá |
+| `ha.ngo@demo.example.com` | Ngô Thị Thu Hà | **Mới đăng ký 2 ngày trước**: còn khoảng 28 ngày dùng thử, chưa có nhà trọ, tin hay đơn nào. Dùng cho: màn hình trống kiểu "tạo nhà trọ đầu tiên"; chưa có đánh giá |
 
 #### Người tìm trọ
 
 | Email | Tên | Trạng thái và nên dùng để thử |
 |---|---|---|
-| `lananh.nguyen@demo.example.com` | Nguyễn Thị Lan Anh | **Tài khoản nên dùng nhiều nhất.** Đã lưu 12 tin, trong đó có tin của chủ trọ hết dùng thử, hết gói và bị khóa, nên `GET /me/favorites` chỉ trả phần còn công khai (6.33): số tin trả về ít hơn số tin đã lưu. Theo dõi Khoa, Nhung, Bảo |
-| `viet.tran@demo.example.com`, `yen.le@demo.example.com`, `thinh.pham@demo.example.com`, `diep.vo@demo.example.com`, `quan.dang@demo.example.com`, `tuan.bui@demo.example.com` | Trần Quốc Việt, Lê Hoàng Yến, Phạm Đức Thịnh, Võ Ngọc Diệp, Đặng Minh Quân, Bùi Anh Tuấn | Mỗi người lưu 2 đến 7 tin và theo dõi 1 đến 2 chủ trọ; để có số liệu thật cho `followerCount` |
+| `lananh.nguyen@demo.example.com` | Nguyễn Thị Lan Anh | **Tài khoản nên dùng nhiều nhất.** Đã lưu 12 tin, trong đó có tin của chủ trọ hết dùng thử, hết gói và bị khóa, nên `GET /me/favorites` chỉ trả phần còn công khai (6.33): số tin trả về ít hơn số tin đã lưu. Theo dõi Khoa, Nhung, Bảo. **Đã viết 5 đánh giá** (Khoa, Nhung, Bảo, Huy và Lan đang bị khóa). **Phát đã trả lời Lan Anh mà chưa được đánh giá**: `GET /landlords/<id của Phát>/review` ra `canReview: true`, dùng để thử `POST` viết đánh giá |
+| `viet.tran@demo.example.com`, `yen.le@demo.example.com`, `thinh.pham@demo.example.com`, `diep.vo@demo.example.com`, `quan.dang@demo.example.com`, `tuan.bui@demo.example.com` | Trần Quốc Việt, Lê Hoàng Yến, Phạm Đức Thịnh, Võ Ngọc Diệp, Đặng Minh Quân, Bùi Anh Tuấn | Mỗi người lưu 2 đến 7 tin và theo dõi 1 đến 2 chủ trọ; để có số liệu thật cho `followerCount`; họ cũng là người viết các đánh giá mẫu. **Quân** có đánh giá về Nhung đang bị admin ẩn (thấy `status` `hidden_by_admin` kèm `hiddenReason`, sửa bị 409 `REVIEW_HIDDEN`); **Tuấn** đã nhắn Bảo nhưng chưa được trả lời (`canReview` `false`, viết bị 403 `REVIEW_NOT_ELIGIBLE`) |
 | `truc.huynh@demo.example.com` | Huỳnh Thanh Trúc | Lưu 5 tin, theo dõi 3 chủ trọ, trong đó có Lan đang bị khóa |
-| `linh.ngo@demo.example.com` | Ngô Khánh Linh | **Mới đăng ký 3 ngày**, chưa lưu tin nào, chưa theo dõi ai: màn hình trống |
-| `son.duong@demo.example.com` | Dương Văn Sơn | **Bị admin khóa** 8 ngày trước: đăng nhập 403 |
+| `linh.ngo@demo.example.com` | Ngô Khánh Linh | **Mới đăng ký 3 ngày**, chưa lưu tin nào, chưa theo dõi ai: màn hình trống. Đã nhắn Nhung và được trả lời nhưng chưa đọc (`unreadCount` 1), chưa đánh giá |
+| `son.duong@demo.example.com` | Dương Văn Sơn | **Bị admin khóa** 8 ngày trước: đăng nhập 403. Có 1 đánh giá về Khoa, không hiện công khai khi đang bị khóa |
 
 #### Số liệu để đối chiếu khi dựng màn hình
 
@@ -157,10 +158,11 @@ Sau `seed`, database mới chỉ có admin và danh mục. Để có người, n
 |---|---|
 | Tìm trọ (khách) | `GET /listings` có 37 tin, trang 2 (với `pageSize` 20) có 17 tin. Lọc `wardCode=26890` (Phường Hạnh Thông) ra 6 tin; `q=sinh vien` (không dấu) ra tin; `maxPrice=2500000` ra tin giá rẻ; giá từ 850.000 đ (một giường ký túc xá, giá tính theo giường) đến 14,5 triệu (căn hộ 40 m² ở Quận 1) |
 | Chi tiết tin | Mỗi tin có 1 đến 5 ảnh, mô tả nhiều đoạn (tiện ích, chi phí hàng tháng, vị trí), phí và tiện ích của nhà trọ, tọa độ. Khách thấy `landlord.phone` là `null`, người đã đăng nhập thấy số (ví dụ Khoa là `0901234501`) |
-| Hồ sơ chủ trọ | Khoa: 6 người theo dõi, 16 tin, hơn 500 lượt xem cộng dồn. Lan (bị khóa): 404 |
+| Hồ sơ chủ trọ | Khoa: 6 người theo dõi, 16 tin, hơn 500 lượt xem cộng dồn. Lan (bị khóa): 404. Điểm đánh giá (số đánh giá hiện): Khoa 4,5 (8), Nhung 4,3 (7), Bảo 3,3 (4), Phát 4,7 (3), Huy 4,5 (2), Tâm 5,0 (1), Mai và Hà chưa có |
 | Admin: người dùng | `GET /users` có 20 dòng (19 demo cộng admin), 2 dòng bị khóa kèm `lockedReason` |
 | Admin: đơn và doanh thu | `GET /orders/all` có 20 đơn (16 `paid`, 2 `pending`, 2 `cancelled`); `GET /orders/revenue` tổng 3.084.000 đ, đủ ba gói trong `byPlan`, nhiều tháng trong `series` |
 | Admin: kiểm duyệt | `GET /moderation/listings` có 53 tin, trong đó đúng 1 tin `hidden_by_admin` |
+| Admin: kiểm duyệt đánh giá | `GET /moderation/reviews` có 30 đánh giá, trong đó đúng 1 `hidden_by_admin` kèm `hiddenReason`; lọc `landlordId` của Khoa ra 9 dòng (8 hiện công khai, 1 của người viết bị khóa) |
 
 #### Cần biết khi dùng
 
@@ -217,7 +219,7 @@ Lưu ý: **một trường có thể xuất hiện nhiều lần** trong `errors
 | `SESSION_REVOKED` | 401 | Phiên đã bị hủy (đăng xuất, đổi hoặc đặt lại mật khẩu, bị khóa, bị thu hồi, hoặc phát hiện dùng lại token) | Chuyển trang đăng nhập |
 | `SESSION_EXPIRED` | 401 | Phiên hết hạn (30 ngày sau lần đăng nhập) | Chuyển trang đăng nhập |
 | `UNAUTHORIZED` | 401 | Lỗi 401 chung do thư viện sinh, không thuộc các mã token ở trên (hiếm gặp) | Coi như chưa đăng nhập, chuyển trang đăng nhập |
-| `ACCOUNT_LOCKED` | 403 | Tài khoản bị admin khóa (ở hai API gửi của chat, 6.39, là chính người gửi vừa bị khóa dù token còn hạn) | Hiện `message`, không cho dùng tiếp |
+| `ACCOUNT_LOCKED` | 403 | Tài khoản bị admin khóa (ở hai API gửi của chat, 6.39, và ba API ghi của đánh giá, 6.40, là chính người gọi vừa bị khóa dù token còn hạn) | Hiện `message`, không cho dùng tiếp |
 | `ORIGIN_NOT_ALLOWED` | 403 | `Origin` của request không nằm trong danh sách cho phép (chỉ ở refresh và logout) | Báo backend thêm origin của FE |
 | `PERMISSION_DENIED` | 403 | Đã đăng nhập nhưng không có quyền làm việc này | Hiện thông báo không đủ quyền |
 | `NOT_RESOURCE_OWNER` | 403 | Thao tác trên dữ liệu của người khác (nhà trọ, tin, đơn của người khác) | Hiện `message`, quay về danh sách của mình |
@@ -254,11 +256,17 @@ Lưu ý: **một trường có thể xuất hiện nhiều lần** trong `errors
 | `PLAN_INACTIVE` | 409 | Đặt đơn bằng gói đã ngừng bán, hoặc thanh toán đơn mà gói đã bị tắt sau khi đặt (đơn vẫn `pending`) | Cho chọn gói khác rồi tạo đơn mới |
 | `ORDER_NOT_FOUND` | 404 | Đơn không có (xem, thanh toán, hủy) | Quay về lịch sử đơn |
 | `ORDER_STATE_INVALID` | 409 | Thanh toán đơn đã hủy, hoặc hủy đơn đã trả | Tải lại đơn rồi cập nhật nút |
-| `LANDLORD_NOT_FOUND` | 404 | Mở hồ sơ công khai (6.31), danh sách tin của chủ trọ (6.36), theo dõi hoặc bỏ theo dõi (6.32) một id không phải chủ trọ đang hoạt động: không có, là tài khoản người tìm trọ hoặc admin, chủ trọ đang bị khóa hoặc đã xóa | Hiện "không tìm thấy chủ trọ", quay về trang trước. Chủ trọ được mở khóa thì hồ sơ trở lại |
+| `LANDLORD_NOT_FOUND` | 404 | Mở hồ sơ công khai (6.31), danh sách tin của chủ trọ (6.36), theo dõi hoặc bỏ theo dõi (6.32), mọi API đánh giá dưới `/landlords/:id` (6.40) một id không phải chủ trọ đang hoạt động: không có, là tài khoản người tìm trọ hoặc admin, chủ trọ đang bị khóa hoặc đã xóa | Hiện "không tìm thấy chủ trọ", quay về trang trước. Chủ trọ được mở khóa thì hồ sơ trở lại |
 | `CANNOT_FOLLOW_SELF` | 409 | Theo dõi chính tài khoản của mình (6.32; chỉ gặp khi tài khoản có quyền `follow:create`, ví dụ người tìm trọ gõ id của mình hoặc chủ trọ được admin cấp quyền) | Hiện `message`. Ẩn nút theo dõi trên hồ sơ của chính mình |
 | `CONVERSATION_NOT_FOUND` | 404 | Chat (6.39): không có cuộc trò chuyện với id này, **hoặc người gọi không phải một trong hai bên của nó** (hai trường hợp không phân biệt được, kể cả với người khác đang có cuộc trò chuyện riêng) | Hiện "không tìm thấy cuộc trò chuyện", quay về hộp thư |
 | `CANNOT_CHAT_WITH_SELF` | 409 | Mở cuộc trò chuyện với tin của chính mình (6.39; chỉ gặp khi admin đã cấp `conversation:create` cho chủ trọ) | Ẩn nút nhắn trên tin của chính mình |
 | `CHAT_PEER_UNAVAILABLE` | 409 | Gửi tin cho người bên kia đang bị khóa hoặc đã xóa (6.39). Không ghi gì; đọc lịch sử vẫn được. Mở khóa thì gửi lại được | Vô hiệu ô nhập và hiện `message` ("Người kia hiện không nhận được tin nhắn."), vẫn cho đọc |
+| `REVIEW_NOT_FOUND` | 404 | Đánh giá (6.40): sửa hoặc xóa khi người gọi chưa có đánh giá về chủ trọ đó; hoặc admin ẩn, gỡ ẩn một id không có (kể cả khi người viết vừa xóa nó) | Hiện "không tìm thấy đánh giá", tải lại trạng thái bằng `GET /landlords/:id/review` |
+| `REVIEW_NOT_ELIGIBLE` | 403 | Viết đánh giá khi chủ trọ chưa trả lời người gọi trong chat: chưa nhắn, hoặc nhắn rồi mà chưa được trả lời, hoặc chỉ nhắn với chủ trọ khác (6.40) | Hiện `message` ("Bạn chỉ đánh giá được chủ trọ đã trả lời tin nhắn của bạn.") và mời nhắn tin trước. Ẩn nút viết khi `canReview` là `false` |
+| `REVIEW_ALREADY_EXISTS` | 409 | Viết đánh giá khi đã có đánh giá về chủ trọ này, kể cả đang bị ẩn (6.40) | Chuyển sang sửa đánh giá hiện có (`PATCH`) |
+| `CANNOT_REVIEW_SELF` | 409 | Đánh giá chính tài khoản của mình (6.40; chỉ gặp khi admin cấp `review:create` cho chủ trọ) | Ẩn nút viết đánh giá trên hồ sơ của chính mình |
+| `REVIEW_HIDDEN` | 409 | Sửa đánh giá đang bị admin ẩn (6.40): chỉ xóa được | Hiện nhãn "bị quản trị viên ẩn" kèm `hiddenReason`, ẩn nút sửa, giữ nút xóa |
+| `REVIEW_STATE_INVALID` | 409 | Admin ẩn đánh giá đã ẩn, hoặc gỡ ẩn đánh giá đang hiện (6.40) | Tải lại dòng rồi cập nhật nút |
 | `CANNOT_LOCK_SELF` | 409 | Admin tự khóa chính mình | Hiện `message` |
 | `ACCOUNT_ALREADY_LOCKED` | 409 | Khóa tài khoản đang bị khóa | Làm mới trạng thái trên giao diện |
 | `ACCOUNT_NOT_LOCKED` | 409 | Mở khóa tài khoản không bị khóa | Làm mới trạng thái trên giao diện |
@@ -269,7 +277,7 @@ Lưu ý: **một trường có thể xuất hiện nhiều lần** trong `errors
 
 ### Lỗi 429 `RATE_LIMITED`: gọi quá nhanh
 
-Chỉ **sáu API đăng nhập và mật khẩu, các API ghi nhà trọ, tin, tải ảnh, đơn, theo dõi chủ trọ, lưu tin, sửa hồ sơ và hai API ghi của chat, và chín API đọc (hai của tin, một của bảng giá, hai của hồ sơ chủ trọ gồm hồ sơ và danh sách tin, một của tin đã lưu, ba của chat)** có giới hạn (các API đọc khác thì chưa). Body lỗi cùng dạng như mọi lỗi khác (có `requestId`), kèm header **`Retry-After`**: số giây còn phải đợi (số nguyên, ít nhất 1). Mỗi API đếm riêng, nên bị chặn đăng nhập không làm hỏng việc đọc `GET /auth/me` hay đăng xuất.
+Chỉ **sáu API đăng nhập và mật khẩu, các API ghi nhà trọ, tin, tải ảnh, đơn, theo dõi chủ trọ, lưu tin, sửa hồ sơ, hai API ghi của chat, ba API ghi đánh giá, và mười một API đọc (hai của tin, một của bảng giá, hai của hồ sơ chủ trọ gồm hồ sơ và danh sách tin, một của tin đã lưu, ba của chat, hai của đánh giá)** có giới hạn (các API đọc khác thì chưa). Body lỗi cùng dạng như mọi lỗi khác (có `requestId`), kèm header **`Retry-After`**: số giây còn phải đợi (số nguyên, ít nhất 1). Mỗi API đếm riêng, nên bị chặn đăng nhập không làm hỏng việc đọc `GET /auth/me` hay đăng xuất.
 
 | API | Giới hạn theo IP | Giới hạn theo email (hoặc người dùng) | Bị chặn trong |
 |---|---|---|---|
@@ -289,14 +297,16 @@ Chỉ **sáu API đăng nhập và mật khẩu, các API ghi nhà trọ, tin, t
 | `POST /listings/:id/conversations` (mở cuộc trò chuyện) | không | 20 lần mỗi giờ (theo người dùng đang đăng nhập) | 1 giờ |
 | `POST /conversations/:id/messages` (gửi tin) | không | 30 lần mỗi phút (theo người dùng đang đăng nhập) | 1 phút |
 | `GET /me/conversations`, `GET /conversations/:id`, `GET /conversations/:id/messages`, `GET /me/conversations/unread-count`, `POST /conversations/:id/read` | không | 120 lần mỗi phút **cho mỗi API** (năm API đếm riêng, theo người dùng đang đăng nhập) | 1 phút |
+| `POST /landlords/:id/review`, `PATCH /landlords/:id/review`, `DELETE /landlords/:id/review` (viết, sửa, xóa đánh giá) | không | 20 lần mỗi giờ **cho mỗi API** (ba API đếm riêng, theo người dùng đang đăng nhập) | 1 giờ |
 | `GET /listings` (công khai) | 300 lần mỗi phút | không | 1 phút |
 | `GET /plans` (công khai) | 300 lần mỗi phút | không | 1 phút |
 | `GET /landlords/:id` (công khai, hồ sơ chủ trọ) | 300 lần mỗi phút | không | 1 phút |
 | `GET /landlords/:id/listings` (công khai, tin đang hiện của chủ trọ) | 300 lần mỗi phút (bộ đếm riêng của API này, không chung với hồ sơ) | không | 1 phút |
+| `GET /landlords/:id/reviews` (công khai, danh sách đánh giá) và `GET /landlords/:id/review` (đánh giá của tôi, cần đăng nhập) | 300 lần mỗi phút **cho mỗi API** (hai API đếm riêng, theo IP) | không | 1 phút |
 | `GET /me/favorites` (tin đã lưu, cần đăng nhập) | 300 lần mỗi phút | không | 1 phút |
 | `GET /listings/:slugCode` (công khai) | 300 lần mỗi phút | 60 lần mỗi phút, **chỉ khi request có access token hợp lệ** (khách không bị bộ đếm này, chỉ chịu giới hạn theo IP) | 1 phút |
 
-API của admin (kiểm duyệt tin, danh mục phường và tiện ích, tham số hệ thống, quản lý gói, quyền và khóa tài khoản) **không có giới hạn tần suất thêm**.
+API của admin (kiểm duyệt tin và đánh giá, danh mục phường và tiện ích, tham số hệ thống, quản lý gói, quyền và khóa tài khoản) **không có giới hạn tần suất thêm**.
 
 Cách đếm: vượt số lần trong cột thì **lần vượt đó bị từ chối và bị chặn đúng khoảng thời gian ở cột "Bị chặn trong"** kể từ lần vượt; `Retry-After` cho biết còn bao lâu. Email được so không phân biệt hoa thường và bỏ khoảng trắng đầu cuối (`An@Example.com` và ` an@example.com ` là một). Gửi email sai dạng hoặc không có email thì tính vào bộ đếm email theo IP, nên không né được giới hạn bằng cách bỏ trống.
 
@@ -397,7 +407,7 @@ Admin có tất cả quyền. Quyền của `landlord` và `tenant` nằm trong 
 
 | Loại | Quyền mặc định |
 |---|---|
-| `tenant` (11 quyền) | `profile:read`, `profile:update`, `favorite:read`, `favorite:create`, `favorite:delete`, `follow:create`, `follow:delete`, `conversation:read`, `conversation:create`, `conversation:update`, `message:create` |
+| `tenant` (15 quyền) | `profile:read`, `profile:update`, `favorite:read`, `favorite:create`, `favorite:delete`, `follow:create`, `follow:delete`, `conversation:read`, `conversation:create`, `conversation:update`, `message:create`, `review:read`, `review:create`, `review:update`, `review:delete` |
 | `landlord` (17 quyền) | `profile:read`, `profile:update`, `property:read`, `property:create`, `property:update`, `property:delete`, `listing:read`, `listing:create`, `listing:update`, `listing:delete`, `order:create`, `order:read`, `order:cancel`, `subscription:read`, `conversation:read`, `conversation:update`, `message:create` |
 | `admin` | Tất cả |
 
@@ -409,25 +419,27 @@ Bảng này gom **quyền mặc định** với **luật cố định trong code
 
 | Việc | Khách (chưa đăng nhập) | Người tìm trọ (`tenant`) | Chủ trọ (`landlord`) | Admin |
 |---|---|---|---|---|
-| Xem danh sách tin, chi tiết tin, ảnh, hồ sơ chủ trọ và tin của họ, bảng giá, phường, tiện ích | Có. `landlord.phone`, `isFavorite`, `isFollowing` là `null` | Có, thấy số điện thoại; `isFavorite`, `isFollowing` theo dữ liệu thật | Có, thấy số điện thoại; `isFavorite` và `isFollowing` là `false` | Như chủ trọ |
+| Xem danh sách tin, chi tiết tin, ảnh, hồ sơ chủ trọ, tin và đánh giá của họ, bảng giá, phường, tiện ích | Có. `landlord.phone`, `isFavorite`, `isFollowing` là `null` | Có, thấy số điện thoại; `isFavorite`, `isFollowing` theo dữ liệu thật | Có, thấy số điện thoại; `isFavorite` và `isFollowing` là `false` | Như chủ trọ |
 | Đăng ký | Có (chọn `landlord` hoặc `tenant`) | Không áp dụng | Không áp dụng | Không đăng ký được, chỉ tạo bằng lệnh seed |
 | Hồ sơ cá nhân (`/me/profile`) | Không (401) | Có. Xóa được số điện thoại | Có. **Không** xóa được số điện thoại | Có |
 | Lưu tin, bỏ lưu, danh sách tin đã lưu | Không (401) | Có | Mặc định 403 (admin cấp quyền `favorite:*` thì được) | **Luôn 403**, kể cả có quyền |
 | Theo dõi, bỏ theo dõi chủ trọ | Không (401) | Có (không theo dõi chính mình: 409 `CANNOT_FOLLOW_SELF`) | Mặc định 403 (admin cấp quyền `follow:*` thì được) | **Luôn 403**, kể cả có quyền |
 | Chat (mục 6.39): mở cuộc trò chuyện từ một tin, gửi tin, đọc tin, hộp thư, đếm và đánh dấu chưa đọc | Không (401) | Có: mở cuộc trò chuyện, nhắn, đọc, đánh dấu đã đọc | Trả lời, đọc và đánh dấu đã đọc cuộc trò chuyện của mình. **Mở** cuộc trò chuyện: mặc định 403 (admin cấp `conversation:create` thì được, nhưng với tin của chính mình là 409 `CANNOT_CHAT_WITH_SELF`) | **Luôn 403**, kể cả có quyền |
+| Đánh giá chủ trọ (mục 6.40): viết, sửa, xóa, xem đánh giá của mình | Không (401). Khách **đọc** được danh sách đánh giá | Có, **sau khi chủ trọ đã trả lời trong chat**; mỗi chủ trọ một đánh giá | Mặc định 403 (admin cấp `review:*` thì được, nhưng không tự đánh giá mình: 409 `CANNOT_REVIEW_SELF`) | **Luôn 403**, kể cả có quyền |
 | Nhà trọ (`/properties`) | Không (401) | Mặc định 403 | Có, **chỉ nhà trọ của mình** | Có quyền nhưng cũng chỉ nhà trọ của chính mình (thực tế không dùng) |
 | Tin của mình: đăng, sửa, ẩn, hiện, xóa, tải ảnh, `/me/listings` | Không (401) | Mặc định 403 | Có, **chỉ tin của mình**. Đăng và hiện lại còn phải trong hạn mức (`MEMBERSHIP_REQUIRED`, `LISTING_QUOTA_REACHED`) | Đăng tin: 403 `MEMBERSHIP_REQUIRED` (không có kỳ dùng thử). Sửa, xóa tin người khác: 403 `NOT_RESOURCE_OWNER` |
 | Kỳ dùng thử và hạn mức (`GET /me/membership`) | Không (401) | 403 | Có | Gọi được nhưng luôn `state = expired`, `listingLimit = 0` |
 | Đơn mua gói (tạo, thanh toán, hủy, lịch sử) | Không (401) | 403 | Có, **chỉ đơn của mình** | Tạo đơn: 403. Xem, thanh toán, hủy đơn người khác: 403 `NOT_RESOURCE_OWNER`. `GET /orders` luôn rỗng. Xem đơn mọi chủ trọ ở `GET /orders/all` |
-| Ẩn, gỡ ẩn tin của người khác, danh sách kiểm duyệt | Không | 403 | 403 | Có |
+| Ẩn, gỡ ẩn tin và đánh giá của người khác, danh sách kiểm duyệt | Không | 403 | 403 | Có |
 | Khóa, mở khóa, thu hồi phiên, danh sách người dùng | Không | 403 | 403 | Có |
 | Quản lý gói, tham số hệ thống, phường và tiện ích, quyền loại tài khoản, đơn mọi chủ trọ, doanh thu | Không | 403 | 403 | Có (một số API đọc lại tài khoản admin từ database mỗi lần gọi, Phụ lục A) |
 
-Bốn luật cố định đáng nhớ:
+Năm luật cố định đáng nhớ:
 - **Chủ sở hữu áp cho mọi loại tài khoản, kể cả admin.** Dữ liệu của người khác (nhà trọ, tin, đơn) luôn là 403 `NOT_RESOURCE_OWNER`. Admin tác động lên dữ liệu người khác chỉ qua quyền riêng: ẩn tin, khóa tài khoản.
 - **Chỉ tài khoản `landlord` tạo được đơn mua gói.** Admin không mua gói.
 - **Admin không lưu tin và không theo dõi chủ trọ**, dù `permissions` của admin liệt kê đủ `favorite:*` và `follow:*` (admin có mọi quyền trong danh mục). FE ẩn nút theo loại tài khoản **và** theo `permissions`.
 - **Admin không dùng chat**: cả bảy API chat (6.39) trả 403 `PERMISSION_DENIED` cho admin dù `permissions` có `conversation:*` và `message:create`. Chỉ hai bên của một cuộc trò chuyện đọc được nó; người ngoài nhận 404.
+- **Admin không viết, sửa, xóa hay xem đánh giá "của tôi"**: bốn API `/landlords/:id/review` (6.40) trả 403 `PERMISSION_DENIED` cho admin dù `permissions` có `review:*`. Admin chỉ đọc danh sách công khai và ẩn, gỡ ẩn bằng `review:moderate`.
 
 ### Danh mục quyền hiện có
 
@@ -449,8 +461,9 @@ Bốn luật cố định đáng nhớ:
 | `subscription` | read | có | | có (mục 6.25, `GET /me/membership`) |
 | `conversation` | read, create, update | có | | cả ba có API (mục 6.39): `read` cho các API đọc và đếm chưa đọc, `create` cho mở cuộc trò chuyện, `update` cho đánh dấu đã đọc. Admin giữ cả ba nhưng vẫn bị 403 |
 | `message` | create | có | | có (mục 6.39). Admin giữ nhưng vẫn bị 403 |
+| `review` | read, create, update, delete, moderate | có | `moderate` | có (mục 6.40): `read`, `create`, `update`, `delete` cho bốn API của người viết, `moderate` cho ba API kiểm duyệt. Admin giữ cả năm nhưng bốn API của người viết vẫn 403 |
 
-Danh mục chỉ có **14 module** của bản MVP (thêm `conversation` và `message` ngày 2026-11-05). Các module `contact`, `report`, `verification`, `boost`, `product`, `inspection`, `ad`, `expense`, `finance`, `dashboard`, `stats` và hai hành động `order:refund`, `order:gift` đã bị gỡ (xem nhật ký 2026-10-12). Khóa của chúng không còn hợp lệ: gửi lên `PATCH /account-types/:key` sẽ nhận 400 `PERMISSION_UNKNOWN`.
+Danh mục chỉ có **15 module** của bản MVP (thêm `conversation` và `message` ngày 2026-11-05, `review` ngày 2026-11-07). Các module `contact`, `report`, `verification`, `boost`, `product`, `inspection`, `ad`, `expense`, `finance`, `dashboard`, `stats` và hai hành động `order:refund`, `order:gift` đã bị gỡ (xem nhật ký 2026-10-12). Khóa của chúng không còn hợp lệ: gửi lên `PATCH /account-types/:key` sẽ nhận 400 `PERMISSION_UNKNOWN`.
 
 ### Quyền đổi thì FE thấy khi nào
 
@@ -1437,7 +1450,7 @@ Cần nhớ:
 
 `:id` là id của chủ trọ, lấy từ `landlord.id` trong danh sách và chi tiết tin công khai (6.19, 6.20). Khách xem được. **Gửi kèm `Authorization: Bearer <accessToken>` nếu người dùng đã đăng nhập**, để biết họ đã theo dõi chủ trọ này chưa. Khách, token sai hoặc token hết hạn vẫn nhận 200 và `isFollowing` là `null`, **không bao giờ 401**. Phản hồi có `Cache-Control: private, no-store` (nội dung đổi theo người xem), đừng cho proxy hay CDN cache.
 
-**200 OK**: đúng bảy trường.
+**200 OK**: đúng **chín trường** (hai trường `reviewCount` và `ratingAverage` thêm ngày 2026-11-07, mục 6.40).
 
 ```json
 {
@@ -1447,6 +1460,8 @@ Cần nhớ:
   "followerCount": 12,
   "totalViewCount": 1840,
   "publicListingCount": 2,
+  "reviewCount": 12,
+  "ratingAverage": 4.3,
   "isFollowing": false
 }
 ```
@@ -1459,6 +1474,8 @@ Cần nhớ:
 | `followerCount` | Số người đang theo dõi, mỗi người tính một lần. Chỉ tính tài khoản đang hoạt động: người theo dõi bị khóa hoặc bị xóa thì số giảm ngay, được mở khóa thì số trở lại |
 | `totalViewCount` | Tổng lượt xem của mọi tin của chủ trọ, **kể cả tin đang ẩn và tin đã xóa**. Số này không giảm khi chủ trọ ẩn hay xóa tin, khi hết dùng thử hay hết gói |
 | `publicListingCount` | Số tin của chủ trọ đang hiện công khai ngay lúc đọc, luôn bằng số tin của chủ trọ đó mà `GET /listings` trả (cộng mọi trang). Chủ trọ hết dùng thử và hết gói thì là `0` nhưng hồ sơ vẫn xem được |
+| `reviewCount` | Số đánh giá đang hiện của người viết đang hoạt động (số nguyên từ 0). Luôn bằng `total` của `GET /landlords/:id/reviews` (6.40). Đánh giá bị admin ẩn, hay của người viết bị khóa hoặc đã xóa, không tính; được mở khóa thì trở lại |
+| `ratingAverage` | Số sao trung bình của đúng các đánh giá đó, **làm tròn một chữ số thập phân** (4,35 làm tròn thành 4,4); `null` khi `reviewCount` là 0 (chưa có đánh giá, đừng hiện 0 sao). FE tự định dạng một chữ số thập phân vì JSON không phân biệt `4` và `4.0`. Hiện kèm `reviewCount`: một đánh giá duy nhất làm điểm trung bình thành chính nó |
 | `isFollowing` | `null` với khách; `true` hoặc `false` với người đã đăng nhập (chủ trọ xem hồ sơ của chính mình thì là `false`) |
 
 Hồ sơ **không có** email, số điện thoại hay danh sách người theo dõi, và không ai biết ai đang theo dõi chủ trọ. Mở hồ sơ không cộng lượt xem nào.
@@ -1466,10 +1483,11 @@ Hồ sơ **không có** email, số điện thoại hay danh sách người theo
 **Lỗi**: 404 `LANDLORD_NOT_FOUND` (id không phải chủ trọ đang hoạt động: không có, là tài khoản người tìm trọ hoặc admin, chủ trọ đang bị khóa hoặc đã xóa mềm; chủ trọ được mở khóa thì hồ sơ trở lại với số cũ) · 400 `INVALID_ID` (id không phải UUID) · 429 `RATE_LIMITED` (quá 300 lần mỗi phút theo IP).
 
 Cần nhớ:
-- **Các số tính lúc mở hồ sơ**, không lưu sẵn, nên đổi ngay khi có người theo dõi bị khóa, tin bị ẩn hay xóa, chủ trọ hết gói. Ba số được đọc không cùng một thời điểm chính xác, nên có thể lệch nhau vài mili giây.
+- **Các số tính lúc mở hồ sơ**, không lưu sẵn, nên đổi ngay khi có người theo dõi bị khóa, tin bị ẩn hay xóa, chủ trọ hết gói. Các số được đọc không cùng một thời điểm chính xác, nên có thể lệch nhau vài mili giây.
 - **`totalViewCount` khác tổng `viewCount` trong `GET /me/listings`**, vì tổng này gồm cả tin đã ẩn và đã xóa. FE đừng tự cộng để đối chiếu.
 - **Nút theo dõi** gọi `POST` hoặc `DELETE /landlords/:id/follow` (mục 6.32); hai API đó trả luôn hồ sơ mới.
-- **Danh sách tin đang hiện của chủ trọ** là API riêng, `GET /landlords/:id/listings` (mục 6.36). Hồ sơ vẫn đúng bảy trường, không nhúng danh sách; `publicListingCount` luôn bằng `total` của API kia.
+- **Danh sách tin đang hiện của chủ trọ** là API riêng, `GET /landlords/:id/listings` (mục 6.36). Hồ sơ vẫn đúng chín trường, không nhúng danh sách; `publicListingCount` luôn bằng `total` của API kia.
+- **Danh sách đánh giá** là API riêng, `GET /landlords/:id/reviews` (mục 6.40); `reviewCount` luôn bằng `total` của API đó. Hồ sơ chỉ có hai con số, không nhúng danh sách đánh giá.
 
 ### 6.32 Theo dõi và bỏ theo dõi chủ trọ
 
@@ -1478,7 +1496,7 @@ Cần nhớ:
 
 Mặc định chỉ tài khoản **`tenant`** (người tìm trọ) giữ hai quyền này. `:id` là id của chủ trọ (cùng id với 6.31). **Không có body** (nếu gửi kèm thì bị bỏ qua): người theo dõi luôn là người trong access token.
 
-**200 OK** (cả hai API, kể cả khi gọi lại): hồ sơ mới của chủ trọ, cùng đúng bảy trường như 6.31, được đọc lại **sau khi ghi** với người gọi là người xem. Sau `POST` thì `isFollowing` là `true`, sau `DELETE` thì là `false`, và `followerCount` đã cập nhật. FE gán thẳng kết quả vào trang hồ sơ, **không cần gọi lại `GET`**. Phản hồi có `Cache-Control: private, no-store`. Lưu ý là 200, không phải 201, vì gọi lại không tạo thêm gì.
+**200 OK** (cả hai API, kể cả khi gọi lại): hồ sơ mới của chủ trọ, cùng đúng chín trường như 6.31, được đọc lại **sau khi ghi** với người gọi là người xem. Sau `POST` thì `isFollowing` là `true`, sau `DELETE` thì là `false`, và `followerCount` đã cập nhật. FE gán thẳng kết quả vào trang hồ sơ, **không cần gọi lại `GET`**. Phản hồi có `Cache-Control: private, no-store`. Lưu ý là 200, không phải 201, vì gọi lại không tạo thêm gì.
 
 | Lỗi | Khi nào |
 |---|---|
@@ -1738,7 +1756,7 @@ Cần nhớ:
 - **Chủ trọ hết dùng thử và chưa có gói**: vẫn 200, `items` rỗng, `total` 0 (hồ sơ vẫn xem được). FE hiện "Chủ trọ chưa có tin nào đang hiện". Trang vượt cuối cũng 200 với `items` rỗng và `total` đúng.
 - **Không có số điện thoại, email, `viewCount` hay trạng thái** trong phần tử. Mở danh sách **không cộng lượt xem** cho tin nào; lượt xem chỉ tính khi mở chi tiết tin.
 - **Chủ trọ và admin đã đăng nhập** xem được danh sách này như mọi người; `isFavorite` của họ luôn là `false`, không phải `null`. Chủ trọ xem danh sách của chính mình cũng chỉ thấy các tin đang hiện công khai (tin đang ẩn xem ở `GET /me/listings`, 6.21).
-- Hồ sơ vẫn đúng bảy trường (6.31). Để dựng trang hồ sơ, FE gọi hai API: hồ sơ, rồi danh sách (có thể gọi song song).
+- Hồ sơ vẫn đúng chín trường (6.31). Để dựng trang hồ sơ, FE gọi ba API: hồ sơ, danh sách tin (6.36) và danh sách đánh giá (6.40), có thể gọi song song.
 
 ### 6.37 Đơn của mọi chủ trọ (admin)
 
@@ -2056,6 +2074,177 @@ Cần nhớ:
 - Không dòng nhật ký hay thông báo lỗi nào chứa nội dung tin nhắn.
 - Thứ tự `seq` là thứ tự đúng của cuộc trò chuyện; `createdAt` chỉ để hiển thị giờ.
 
+### 6.40 Đánh giá chủ trọ
+
+`GET /landlords/:id/reviews` · công khai, **đọc đăng nhập tùy chọn**
+`GET /landlords/:id/review` · cần quyền `review:read`
+`POST /landlords/:id/review` · cần quyền `review:create`
+`PATCH /landlords/:id/review` · cần quyền `review:update`
+`DELETE /landlords/:id/review` · cần quyền `review:delete`
+`GET /moderation/reviews` · cần quyền `review:moderate` (chỉ admin)
+`POST /moderation/reviews/:id/hide` · cần quyền `review:moderate`
+`POST /moderation/reviews/:id/unhide` · cần quyền `review:moderate`
+
+Người tìm trọ đã nhắn với một chủ trọ **và được họ trả lời** (chat, mục 6.39) thì đánh giá được chủ trọ đó: **số sao từ 1 đến 5** và **nhận xét tùy chọn** (1 đến 1000 ký tự). Đánh giá gắn với **chủ trọ**, không gắn với một tin hay một nhà trọ, và **mỗi người chỉ có một đánh giá cho mỗi chủ trọ** (sửa hoặc xóa rồi viết lại thì được). Hồ sơ công khai (6.31) có hai con số mới, `reviewCount` và `ratingAverage`; danh sách đánh giá là API riêng, có phân trang.
+
+Mặc định chỉ `tenant` giữ bốn quyền `review:read`, `review:create`, `review:update`, `review:delete`; **chủ trọ không giữ khóa `review:*` nào**, nên chủ trọ không đánh giá mình hay ai khác. `review:moderate` chỉ admin giữ. **Admin giữ mọi quyền nhưng bốn API của người viết (`GET`, `POST`, `PATCH`, `DELETE /landlords/:id/review`) đều trả 403 `PERMISSION_DENIED`**: admin chỉ đọc danh sách công khai và dùng ba API kiểm duyệt. Không API nào nhận id của một đánh giá ở phía người viết (người viết luôn là người trong token, chủ trọ luôn là `:id` trên đường dẫn), nên không ai đọc hay đổi được đánh giá của người khác.
+
+Cache: cả năm API `/landlords/:id/review` và `/landlords/:id/reviews` trả `Cache-Control: private, no-store` (nội dung đổi theo người xem), đừng cho proxy hay CDN cache.
+
+#### Ai được viết: điều kiện "chủ trọ đã trả lời"
+
+Chỉ kiểm **lúc viết**: người gọi có ít nhất một cuộc trò chuyện với chủ trọ đó (về **bất kỳ** tin nào, tin đó đang ẩn hay đã xóa cũng được) trong đó **chủ trọ đã gửi ít nhất một tin**. Chưa nhắn, hoặc nhắn rồi mà chủ trọ chưa trả lời, hoặc chỉ nhắn với chủ trọ khác: 403 `REVIEW_NOT_ELIGIBLE`. Sửa và xóa **không** kiểm lại điều kiện này. FE không phải đoán: `canReview` của `GET /landlords/:id/review` cho biết trước (bên dưới), và `POST` vẫn là nơi quyết định cuối.
+
+Điều kiện này chỉ là bằng chứng đã liên hệ, không phải đã ở trọ. Một chủ trọ có thể tự lập tài khoản người tìm trọ, nhắn cho chính mình rồi chấm 5 sao; chưa có biện pháp chống (mục 9).
+
+#### Danh sách công khai
+
+`GET /landlords/:id/reviews?page=1&pageSize=20` · công khai
+
+`:id` là id chủ trọ (cùng id với 6.31). Khách xem được. **Gửi kèm `Authorization: Bearer <accessToken>` nếu đã đăng nhập** để có `isMine`; khách, token sai hay hết hạn vẫn nhận 200 với `isMine: null`, **không bao giờ 401** (làm mới token trước khi gọi, mục 2 và 4.1). Chỉ nhận `page` (từ 1) và `pageSize` (từ 1 đến 50, mặc định 20); tham số khác là 400 `VALIDATION_FAILED`.
+
+**200 OK**: `{ "items": [...], "total": 12, "page": 1, "pageSize": 20 }`, **mới viết trước** (cùng lúc thì theo `id` giảm dần). Mỗi phần tử đúng bảy trường:
+
+```json
+{
+  "id": "0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8e11",
+  "stars": 4,
+  "comment": "Chủ trọ trả lời nhanh, phòng đúng như ảnh.",
+  "author": { "name": "Bạn Lan" },
+  "isMine": false,
+  "createdAt": "2026-11-07T03:10:00.000Z",
+  "updatedAt": "2026-11-07T03:10:00.000Z"
+}
+```
+
+| Trường | Ý nghĩa |
+|---|---|
+| `id` | Id của đánh giá (chỉ để làm khóa danh sách của FE; không có API nào nhận id này ở phía người viết) |
+| `stars` | Số nguyên từ 1 đến 5 |
+| `comment` | Nhận xét, `null` nếu người viết không viết. **Chữ thô**: FE phải escape khi hiện (không dùng `innerHTML`), giữ xuống dòng |
+| `author.name` | Tên người viết, **hiện công khai** cạnh nhận xét. `null` khi người viết chưa đặt tên (FE hiện "Người dùng"). Không có email, số điện thoại hay id người viết |
+| `isMine` | `null` với khách; `true` ở đánh giá của chính người xem (hiện nút sửa, xóa), `false` ở các đánh giá khác |
+| `createdAt`, `updatedAt` | ISO 8601 UTC. `updatedAt` chỉ đổi khi chính người viết sửa nội dung; admin ẩn hay gỡ ẩn không đổi nó |
+
+Danh sách **chỉ có đánh giá đang hiện của người viết đang hoạt động**: đánh giá bị admin ẩn, hay của người viết đang bị khóa hoặc đã xóa, **không có** ở đây và không tính vào hai con số của hồ sơ (người viết được mở khóa thì đánh giá trở lại). `total` luôn bằng `reviewCount` của hồ sơ.
+
+**Lỗi**: 404 `LANDLORD_NOT_FOUND` (id không phải chủ trọ đang hoạt động, giống 6.31; chủ trọ bị khóa thì cả danh sách lẫn mọi API đánh giá đều 404, đánh giá còn nguyên và hiện lại khi mở khóa) · 400 `INVALID_ID` · 400 `VALIDATION_FAILED` (tham số lạ, `page` hay `pageSize` ngoài biên) · 429 `RATE_LIMITED` (quá 300 lần mỗi phút theo IP, bộ đếm riêng của API này).
+
+#### Đánh giá của tôi và `canReview`
+
+`GET /landlords/:id/review` · cần quyền `review:read`
+
+**200 OK**: `{ "review": <đánh giá của tôi hoặc null>, "canReview": true }`. Khi chưa viết: `{ "review": null, "canReview": true }`. Đánh giá của tôi có đúng bảy trường (hình dạng này cũng là kết quả của `POST` và `PATCH`):
+
+```json
+{
+  "id": "0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8e11",
+  "stars": 4,
+  "comment": null,
+  "status": "hidden_by_admin",
+  "hiddenReason": "Nội dung xúc phạm cá nhân.",
+  "createdAt": "2026-11-07T03:10:00.000Z",
+  "updatedAt": "2026-11-07T03:10:00.000Z"
+}
+```
+
+| Trường | Ý nghĩa |
+|---|---|
+| `status` | `visible` (đang hiện công khai) hoặc `hidden_by_admin` (admin đã ẩn) |
+| `hiddenReason` | Lý do admin ẩn **gần nhất** khi đang `hidden_by_admin`; còn lại `null`. Hiện cho người viết biết vì sao |
+| `canReview` | `true` đúng khi **chưa có đánh giá**, người gọi giữ `review:create` trong token, không phải chính chủ trọ đó và **đã đủ điều kiện** (chủ trọ đã trả lời). `false` khi đã có đánh giá (kể cả đang bị ẩn) |
+
+FE dùng `canReview` để quyết định hiện nút "Viết đánh giá" trên hồ sơ chủ trọ: `review` khác `null` thì hiện đánh giá của mình kèm nút sửa, xóa; `canReview` là `true` thì hiện biểu mẫu; cả hai không thì ẩn hoặc ghi "Nhắn tin với chủ trọ và đợi họ trả lời để đánh giá". Quyền lấy từ token nên `canReview` có thể trễ một lần refresh sau khi admin đổi quyền.
+
+**Lỗi**: 401 · 403 `PERMISSION_DENIED` (chủ trọ mặc định, hoặc admin) · 404 `LANDLORD_NOT_FOUND` · 400 `INVALID_ID` · 429.
+
+#### Viết đánh giá
+
+`POST /landlords/:id/review` · body `{ "stars": 5, "comment": "Chủ trọ rất tốt" }`
+
+`stars` bắt buộc, **số nguyên** từ 1 đến 5 (chuỗi `"5"` và `4.5` bị từ chối). `comment` tùy chọn: bỏ trống hoặc `null` là không có nhận xét; đã là chuỗi thì bỏ khoảng trắng hai đầu, dài 1 đến 1000 ký tự sau khi bỏ (đếm ký tự Unicode, một emoji là một ký tự), không chứa ký tự NUL, nên **chuỗi rỗng hay toàn khoảng trắng bị từ chối** (muốn không có nhận xét thì đừng gửi trường này hoặc gửi `null`). Xuống dòng ở giữa được giữ nguyên. Không gửi `authorId`, `landlordId`, `status` hay trường lạ nào: bị 400. Route này đọc lại tài khoản từ database mỗi lần gọi, nên tài khoản vừa bị khóa dừng ngay (403 `ACCOUNT_LOCKED`).
+
+**201 Created**: đánh giá của tôi (bảy trường ở trên, `status` là `visible`, `hiddenReason` là `null`). FE gán thẳng vào trang, không cần gọi lại; hai con số của hồ sơ đã đổi (gọi lại `GET /landlords/:id` nếu cần số mới).
+
+| Lỗi | Khi nào |
+|---|---|
+| 401, 403 `PERMISSION_DENIED` | Chưa đăng nhập; không có `review:create` (chủ trọ mặc định); là admin |
+| 403 `ACCOUNT_LOCKED` | Tài khoản của chính người gọi vừa bị khóa |
+| 429 `RATE_LIMITED` | Quá 20 lần mỗi giờ theo người dùng (ba API ghi đếm riêng) |
+| 400 `INVALID_ID`, 400 `VALIDATION_FAILED` | `:id` không phải UUID; `stars` hay `comment` sai luật (`errors[].field` là `stars` hoặc `comment`); trường lạ |
+| 409 `CANNOT_REVIEW_SELF` | `:id` là chính người gọi (chỉ gặp khi admin cấp `review:create` cho chủ trọ). Kiểm trước khi tra chủ trọ |
+| 404 `LANDLORD_NOT_FOUND` | `:id` không phải chủ trọ đang hoạt động |
+| 403 `REVIEW_NOT_ELIGIBLE` | Chủ trọ chưa trả lời người gọi trong chat (điều kiện ở trên) |
+| 409 `REVIEW_ALREADY_EXISTS` | Người gọi đã có đánh giá về chủ trọ này (kể cả đang bị ẩn). Muốn đổi thì `PATCH`, hoặc `DELETE` rồi viết lại. Bấm đúp hay hai tab cùng lúc: đúng một lần thành công, các lần còn lại 409 |
+
+Không trường hợp lỗi nào ghi dòng. Thứ tự kiểm lỗi: đăng nhập, quyền, đọc lại tài khoản, giới hạn tần suất, rồi `INVALID_ID` và `VALIDATION_FAILED`, rồi (admin: 403), tự đánh giá (409), chủ trọ (404), đủ điều kiện (403), trùng (409).
+
+#### Sửa đánh giá
+
+`PATCH /landlords/:id/review` · body `{ "stars": 3 }` hoặc `{ "comment": "Đã sửa" }` hoặc cả hai
+
+Phải có **ít nhất một** trong hai trường (body rỗng là 400). Trường vắng thì giữ nguyên; **`comment: null` xóa nhận xét** (khác với vắng mặt); `stars: null` không hợp lệ. Cùng luật giá trị như `POST`. **200 OK**: đánh giá mới (bảy trường): `updatedAt` đổi, `createdAt` không đổi; gửi lại đúng giá trị cũ vẫn đổi `updatedAt`. Không kiểm lại điều kiện chat.
+
+| Lỗi | Khi nào |
+|---|---|
+| 401, 403, 429, 400 `INVALID_ID`, 400 `VALIDATION_FAILED` | Như `POST` (body rỗng cũng là 400) |
+| 404 `LANDLORD_NOT_FOUND` | `:id` không phải chủ trọ đang hoạt động |
+| 404 `REVIEW_NOT_FOUND` | Người gọi chưa có đánh giá về chủ trọ này |
+| 409 `REVIEW_HIDDEN` | Đánh giá đang bị admin ẩn: **chỉ xóa được, không sửa được**. Muốn sửa lỗi thì xóa rồi viết lại (vẫn được vì điều kiện chat không mất) |
+
+Không trường hợp lỗi nào đổi dòng.
+
+#### Xóa đánh giá
+
+`DELETE /landlords/:id/review` · không body
+
+**204 No Content**, không body. Xóa **hẳn** đánh giá của chính người gọi, **kể cả đang bị ẩn** (admin mất luôn nội dung, chỉ còn lý do trong nhật ký). Hai con số của hồ sơ đổi ngay; người viết viết lại được nếu còn đủ điều kiện. Lỗi: 404 `REVIEW_NOT_FOUND` (chưa có đánh giá), 404 `LANDLORD_NOT_FOUND`, 400 `INVALID_ID`, 401, 403 (kể cả `ACCOUNT_LOCKED`), 429. **Chủ trọ bị khóa thì người viết cũng chưa xóa được** (mọi API dưới `/landlords/:id` cần chủ trọ hợp lệ) cho tới khi mở khóa.
+
+#### Hai con số trên hồ sơ chủ trọ
+
+`GET /landlords/:id` (6.31) và kết quả `POST`, `DELETE /landlords/:id/follow` (6.32) có thêm hai trường, hồ sơ thành **chín trường**: `reviewCount` (số nguyên từ 0) và `ratingAverage` (số sao trung bình **làm tròn một chữ số thập phân**, `null` khi `reviewCount` là 0; FE tự định dạng một chữ số thập phân, vì JSON không phân biệt `4` và `4.0`). Cả hai chỉ tính đánh giá đang hiện của người viết đang hoạt động, đúng tập mà danh sách công khai trả, nên `reviewCount` luôn bằng `total` của `GET /landlords/:id/reviews`. Tính lúc đọc, không lưu sẵn: ẩn, xóa hay khóa người viết đổi số ngay.
+
+Một đánh giá duy nhất làm điểm trung bình thành chính nó, nên **luôn hiện kèm `reviewCount`** ("4,3 (12 đánh giá)"). Chủ trọ chưa có đánh giá thì ghi "Chưa có đánh giá", đừng hiện 0 sao.
+
+#### Kiểm duyệt của admin
+
+`GET /moderation/reviews?page=&pageSize=&status=&landlordId=&authorId=` · cần quyền `review:moderate`
+
+**200 OK**: `{ items, total, page, pageSize }` gồm **mọi** đánh giá, mọi trạng thái, của mọi người viết (kể cả người đang bị khóa), mới viết trước. Lọc tùy chọn: `status` (`visible` hoặc `hidden_by_admin`), `landlordId`, `authorId` (UUID). Giá trị sai hoặc tham số lạ là 400 `VALIDATION_FAILED`. Mỗi phần tử đúng chín trường, có id và tên cả hai bên, **không có email hay số điện thoại**:
+
+```json
+{
+  "id": "0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8e11",
+  "status": "hidden_by_admin",
+  "stars": 1,
+  "comment": "…",
+  "hiddenReason": "Nội dung xúc phạm cá nhân.",
+  "author": { "id": "0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8d02", "name": "Bạn Lan" },
+  "landlord": { "id": "0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8d01", "name": "Anh Minh" },
+  "createdAt": "2026-11-07T03:10:00.000Z",
+  "updatedAt": "2026-11-07T03:10:00.000Z"
+}
+```
+
+`POST /moderation/reviews/:id/hide` và `POST /moderation/reviews/:id/unhide` · body `{ "reason": "Nội dung xúc phạm cá nhân." }`
+
+`:id` là id của đánh giá (lấy từ danh sách admin). `reason` **bắt buộc**, 1 đến 500 ký tự sau khi bỏ khoảng trắng hai đầu (cùng luật lý do với kiểm duyệt tin). `hide` chuyển `visible` thành `hidden_by_admin`, `unhide` chuyển ngược lại **thẳng về `visible`** (khác tin đăng: người viết không có bước tự hiện lại). **200 OK**: phần tử admin ở trên với trạng thái mới. Mỗi lệnh ghi đúng một dòng nhật ký kiểm duyệt kèm lý do trong cùng giao dịch. Đánh giá bị ẩn rời danh sách công khai và hai con số **ngay**; gỡ ẩn thì trở lại. Hai API ghi đọc lại tài khoản admin từ database mỗi lần gọi (403 `ACCOUNT_LOCKED` hay 401 thì đưa về trang đăng nhập).
+
+| Lỗi | Khi nào |
+|---|---|
+| 401, 403 `PERMISSION_DENIED` | Chưa đăng nhập; không phải admin |
+| 400 `INVALID_ID`, 400 `VALIDATION_FAILED` | `:id` không phải UUID; thiếu hoặc sai `reason`; trường lạ |
+| 404 `REVIEW_NOT_FOUND` | Không có đánh giá (kể cả người viết vừa xóa nó) |
+| 409 `REVIEW_STATE_INVALID` | Ẩn đánh giá đã ẩn, hoặc gỡ ẩn đánh giá đang hiện |
+
+Ba API kiểm duyệt **không có giới hạn tần suất thêm**. Admin ẩn đua với người viết: nếu người viết sửa đúng lúc, sửa bị chặn khi đánh giá đã ẩn (409 `REVIEW_HIDDEN`) và không mất cập nhật nào; nếu người viết xóa đúng lúc thì xóa thắng và lệnh ẩn nhận 404.
+
+Cần nhớ:
+- **Hiện tên người viết cạnh nhận xét** là công khai (không có lựa chọn ẩn danh). FE hiện `author.name`, `null` thì ghi "Người dùng".
+- **Escape `comment`**: là chữ người dùng gõ, lưu thô, backend không lọc HTML hay liên kết.
+- **SEO**: có thể dựng JSON-LD `aggregateRating` cho trang hồ sơ chủ trọ từ `ratingAverage` và `reviewCount` (chỉ khi `reviewCount` lớn hơn 0). Danh sách đánh giá là API đọc đăng nhập tùy chọn: làm mới token trước khi gọi nếu muốn có `isMine`.
+- **Không có** báo cáo đánh giá, chủ trọ trả lời đánh giá, phân bố số sao, lọc hay sắp theo sao, ảnh trong đánh giá, bình chọn "hữu ích" (đã hoãn, mục 9). Người dùng muốn báo đánh giá xấu thì liên hệ admin ngoài hệ thống.
+
 ---
 
 ## 7. Luồng màn hình gợi ý
@@ -2114,9 +2303,10 @@ Hai ô: mật khẩu hiện tại, mật khẩu mới. Gọi `POST /auth/change-
 ### Hồ sơ chủ trọ (khách và người tìm trọ)
 
 1. **Mở từ tên chủ trọ** ở danh sách và chi tiết tin (`landlord.id`): gọi `GET /landlords/:id`, **gửi kèm access token nếu đã đăng nhập** để biết `isFollowing`. 404 thì báo "không tìm thấy chủ trọ".
-2. Hiện `name` (`null` thì ghi "Chủ trọ"), `joinedAt`, `followerCount`, `totalViewCount`, `publicListingCount`.
+2. Hiện `name` (`null` thì ghi "Chủ trọ"), `joinedAt`, `followerCount`, `totalViewCount`, `publicListingCount`, và điểm sao: `ratingAverage` kèm `reviewCount` ("4,3 (12 đánh giá)"); `reviewCount` là 0 thì ghi "Chưa có đánh giá", đừng hiện 0 sao.
 3. **Nút theo dõi**: người tìm trọ bấm thì `POST /landlords/:id/follow`, bấm lại thì `DELETE`. Mỗi lần gán thẳng hồ sơ trả về vào trang (có `isFollowing` và `followerCount` mới). Khách thì dẫn tới đăng nhập; chủ trọ, admin và hồ sơ của chính mình thì ẩn nút (mục 6.32).
 4. **Danh sách tin dưới hồ sơ**: gọi `GET /landlords/:id/listings` (phân trang, **gửi kèm access token nếu đã đăng nhập** để có `isFavorite`), vẽ bằng đúng thẻ tin của trang tìm trọ, kể cả nút tim (mục 6.19 và 6.33). Đây là API riêng nên có thể gọi song song với hồ sơ; hai lệnh cùng nhận 404 `LANDLORD_NOT_FOUND` thì báo "không tìm thấy chủ trọ". `total` bằng `publicListingCount`, nên dùng làm tiêu đề "N tin đang hiện". Danh sách rỗng thì hiện "Chủ trọ chưa có tin nào đang hiện". Không có bộ lọc hay sắp xếp ở trang này.
+5. **Đánh giá dưới hồ sơ** (mục 6.40): gọi `GET /landlords/:id/reviews` (phân trang, **gửi kèm access token nếu đã đăng nhập** để có `isMine`), vẽ sao, `author.name` (`null` thì ghi "Người dùng"), nhận xét (**escape**, giữ xuống dòng) và ngày. Người đã đăng nhập gọi thêm `GET /landlords/:id/review` (cần `review:read`): `review` khác `null` thì ghim đánh giá của mình lên đầu kèm nút sửa, xóa (`PATCH`, `DELETE`) và, nếu `status` là `hidden_by_admin`, nhãn "bị quản trị viên ẩn" kèm `hiddenReason` (khi đó chỉ còn nút xóa); `canReview` là `true` thì hiện biểu mẫu chọn 1 đến 5 sao và ô nhận xét (tối đa 1000 ký tự) gửi `POST`; cả hai không thì ẩn biểu mẫu hoặc ghi "Nhắn tin với chủ trọ và đợi họ trả lời để đánh giá". Gặp 403 `REVIEW_NOT_ELIGIBLE` hay 409 `REVIEW_ALREADY_EXISTS` thì tải lại `GET /landlords/:id/review` rồi vẽ lại. Chủ trọ và admin không có biểu mẫu.
 
 ### Lưu tin yêu thích (người tìm trọ)
 
@@ -2153,6 +2343,7 @@ Hai ô: mật khẩu hiện tại, mật khẩu mới. Gọi `POST /auth/change-
 - **Danh mục phường, xã và tiện ích**: hai bảng nhỏ lấy từ `GET /wards` và `GET /amenities`, mỗi bảng có nút thêm, đổi tên và xóa (mục 6.30). Ô mã phường đúng 5 chữ số, mã tỉnh đúng 2 chữ số, khóa tiện ích chữ thường, số, gạch dưới; **không có ô quận huyện**. Mã và khóa chỉ nhập lúc tạo, sau đó chỉ cho đổi tên. Tạo gặp 409 `CATALOG_CODE_TAKEN` thì báo ở ô mã; xóa gặp 409 `CATALOG_IN_USE` thì báo "đang có nhà trọ dùng, không xóa được" (gợi ý đổi tên thay vì xóa).
 - **Đơn mua gói của mọi chủ trọ**: bảng lấy từ `GET /orders/all` (phân trang, mục 6.37) với bộ lọc trạng thái (`status`), chủ trọ (`landlordId`, chọn từ danh sách người dùng ở 6.34), gói (`planId`, chọn từ `GET /plans/all`) và hai ô ngày `from`, `to` (ngày tạo đơn, giờ Việt Nam). Mỗi dòng hiện mã đơn (`code`), tên gói, giá đã chốt, trạng thái, ngày tạo, ngày trả, kỳ gói, cùng tên và email chủ trọ (`name` có thể `null`: hiện email). Đặt hai ô lấy từ `summary` phía trên bảng: "Số đơn đã trả" và "Tổng tiền đã trả" của **đúng bộ lọc đang chọn** (không phải của riêng trang đang xem), kèm nhãn "thanh toán thử". Đổi bộ lọc thì về trang 1. Gặp 403 `ACCOUNT_LOCKED` hay 401 thì đưa về trang đăng nhập.
 - **Doanh thu**: một trang nhỏ lấy từ `GET /orders/revenue` (mục 6.38) với hai ô ngày `from`, `to` (ngày **trả**, giờ Việt Nam) và công tắc "Theo ngày" hay "Theo tháng" (`groupBy`). Đặt ba phần: ô tổng (`paidAmount`, `paidCount`) kèm nhãn "thanh toán thử"; bảng hoặc biểu đồ cột "theo gói" từ `byPlan`; biểu đồ "theo thời gian" từ `series`. `series` thưa, nên điền ngày hay tháng không có đơn bằng 0 trước khi vẽ. Số ở đây có thể khác ô tổng của màn hình đơn (6.37) vì hai API lọc theo hai loại ngày khác nhau (ngày trả và ngày tạo); ghi chú ngay trên màn hình. Đổi khoảng ngày hay cách gom thì gọi lại API.
+- **Kiểm duyệt đánh giá**: bảng lấy từ `GET /moderation/reviews` (phân trang) với bộ lọc `status`, `landlordId`, `authorId` (mục 6.40). Mỗi dòng hiện số sao, nhận xét, tên người viết và chủ trọ (bấm vào dẫn tới người dùng ở 6.34 theo `author.id` và `landlord.id`), ngày viết và nhãn trạng thái. Dòng `visible` có nút "Ẩn"; dòng `hidden_by_admin` có nút "Gỡ ẩn" và hiện `hiddenReason`. Cả hai nút mở hộp nhập **lý do bắt buộc** (1 đến 500 ký tự) trước khi gửi. Sau khi gọi, thay dòng bằng phần tử trả về; gặp 409 `REVIEW_STATE_INVALID` thì tải lại dòng; gặp 404 `REVIEW_NOT_FOUND` thì bỏ dòng (người viết vừa xóa). Nhắc admin: gỡ ẩn đưa đánh giá thẳng về `visible`, không có bước nào của người viết. Chưa có tìm theo chữ trong nhận xét và chưa có màn hình lịch sử kiểm duyệt (mục 9).
 
 ### Kịch bản demo (đi qua mọi tính năng)
 
@@ -2231,6 +2422,16 @@ Mẹo khi demo:
 
 **Tài khoản (`status`)**: `active` ⇄ `locked`, chỉ admin đổi. Khóa hủy mọi phiên ngay; mở khóa **không** khôi phục phiên (người dùng đăng nhập lại). Tài khoản bị khóa: đăng nhập đúng mật khẩu nhận `ACCOUNT_LOCKED`, hồ sơ chủ trọ và tin của họ biến khỏi công khai; mở khóa thì trở lại như cũ.
 
+**Đánh giá chủ trọ (`status`)** (spec 0014, mục 6.40): chỉ hai trạng thái; người viết sửa nội dung khi đang `visible`, admin đổi trạng thái, người viết xóa hẳn ở trạng thái nào cũng được.
+
+| Đang ở \ Hành động | Người viết `PATCH` | Người viết `DELETE` | Admin `hide` | Admin `unhide` |
+|---|---|---|---|---|
+| (chưa có) | 404 `REVIEW_NOT_FOUND` | 404 `REVIEW_NOT_FOUND` | 404 `REVIEW_NOT_FOUND` | 404 `REVIEW_NOT_FOUND` |
+| `visible` | vẫn `visible`, `updatedAt` đổi | xóa hẳn dòng | thành `hidden_by_admin` | 409 `REVIEW_STATE_INVALID` |
+| `hidden_by_admin` | 409 `REVIEW_HIDDEN` | xóa hẳn dòng | 409 `REVIEW_STATE_INVALID` | thành `visible` (không qua trạng thái trung gian) |
+
+`POST` (viết) tạo dòng `visible` khi người gọi đã đủ điều kiện chat và chưa có đánh giá về chủ trọ đó (đã có thì 409 `REVIEW_ALREADY_EXISTS`).
+
 **Phiên đăng nhập**: tạo khi đăng ký hoặc đăng nhập (tối đa 10 phiên mỗi tài khoản, vượt thì phiên cũ nhất bị hủy), xoay mỗi lần refresh, sống 30 ngày kể từ lúc đăng nhập; bị hủy bởi đăng xuất, đăng xuất mọi thiết bị, đổi hoặc đặt lại mật khẩu, khóa tài khoản, admin thu hồi, hoặc phát hiện dùng lại refresh token cũ ngoài khoảng ân hạn.
 
 ### 8.3 Ví dụ có số liệu
@@ -2274,6 +2475,7 @@ Mẹo khi demo:
 - **Theo dõi chủ trọ** (6.32): chỉ người tìm trọ, mỗi cặp một lần, gọi lại an toàn, admin và chủ trọ mặc định không theo dõi được. Các con số trên hồ sơ (6.31) tính lúc đọc nên luôn khớp với dữ liệu thật; theo dõi chỉ làm tăng một con số, chưa có thông báo hay danh sách.
 - **Lưu tin yêu thích** (6.33): chỉ người tìm trọ, mỗi cặp (người dùng, tin) một lần, gọi lại an toàn, không giới hạn số tin, chỉ lưu được tin đang hiện công khai, bỏ lưu không kiểm tin. Danh sách đã lưu dùng đúng luật hiển thị công khai của 6.19 nên luôn khớp với những gì khách mở được; dòng lưu không bị xóa khi tin biến, nên tin hiện lại là quay về. Admin và chủ trọ mặc định không lưu được.
 - **Chat** (từ 2026-11-05, 6.39). Mỗi cặp (tin, người nhắn) một cuộc trò chuyện; chủ trọ của cuộc trò chuyện chép từ tin lúc mở. Chỉ người có `conversation:create` (mặc định người tìm trọ) mở được, và chỉ với tin đang hiện công khai; sau đó cuộc trò chuyện sống tiếp dù tin ẩn hay hết hạn mức, miễn tài khoản hai bên còn hoạt động. Hai bên đọc và gửi được, người ngoài (kể cả admin) thì không. Tin nhắn chỉ có chữ, 1 đến 1000 ký tự, không sửa, không xóa, đánh số `seq` liên tiếp theo từng cuộc trò chuyện; thứ tự hiển thị theo `seq`. Số tin chưa đọc là phép trừ theo mốc đã đọc của từng bên: gửi tin dời mốc của chính người gửi, `POST /conversations/:id/read` dời mốc của người gọi (không bao giờ lùi, không vượt tin cuối), mọi `GET` không đổi mốc. Không có kênh đẩy, FE hỏi lại; không có email thông báo.
+- **Đánh giá chủ trọ** (từ 2026-11-07, 6.40). Mỗi cặp (người viết, chủ trọ) tối đa một đánh giá: số sao nguyên từ 1 đến 5, nhận xét tùy chọn 1 đến 1000 ký tự. Chỉ người có `review:create` (mặc định người tìm trọ) viết được, và chỉ khi chủ trọ **đã gửi ít nhất một tin** trong một cuộc trò chuyện với họ (kiểm lúc viết, không kiểm lại khi sửa hay xóa). Người viết sửa và xóa của mình; admin ẩn và gỡ ẩn kèm lý do, mỗi lần một dòng nhật ký. Đánh giá bị ẩn không sửa được, chỉ xóa được. `reviewCount` và `ratingAverage` của hồ sơ tính lúc đọc từ đúng tập mà danh sách công khai trả (đánh giá đang hiện của người viết đang hoạt động), nên khóa người viết, ẩn hay xóa đánh giá đổi số ngay. Admin và chủ trọ mặc định không viết đánh giá.
 - **Đơn của mọi chủ trọ (admin)** (từ 2026-10-21, 6.37). Chỉ admin xem được (`order:report`); chủ trọ chỉ thấy đơn của mình (6.27). `summary.paidAmount` là tổng giá đã chốt của các đơn `paid` trong đúng tập lọc, tính lúc đọc nên luôn bằng phép cộng tay các dòng. Đó là tiền của thanh toán thử, chưa phải tiền thật.
 - **Thống kê doanh thu (admin)** (từ 2026-10-21, 6.38). Chỉ tính đơn `paid`, theo giá đã chốt trên đơn và theo **ngày trả**. Một ngày hay một tháng ở mọi nơi trong API là ngày hay tháng theo giờ Việt Nam. Ba tổng của phản hồi (ngoài cùng, `byPlan`, `series`) luôn bằng nhau. Là tiền của thanh toán thử.
 - **Khóa tài khoản**: tài khoản bị khóa không đăng nhập, không refresh được và mọi phiên bị hủy lúc khóa. Đăng nhập sai mật khẩu vẫn báo `INVALID_CREDENTIALS` (không lộ tài khoản có bị khóa hay không); chỉ khi đúng mật khẩu mới báo `ACCOUNT_LOCKED`. Admin không tự khóa mình được.
@@ -2302,6 +2504,7 @@ Mẹo khi demo:
 - **`isPublic` và `GET /me/membership` chỉ nhìn tin và hạn mức**, không nhìn tài khoản đã bị khóa hay nhà trọ đã xóa: `isPublic` là `true` nghĩa là tin nằm trong hạn mức, còn khóa tài khoản chặn tin ở API công khai theo luật ở mục 8. Chủ trọ vừa bị khóa chỉ còn gọi được trong tối đa 15 phút (token còn hạn). Đừng tự tính hạn dùng thử hay hạn mức ở FE, luôn lấy từ `GET /me/membership`.
 - **Chủ trọ đăng ký trước 2026-10-16** nhận hạn dùng thử bằng thời điểm chạy migration cộng 30 ngày (không phải thời điểm họ đăng ký).
 - **Chat** (6.39) **không có kênh đẩy**: FE hỏi lại vài giây một lần, mỗi người đang mở trang tốn vài request mỗi phút, và bộ đếm giới hạn (120 lần mỗi phút cho mỗi API đọc) nằm trong bộ nhớ nên mất khi backend khởi động lại. **Không có email hay thông báo**: chủ trọ chỉ biết có tin khi mở trang. Đếm chưa đọc chỉ là phép trừ theo mốc: gửi tin dời mốc đã đọc của chính người gửi tới tin cuối, nên một tin của bên kia chưa kịp xem sẽ được tính là đã đọc nếu mình gửi tin từ một tab khác; chưa có "đã xem" cho bên kia. **Không sửa, không xóa, không báo cáo, không chặn người**; một tin xấu ở lại mãi, admin không xem được cuộc trò chuyện để điều tra, chỉ khóa được tài khoản. Cuộc trò chuyện sống tiếp dù tin bị admin ẩn vì vi phạm, cho tới khi tài khoản chủ trọ bị khóa. Nội dung là chữ thô: FE phải escape. Tin nhắn lưu mãi, chưa có chính sách giữ hay xóa. Một người hỏi ba tin của cùng một chủ trọ ra ba cuộc trò chuyện riêng. Không chống gửi trùng khi bấm đúp (mỗi lần gửi là một tin): FE khóa nút trong lúc gửi.
+- **Đánh giá chủ trọ** (6.40): chat chỉ là bằng chứng đã liên hệ, **không phải đã ở trọ**. Một chủ trọ có thể tự lập tài khoản người tìm trọ, nhắn cho chính mình, tự trả lời rồi chấm 5 sao (số điện thoại chỉ bắt buộc duy nhất với tài khoản chủ trọ); chưa có biện pháp chống, nên điểm trung bình chưa phải số tin cậy tuyệt đối. Chưa có số đánh giá tối thiểu trước khi hiện điểm, nên một đánh giá duy nhất là cả điểm trung bình (FE hiện kèm `reviewCount`). **Tên người viết hiện công khai** cạnh nhận xét (không có lựa chọn ẩn danh), có thể bị trả đũa. Xóa là xóa hẳn dòng: người viết xóa một đánh giá đang bị ẩn thì admin mất luôn nội dung (nhật ký chỉ còn lý do). Đánh giá đang bị ẩn không sửa được nên muốn sửa lỗi chỉ có cách xóa rồi viết lại. Chủ trọ bị khóa thì người viết cũng chưa xóa được đánh giá của mình cho tới khi mở khóa. Nhận xét là chữ thô: FE phải escape. **Chưa có**: chủ trọ trả lời đánh giá, nút báo cáo đánh giá, phân bố số sao, lọc hay sắp theo sao, ảnh trong đánh giá, bình chọn "hữu ích", đánh giá riêng cho từng nhà trọ, tìm theo chữ trong nhận xét cho admin, thông báo khi có đánh giá mới (cần việc nền). Đo thật trên 50 nghìn đánh giá giả lập, một chủ trọ có 5 nghìn: trang đầu của danh sách 0,06 mili giây, trang cuối 3,6 mili giây, đếm 2,3 mili giây, hai con số của hồ sơ 2,1 mili giây (trung vị); không chỉnh vì là bản demo.
 - **Chưa có kháng nghị** khi bị ẩn tin: chủ trọ sửa tin xong vẫn phải liên hệ admin ngoài hệ thống.
 - **Lịch sử kiểm duyệt chưa có API đọc.** Mỗi lần ẩn hoặc gỡ ẩn tin ghi một dòng vào bảng `moderation_logs`, nhưng ra ngoài chỉ có `moderationReason` (lý do ẩn gần nhất) trong API tin. Lý do gỡ ẩn và các lần ẩn cũ chỉ xem được trong cơ sở dữ liệu.
 - **Đổi tên phường dựng lại từ khóa từng tin một** trong một giao dịch, nên phường có hàng chục nghìn tin sẽ đổi tên chậm. Một tin đang được đăng đúng lúc phường đổi tên có thể mang tên phường cũ trong từ khóa tìm kiếm cho tới lần sửa tin kế tiếp (hiển thị `fullAddress` vẫn đúng vì ghép lúc đọc). Chấp nhận ở bản demo.
@@ -2338,6 +2541,32 @@ Tính đến 2026-10-22 **không còn tính năng nào đã lên kế hoạch m�
 ## 11. Nhật ký thay đổi
 
 Mới nhất ở trên cùng. Mục nào **phá vỡ** cách FE đang gọi sẽ ghi rõ "ĐỔI KHÁC VỚI TRƯỚC".
+
+### 2026-11-07 · Dữ liệu demo có thêm đánh giá chủ trọ (không đổi API)
+
+- `npm run seed:demo` nay dựng thêm **30 đánh giá chủ trọ** và **35 cuộc trò chuyện** (30 là bằng chứng chat cho các đánh giá, vì chỉ người đã được chủ trọ trả lời mới đánh giá được; 5 là cảnh riêng). Chạy `npm run seed:demo -- --reset` trên database đã có dữ liệu demo để nhận phần mới.
+- Cảnh dựng sẵn: chủ trọ nhiều đánh giá (Khoa 4,5), điểm lẻ làm tròn nửa lên (Bảo 3,25 hiện 3,3), chỉ một đánh giá (Tâm), chưa có đánh giá (Mai, Hà), đánh giá chỉ có sao, nhận xét nhiều dòng, đánh giá đã sửa, một đánh giá bị admin ẩn (Quân về Nhung), đánh giá của người viết bị khóa (Sơn về Khoa, không hiện công khai) và về chủ trọ bị khóa (Lan, hồ sơ 404). Lan Anh và Việt đã được Phát trả lời mà chưa đánh giá (thử viết); Tuấn nhắn Bảo chưa được trả lời (không viết được).
+- `--reset` xóa thêm mọi đánh giá có người viết hoặc chủ trọ là tài khoản demo, kể cả đánh giá của người thật về chủ trọ demo, cùng nhật ký ẩn của chúng.
+- Chỉ là dữ liệu mẫu cho tài khoản demo; không có đánh giá giả nào được thêm vào tài khoản thật của bạn.
+
+### 2026-11-07 · Admin ẩn và gỡ ẩn đánh giá chủ trọ (mốc 2 của đánh giá chủ trọ; phần đánh giá xong)
+
+- **Ba API mới** (mục 6.40), cần quyền `review:moderate` (chỉ admin giữ): `GET /moderation/reviews` (mọi đánh giá, mọi trạng thái, phân trang, lọc `status`, `landlordId`, `authorId`; mỗi phần tử có id và tên người viết lẫn chủ trọ, `hiddenReason`), `POST /moderation/reviews/:id/hide` và `POST /moderation/reviews/:id/unhide` (body `{ "reason": "..." }` bắt buộc, 1 đến 500 ký tự; trả **200** phần tử admin). Mỗi lệnh ghi đúng một dòng nhật ký kiểm duyệt kèm lý do trong cùng giao dịch.
+- **Ẩn có hiệu lực ngay**: đánh giá bị ẩn rời danh sách công khai và hai con số của hồ sơ; gỡ ẩn thì trở lại. Gỡ ẩn đưa đánh giá thẳng về `visible` (khác tin đăng). Người viết thấy `status` `hidden_by_admin` và `hiddenReason` ở `GET /landlords/:id/review`; sửa bị 409 `REVIEW_HIDDEN`, xóa vẫn được.
+- **Mã lỗi** đã có từ mốc 1: `REVIEW_STATE_INVALID` (409) khi ẩn đánh giá đã ẩn hoặc gỡ ẩn đánh giá đang hiện, `REVIEW_NOT_FOUND` (404).
+- **Không giới hạn tần suất thêm** cho ba API này (chỉ admin gọi). Hai API ghi đọc lại tài khoản admin từ database mỗi lần gọi.
+- **Đua**: admin ẩn đúng lúc người viết sửa thì sửa bị chặn (409 `REVIEW_HIDDEN`) và không mất cập nhật nào; đúng lúc người viết xóa thì xóa thắng và lệnh ẩn nhận 404.
+- Bộ request Postman folder 26 có thêm các request kiểm duyệt; folder 03 và 18 đã cập nhật theo quyền và hồ sơ mới.
+
+### 2026-11-07 · Đánh giá chủ trọ: viết, sửa, xóa, đọc và hai con số trên hồ sơ (mốc 1 của đánh giá chủ trọ)
+
+- **Năm API mới** (mục 6.40): `GET /landlords/:id/reviews` (công khai, đọc đăng nhập tùy chọn, phân trang, mới viết trước), `GET /landlords/:id/review` (đánh giá của tôi và `canReview`), `POST /landlords/:id/review` (201), `PATCH /landlords/:id/review` (200), `DELETE /landlords/:id/review` (204). Số sao nguyên 1 đến 5, nhận xét tùy chọn 1 đến 1000 ký tự. Chỉ người tìm trọ **đã được chủ trọ trả lời trong chat** viết được (403 `REVIEW_NOT_ELIGIBLE`), mỗi chủ trọ một đánh giá (409 `REVIEW_ALREADY_EXISTS`).
+- **Hồ sơ chủ trọ từ bảy lên chín trường**: `GET /landlords/:id` và kết quả `POST`, `DELETE /landlords/:id/follow` có thêm `reviewCount` (số nguyên từ 0) và `ratingAverage` (làm tròn một chữ số thập phân, `null` khi chưa có đánh giá). Chỉ thêm trường, FE cũ đọc theo tên không vỡ; chỗ nào kiểm đúng bảy khóa thì cần cập nhật. Hai số tính lúc đọc từ đúng tập mà danh sách công khai trả.
+- **Quyền mới**: `review:read`, `review:create`, `review:update`, `review:delete`, `review:moderate` (danh mục thành 15 module). Mặc định `tenant` giữ bốn khóa đầu; `landlord` không giữ khóa nào; `review:moderate` chỉ admin giữ. **Admin giữ mọi quyền nhưng bốn API của người viết trả 403 `PERMISSION_DENIED`.** Cần chạy `npm run migration:deploy` trên database hiện có để tạo bảng và thêm khóa mặc định; token cấp trước đó chưa mang quyền mới đến lần refresh kế tiếp (tối đa 15 phút), `GET /auth/me` thấy ngay.
+- **Mã lỗi mới** (đã thêm vào bảng mục 3 và kiểu `ErrorCode` ở Phụ lục B): `REVIEW_NOT_FOUND` (404), `REVIEW_NOT_ELIGIBLE` (403), `REVIEW_ALREADY_EXISTS` (409), `CANNOT_REVIEW_SELF` (409), `REVIEW_HIDDEN` (409), `REVIEW_STATE_INVALID` (409).
+- **Giới hạn tần suất**: viết, sửa, xóa mỗi API 20 lần mỗi giờ theo người dùng (đếm riêng); hai API đọc dùng nhóm đọc công khai, 300 lần mỗi phút theo IP, mỗi API đếm riêng.
+- **Ba API ghi đọc lại tài khoản từ database mỗi lần gọi**: tài khoản vừa bị khóa nhận 403 `ACCOUNT_LOCKED` ngay.
+- **Cần FE làm**: escape `comment` khi hiện; hiện `reviewCount` kèm `ratingAverage`; khách nhận `isMine: null`; API danh sách đọc đăng nhập tùy chọn không bao giờ 401 nên làm mới token trước khi gọi; có thể dựng JSON-LD `aggregateRating` từ hai con số cho SEO trang hồ sơ.
 
 ### 2026-11-05 · Chat: đếm tin chưa đọc và đánh dấu đã đọc (mốc 2 của chat; phần chat xong)
 
@@ -2685,14 +2914,14 @@ Mỗi lần backend thêm, đổi hoặc bỏ một API, mã lỗi, quy tắc ng
 
 ## Phụ lục A. Bảng tra nhanh mọi API
 
-Tổng cộng **74 API**. Mọi đường dẫn nằm dưới `/api/v1`. Quy ước cột:
+Tổng cộng **82 API**. Mọi đường dẫn nằm dưới `/api/v1`. Quy ước cột:
 - **Cần**: "công khai" là không cần đăng nhập; "công khai + token tùy chọn" là route đọc đăng nhập tùy chọn (mục 2, mục 4.1); "đăng nhập" là chỉ cần access token hợp lệ; `module:hành_động` là quyền cần có (lấy từ `permissions` của `GET /auth/me`). **"đọc lại DB"** nghĩa là backend không tin quyền trong token mà đọc lại tài khoản từ database mỗi lần gọi: admin vừa bị khóa nhận 403 `ACCOUNT_LOCKED`, admin đã bị xóa nhận 401 `TOKEN_INVALID`, dù token còn hạn.
 - **Giới hạn**: giới hạn tần suất (mục 3); ô ghi "không" nghĩa là API đó không bị giới hạn. "Theo người" là theo tài khoản đang đăng nhập. Mỗi API có bộ đếm riêng, kể cả khi dùng chung một con số.
 - **OK**: mã HTTP khi thành công.
 
 **Thứ tự kiểm lỗi chung** (mọi API): 401 (token) → 403 (quyền, hoặc `ACCOUNT_LOCKED` ở API "đọc lại DB") → 429 (giới hạn tần suất) → 400 (`INVALID_ID`, `VALIDATION_FAILED`) → 404 hoặc 403 `NOT_RESOURCE_OWNER` (tồn tại và chủ sở hữu) → luật nghiệp vụ (409, 403 hạn mức...). Thứ tự riêng từng API nằm ở mục tương ứng ở mục 6.
 
-**Phản hồi có `Cache-Control: private, no-store`** (đừng cho proxy hay CDN cache): `GET /listings`, `GET /listings/:slugCode`, `GET /landlords/:id`, `GET /landlords/:id/listings`, `POST` và `DELETE /landlords/:id/follow`, `POST` và `DELETE /listings/:id/favorite`, `GET /me/favorites`, `GET` và `PATCH /me/profile`, `GET /users`, `GET /orders/all`, `GET /orders/revenue`, và cả bảy API chat (A.9). Ảnh `/media/public/...` thì `public, max-age=86400`.
+**Phản hồi có `Cache-Control: private, no-store`** (đừng cho proxy hay CDN cache): `GET /listings`, `GET /listings/:slugCode`, `GET /landlords/:id`, `GET /landlords/:id/listings`, `POST` và `DELETE /landlords/:id/follow`, `POST` và `DELETE /listings/:id/favorite`, `GET /me/favorites`, `GET` và `PATCH /me/profile`, `GET /users`, `GET /orders/all`, `GET /orders/revenue`, cả bảy API chat (A.9) và cả năm API đánh giá `/landlords/:id/review` và `/landlords/:id/reviews` (A.5 và A.10). Ảnh `/media/public/...` thì `public, max-age=86400`.
 
 ### A.1 Hệ thống và đăng nhập
 
@@ -2768,6 +2997,7 @@ Ba API ghi nhà trọ đếm riêng nhau (mỗi API 30 lần mỗi giờ); năm 
 | `GET /media/public/:file` | công khai | không | 200 (tệp ảnh) | 6.28 |
 | `GET /landlords/:id` | công khai + token tùy chọn | 300 mỗi phút theo IP | 200 | 6.31 |
 | `GET /landlords/:id/listings` | công khai + token tùy chọn | 300 mỗi phút theo IP (bộ đếm riêng) | 200 | 6.36 |
+| `GET /landlords/:id/reviews` | công khai + token tùy chọn | 300 mỗi phút theo IP (bộ đếm riêng) | 200 | 6.40 |
 | `GET /plans` | công khai | 300 mỗi phút theo IP | 200 | 6.26 |
 
 ### A.6 Người tìm trọ: theo dõi, lưu tin
@@ -2808,6 +3038,9 @@ Admin không bị giới hạn tần suất ở nhóm này.
 | `GET /moderation/listings` | `listing:moderate` | 200 | 6.29 |
 | `POST /moderation/listings/:id/hide` | `listing:moderate`, đọc lại DB | 200 | 6.29 |
 | `POST /moderation/listings/:id/unhide` | `listing:moderate`, đọc lại DB | 200 | 6.29 |
+| `GET /moderation/reviews` | `review:moderate` | 200 | 6.40 |
+| `POST /moderation/reviews/:id/hide` | `review:moderate`, đọc lại DB | 200 | 6.40 |
+| `POST /moderation/reviews/:id/unhide` | `review:moderate`, đọc lại DB | 200 | 6.40 |
 | `GET /orders/all` | `order:report`, đọc lại DB | 200 | 6.37 |
 | `GET /orders/revenue` | `order:report`, đọc lại DB | 200 | 6.38 |
 
@@ -2824,6 +3057,17 @@ Admin gọi cả bảy API này luôn nhận 403 `PERMISSION_DENIED` dù có quy
 | `GET /me/conversations` | `conversation:read` | 120 mỗi phút | 200 | 6.39 |
 | `GET /me/conversations/unread-count` | `conversation:read` | 120 mỗi phút | 200 | 6.39 |
 | `POST /conversations/:id/read` | `conversation:update` | 120 mỗi phút | 200 | 6.39 |
+
+### A.10 Đánh giá chủ trọ (người viết)
+
+Admin gọi cả bốn API này luôn nhận 403 `PERMISSION_DENIED` dù có quyền. Hai API đọc (danh sách công khai và kiểm duyệt) nằm ở A.5 và A.8. Giới hạn tính theo người dùng đang đăng nhập (trừ API đọc: theo IP), mỗi API một bộ đếm.
+
+| API | Cần | Giới hạn | OK | Mục |
+|---|---|---|---|---|
+| `GET /landlords/:id/review` | `review:read` | 300 mỗi phút theo IP | 200 | 6.40 |
+| `POST /landlords/:id/review` | `review:create`, đọc lại DB | 20 mỗi giờ | 201 | 6.40 |
+| `PATCH /landlords/:id/review` | `review:update`, đọc lại DB | 20 mỗi giờ | 200 | 6.40 |
+| `DELETE /landlords/:id/review` | `review:delete`, đọc lại DB | 20 mỗi giờ | 204 | 6.40 |
 
 ---
 
@@ -2880,6 +3124,7 @@ type ErrorCode =
   | 'ORDER_NOT_FOUND' | 'ORDER_STATE_INVALID'
   | 'LANDLORD_NOT_FOUND' | 'CANNOT_FOLLOW_SELF'
   | 'CONVERSATION_NOT_FOUND' | 'CANNOT_CHAT_WITH_SELF' | 'CHAT_PEER_UNAVAILABLE'
+  | 'REVIEW_NOT_FOUND' | 'REVIEW_NOT_ELIGIBLE' | 'REVIEW_ALREADY_EXISTS' | 'CANNOT_REVIEW_SELF' | 'REVIEW_HIDDEN' | 'REVIEW_STATE_INVALID'
   | 'DB_UNAVAILABLE' | 'INTERNAL_ERROR' | 'HTTP_ERROR';
 
 // ---------- Đăng nhập, tài khoản ----------
@@ -2950,6 +3195,7 @@ interface FavoriteResult { listingId: Uuid; isFavorite: boolean } // POST/DELETE
 interface LandlordProfile {
   id: Uuid; name: string | null; joinedAt: IsoDateTime;
   followerCount: number; totalViewCount: number; publicListingCount: number;
+  reviewCount: number; ratingAverage: number | null; // null khi reviewCount là 0
   isFollowing: boolean | null; // null với khách
 }
 
@@ -2967,6 +3213,26 @@ interface ConversationItem { // phần tử hộp thư, GET /conversations/:id, 
 interface UnreadSummary { unreadConversations: number; unreadMessages: number } // GET /me/conversations/unread-count
 interface OpenConversationResult { conversation: ConversationItem; message: ChatMessage } // POST /listings/:id/conversations
 interface ChatMessagesPage { items: ChatMessage[]; hasMore: boolean; lastSeq: number } // items luôn seq tăng dần
+
+// ---------- Đánh giá chủ trọ ----------
+type ReviewStatus = 'visible' | 'hidden_by_admin';
+interface PublicReview { // phần tử của GET /landlords/:id/reviews
+  id: Uuid; stars: number; comment: string | null; // comment là chữ thô: escape khi hiện
+  author: { name: string | null }; // không có email, số điện thoại hay id người viết
+  isMine: boolean | null; // null với khách
+  createdAt: IsoDateTime; updatedAt: IsoDateTime;
+}
+interface MyReview { // đánh giá của tôi: GET /landlords/:id/review, kết quả của POST và PATCH
+  id: Uuid; stars: number; comment: string | null; status: ReviewStatus;
+  hiddenReason: string | null; // lý do admin ẩn gần nhất khi đang hidden_by_admin
+  createdAt: IsoDateTime; updatedAt: IsoDateTime;
+}
+interface MyReviewState { review: MyReview | null; canReview: boolean } // GET /landlords/:id/review
+interface AdminReview { // GET /moderation/reviews, kết quả của hide và unhide
+  id: Uuid; status: ReviewStatus; stars: number; comment: string | null; hiddenReason: string | null;
+  author: { id: Uuid; name: string | null }; landlord: { id: Uuid; name: string | null };
+  createdAt: IsoDateTime; updatedAt: IsoDateTime;
+}
 
 // ---------- Dùng thử, gói, đơn ----------
 type MembershipState = 'plan' | 'trial' | 'expired';
@@ -3014,6 +3280,8 @@ interface ListingBody { title: string; description: string; price: number; areaM
 interface PlanBody { name: string; price: number; maxListings: number; durationDays?: number; isActive?: boolean } // PATCH: mọi trường tùy chọn
 interface CreateOrderBody { planId: Uuid }
 interface SendMessageBody { body: string } // mở cuộc trò chuyện và gửi tin
+interface CreateReviewBody { stars: number; comment?: string | null } // stars nguyên 1 đến 5; comment bỏ trống hoặc null là không có nhận xét
+interface UpdateReviewBody { stars?: number; comment?: string | null } // phải có ít nhất một trường; comment null xóa nhận xét
 interface UpdateSettingBody { value: number }
 interface UpdateAccountTypeBody { permissions: PermissionKey[] } // thay toàn bộ danh sách
 ```
@@ -3100,6 +3368,17 @@ Dùng để dựng kiểm tra ở FE cho khớp backend, **nhằm báo lỗi s�
 | `GET /conversations/:id/messages` `limit` | Số nguyên từ 1 đến 100, mặc định 30 |
 | `afterSeq`, `beforeSeq` | `afterSeq` số nguyên từ 0, `beforeSeq` số nguyên từ 1, tối đa 2147483647; **không gửi cả hai** (400) |
 | `GET /me/conversations` | `page`, `pageSize` như mục chung; `listingId` (UUID, tùy chọn); không nhận tham số khác |
+
+**Đánh giá chủ trọ**
+
+| Trường | Luật |
+|---|---|
+| `stars` (viết, sửa) | Số nguyên từ 1 đến 5 (chuỗi `"5"`, `4.5`, `null` bị từ chối). Bắt buộc khi viết |
+| `comment` (viết, sửa) | Vắng hoặc `null` là không có nhận xét (ở sửa, `null` xóa nhận xét, vắng thì giữ nguyên); đã là chuỗi thì bỏ khoảng trắng hai đầu, 1 đến 1000 ký tự Unicode (một emoji là một ký tự), không chứa ký tự NUL; chuỗi rỗng hay toàn khoảng trắng bị từ chối. Xuống dòng ở giữa được giữ |
+| `PATCH /landlords/:id/review` | Phải có ít nhất một trong `stars` và `comment` (body rỗng là 400) |
+| `GET /landlords/:id/reviews` | Chỉ nhận `page`, `pageSize` |
+| `GET /moderation/reviews` | `page`, `pageSize` như mục chung; `status` (`visible` hoặc `hidden_by_admin`), `landlordId` (UUID), `authorId` (UUID), tùy chọn; không nhận tham số khác |
+| `reason` (ẩn, gỡ ẩn đánh giá) | Như `reason` ở bảng Tài khoản: 1 đến 500 ký tự sau khi cắt, bắt buộc |
 
 **Gói, đơn, tham số, danh mục (admin)**
 

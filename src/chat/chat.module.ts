@@ -6,17 +6,17 @@ import {
 	ListingConversationsController,
 	MeConversationsController,
 } from './chat.controller';
-import { ChatRepository } from './chat.repository';
+import { ChatDataModule } from './chat-data.module';
 import { ChatService } from './chat.service';
 
-/** Chat giữa người tìm trọ và chủ trọ (spec 0013). */
+/** Chat giữa người tìm trọ và chủ trọ (spec 0013). `ChatRepository` đến từ `ChatDataModule` (spec 0014 dùng chung). */
 @Module({
-	imports: [ListingsDataModule, SettingsModule],
+	imports: [ChatDataModule, ListingsDataModule, SettingsModule],
 	controllers: [
 		ListingConversationsController,
 		ConversationsController,
 		MeConversationsController,
 	],
-	providers: [ChatService, ChatRepository],
+	providers: [ChatService],
 })
 export class ChatModule {}

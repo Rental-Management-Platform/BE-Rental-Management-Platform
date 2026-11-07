@@ -768,6 +768,46 @@
     {
       "key": "chatBellMessages",
       "value": ""
+    },
+    {
+      "key": "reviewLandlordId",
+      "value": ""
+    },
+    {
+      "key": "reviewOtherLandlordId",
+      "value": ""
+    },
+    {
+      "key": "reviewTenantId",
+      "value": ""
+    },
+    {
+      "key": "reviewPropertyId",
+      "value": ""
+    },
+    {
+      "key": "reviewListingId",
+      "value": ""
+    },
+    {
+      "key": "reviewConversationId",
+      "value": ""
+    },
+    {
+      "key": "reviewId",
+      "value": ""
+    },
+    {
+      "key": "reviewCreatedAt",
+      "value": ""
+    },
+    {
+      "key": "reviewTotal",
+      "value": ""
+    },
+    {
+      "key": "reviewAdminId",
+      "value": ""
     }
   ],
   "auth": {
@@ -1601,12 +1641,14 @@
                 "exec": [
                   "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
                   "",
-                  "pm.test('đúng 14 module của MVP (có conversation và message), không còn module đã hoãn', () => {",
+                  "pm.test('đúng 15 module của MVP (có conversation, message và review), không còn module đã hoãn', () => {",
                   "    const modules = pm.response.json().map((entry) => entry.module);",
-                  "    pm.expect(modules).to.have.lengthOf(14);",
+                  "    pm.expect(modules).to.have.lengthOf(15);",
                   "    pm.expect(modules).to.include('plan');",
                   "    pm.expect(modules).to.include('conversation');",
                   "    pm.expect(modules).to.include('message');",
+                  "    pm.expect(modules).to.include('review');",
+                  "    pm.expect(modules).to.include('review');",
                   "    ['contact', 'report', 'verification', 'boost', 'product', 'inspection', 'ad', 'expense', 'finance', 'dashboard', 'stats'].forEach((gone) => pm.expect(modules).to.not.include(gone));",
                   "});"
                 ]
@@ -1694,10 +1736,10 @@
                 "tenant"
               ]
             },
-            "description": "Cần quyền `account_type:update`, kiểm lại DB mỗi lần gọi. THAY TOÀN BỘ danh sách quyền của loại (không phải thêm bớt). Danh sách trùng được bỏ trùng. Request này gửi danh sách mặc định của tenant (gồm bốn khóa chat) trừ `favorite:create`. Token cũ của tenant giữ quyền cũ đến khi refresh (tối đa 15 phút).",
+            "description": "Cần quyền `account_type:update`, kiểm lại DB mỗi lần gọi. THAY TOÀN BỘ danh sách quyền của loại (không phải thêm bớt). Danh sách trùng được bỏ trùng. Request này gửi danh sách mặc định của tenant (gồm bốn khóa chat và bốn khóa đánh giá) trừ `favorite:create`. Token cũ của tenant giữ quyền cũ đến khi refresh (tối đa 15 phút).",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"permissions\": [\n    \"conversation:create\",\n    \"conversation:read\",\n    \"conversation:update\",\n    \"favorite:delete\",\n    \"favorite:read\",\n    \"follow:create\",\n    \"follow:delete\",\n    \"message:create\",\n    \"profile:read\",\n    \"profile:update\"\n  ]\n}",
+              "raw": "{\n  \"permissions\": [\n    \"conversation:create\",\n    \"conversation:read\",\n    \"conversation:update\",\n    \"favorite:delete\",\n    \"favorite:read\",\n    \"follow:create\",\n    \"follow:delete\",\n    \"message:create\",\n    \"profile:read\",\n    \"profile:update\",\n    \"review:create\",\n    \"review:delete\",\n    \"review:read\",\n    \"review:update\"\n  ]\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1737,10 +1779,10 @@
                 "tenant"
               ]
             },
-            "description": "Gửi lại đúng danh sách quyền mặc định của tenant (11 quyền: hồ sơ, lưu phòng, theo dõi chủ trọ, chat). Phải khớp quyền mặc định của migration, nếu không các folder sau mất quyền của tenant.",
+            "description": "Gửi lại đúng danh sách quyền mặc định của tenant (15 quyền: hồ sơ, lưu phòng, theo dõi chủ trọ, chat, đánh giá chủ trọ). Phải khớp quyền mặc định của migration, nếu không các folder sau mất quyền của tenant.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"permissions\": [\n    \"conversation:create\",\n    \"conversation:read\",\n    \"conversation:update\",\n    \"favorite:create\",\n    \"favorite:delete\",\n    \"favorite:read\",\n    \"follow:create\",\n    \"follow:delete\",\n    \"message:create\",\n    \"profile:read\",\n    \"profile:update\"\n  ]\n}",
+              "raw": "{\n  \"permissions\": [\n    \"conversation:create\",\n    \"conversation:read\",\n    \"conversation:update\",\n    \"favorite:create\",\n    \"favorite:delete\",\n    \"favorite:read\",\n    \"follow:create\",\n    \"follow:delete\",\n    \"message:create\",\n    \"profile:read\",\n    \"profile:update\",\n    \"review:create\",\n    \"review:delete\",\n    \"review:read\",\n    \"review:update\"\n  ]\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -19148,7 +19190,7 @@
                   "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
                   "",
                   "const body = pm.response.json();",
-                  "pm.test('đúng bảy trường', () => pm.expect(Object.keys(body).sort()).to.eql(['followerCount', 'id', 'isFollowing', 'joinedAt', 'name', 'publicListingCount', 'totalViewCount']));",
+                  "pm.test('đúng chín trường', () => pm.expect(Object.keys(body).sort()).to.eql(['followerCount', 'id', 'isFollowing', 'joinedAt', 'name', 'publicListingCount', 'ratingAverage', 'reviewCount', 'totalViewCount']));",
                   "pm.test('id đúng là chủ trọ cần xem', () => pm.expect(body.id).to.eql(pm.collectionVariables.get('profileLandlordId')));",
                   "pm.test('ba số là số nguyên không âm', () => {",
                   "    ['followerCount', 'totalViewCount', 'publicListingCount'].forEach((key) => {",
@@ -19180,7 +19222,7 @@
                 "{{profileLandlordId}}"
               ]
             },
-            "description": "Công khai. Hồ sơ gồm đúng bảy trường: `id`, `name`, `joinedAt`, `followerCount`, `totalViewCount`, `publicListingCount`, `isFollowing`. Khách nhận `isFollowing: null`. Không có email, số điện thoại hay danh sách người theo dõi. Phản hồi có `Cache-Control: private, no-store`. Giới hạn 300 lần mỗi phút theo IP.",
+            "description": "Công khai. Hồ sơ gồm đúng chín trường: `id`, `name`, `joinedAt`, `followerCount`, `totalViewCount`, `publicListingCount`, `reviewCount`, `ratingAverage`, `isFollowing`. Khách nhận `isFollowing: null`. Không có email, số điện thoại hay danh sách người theo dõi. Phản hồi có `Cache-Control: private, no-store`. Giới hạn 300 lần mỗi phút theo IP.",
             "auth": {
               "type": "noauth"
             }
@@ -19197,7 +19239,7 @@
                   "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
                   "",
                   "const body = pm.response.json();",
-                  "pm.test('đúng bảy trường', () => pm.expect(Object.keys(body).sort()).to.eql(['followerCount', 'id', 'isFollowing', 'joinedAt', 'name', 'publicListingCount', 'totalViewCount']));",
+                  "pm.test('đúng chín trường', () => pm.expect(Object.keys(body).sort()).to.eql(['followerCount', 'id', 'isFollowing', 'joinedAt', 'name', 'publicListingCount', 'ratingAverage', 'reviewCount', 'totalViewCount']));",
                   "pm.test('id đúng là chủ trọ cần xem', () => pm.expect(body.id).to.eql(pm.collectionVariables.get('profileLandlordId')));",
                   "pm.test('ba số là số nguyên không âm', () => {",
                   "    ['followerCount', 'totalViewCount', 'publicListingCount'].forEach((key) => {",
@@ -19254,7 +19296,7 @@
                   "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
                   "",
                   "const body = pm.response.json();",
-                  "pm.test('đúng bảy trường', () => pm.expect(Object.keys(body).sort()).to.eql(['followerCount', 'id', 'isFollowing', 'joinedAt', 'name', 'publicListingCount', 'totalViewCount']));",
+                  "pm.test('đúng chín trường', () => pm.expect(Object.keys(body).sort()).to.eql(['followerCount', 'id', 'isFollowing', 'joinedAt', 'name', 'publicListingCount', 'ratingAverage', 'reviewCount', 'totalViewCount']));",
                   "pm.test('id đúng là chủ trọ cần xem', () => pm.expect(body.id).to.eql(pm.collectionVariables.get('profileLandlordId')));",
                   "pm.test('ba số là số nguyên không âm', () => {",
                   "    ['followerCount', 'totalViewCount', 'publicListingCount'].forEach((key) => {",
@@ -20165,7 +20207,7 @@
                   "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
                   "",
                   "const body = pm.response.json();",
-                  "pm.test('đúng bảy trường', () => pm.expect(Object.keys(body).sort()).to.eql(['followerCount', 'id', 'isFollowing', 'joinedAt', 'name', 'publicListingCount', 'totalViewCount']));",
+                  "pm.test('đúng chín trường', () => pm.expect(Object.keys(body).sort()).to.eql(['followerCount', 'id', 'isFollowing', 'joinedAt', 'name', 'publicListingCount', 'ratingAverage', 'reviewCount', 'totalViewCount']));",
                   "pm.test('id đúng là chủ trọ cần xem', () => pm.expect(body.id).to.eql(pm.collectionVariables.get('profileLandlordId')));",
                   "pm.test('isFollowing là true', () => pm.expect(body.isFollowing).to.eql(true));",
                   "pm.test('followerCount tăng một', () => pm.expect(body.followerCount).to.eql(Number(pm.collectionVariables.get('profileFollowerCount')) + (1)));",
@@ -20213,7 +20255,7 @@
                   "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
                   "",
                   "const body = pm.response.json();",
-                  "pm.test('đúng bảy trường', () => pm.expect(Object.keys(body).sort()).to.eql(['followerCount', 'id', 'isFollowing', 'joinedAt', 'name', 'publicListingCount', 'totalViewCount']));",
+                  "pm.test('đúng chín trường', () => pm.expect(Object.keys(body).sort()).to.eql(['followerCount', 'id', 'isFollowing', 'joinedAt', 'name', 'publicListingCount', 'ratingAverage', 'reviewCount', 'totalViewCount']));",
                   "pm.test('id đúng là chủ trọ cần xem', () => pm.expect(body.id).to.eql(pm.collectionVariables.get('profileLandlordId')));",
                   "pm.test('isFollowing là true', () => pm.expect(body.isFollowing).to.eql(true));",
                   "pm.test('followerCount không đổi', () => pm.expect(body.followerCount).to.eql(Number(pm.collectionVariables.get('profileFollowerCount')) + (0)));",
@@ -20261,7 +20303,7 @@
                   "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
                   "",
                   "const body = pm.response.json();",
-                  "pm.test('đúng bảy trường', () => pm.expect(Object.keys(body).sort()).to.eql(['followerCount', 'id', 'isFollowing', 'joinedAt', 'name', 'publicListingCount', 'totalViewCount']));",
+                  "pm.test('đúng chín trường', () => pm.expect(Object.keys(body).sort()).to.eql(['followerCount', 'id', 'isFollowing', 'joinedAt', 'name', 'publicListingCount', 'ratingAverage', 'reviewCount', 'totalViewCount']));",
                   "pm.test('id đúng là chủ trọ cần xem', () => pm.expect(body.id).to.eql(pm.collectionVariables.get('profileLandlordId')));",
                   "pm.test('isFollowing là true', () => pm.expect(body.isFollowing).to.eql(true));",
                   "pm.test('followerCount khớp kết quả của POST', () => pm.expect(body.followerCount).to.eql(Number(pm.collectionVariables.get('profileFollowerCount')) + (0)));",
@@ -20344,7 +20386,7 @@
                   "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
                   "",
                   "const body = pm.response.json();",
-                  "pm.test('đúng bảy trường', () => pm.expect(Object.keys(body).sort()).to.eql(['followerCount', 'id', 'isFollowing', 'joinedAt', 'name', 'publicListingCount', 'totalViewCount']));",
+                  "pm.test('đúng chín trường', () => pm.expect(Object.keys(body).sort()).to.eql(['followerCount', 'id', 'isFollowing', 'joinedAt', 'name', 'publicListingCount', 'ratingAverage', 'reviewCount', 'totalViewCount']));",
                   "pm.test('id đúng là chủ trọ cần xem', () => pm.expect(body.id).to.eql(pm.collectionVariables.get('profileLandlordId')));",
                   "pm.test('isFollowing là false', () => pm.expect(body.isFollowing).to.eql(false));",
                   "pm.test('followerCount giảm một', () => pm.expect(body.followerCount).to.eql(Number(pm.collectionVariables.get('profileFollowerCount')) + (-1)));",
@@ -20392,7 +20434,7 @@
                   "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
                   "",
                   "const body = pm.response.json();",
-                  "pm.test('đúng bảy trường', () => pm.expect(Object.keys(body).sort()).to.eql(['followerCount', 'id', 'isFollowing', 'joinedAt', 'name', 'publicListingCount', 'totalViewCount']));",
+                  "pm.test('đúng chín trường', () => pm.expect(Object.keys(body).sort()).to.eql(['followerCount', 'id', 'isFollowing', 'joinedAt', 'name', 'publicListingCount', 'ratingAverage', 'reviewCount', 'totalViewCount']));",
                   "pm.test('id đúng là chủ trọ cần xem', () => pm.expect(body.id).to.eql(pm.collectionVariables.get('profileLandlordId')));",
                   "pm.test('isFollowing là false', () => pm.expect(body.isFollowing).to.eql(false));",
                   "pm.test('followerCount không đổi', () => pm.expect(body.followerCount).to.eql(Number(pm.collectionVariables.get('profileFollowerCount')) + (0)));",
@@ -34482,6 +34524,3383 @@
               "path": [
                 "properties",
                 "{{chatPropertyId}}"
+              ]
+            },
+            "description": "Nhà trọ hết tin chưa xóa nên xóa được.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Dọn: trả hạn mức dùng thử về 2 (PATCH /settings/trial_listing_limit)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('hạn mức dùng thử là 2', () => pm.expect(pm.response.json().value).to.eql(2));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/settings/trial_listing_limit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "settings",
+                "trial_listing_limit"
+              ]
+            },
+            "description": "Trả tham số về mặc định. Nếu chạy dở, chạy riêng request này.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "26 Đánh giá chủ trọ",
+      "description": "Đánh giá chủ trọ trên hồ sơ công khai (spec 0014, mốc 1 và 2: người viết viết, sửa, xóa và đọc; admin ẩn và gỡ ẩn). **Chạy sau folder 25** (dùng `userToken`, `tenantToken`, `otherLandlordToken`, `adminToken` và `wardCode`) và từ trên xuống. Không thêm lần đăng ký hay đăng nhập admin nào. Folder tự dựng một nhà trọ và một tin (cần `--working-dir docs/api` cho tệp ảnh), cho người tìm trọ nhắn và chủ trọ trả lời (điều kiện được đánh giá), thử quyền và kiểm đầu vào, viết, đọc (danh sách công khai, đánh giá của tôi, hai con số trên hồ sơ), sửa, rồi admin ẩn, gỡ ẩn và người viết xóa đánh giá đang bị ẩn, sau đó dọn (xóa tin, nhà trọ, trả hạn mức dùng thử về 2). Chạy lại được; cuộc trò chuyện ở lại vì không xóa được qua API. Nếu chạy dở: chạy riêng \"trả hạn mức dùng thử về 2\" và \"Dọn đánh giá cũ\" ở đầu folder. Giới hạn tần suất (20 lần mỗi giờ cho mỗi API ghi, 300 lần mỗi phút cho hai API đọc) **không** được thử ở đây vì sẽ ăn hết lượt của `tenantToken`; đã kiểm bằng script riêng. Các trường hợp cần chủ trọ có `review:create` (tự đánh giá mình 409), chủ trọ chưa trả lời (403), khóa tài khoản và các cuộc đua cũng kiểm bằng script riêng vì cần đổi quyền hay nhiều tài khoản.",
+      "item": [
+        {
+          "name": "Chủ trọ lấy id của mình (GET /auth/me)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('reviewLandlordId', pm.response.json().user.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            },
+            "description": "Cần `userToken` (chủ trọ của folder 01 và 08). Lưu `reviewLandlordId`: chủ trọ sẽ được đánh giá.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Chủ trọ khác lấy id của mình (GET /auth/me)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('reviewOtherLandlordId', pm.response.json().user.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            },
+            "description": "Cần `otherLandlordToken`. Người tìm trọ của folder này chưa từng nhắn với chủ trọ này, nên đánh giá chủ trọ này bị 403 `REVIEW_NOT_ELIGIBLE`. Lưu `reviewOtherLandlordId`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{otherLandlordToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Người tìm trọ lấy id của mình (GET /auth/me)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('reviewTenantId', pm.response.json().user.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            },
+            "description": "Cần `tenantToken` (folder 01). Lưu `reviewTenantId`: id của người viết, dùng để kiểm `author.id` ở danh sách kiểm duyệt và để thử 404 `LANDLORD_NOT_FOUND` ở API danh sách công khai.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin lấy id của mình (GET /auth/me)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('reviewAdminId', pm.response.json().user.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            },
+            "description": "Dùng `adminToken` có sẵn. Lưu `reviewAdminId`: một id hợp lệ nhưng không phải chủ trọ, dùng để thử 404 `LANDLORD_NOT_FOUND` ở các API của người viết (id của chính người gọi thì ra 409 `CANNOT_REVIEW_SELF`).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Nâng hạn mức dùng thử lên 10 để dựng tin (PATCH /settings/trial_listing_limit)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('hạn mức dùng thử là 10', () => pm.expect(pm.response.json().value).to.eql(10));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/settings/trial_listing_limit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "settings",
+                "trial_listing_limit"
+              ]
+            },
+            "description": "Dùng `adminToken` có sẵn (không đăng nhập admin lại: giới hạn 10 lần mỗi 15 phút theo email). Trả về 2 ở request cuối; nếu chạy dở thì chạy riêng request cuối.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Tạo nhà trọ để đăng tin (POST /properties)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('reviewPropertyId', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/properties",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties"
+              ]
+            },
+            "description": "Cần `userToken` và `wardCode` (folder 07). Lưu `reviewPropertyId`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Nhà trọ thử đánh giá\",\n  \"addressText\": \"9 Đường Thử\",\n  \"wardCode\": \"{{wardCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Đăng tin để người tìm trọ nhắn được (POST /properties/:propertyId/listings)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('reviewListingId', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/properties/{{reviewPropertyId}}/listings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "{{reviewPropertyId}}",
+                "listings"
+              ]
+            },
+            "description": "Tin hiện ngay. Lưu `reviewListingId`. Đường này chỉ nhận `multipart/form-data` (spec 0011): cần `--working-dir docs/api` trong Newman.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "Phòng thử đánh giá",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Phòng sạch sẽ thoáng mát giờ giấc tự do",
+                  "type": "text"
+                },
+                {
+                  "key": "price",
+                  "value": "3000000",
+                  "type": "text"
+                },
+                {
+                  "key": "areaM2",
+                  "value": "20",
+                  "type": "text"
+                },
+                {
+                  "key": "images",
+                  "type": "file",
+                  "src": "sample-listing.png"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Dọn đánh giá cũ nếu lần chạy trước bị dở (DELETE /landlords/:id/review)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('204 hoặc 404', () => pm.expect([204, 404]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{reviewLandlordId}}/review",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{reviewLandlordId}}",
+                "review"
+              ]
+            },
+            "description": "Để chạy lại được: nếu lần trước dừng giữa chừng, đánh giá của người tìm trọ còn lại thì xóa ở đây (204); chưa có thì 404 `REVIEW_NOT_FOUND`. Cả hai đều chấp nhận.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[ghi] Người tìm trọ nhắn cho chủ trọ (POST /listings/:id/conversations)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('reviewConversationId', pm.response.json().conversation.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{reviewListingId}}/conversations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{reviewListingId}}",
+                "conversations"
+              ]
+            },
+            "description": "Bước một của điều kiện được đánh giá (spec 0014 AC-4): người tìm trọ phải nhắn với chủ trọ. Lưu `reviewConversationId`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Phòng còn trống không ạ?\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "[ghi] Chủ trọ trả lời (POST /conversations/:id/messages)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "pm.test('tin của chủ trọ', () => pm.expect(pm.response.json().isMine).to.eql(true));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/conversations/{{reviewConversationId}}/messages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conversations",
+                "{{reviewConversationId}}",
+                "messages"
+              ]
+            },
+            "description": "Bước hai của điều kiện: chủ trọ đã gửi ít nhất một tin trong cuộc trò chuyện. Từ đây người tìm trọ đánh giá được chủ trọ này.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Dạ còn ạ, bạn qua xem phòng nhé.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: khách viết đánh giá (POST /landlords/:id/review)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 401', () => pm.response.to.have.status(401));",
+                  "pm.test('mã lỗi TOKEN_MISSING', () => pm.expect(pm.response.json().code).to.eql('TOKEN_MISSING'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{reviewLandlordId}}/review",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{reviewLandlordId}}",
+                "review"
+              ]
+            },
+            "description": "Bốn API của người viết bắt buộc đăng nhập.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stars\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: khách xem đánh giá của mình (GET /landlords/:id/review)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 401', () => pm.response.to.have.status(401));",
+                  "pm.test('mã lỗi TOKEN_MISSING', () => pm.expect(pm.response.json().code).to.eql('TOKEN_MISSING'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{reviewLandlordId}}/review",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{reviewLandlordId}}",
+                "review"
+              ]
+            },
+            "description": "Cần đăng nhập.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: khách sửa đánh giá (PATCH /landlords/:id/review)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 401', () => pm.response.to.have.status(401));",
+                  "pm.test('mã lỗi TOKEN_MISSING', () => pm.expect(pm.response.json().code).to.eql('TOKEN_MISSING'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{reviewLandlordId}}/review",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{reviewLandlordId}}",
+                "review"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stars\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: khách xóa đánh giá (DELETE /landlords/:id/review)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 401', () => pm.response.to.have.status(401));",
+                  "pm.test('mã lỗi TOKEN_MISSING', () => pm.expect(pm.response.json().code).to.eql('TOKEN_MISSING'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{reviewLandlordId}}/review",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{reviewLandlordId}}",
+                "review"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: chủ trọ không viết được đánh giá (POST /landlords/:id/review)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 403', () => pm.response.to.have.status(403));",
+                  "pm.test('mã lỗi PERMISSION_DENIED', () => pm.expect(pm.response.json().code).to.eql('PERMISSION_DENIED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{reviewOtherLandlordId}}/review",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{reviewOtherLandlordId}}",
+                "review"
+              ]
+            },
+            "description": "Chủ trọ mặc định không giữ khóa `review:*` nào: chủ trọ không đánh giá ai.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stars\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: admin không viết đánh giá (POST /landlords/:id/review)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 403', () => pm.response.to.have.status(403));",
+                  "pm.test('mã lỗi PERMISSION_DENIED', () => pm.expect(pm.response.json().code).to.eql('PERMISSION_DENIED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{reviewLandlordId}}/review",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{reviewLandlordId}}",
+                "review"
+              ]
+            },
+            "description": "Admin giữ mọi quyền nhưng Service chặn: 403 `PERMISSION_DENIED`, không ghi dòng nào.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stars\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: admin không xem đánh giá \"của tôi\" (GET /landlords/:id/review)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 403', () => pm.response.to.have.status(403));",
+                  "pm.test('mã lỗi PERMISSION_DENIED', () => pm.expect(pm.response.json().code).to.eql('PERMISSION_DENIED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{reviewLandlordId}}/review",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{reviewLandlordId}}",
+                "review"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: admin gửi id sai nhận 400 chứ không phải 403 (POST /landlords/:id/review)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('mã lỗi INVALID_ID', () => pm.expect(pm.response.json().code).to.eql('INVALID_ID'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/abc/review",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "abc",
+                "review"
+              ]
+            },
+            "description": "Pipe kiểm id chạy trước Service.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stars\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: người tìm trọ không xem được danh sách kiểm duyệt (GET /moderation/reviews)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 403', () => pm.response.to.have.status(403));",
+                  "pm.test('mã lỗi PERMISSION_DENIED', () => pm.expect(pm.response.json().code).to.eql('PERMISSION_DENIED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/moderation/reviews",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "moderation",
+                "reviews"
+              ]
+            },
+            "description": "`review:moderate` chỉ admin giữ.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: khách không xem được danh sách kiểm duyệt (GET /moderation/reviews)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 401', () => pm.response.to.have.status(401));",
+                  "pm.test('mã lỗi TOKEN_MISSING', () => pm.expect(pm.response.json().code).to.eql('TOKEN_MISSING'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/moderation/reviews",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "moderation",
+                "reviews"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Chưa đủ điều kiện: canReview false với chủ trọ chưa từng trả lời (GET /landlords/:id/review)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Cache-Control là private, no-store', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('private, no-store'));",
+                  "pm.test('review null, canReview false', () => pm.expect(pm.response.json()).to.eql({ review: null, canReview: false }));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{reviewOtherLandlordId}}/review",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{reviewOtherLandlordId}}",
+                "review"
+              ]
+            },
+            "description": "Người tìm trọ chưa nhắn với chủ trọ khác này: `{ review: null, canReview: false }`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: chưa đủ điều kiện nên không viết được (POST /landlords/:id/review)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 403', () => pm.response.to.have.status(403));",
+                  "pm.test('mã lỗi REVIEW_NOT_ELIGIBLE', () => pm.expect(pm.response.json().code).to.eql('REVIEW_NOT_ELIGIBLE'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{reviewOtherLandlordId}}/review",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{reviewOtherLandlordId}}",
+                "review"
+              ]
+            },
+            "description": "Chủ trọ này chưa trả lời người tìm trọ nào trong chat: 403 `REVIEW_NOT_ELIGIBLE`, không ghi dòng nào.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stars\": 5,\n  \"comment\": \"Chưa từng nhắn\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: sửa khi chưa có đánh giá (PATCH /landlords/:id/review)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 404', () => pm.response.to.have.status(404));",
+                  "pm.test('mã lỗi REVIEW_NOT_FOUND', () => pm.expect(pm.response.json().code).to.eql('REVIEW_NOT_FOUND'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{reviewOtherLandlordId}}/review",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{reviewOtherLandlordId}}",
+                "review"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stars\": 3\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: xóa khi chưa có đánh giá (DELETE /landlords/:id/review)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 404', () => pm.response.to.have.status(404));",
+                  "pm.test('mã lỗi REVIEW_NOT_FOUND', () => pm.expect(pm.response.json().code).to.eql('REVIEW_NOT_FOUND'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{reviewOtherLandlordId}}/review",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{reviewOtherLandlordId}}",
+                "review"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: id không phải chủ trọ (POST /landlords/:id/review)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 404', () => pm.response.to.have.status(404));",
+                  "pm.test('mã lỗi LANDLORD_NOT_FOUND', () => pm.expect(pm.response.json().code).to.eql('LANDLORD_NOT_FOUND'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{reviewAdminId}}/review",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{reviewAdminId}}",
+                "review"
+              ]
+            },
+            "description": "Id của một tài khoản admin: 404 `LANDLORD_NOT_FOUND`, giống hồ sơ chủ trọ. (Id của chính người gọi thì là 409 `CANNOT_REVIEW_SELF`, kiểm trước.)",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stars\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: stars bằng 0 (POST /landlords/:id/review)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('mã lỗi VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));",
+                  "pm.test('errors có trường stars', () => pm.expect(pm.response.json().errors.map((e) => e.field)).to.include('stars'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{reviewLandlordId}}/review",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{reviewLandlordId}}",
+                "review"
+              ]
+            },
+            "description": "Sai luật giá trị: 400 `VALIDATION_FAILED` kèm tên trường, không ghi dòng nào.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stars\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: stars bằng 6 (POST /landlords/:id/review)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('mã lỗi VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));",
+                  "pm.test('errors có trường stars', () => pm.expect(pm.response.json().errors.map((e) => e.field)).to.include('stars'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{reviewLandlordId}}/review",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{reviewLandlordId}}",
+                "review"
+              ]
+            },
+            "description": "Sai luật giá trị: 400 `VALIDATION_FAILED` kèm tên trường, không ghi dòng nào.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stars\": 6\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: stars là chuỗi \"5\" (POST /landlords/:id/review)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('mã lỗi VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));",
+                  "pm.test('errors có trường stars', () => pm.expect(pm.response.json().errors.map((e) => e.field)).to.include('stars'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{reviewLandlordId}}/review",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{reviewLandlordId}}",
+                "review"
+              ]
+            },
+            "description": "Sai luật giá trị: 400 `VALIDATION_FAILED` kèm tên trường, không ghi dòng nào.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stars\": \"5\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: thiếu stars (POST /landlords/:id/review)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('mã lỗi VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));",
+                  "pm.test('errors có trường stars', () => pm.expect(pm.response.json().errors.map((e) => e.field)).to.include('stars'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{reviewLandlordId}}/review",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{reviewLandlordId}}",
+                "review"
+              ]
+            },
+            "description": "Sai luật giá trị: 400 `VALIDATION_FAILED` kèm tên trường, không ghi dòng nào.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"comment\": \"Thiếu sao\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: nhận xét rỗng (POST /landlords/:id/review)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('mã lỗi VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));",
+                  "pm.test('errors có trường comment', () => pm.expect(pm.response.json().errors.map((e) => e.field)).to.include('comment'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{reviewLandlordId}}/review",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{reviewLandlordId}}",
+                "review"
+              ]
+            },
+            "description": "Sai luật giá trị: 400 `VALIDATION_FAILED` kèm tên trường, không ghi dòng nào.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stars\": 5,\n  \"comment\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: nhận xét dài 1001 ký tự (POST /landlords/:id/review)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('mã lỗi VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));",
+                  "pm.test('errors có trường comment', () => pm.expect(pm.response.json().errors.map((e) => e.field)).to.include('comment'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{reviewLandlordId}}/review",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{reviewLandlordId}}",
+                "review"
+              ]
+            },
+            "description": "Sai luật giá trị: 400 `VALIDATION_FAILED` kèm tên trường, không ghi dòng nào.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stars\": 5,\n  \"comment\": \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: người viết gửi kèm authorId (POST /landlords/:id/review)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('mã lỗi VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{reviewLandlordId}}/review",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{reviewLandlordId}}",
+                "review"
+              ]
+            },
+            "description": "Người viết luôn là người trong token; trường lạ bị chặn.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stars\": 5,\n  \"authorId\": \"00000000-0000-7000-8000-000000000000\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: sửa với body rỗng (PATCH /landlords/:id/review)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('mã lỗi VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{reviewLandlordId}}/review",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{reviewLandlordId}}",
+                "review"
+              ]
+            },
+            "description": "Phải có ít nhất một trong `stars` và `comment`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: sửa với stars bằng 6 (PATCH /landlords/:id/review)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('mã lỗi VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));",
+                  "pm.test('errors có trường stars', () => pm.expect(pm.response.json().errors.map((e) => e.field)).to.include('stars'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{reviewLandlordId}}/review",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{reviewLandlordId}}",
+                "review"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stars\": 6\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Trước khi viết: canReview true (GET /landlords/:id/review)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Cache-Control là private, no-store', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('private, no-store'));",
+                  "pm.test('review null, canReview true', () => pm.expect(pm.response.json()).to.eql({ review: null, canReview: true }));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{reviewLandlordId}}/review",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{reviewLandlordId}}",
+                "review"
+              ]
+            },
+            "description": "Đã đủ điều kiện (chủ trọ đã trả lời) và chưa viết: `{ review: null, canReview: true }`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[ghi] Viết đánh giá 5 sao (POST /landlords/:id/review)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Cache-Control là private, no-store', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('private, no-store'));",
+                  "const body = pm.response.json();",
+                  "pm.test('đúng bảy trường', () => pm.expect(Object.keys(body).sort()).to.eql(['comment', 'createdAt', 'hiddenReason', 'id', 'stars', 'status', 'updatedAt']));",
+                  "pm.test('5 sao, đã bỏ khoảng trắng, đang hiện, không có lý do ẩn', () => { pm.expect(body.stars).to.eql(5); pm.expect(body.comment).to.eql('Chủ trọ trả lời nhanh, phòng đúng như ảnh.'); pm.expect(body.status).to.eql('visible'); pm.expect(body.hiddenReason).to.eql(null); });",
+                  "pm.test('createdAt bằng updatedAt khi mới viết', () => pm.expect(body.createdAt).to.eql(body.updatedAt));",
+                  "pm.test('không có id người viết hay chủ trọ trong phản hồi', () => pm.expect(pm.response.text()).to.not.match(/authorId|landlordId/));",
+                  "pm.collectionVariables.set('reviewId', body.id);",
+                  "pm.collectionVariables.set('reviewCreatedAt', body.createdAt);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{reviewLandlordId}}/review",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{reviewLandlordId}}",
+                "review"
+              ]
+            },
+            "description": "Người viết là người trong token, chủ trọ là `:id`. Nhận xét bị bỏ khoảng trắng hai đầu. 201 trả đánh giá của mình (bảy trường). Giới hạn 20 lần mỗi giờ theo người dùng, mỗi API ghi đếm riêng. Lưu `reviewId`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stars\": 5,\n  \"comment\": \"   Chủ trọ trả lời nhanh, phòng đúng như ảnh.   \"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: viết lần hai (POST /landlords/:id/review)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 409', () => pm.response.to.have.status(409));",
+                  "pm.test('mã lỗi REVIEW_ALREADY_EXISTS', () => pm.expect(pm.response.json().code).to.eql('REVIEW_ALREADY_EXISTS'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{reviewLandlordId}}/review",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{reviewLandlordId}}",
+                "review"
+              ]
+            },
+            "description": "Mỗi cặp (người viết, chủ trọ) chỉ có một đánh giá.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stars\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Đánh giá của tôi sau khi viết (GET /landlords/:id/review)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Cache-Control là private, no-store', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('private, no-store'));",
+                  "const body = pm.response.json();",
+                  "pm.test('có đánh giá vừa viết, canReview false', () => { pm.expect(body.canReview).to.eql(false); pm.expect(body.review.id).to.eql(pm.collectionVariables.get('reviewId')); pm.expect(Object.keys(body.review).sort()).to.eql(['comment', 'createdAt', 'hiddenReason', 'id', 'stars', 'status', 'updatedAt']); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{reviewLandlordId}}/review",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{reviewLandlordId}}",
+                "review"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Khách xem danh sách đánh giá (GET /landlords/:id/reviews)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Cache-Control là private, no-store', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('private, no-store'));",
+                  "const body = pm.response.json();",
+                  "pm.test('đúng bốn khóa', () => pm.expect(Object.keys(body).sort()).to.eql(['items', 'page', 'pageSize', 'total']));",
+                  "const mine = body.items.find((item) => item.id === pm.collectionVariables.get('reviewId'));",
+                  "pm.test('có đánh giá vừa viết, đúng bảy trường, isMine null với khách', () => { pm.expect(mine).to.be.an('object'); pm.expect(Object.keys(mine).sort()).to.eql(['author', 'comment', 'createdAt', 'id', 'isMine', 'stars', 'updatedAt']); pm.expect(mine.isMine).to.eql(null); pm.expect(Object.keys(mine.author)).to.eql(['name']); });",
+                  "pm.test('không có email, số điện thoại hay id người viết', () => pm.expect(pm.response.text()).to.not.match(/@|phone|authorId/i));",
+                  "pm.collectionVariables.set('reviewTotal', String(body.total));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{reviewLandlordId}}/reviews?pageSize=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{reviewLandlordId}}",
+                "reviews"
+              ],
+              "query": [
+                {
+                  "key": "pageSize",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Công khai, đọc đăng nhập tùy chọn. Khách nhận `isMine: null`. Lưu `reviewTotal`.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Người viết xem danh sách: isMine true ở đánh giá của mình (GET /landlords/:id/reviews)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('isMine true đúng ở đánh giá của mình', () => { const mine = body.items.find((item) => item.id === pm.collectionVariables.get('reviewId')); pm.expect(mine.isMine).to.eql(true); pm.expect(body.items.filter((i) => i.isMine === true)).to.have.lengthOf(1); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{reviewLandlordId}}/reviews?pageSize=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{reviewLandlordId}}",
+                "reviews"
+              ],
+              "query": [
+                {
+                  "key": "pageSize",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Gửi kèm token để có `isMine`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: danh sách đánh giá không nhận tham số lạ (GET /landlords/:id/reviews)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('mã lỗi VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{reviewLandlordId}}/reviews?sort=newest",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{reviewLandlordId}}",
+                "reviews"
+              ],
+              "query": [
+                {
+                  "key": "sort",
+                  "value": "newest"
+                }
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: danh sách đánh giá với id sai định dạng (GET /landlords/:id/reviews)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('mã lỗi INVALID_ID', () => pm.expect(pm.response.json().code).to.eql('INVALID_ID'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/abc/reviews",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "abc",
+                "reviews"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: danh sách đánh giá với id không phải chủ trọ (GET /landlords/:id/reviews)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 404', () => pm.response.to.have.status(404));",
+                  "pm.test('mã lỗi LANDLORD_NOT_FOUND', () => pm.expect(pm.response.json().code).to.eql('LANDLORD_NOT_FOUND'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{reviewTenantId}}/reviews",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{reviewTenantId}}",
+                "reviews"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Hồ sơ chủ trọ có hai con số đánh giá (GET /landlords/:id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Cache-Control là private, no-store', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('private, no-store'));",
+                  "const body = pm.response.json();",
+                  "pm.test('đúng chín trường', () => pm.expect(Object.keys(body).sort()).to.eql(['followerCount', 'id', 'isFollowing', 'joinedAt', 'name', 'publicListingCount', 'ratingAverage', 'reviewCount', 'totalViewCount']));",
+                  "pm.test('reviewCount bằng total của danh sách', () => pm.expect(String(body.reviewCount)).to.eql(pm.collectionVariables.get('reviewTotal')));",
+                  "pm.test('ratingAverage là số từ 1 đến 5 làm tròn một chữ số', () => { pm.expect(body.ratingAverage).to.be.within(1, 5); pm.expect(Math.round(body.ratingAverage * 10) / 10).to.eql(body.ratingAverage); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{reviewLandlordId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{reviewLandlordId}}"
+              ]
+            },
+            "description": "Hồ sơ thành chín trường. `reviewCount` luôn bằng `total` của danh sách; `ratingAverage` làm tròn một chữ số, `null` khi chưa có đánh giá.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "[ghi] Sửa số sao (PATCH /landlords/:id/review)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Cache-Control là private, no-store', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('private, no-store'));",
+                  "const body = pm.response.json();",
+                  "pm.test('4 sao, nhận xét giữ nguyên, createdAt không đổi, updatedAt mới hơn', () => { pm.expect(body.stars).to.eql(4); pm.expect(body.comment).to.eql('Chủ trọ trả lời nhanh, phòng đúng như ảnh.'); pm.expect(body.createdAt).to.eql(pm.collectionVariables.get('reviewCreatedAt')); pm.expect(new Date(body.updatedAt).getTime()).to.be.above(new Date(body.createdAt).getTime()); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{reviewLandlordId}}/review",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{reviewLandlordId}}",
+                "review"
+              ]
+            },
+            "description": "Chỉ đổi `stars`: nhận xét giữ nguyên, `updatedAt` đổi, `createdAt` không đổi.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stars\": 4\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "[ghi] Xóa nhận xét bằng comment null (PATCH /landlords/:id/review)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('comment null, stars giữ nguyên', () => { const b = pm.response.json(); pm.expect(b.comment).to.eql(null); pm.expect(b.stars).to.eql(4); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{reviewLandlordId}}/review",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{reviewLandlordId}}",
+                "review"
+              ]
+            },
+            "description": "`comment: null` xóa nhận xét (khác với vắng mặt là giữ nguyên).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"comment\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "[ghi] Viết lại nhận xét (PATCH /landlords/:id/review)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('nhận xét mới', () => pm.expect(pm.response.json().comment).to.eql('Nhận xét đã sửa.'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{reviewLandlordId}}/review",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{reviewLandlordId}}",
+                "review"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"comment\": \"Nhận xét đã sửa.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Admin xem danh sách đánh giá của chủ trọ (GET /moderation/reviews)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('đúng bốn khóa', () => pm.expect(Object.keys(body).sort()).to.eql(['items', 'page', 'pageSize', 'total']));",
+                  "const item = body.items.find((i) => i.id === pm.collectionVariables.get('reviewId'));",
+                  "pm.test('có đánh giá vừa viết, đúng chín trường, đang hiện', () => { pm.expect(item).to.be.an('object'); pm.expect(Object.keys(item).sort()).to.eql(['author', 'comment', 'createdAt', 'hiddenReason', 'id', 'landlord', 'stars', 'status', 'updatedAt']); pm.expect(item.status).to.eql('visible'); pm.expect(item.hiddenReason).to.eql(null); pm.expect(item.landlord.id).to.eql(pm.collectionVariables.get('reviewLandlordId')); pm.expect(item.author.id).to.eql(pm.collectionVariables.get('reviewTenantId')); });",
+                  "pm.test('không có email hay số điện thoại', () => pm.expect(pm.response.text()).to.not.match(/@|\"phone\"/));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/moderation/reviews?landlordId={{reviewLandlordId}}&pageSize=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "moderation",
+                "reviews"
+              ],
+              "query": [
+                {
+                  "key": "landlordId",
+                  "value": "{{reviewLandlordId}}"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Mọi đánh giá, mọi trạng thái, kèm id và tên hai bên. Không có email hay số điện thoại.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: lọc kiểm duyệt với trạng thái lạ (GET /moderation/reviews)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('mã lỗi VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/moderation/reviews?status=deleted",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "moderation",
+                "reviews"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "deleted"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: ẩn đánh giá mà thiếu lý do (POST /moderation/reviews/:id/hide)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('mã lỗi VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));",
+                  "pm.test('errors có trường reason', () => pm.expect(pm.response.json().errors.map((e) => e.field)).to.include('reason'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/moderation/reviews/{{reviewId}}/hide",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "moderation",
+                "reviews",
+                "{{reviewId}}",
+                "hide"
+              ]
+            },
+            "description": "Lý do bắt buộc (1 đến 500 ký tự).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "[ghi] Admin ẩn đánh giá kèm lý do (POST /moderation/reviews/:id/hide)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('hidden_by_admin kèm lý do', () => { pm.expect(body.status).to.eql('hidden_by_admin'); pm.expect(body.hiddenReason).to.eql('Nội dung xúc phạm cá nhân.'); pm.expect(Object.keys(body).sort()).to.eql(['author', 'comment', 'createdAt', 'hiddenReason', 'id', 'landlord', 'stars', 'status', 'updatedAt']); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/moderation/reviews/{{reviewId}}/hide",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "moderation",
+                "reviews",
+                "{{reviewId}}",
+                "hide"
+              ]
+            },
+            "description": "Một câu cập nhật có điều kiện trạng thái nguồn cùng một dòng nhật ký trong một giao dịch. 200 trả phần tử admin với trạng thái mới.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Nội dung xúc phạm cá nhân.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: ẩn đánh giá đã ẩn (POST /moderation/reviews/:id/hide)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 409', () => pm.response.to.have.status(409));",
+                  "pm.test('mã lỗi REVIEW_STATE_INVALID', () => pm.expect(pm.response.json().code).to.eql('REVIEW_STATE_INVALID'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/moderation/reviews/{{reviewId}}/hide",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "moderation",
+                "reviews",
+                "{{reviewId}}",
+                "hide"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Lần hai\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Người viết thấy trạng thái và lý do (GET /landlords/:id/review)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('hidden_by_admin kèm hiddenReason, canReview false', () => { const b = pm.response.json(); pm.expect(b.review.status).to.eql('hidden_by_admin'); pm.expect(b.review.hiddenReason).to.eql('Nội dung xúc phạm cá nhân.'); pm.expect(b.canReview).to.eql(false); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{reviewLandlordId}}/review",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{reviewLandlordId}}",
+                "review"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: sửa đánh giá đang bị ẩn (PATCH /landlords/:id/review)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 409', () => pm.response.to.have.status(409));",
+                  "pm.test('mã lỗi REVIEW_HIDDEN', () => pm.expect(pm.response.json().code).to.eql('REVIEW_HIDDEN'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{reviewLandlordId}}/review",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{reviewLandlordId}}",
+                "review"
+              ]
+            },
+            "description": "Đánh giá bị ẩn chỉ xóa được, không sửa được.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stars\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Đánh giá bị ẩn rời danh sách công khai (GET /landlords/:id/reviews)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('không còn đánh giá bị ẩn, total giảm 1', () => { pm.expect(body.items.some((i) => i.id === pm.collectionVariables.get('reviewId'))).to.eql(false); pm.expect(String(body.total + 1)).to.eql(pm.collectionVariables.get('reviewTotal')); });",
+                  "pm.test('không lộ trạng thái hay lý do ẩn ra công khai', () => pm.expect(pm.response.text()).to.not.match(/hidden_by_admin|hiddenReason|xúc phạm/));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{reviewLandlordId}}/reviews?pageSize=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{reviewLandlordId}}",
+                "reviews"
+              ],
+              "query": [
+                {
+                  "key": "pageSize",
+                  "value": "50"
+                }
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Hồ sơ chủ trọ: hai con số giảm ngay (GET /landlords/:id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('reviewCount giảm 1', () => pm.expect(String(pm.response.json().reviewCount + 1)).to.eql(pm.collectionVariables.get('reviewTotal')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{reviewLandlordId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{reviewLandlordId}}"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "[ghi] Admin gỡ ẩn đánh giá (POST /moderation/reviews/:id/unhide)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('visible, không còn lý do ẩn', () => { const b = pm.response.json(); pm.expect(b.status).to.eql('visible'); pm.expect(b.hiddenReason).to.eql(null); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/moderation/reviews/{{reviewId}}/unhide",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "moderation",
+                "reviews",
+                "{{reviewId}}",
+                "unhide"
+              ]
+            },
+            "description": "Gỡ ẩn đưa đánh giá thẳng về `visible` (khác tin đăng: người viết không có bước tự hiện lại).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Ẩn nhầm, đã xem lại.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: gỡ ẩn đánh giá đang hiện (POST /moderation/reviews/:id/unhide)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 409', () => pm.response.to.have.status(409));",
+                  "pm.test('mã lỗi REVIEW_STATE_INVALID', () => pm.expect(pm.response.json().code).to.eql('REVIEW_STATE_INVALID'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/moderation/reviews/{{reviewId}}/unhide",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "moderation",
+                "reviews",
+                "{{reviewId}}",
+                "unhide"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Lần hai\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Đánh giá trở lại danh sách công khai (GET /landlords/:id/reviews)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('có lại đánh giá, total về như cũ', () => { const b = pm.response.json(); pm.expect(b.items.some((i) => i.id === pm.collectionVariables.get('reviewId'))).to.eql(true); pm.expect(String(b.total)).to.eql(pm.collectionVariables.get('reviewTotal')); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{reviewLandlordId}}/reviews?pageSize=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{reviewLandlordId}}",
+                "reviews"
+              ],
+              "query": [
+                {
+                  "key": "pageSize",
+                  "value": "50"
+                }
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: ẩn đánh giá không có (POST /moderation/reviews/:id/hide)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 404', () => pm.response.to.have.status(404));",
+                  "pm.test('mã lỗi REVIEW_NOT_FOUND', () => pm.expect(pm.response.json().code).to.eql('REVIEW_NOT_FOUND'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/moderation/reviews/00000000-0000-7000-8000-000000000000/hide",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "moderation",
+                "reviews",
+                "00000000-0000-7000-8000-000000000000",
+                "hide"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Không có\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: ẩn với id sai định dạng (POST /moderation/reviews/:id/hide)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 400', () => pm.response.to.have.status(400));",
+                  "pm.test('mã lỗi INVALID_ID', () => pm.expect(pm.response.json().code).to.eql('INVALID_ID'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/moderation/reviews/abc/hide",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "moderation",
+                "reviews",
+                "abc",
+                "hide"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Sai id\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "[ghi] Admin ẩn lại để thử xóa khi đang bị ẩn (POST /moderation/reviews/:id/hide)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('hidden_by_admin', () => pm.expect(pm.response.json().status).to.eql('hidden_by_admin'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/moderation/reviews/{{reviewId}}/hide",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "moderation",
+                "reviews",
+                "{{reviewId}}",
+                "hide"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Ẩn lần hai để thử xóa.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "[ghi] Người viết xóa đánh giá đang bị ẩn (DELETE /landlords/:id/review)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 204', () => pm.response.to.have.status(204));",
+                  "pm.test('Cache-Control là private, no-store', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('private, no-store'));",
+                  "pm.test('không có body', () => pm.expect(pm.response.text()).to.eql(''));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{reviewLandlordId}}/review",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{reviewLandlordId}}",
+                "review"
+              ]
+            },
+            "description": "204 không body. Xóa hẳn dòng, kể cả khi đang bị ẩn; viết lại được nếu còn đủ điều kiện.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: xóa lần hai (DELETE /landlords/:id/review)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 404', () => pm.response.to.have.status(404));",
+                  "pm.test('mã lỗi REVIEW_NOT_FOUND', () => pm.expect(pm.response.json().code).to.eql('REVIEW_NOT_FOUND'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{reviewLandlordId}}/review",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{reviewLandlordId}}",
+                "review"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thử lỗi: admin ẩn đánh giá đã bị xóa (POST /moderation/reviews/:id/hide)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 404', () => pm.response.to.have.status(404));",
+                  "pm.test('mã lỗi REVIEW_NOT_FOUND', () => pm.expect(pm.response.json().code).to.eql('REVIEW_NOT_FOUND'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/moderation/reviews/{{reviewId}}/hide",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "moderation",
+                "reviews",
+                "{{reviewId}}",
+                "hide"
+              ]
+            },
+            "description": "Người viết xóa thắng: lệnh ẩn nhận 404.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Đã xóa\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Sau khi xóa: { review: null, canReview: true } (GET /landlords/:id/review)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('review null, canReview true', () => pm.expect(pm.response.json()).to.eql({ review: null, canReview: true }));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{reviewLandlordId}}/review",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{reviewLandlordId}}",
+                "review"
+              ]
+            },
+            "description": "Điều kiện chat không mất đi nên người viết viết lại được.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tenantToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Hồ sơ chủ trọ sau khi xóa (GET /landlords/:id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 200', () => pm.response.to.have.status(200));",
+                  "pm.test('reviewCount giảm 1 so với lúc có đánh giá', () => pm.expect(String(pm.response.json().reviewCount + 1)).to.eql(pm.collectionVariables.get('reviewTotal')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landlords/{{reviewLandlordId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "landlords",
+                "{{reviewLandlordId}}"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Dọn: xóa mềm tin (DELETE /listings/:id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{reviewListingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "{{reviewListingId}}"
+              ]
+            },
+            "description": "Cuộc trò chuyện giữ nguyên (khóa ngoại RESTRICT, chỉ xóa mềm); tin biến khỏi công khai.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Dọn: xóa nhà trọ (DELETE /properties/:id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trạng thái 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/properties/{{reviewPropertyId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties",
+                "{{reviewPropertyId}}"
               ]
             },
             "description": "Nhà trọ hết tin chưa xóa nên xóa được.",

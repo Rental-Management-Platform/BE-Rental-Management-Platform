@@ -31,6 +31,12 @@ const CHAT = join(
 	'migration.sql',
 );
 
+const REVIEWS = join(
+	MIGRATIONS,
+	'20261107090000_landlord_reviews',
+	'migration.sql',
+);
+
 function quoted(list: string | undefined): string[] {
 	return [...(list ?? '').matchAll(/'([^']+)'/g)].map((key) => key[1] ?? '');
 }
@@ -52,11 +58,11 @@ function readRemoved(): { modules: string[]; keys: string[] } {
 }
 
 /**
- * Khóa mà migration chat thêm cho từng loại tài khoản: mỗi câu `UPDATE "account_types"` có một mảng
+ * Khóa mà một migration thêm cho từng loại tài khoản: mỗi câu `UPDATE "account_types"` có một mảng
  * `unnest(ARRAY[...])` và một `WHERE "key" = '<loại>'`.
  */
-function readChatAdded(): Record<string, string[]> {
-	const sql = readFileSync(CHAT, 'utf8');
+function readAdded(file: string): Record<string, string[]> {
+	const sql = readFileSync(file, 'utf8');
 	const added: Record<string, string[]> = {};
 	for (const statement of sql.matchAll(
 		/UPDATE "account_types"[\s\S]*?unnest\(ARRAY\[([^\]]*)\][\s\S]*?WHERE "key" = '(\w+)';/g,
@@ -66,7 +72,15 @@ function readChatAdded(): Record<string, string[]> {
 	return added;
 }
 
-/** Quyền mặc định thực tế sau khi áp migration đầu và migration dọn (chưa tính chat). */
+function readChatAdded(): Record<string, string[]> {
+	return readAdded(CHAT);
+}
+
+function readReviewsAdded(): Record<string, string[]> {
+	return readAdded(REVIEWS);
+}
+
+/** Quyền mặc định thực tế sau khi áp migration đầu và migration dọn (chưa tính chat và đánh giá). */
 function effectiveDefaults(inserted: string[]): string[] {
 	const { modules, keys } = readRemoved();
 	return inserted.filter(
@@ -75,9 +89,13 @@ function effectiveDefaults(inserted: string[]): string[] {
 	);
 }
 
-/** Quyền mặc định thực tế sau khi áp cả ba migration. */
+/** Quyền mặc định thực tế sau khi áp cả bốn migration. */
 function currentDefaults(role: string, inserted: string[]): string[] {
-	return [...effectiveDefaults(inserted), ...(readChatAdded()[role] ?? [])];
+	return [
+		...effectiveDefaults(inserted),
+		...(readChatAdded()[role] ?? []),
+		...(readReviewsAdded()[role] ?? []),
+	];
 }
 
 describe('quyền mặc định trong các migration', () => {
@@ -129,15 +147,16 @@ describe('quyền mặc định trong các migration', () => {
 		for (const keys of [landlord, tenant]) {
 			expect(new Set(keys).size).toBe((keys ?? []).length);
 		}
-		const added = readChatAdded();
-		for (const [role, keys] of [
-			['landlord', landlord],
-			['tenant', tenant],
-		] as const) {
-			const mine = added[role] ?? [];
-			expect(new Set(mine).size).toBe(mine.length);
-			for (const key of mine) {
-				expect(effectiveDefaults(keys ?? [])).not.toContain(key);
+		for (const added of [readChatAdded(), readReviewsAdded()]) {
+			for (const [role, keys] of [
+				['landlord', landlord],
+				['tenant', tenant],
+			] as const) {
+				const mine = added[role] ?? [];
+				expect(new Set(mine).size).toBe(mine.length);
+				for (const key of mine) {
+					expect(effectiveDefaults(keys ?? [])).not.toContain(key);
+				}
 			}
 		}
 	});
@@ -177,6 +196,10 @@ describe('quyền mặc định trong các migration', () => {
 				'conversation:create',
 				'conversation:update',
 				'message:create',
+				'review:read',
+				'review:create',
+				'review:update',
+				'review:delete',
 			].sort(),
 		);
 	});
@@ -222,6 +245,62 @@ describe('quyền mặc định trong các migration', () => {
 			const { modules } = readRemoved();
 			expect(modules).not.toContain('conversation');
 			expect(modules).not.toContain('message');
+		});
+	});
+
+	describe('migration đánh giá chủ trọ (spec 0014 AC-14)', () => {
+		it('chỉ đụng tenant, đúng một câu UPDATE: chủ trọ không giữ khóa review nào', () => {
+			expect(Object.keys(readReviewsAdded())).toEqual(['tenant']);
+			const sql = readFileSync(REVIEWS, 'utf8');
+			expect(sql.match(/UPDATE "account_types"/g)).toHaveLength(1);
+			expect(currentDefaults('landlord', landlord ?? [])).not.toEqual(
+				expect.arrayContaining([expect.stringMatching(/^review:/)]),
+			);
+		});
+
+		it('tenant được thêm đúng bốn khóa, không có review:moderate (chỉ admin giữ)', () => {
+			const added = readReviewsAdded();
+			expect([...(added['tenant'] ?? [])].sort()).toEqual([
+				'review:create',
+				'review:delete',
+				'review:read',
+				'review:update',
+			]);
+			expect(added['tenant']).not.toContain('review:moderate');
+		});
+
+		it('chỉ thêm khóa còn thiếu nên chạy lại không đổi gì', () => {
+			const sql = readFileSync(REVIEWS, 'utf8');
+			expect(sql.match(/WHERE k <> ALL \("permissions"\)/g)).toHaveLength(
+				1,
+			);
+		});
+
+		it('chạy sau migration dọn và migration chat, nếu không bốn khóa mới bị dọn nhầm', () => {
+			expect(
+				'20261107090000_landlord_reviews' >
+					'20261105090000_chat_conversations_messages',
+			).toBe(true);
+			const { modules } = readRemoved();
+			expect(modules).not.toContain('review');
+		});
+
+		it('có đủ bốn CHECK của bảng reviews, khớp spec: sao 1 đến 5, nhận xét 1 đến 1000 ký tự hoặc vắng, hai trạng thái, người viết khác chủ trọ', () => {
+			const sql = readFileSync(REVIEWS, 'utf8');
+			for (const name of [
+				'reviews_stars_check',
+				'reviews_comment_check',
+				'reviews_status_check',
+				'reviews_author_landlord_check',
+			]) {
+				expect(sql).toContain(`ADD CONSTRAINT "${name}" CHECK`);
+			}
+			expect(sql).toContain(`"stars" BETWEEN 1 AND 5`);
+			expect(sql).toContain(
+				`"comment" IS NULL OR char_length("comment") BETWEEN 1 AND 1000`,
+			);
+			expect(sql).toContain(`"status" IN ('visible', 'hidden_by_admin')`);
+			expect(sql).toContain(`"author_id" <> "landlord_id"`);
 		});
 	});
 });

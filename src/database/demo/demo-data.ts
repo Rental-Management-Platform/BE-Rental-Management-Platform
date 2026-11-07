@@ -149,7 +149,7 @@ export const DEMO_LANDLORDS: readonly DemoLandlord[] = [
 		phone: '0901234501',
 		registeredDaysAgo: 205,
 		scenario:
-			'Gói Chuyên nghiệp đang chạy (50 tin) và đã gia hạn trước một kỳ nối tiếp; 3 nhà trọ, 16 tin hiện và 1 tin tự ẩn; nhiều người theo dõi, lịch sử 7 đơn đã trả',
+			'Gói Chuyên nghiệp đang chạy (50 tin) và đã gia hạn trước một kỳ nối tiếp; 3 nhà trọ, 16 tin hiện và 1 tin tự ẩn; nhiều người theo dõi, lịch sử 7 đơn đã trả; 8 đánh giá hiện công khai (trung bình 4,5) và 1 của người viết bị khóa',
 		orders: [
 			{ plan: 'Cơ bản', status: 'paid', daysAgo: 170 },
 			{ plan: 'Cơ bản', status: 'paid', daysAgo: 140 },
@@ -167,7 +167,7 @@ export const DEMO_LANDLORDS: readonly DemoLandlord[] = [
 		phone: '0912345602',
 		registeredDaysAgo: 130,
 		scenario:
-			'Gói Nâng cao đang chạy (15 tin); 3 nhà trọ, 10 tin hiện, 1 tin bị admin ẩn kèm lý do, 1 tin tự ẩn',
+			'Gói Nâng cao đang chạy (15 tin); 3 nhà trọ, 10 tin hiện, 1 tin bị admin ẩn kèm lý do, 1 tin tự ẩn; 7 đánh giá hiện (4,3) và 1 đánh giá bị admin ẩn kèm lý do',
 		orders: [
 			{ plan: 'Cơ bản', status: 'paid', daysAgo: 66 },
 			{ plan: 'Nâng cao', status: 'paid', daysAgo: 35 },
@@ -181,7 +181,7 @@ export const DEMO_LANDLORDS: readonly DemoLandlord[] = [
 		phone: '0933456703',
 		registeredDaysAgo: 80,
 		scenario:
-			'Gói Cơ bản (5 tin) nhưng có 7 tin hiện: 2 tin đăng sau cùng vượt hạn mức nên không hiện công khai (isPublic false), có một tin không ảnh',
+			'Gói Cơ bản (5 tin) nhưng có 7 tin hiện: 2 tin đăng sau cùng vượt hạn mức nên không hiện công khai (isPublic false), có một tin không ảnh; 4 đánh giá, trung bình 3,25 hiện là 3,3',
 		orders: [
 			{ plan: 'Cơ bản', status: 'paid', daysAgo: 45 },
 			{ plan: 'Cơ bản', status: 'paid', daysAgo: 14 },
@@ -194,7 +194,7 @@ export const DEMO_LANDLORDS: readonly DemoLandlord[] = [
 		phone: '0944567804',
 		registeredDaysAgo: 50,
 		scenario:
-			'Gói Cơ bản vừa mua, còn nhiều chỗ (4 tin hiện trên hạn mức 5); có một tin chỉ một ảnh',
+			'Gói Cơ bản vừa mua, còn nhiều chỗ (4 tin hiện trên hạn mức 5); có một tin chỉ một ảnh; 3 đánh giá (4,7); đã trả lời hai người tìm trọ chưa đánh giá',
 		orders: [{ plan: 'Cơ bản', status: 'paid', daysAgo: 18 }],
 	},
 	{
@@ -204,7 +204,7 @@ export const DEMO_LANDLORDS: readonly DemoLandlord[] = [
 		phone: '0965678905',
 		registeredDaysAgo: 27,
 		scenario:
-			'Đang dùng thử, còn 3 ngày (hạn mức 2 tin); có đơn đang chờ thanh toán và một đơn đã hủy; 1 tin tự ẩn vì hết chỗ',
+			'Đang dùng thử, còn 3 ngày (hạn mức 2 tin); có đơn đang chờ thanh toán và một đơn đã hủy; 1 tin tự ẩn vì hết chỗ; đúng 1 đánh giá',
 		orders: [
 			{ plan: 'Nâng cao', status: 'pending', daysAgo: 1 },
 			{ plan: 'Cơ bản', status: 'cancelled', daysAgo: 6 },
@@ -217,7 +217,7 @@ export const DEMO_LANDLORDS: readonly DemoLandlord[] = [
 		phone: '0976789006',
 		registeredDaysAgo: 55,
 		scenario:
-			'Hết dùng thử 25 ngày trước và chưa mua gói: 3 tin vẫn "hiện" nhưng không ai thấy, đăng thêm bị 403 MEMBERSHIP_REQUIRED; có đơn đang chờ thanh toán',
+			'Hết dùng thử 25 ngày trước và chưa mua gói: 3 tin vẫn "hiện" nhưng không ai thấy, đăng thêm bị 403 MEMBERSHIP_REQUIRED; có đơn đang chờ thanh toán; chưa có đánh giá',
 		orders: [{ plan: 'Cơ bản', status: 'pending', daysAgo: 2 }],
 	},
 	{
@@ -227,7 +227,7 @@ export const DEMO_LANDLORDS: readonly DemoLandlord[] = [
 		phone: '0987890107',
 		registeredDaysAgo: 140,
 		scenario:
-			'Từng mua hai gói, kỳ gói cuối đã hết 22 ngày trước nên 4 tin biến khỏi công khai; có một đơn đã hủy',
+			'Từng mua hai gói, kỳ gói cuối đã hết 22 ngày trước nên 4 tin biến khỏi công khai; có một đơn đã hủy; 2 đánh giá (4,5), hồ sơ vẫn xem được',
 		orders: [
 			{ plan: 'Cơ bản', status: 'paid', daysAgo: 85 },
 			{ plan: 'Nâng cao', status: 'paid', daysAgo: 52 },
@@ -241,7 +241,7 @@ export const DEMO_LANDLORDS: readonly DemoLandlord[] = [
 		phone: '0398901208',
 		registeredDaysAgo: 95,
 		scenario:
-			'Gói Nâng cao còn hạn nhưng tài khoản bị admin khóa 6 ngày trước: đăng nhập bị 403, tin và hồ sơ biến khỏi công khai',
+			'Gói Nâng cao còn hạn nhưng tài khoản bị admin khóa 6 ngày trước: đăng nhập bị 403, tin và hồ sơ biến khỏi công khai; còn 3 đánh giá nhưng hồ sơ trả 404',
 		lock: {
 			daysAgo: 6,
 			reason: 'Nhiều người tìm trọ phản ánh ảnh và giá trong tin không đúng thực tế.',
@@ -255,7 +255,7 @@ export const DEMO_LANDLORDS: readonly DemoLandlord[] = [
 		phone: '0359012309',
 		registeredDaysAgo: 2,
 		scenario:
-			'Vừa đăng ký 2 ngày trước: còn 28 ngày dùng thử, chưa có nhà trọ hay tin nào (màn hình trống để làm giao diện "bắt đầu")',
+			'Vừa đăng ký 2 ngày trước: còn 28 ngày dùng thử, chưa có nhà trọ hay tin nào (màn hình trống để làm giao diện "bắt đầu"); chưa có đánh giá',
 		orders: [],
 	},
 ];
@@ -268,7 +268,7 @@ export const DEMO_TENANTS: readonly DemoTenant[] = [
 		phone: '0869123401',
 		registeredDaysAgo: 120,
 		scenario:
-			'Sinh viên tìm trọ: lưu 12 tin (một phần nay không còn công khai), theo dõi 3 chủ trọ; tài khoản nên dùng để thử nhiều nhất',
+			'Sinh viên tìm trọ: lưu 12 tin (một phần nay không còn công khai), theo dõi 3 chủ trọ; tài khoản nên dùng để thử nhiều nhất; đã viết 5 đánh giá (một về chủ trọ bị khóa) và được Phát trả lời mà chưa đánh giá, để thử viết',
 		favorites: 12,
 		savedFrom: ['mai-lai-thieu', 'huy-vung-tau', 'lan-phu-nhuan'],
 		follows: ['khoa', 'nhung', 'bao'],
@@ -317,7 +317,8 @@ export const DEMO_TENANTS: readonly DemoTenant[] = [
 		emailName: 'quan.dang',
 		phone: '0869123406',
 		registeredDaysAgo: 45,
-		scenario: 'Lưu 3 tin, theo dõi 2 chủ trọ',
+		scenario:
+			'Lưu 3 tin, theo dõi 2 chủ trọ; có đánh giá về Nhung đang bị admin ẩn',
 		favorites: 3,
 		follows: ['bao', 'khoa'],
 	},
@@ -337,7 +338,8 @@ export const DEMO_TENANTS: readonly DemoTenant[] = [
 		emailName: 'tuan.bui',
 		phone: '0869123408',
 		registeredDaysAgo: 20,
-		scenario: 'Lưu 2 tin, theo dõi 1 chủ trọ',
+		scenario:
+			'Lưu 2 tin, theo dõi 1 chủ trọ; nhắn Bảo chưa được trả lời nên chưa đánh giá được',
 		favorites: 2,
 		follows: ['phat'],
 	},
@@ -347,7 +349,7 @@ export const DEMO_TENANTS: readonly DemoTenant[] = [
 		emailName: 'linh.ngo',
 		registeredDaysAgo: 3,
 		scenario:
-			'Mới đăng ký 3 ngày: chưa lưu tin nào, chưa theo dõi ai (màn hình trống)',
+			'Mới đăng ký 3 ngày: chưa lưu tin nào, chưa theo dõi ai (màn hình trống); đã nhắn Nhung và được trả lời nhưng chưa đọc, chưa đánh giá',
 		favorites: 0,
 		follows: [],
 	},
@@ -356,7 +358,8 @@ export const DEMO_TENANTS: readonly DemoTenant[] = [
 		name: 'Dương Văn Sơn',
 		emailName: 'son.duong',
 		registeredDaysAgo: 40,
-		scenario: 'Người tìm trọ bị admin khóa 8 ngày trước: đăng nhập bị 403',
+		scenario:
+			'Người tìm trọ bị admin khóa 8 ngày trước: đăng nhập bị 403; có 1 đánh giá về Khoa, không hiện công khai vì đang bị khóa',
 		favorites: 1,
 		follows: [],
 		lock: {

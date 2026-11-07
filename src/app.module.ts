@@ -18,6 +18,7 @@ import { ModerationModule } from './moderation/moderation.module';
 import { OrdersModule } from './orders/orders.module';
 import { PlansModule } from './plans/plans.module';
 import { PropertiesModule } from './properties/properties.module';
+import { ReviewsModule } from './reviews/reviews.module';
 import { SettingsModule } from './settings/settings.module';
 import { UsersModule } from './users/users.module';
 
@@ -40,6 +41,7 @@ import { UsersModule } from './users/users.module';
 		LandlordsModule,
 		FavoritesModule,
 		ChatModule,
+		ReviewsModule,
 	],
 	controllers: [AppController],
 	providers: [

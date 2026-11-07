@@ -6,6 +6,8 @@ const COUNTS = {
 	followerCount: 12,
 	totalViewCount: 1840,
 	publicListingCount: 2,
+	reviewCount: 5,
+	ratingAverage: 4.4,
 };
 
 function landlord(name: string | null): LandlordRow {
@@ -16,8 +18,8 @@ function landlord(name: string | null): LandlordRow {
 	};
 }
 
-describe('toLandlordProfile (spec 0005 AC-1)', () => {
-	it('có đúng bảy trường, đúng giá trị', () => {
+describe('toLandlordProfile (spec 0005 AC-1, spec 0014 AC-1)', () => {
+	it('có đúng chín trường, đúng giá trị', () => {
 		expect(toLandlordProfile(landlord('Anh Nam'), COUNTS, false)).toEqual({
 			id: '0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8d01',
 			name: 'Anh Nam',
@@ -25,8 +27,20 @@ describe('toLandlordProfile (spec 0005 AC-1)', () => {
 			followerCount: 12,
 			totalViewCount: 1840,
 			publicListingCount: 2,
+			reviewCount: 5,
+			ratingAverage: 4.4,
 			isFollowing: false,
 		});
+	});
+
+	it('chưa có đánh giá nào thì reviewCount là 0 và ratingAverage là null, không phải 0', () => {
+		const profile = toLandlordProfile(
+			landlord('Anh Nam'),
+			{ ...COUNTS, reviewCount: 0, ratingAverage: null },
+			null,
+		);
+		expect(profile.reviewCount).toBe(0);
+		expect(profile.ratingAverage).toBeNull();
 	});
 
 	it('không lộ cột nào khác của users: dù dòng đầu vào mang email, số điện thoại hay mật khẩu', () => {
@@ -45,6 +59,8 @@ describe('toLandlordProfile (spec 0005 AC-1)', () => {
 			'joinedAt',
 			'name',
 			'publicListingCount',
+			'ratingAverage',
+			'reviewCount',
 			'totalViewCount',
 		]);
 	});

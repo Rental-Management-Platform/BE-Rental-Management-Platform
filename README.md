@@ -109,6 +109,7 @@ src/
   plans/  orders/  subscriptions/          Gói, đơn mua, kỳ gói
   landlords/  favorites/                   Hồ sơ, theo dõi và tin đang hiện của chủ trọ, tin yêu thích
   chat/                                    Chat giữa người tìm trọ và chủ trọ, đếm và đánh dấu tin chưa đọc
+  reviews/                                 Đánh giá chủ trọ trên hồ sơ công khai, admin ẩn và gỡ ẩn đánh giá
   mail/                                    Gửi email
 prisma/
   schema.prisma, migrations/               Mô hình dữ liệu và migration
@@ -123,9 +124,9 @@ uploads/                                   Ảnh tải lên (git bỏ qua)
 
 `npm run seed:demo` nạp một bộ dữ liệu trông như thật để FE có gì đó mà dựng màn hình, không cần đăng ký tay hay chạy Postman. Cần `npm run seed` chạy trước (phường, tiện ích, gói mẫu, admin) và `DEMO_SEED_PASSWORD` trong `.env`.
 
-- **Gồm**: 9 chủ trọ và 10 người tìm trọ, 12 nhà trọ ở TP. Hồ Chí Minh (cả khu Bình Dương và Vũng Tàu cũ), 53 tin kèm ảnh minh họa (37 tin hiện công khai), đơn mua gói, kỳ gói, lượt theo dõi và tin đã lưu. Các chủ trọ dựng sẵn mọi trạng thái FE phải xử lý: gói còn hạn và đã gia hạn trước, đang dùng thử, hết dùng thử, gói hết hạn, tin vượt hạn mức, tài khoản bị khóa, tin bị admin ẩn, và một tài khoản mới tinh chưa có gì. Danh sách tài khoản và từng kịch bản nằm ở mục "Dữ liệu demo có sẵn" của [tài liệu FE](docs/api/api-for-frontend.md); nội dung gốc ở `src/database/demo/demo-data.ts`. Mật khẩu chung của mọi tài khoản là giá trị `DEMO_SEED_PASSWORD` bạn tự đặt trong `.env`.
+- **Gồm**: 9 chủ trọ và 10 người tìm trọ, 12 nhà trọ ở TP. Hồ Chí Minh (cả khu Bình Dương và Vũng Tàu cũ), 53 tin kèm ảnh minh họa (37 tin hiện công khai), đơn mua gói, kỳ gói, lượt theo dõi, tin đã lưu, 30 đánh giá chủ trọ (một bị admin ẩn) cùng các cuộc trò chuyện làm bằng chứng cho chúng. Các chủ trọ dựng sẵn mọi trạng thái FE phải xử lý: gói còn hạn và đã gia hạn trước, đang dùng thử, hết dùng thử, gói hết hạn, tin vượt hạn mức, tài khoản bị khóa, tin bị admin ẩn, và một tài khoản mới tinh chưa có gì. Danh sách tài khoản và từng kịch bản nằm ở mục "Dữ liệu demo có sẵn" của [tài liệu FE](docs/api/api-for-frontend.md); nội dung gốc ở `src/database/demo/demo-data.ts` và `src/database/demo/demo-reviews.ts`. Mật khẩu chung của mọi tài khoản là giá trị `DEMO_SEED_PASSWORD` bạn tự đặt trong `.env`.
 - **Mốc thời gian tính từ lúc chạy** (hạn dùng thử, kỳ gói, ngày đăng tin), nên các kịch bản chỉ đúng vài tuần. Chạy `npm run seed:demo -- --reset` để làm mới. Chạy lại không kèm `--reset` thì dừng và không đổi gì.
-- **`--reset` chỉ xóa dữ liệu của tài khoản có email đuôi `@demo.example.com`** (kể cả ảnh của chúng), và dòng lưu tin, theo dõi hay cuộc trò chuyện chat (kèm tin nhắn) của người khác trỏ vào dữ liệu đó. Tài khoản thật không bị đụng.
+- **`--reset` chỉ xóa dữ liệu của tài khoản có email đuôi `@demo.example.com`** (kể cả ảnh của chúng), và dòng lưu tin, theo dõi, cuộc trò chuyện chat (kèm tin nhắn) hay đánh giá của người khác trỏ vào dữ liệu đó. Tài khoản thật không bị đụng.
 - **Ảnh** là hình minh họa phẳng do mã tự vẽ (không dùng ảnh thật, không cần mạng), ghi vào `UPLOAD_DIR` (khoảng 1,7 MB cho 209 ảnh). Muốn ảnh thật thì tải lên qua API như bình thường.
 - Mọi tài khoản demo dùng chung một mật khẩu, nên lệnh **từ chối chạy khi `NODE_ENV=production`**. Email dùng tên miền dành riêng `example.com`, số điện thoại là chuỗi mẫu đúng định dạng; không có thư hay cuộc gọi thật nào đi ra.
 - Kịch bản giả định tham số mặc định (`trial_listing_limit` 2, gói mẫu 5, 15 và 50 tin). Admin đã đổi thì lệnh in cảnh báo.

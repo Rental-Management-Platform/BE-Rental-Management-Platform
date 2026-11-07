@@ -56,6 +56,10 @@ model User {
   conversationsAsLandlord Conversation[] @relation("ConversationLandlord")
   /// Tin nhắn người này đã gửi (spec 0013 chat).
   messagesSent            Message[]
+  /// Đánh giá người này đã viết về các chủ trọ (spec 0014 đánh giá chủ trọ).
+  reviewsWritten          Review[] @relation("ReviewAuthor")
+  /// Đánh giá về người này với tư cách chủ trọ; chỉ đọc để tính điểm, không bao giờ trả id người viết ra ngoài.
+  reviewsReceived         Review[] @relation("ReviewLandlord")
 
   @@index([accountType], map: "users_account_type_idx")
   @@map("users")
@@ -452,4 +456,31 @@ model Message {
   // Cũng là chỉ mục để đọc và hỏi lại theo `seq`.
   @@unique([conversationId, seq], map: "messages_conversation_id_seq_unique")
   @@map("messages")
+}
+
+/// Đánh giá của một người tìm trọ về một chủ trọ (spec 0014). Mỗi cặp (người viết, chủ trọ) tối đa một dòng.
+model Review {
+  id         String   @id(map: "reviews_pkey") @default(dbgenerated("uuidv7()")) @db.Uuid
+  /// Chủ trọ được đánh giá, lấy từ đường dẫn rồi qua kiểm chủ trọ hợp lệ. Khóa ngoại không ép được "phải là landlord":
+  /// Service kiểm trước khi ghi.
+  landlordId String   @map("landlord_id") @db.Uuid
+  /// Người viết, luôn lấy từ access token. Khóa ngoại không ép được "đã được chủ trọ trả lời trong chat": Service kiểm.
+  authorId   String   @map("author_id") @db.Uuid
+  /// Số sao từ 1 đến 5 (CHECK reviews_stars_check ở migration).
+  stars      Int      @db.SmallInt
+  /// Nhận xét 1 đến 1000 ký tự, hoặc NULL khi không có (CHECK reviews_comment_check ở migration).
+  comment    String?
+  /// `visible` hoặc `hidden_by_admin` (CHECK reviews_status_check ở migration). Lý do ẩn nằm ở moderation_logs.
+  status     String   @default("visible")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  author   User @relation("ReviewAuthor", fields: [authorId], references: [id], onDelete: Restrict, map: "reviews_author_id_fk")
+  landlord User @relation("ReviewLandlord", fields: [landlordId], references: [id], onDelete: Restrict, map: "reviews_landlord_id_fk")
+
+  // Một đánh giá cho mỗi cặp; cũng là chỉ mục tra đánh giá của một người. CHECK author_id <> landlord_id ở migration.
+  @@unique([authorId, landlordId], map: "reviews_author_id_landlord_id_unique")
+  // Danh sách trên hồ sơ và hai con số: mới nhất trước.
+  @@index([landlordId, createdAt(sort: Desc), id(sort: Desc)], map: "reviews_landlord_id_created_at_idx")
+  @@map("reviews")
 }

@@ -66,8 +66,8 @@ async function writeImages(
 
 /**
  * Xóa mọi thứ thuộc các tài khoản demo (nhận ra bằng đuôi email), theo thứ tự các khóa ngoại cho phép, và trả
- * khóa ảnh của chúng để xóa tệp sau khi giao dịch đã xong. Cũng xóa lượt lưu, theo dõi và cuộc trò chuyện (kèm tin
- * nhắn) của người thật trỏ vào tin hay chủ trọ demo, vì các dòng đó mất chỗ trỏ tới.
+ * khóa ảnh của chúng để xóa tệp sau khi giao dịch đã xong. Cũng xóa lượt lưu, theo dõi, cuộc trò chuyện (kèm tin
+ * nhắn) và đánh giá của người thật trỏ vào tin hay chủ trọ demo, vì các dòng đó mất chỗ trỏ tới.
  */
 async function deleteDemoData(tx: Prisma.TransactionClient): Promise<string[]> {
 	const users = await tx.user.findMany({
@@ -103,14 +103,27 @@ async function deleteDemoData(tx: Prisma.TransactionClient): Promise<string[]> {
 			OR: [{ userId: { in: userIds } }, { landlordId: { in: userIds } }],
 		},
 	});
+	// Đánh giá (spec 0014): mọi dòng có người viết hoặc chủ trọ là tài khoản demo, kể cả đánh giá của người thật về
+	// chủ trọ demo. Lấy id trước để xóa luôn nhật ký ẩn của chúng, rồi mới xóa đánh giá (khóa ngoại RESTRICT tới users).
+	const reviews = await tx.review.findMany({
+		where: {
+			OR: [
+				{ authorId: { in: userIds } },
+				{ landlordId: { in: userIds } },
+			],
+		},
+		select: { id: true },
+	});
+	const reviewIds = reviews.map((review) => review.id);
 	await tx.moderationLog.deleteMany({
 		where: {
 			OR: [
-				{ targetId: { in: [...userIds, ...listingIds] } },
+				{ targetId: { in: [...userIds, ...listingIds, ...reviewIds] } },
 				{ actorId: { in: userIds } },
 			],
 		},
 	});
+	await tx.review.deleteMany({ where: { id: { in: reviewIds } } });
 	// Chat (spec 0013): cuộc trò chuyện của người thật về tin demo, hoặc của tài khoản demo, cũng mất chỗ trỏ tới.
 	// Tin nhắn chỉ do hai bên của cuộc trò chuyện gửi nên xóa theo cuộc trò chuyện là đủ; tin trước, rồi cuộc trò chuyện.
 	const conversations = await tx.conversation.findMany({
@@ -147,8 +160,9 @@ async function deleteDemoData(tx: Prisma.TransactionClient): Promise<string[]> {
 
 /**
  * Nạp dữ liệu demo cho FE làm việc (không thuộc `npm run seed`, chỉ chạy khi gọi riêng): chủ trọ ở đủ các trạng
- * thái gói và dùng thử, người tìm trọ, nhà trọ, tin kèm ảnh, đơn mua gói, kỳ gói, theo dõi và tin đã lưu. Nội dung nằm ở
- * `demo/demo-data.ts`, mốc thời gian tính từ lúc chạy. Cần `npm run seed` chạy trước (phường, tiện ích, gói mẫu
+ * thái gói và dùng thử, người tìm trọ, nhà trọ, tin kèm ảnh, đơn mua gói, kỳ gói, theo dõi, tin đã lưu, đánh giá
+ * chủ trọ và các cuộc trò chuyện làm bằng chứng cho chúng. Nội dung nằm ở `demo/demo-data.ts` và
+ * `demo/demo-reviews.ts`, mốc thời gian tính từ lúc chạy. Cần `npm run seed` chạy trước (phường, tiện ích, gói mẫu
  * và admin). Chạy lại khi đã có dữ liệu demo thì dừng; thêm `--reset` để xóa dữ liệu demo cũ rồi tạo lại (làm mới
  * mốc thời gian). Chỉ đụng tài khoản có email đuôi `@demo.example.com`.
  */
@@ -295,6 +309,12 @@ async function main(): Promise<void> {
 					});
 					await tx.follow.createMany({ data: rows.follows });
 					await tx.favorite.createMany({ data: rows.favorites });
+					// Cuộc trò chuyện (bằng chứng chat) trước, tin nhắn theo sau, rồi đánh giá chủ trọ (spec 0013 và 0014).
+					await tx.conversation.createMany({
+						data: rows.conversations,
+					});
+					await tx.message.createMany({ data: rows.messages });
+					await tx.review.createMany({ data: rows.reviews });
 					return old;
 				},
 				{ timeout: 60_000, maxWait: 10_000 },
@@ -309,7 +329,7 @@ async function main(): Promise<void> {
 			(listing) => listing.status === 'visible',
 		).length;
 		console.log(
-			`Dữ liệu demo${existing > 0 ? ' (đã làm mới)' : ''}: ${rows.users.length} tài khoản (${DEMO_LANDLORDS.length} chủ trọ, ${DEMO_TENANTS.length} người tìm trọ), ${rows.properties.length} nhà trọ, ${rows.listings.length} tin (${publicNow} đang ở trạng thái hiện), ${rows.listingImages.length} ảnh, ${rows.orders.length} đơn, ${rows.subscriptions.length} kỳ gói, ${rows.follows.length} lượt theo dõi, ${rows.favorites.length} tin đã lưu.`,
+			`Dữ liệu demo${existing > 0 ? ' (đã làm mới)' : ''}: ${rows.users.length} tài khoản (${DEMO_LANDLORDS.length} chủ trọ, ${DEMO_TENANTS.length} người tìm trọ), ${rows.properties.length} nhà trọ, ${rows.listings.length} tin (${publicNow} đang ở trạng thái hiện), ${rows.listingImages.length} ảnh, ${rows.orders.length} đơn, ${rows.subscriptions.length} kỳ gói, ${rows.follows.length} lượt theo dõi, ${rows.favorites.length} tin đã lưu, ${rows.reviews.length} đánh giá chủ trọ (${rows.reviews.filter((review) => review.status === 'hidden_by_admin').length} bị admin ẩn), ${rows.conversations.length} cuộc trò chuyện.`,
 		);
 		for (const warning of warnings) console.warn(`Cảnh báo: ${warning}`);
 		console.log(

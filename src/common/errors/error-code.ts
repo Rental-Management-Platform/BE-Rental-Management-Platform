@@ -80,6 +80,14 @@ export enum ErrorCode {
 	CONVERSATION_NOT_FOUND = 'CONVERSATION_NOT_FOUND',
 	CANNOT_CHAT_WITH_SELF = 'CANNOT_CHAT_WITH_SELF',
 	CHAT_PEER_UNAVAILABLE = 'CHAT_PEER_UNAVAILABLE',
+
+	// Đánh giá chủ trọ (spec 0014)
+	REVIEW_NOT_FOUND = 'REVIEW_NOT_FOUND',
+	REVIEW_NOT_ELIGIBLE = 'REVIEW_NOT_ELIGIBLE',
+	REVIEW_ALREADY_EXISTS = 'REVIEW_ALREADY_EXISTS',
+	CANNOT_REVIEW_SELF = 'CANNOT_REVIEW_SELF',
+	REVIEW_HIDDEN = 'REVIEW_HIDDEN',
+	REVIEW_STATE_INVALID = 'REVIEW_STATE_INVALID',
 }
 
 export interface ErrorDefinition {
@@ -350,6 +358,36 @@ export const ERRORS: Record<ErrorCode, ErrorDefinition> = {
 	[ErrorCode.CHAT_PEER_UNAVAILABLE]: {
 		status: HttpStatus.CONFLICT,
 		message: 'Người kia hiện không nhận được tin nhắn.',
+	},
+	// Chưa có đánh giá của người gọi về chủ trọ này (sửa hoặc xóa), hoặc admin ẩn hay gỡ ẩn một id không có (spec 0014).
+	[ErrorCode.REVIEW_NOT_FOUND]: {
+		status: HttpStatus.NOT_FOUND,
+		message: 'Không tìm thấy đánh giá.',
+	},
+	// Người gọi chưa nhắn với chủ trọ này, hoặc nhắn rồi mà chủ trọ chưa trả lời (spec 0014 AC-4).
+	[ErrorCode.REVIEW_NOT_ELIGIBLE]: {
+		status: HttpStatus.FORBIDDEN,
+		message: 'Bạn chỉ đánh giá được chủ trọ đã trả lời tin nhắn của bạn.',
+	},
+	// Mỗi cặp (người viết, chủ trọ) chỉ có một đánh giá (spec 0014 AC-5).
+	[ErrorCode.REVIEW_ALREADY_EXISTS]: {
+		status: HttpStatus.CONFLICT,
+		message: 'Bạn đã đánh giá chủ trọ này rồi.',
+	},
+	// Chủ trọ được admin cấp `review:create` đánh giá chính mình (spec 0014 AC-5).
+	[ErrorCode.CANNOT_REVIEW_SELF]: {
+		status: HttpStatus.CONFLICT,
+		message: 'Bạn không thể đánh giá chính mình.',
+	},
+	// Đánh giá đang bị admin ẩn nên người viết chỉ xóa được, không sửa được (spec 0014 AC-6).
+	[ErrorCode.REVIEW_HIDDEN]: {
+		status: HttpStatus.CONFLICT,
+		message: 'Đánh giá đang bị ẩn nên không sửa được.',
+	},
+	// Admin ẩn đánh giá đã ẩn, hoặc gỡ ẩn đánh giá đang hiện (spec 0014 AC-12).
+	[ErrorCode.REVIEW_STATE_INVALID]: {
+		status: HttpStatus.CONFLICT,
+		message: 'Đánh giá không ở trạng thái phù hợp cho thao tác này.',
 	},
 };
 

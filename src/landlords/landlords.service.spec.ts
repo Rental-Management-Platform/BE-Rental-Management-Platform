@@ -9,6 +9,7 @@ import type {
 	ListingsRepository,
 	PublicSummaryRow,
 } from '../listings/listings.repository';
+import type { ReviewsRepository } from '../reviews/reviews.repository';
 import type { SettingsService } from '../settings/settings.service';
 import { LandlordsService } from './landlords.service';
 import type { LandlordRow, LandlordsRepository } from './landlords.repository';
@@ -33,6 +34,7 @@ function build(options: {
 	rows?: PublicSummaryRow[];
 	total?: number;
 	saved?: string[];
+	reviewSummary?: { count: number; starSum: number };
 }) {
 	const repository = {
 		findActiveLandlord: jest.fn(() =>
@@ -63,18 +65,26 @@ function build(options: {
 			Promise.resolve(new Set(options.saved ?? [])),
 		),
 	};
+	const reviews = {
+		summarize: jest.fn(() =>
+			Promise.resolve(options.reviewSummary ?? { count: 0, starSum: 0 }),
+		),
+	};
 	const service = new LandlordsService(
 		repository as unknown as LandlordsRepository,
 		listings as unknown as ListingsRepository,
 		settings as unknown as SettingsService,
 		favorites as unknown as FavoritesRepository,
+		reviews as unknown as ReviewsRepository,
 	);
-	return { service, repository, listings, settings, favorites };
+	return { service, repository, listings, settings, favorites, reviews };
 }
 
 describe('LandlordsService.getProfile (spec 0005 AC-1 đến AC-5)', () => {
-	it('khách: đủ bảy trường, isFollowing là null và không tra bảng follows theo người xem', async () => {
-		const { service, repository } = build({});
+	it('khách: đủ chín trường, isFollowing là null và không tra bảng follows theo người xem', async () => {
+		const { service, repository } = build({
+			reviewSummary: { count: 20, starSum: 87 },
+		});
 		await expect(
 			service.getProfile(LANDLORD_ID, undefined, NOW),
 		).resolves.toEqual({
@@ -84,9 +94,27 @@ describe('LandlordsService.getProfile (spec 0005 AC-1 đến AC-5)', () => {
 			followerCount: 12,
 			totalViewCount: 1840,
 			publicListingCount: 2,
+			reviewCount: 20,
+			ratingAverage: 4.4,
 			isFollowing: null,
 		});
 		expect(repository.isFollowing).not.toHaveBeenCalled();
+	});
+
+	it('chưa có đánh giá nào: reviewCount là 0 và ratingAverage là null (spec 0014 AC-1)', async () => {
+		const { service } = build({});
+		const profile = await service.getProfile(LANDLORD_ID, undefined, NOW);
+		expect(profile.reviewCount).toBe(0);
+		expect(profile.ratingAverage).toBeNull();
+	});
+
+	it('hai số đánh giá lấy từ ReviewsRepository.summarize theo đúng id chủ trọ, trung bình làm tròn nửa lên một chữ số (87 sao trên 20 đánh giá là 4.4)', async () => {
+		const { service, reviews } = build({
+			reviewSummary: { count: 20, starSum: 87 },
+		});
+		const profile = await service.getProfile(LANDLORD_ID, VIEWER_ID, NOW);
+		expect(reviews.summarize).toHaveBeenCalledWith(LANDLORD_ID);
+		expect(profile.ratingAverage).toBe(4.4);
 	});
 
 	it.each([[true], [false]])(
@@ -131,7 +159,7 @@ describe('LandlordsService.getProfile (spec 0005 AC-1 đến AC-5)', () => {
 	});
 
 	it('id không phải chủ trọ đang hoạt động: 404 LANDLORD_NOT_FOUND và không tính số nào', async () => {
-		const { service, repository, listings, settings } = build({
+		const { service, repository, listings, settings, reviews } = build({
 			landlord: null,
 		});
 		const error = await service
@@ -143,6 +171,7 @@ describe('LandlordsService.getProfile (spec 0005 AC-1 đến AC-5)', () => {
 		expect(repository.isFollowing).not.toHaveBeenCalled();
 		expect(listings.sumViewCountByLandlord).not.toHaveBeenCalled();
 		expect(listings.countPublicByLandlord).not.toHaveBeenCalled();
+		expect(reviews.summarize).not.toHaveBeenCalled();
 		expect(settings.getValue).not.toHaveBeenCalled();
 	});
 
