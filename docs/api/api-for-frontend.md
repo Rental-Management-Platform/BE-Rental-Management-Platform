@@ -87,6 +87,7 @@ Mỗi tài khoản chỉ thuộc **một** loại, chọn lúc đăng ký và **
 | Admin xem thống kê doanh thu theo ngày trả: tổng, theo gói, theo ngày hoặc tháng giờ Việt Nam (`GET /orders/revenue`) | Có (mới, 2026-10-21, mục 6.38) |
 | Chat giữa người tìm trọ và chủ trọ: mở cuộc trò chuyện từ một tin, gửi tin, đọc tin theo con trỏ `seq`, chi tiết, hộp thư, đếm tin chưa đọc và đánh dấu đã đọc (`POST /listings/:id/conversations`, `POST` và `GET /conversations/:id/messages`, `GET /conversations/:id`, `GET /me/conversations`, `GET /me/conversations/unread-count`, `POST /conversations/:id/read`). Hỏi lại bằng REST, chưa có kênh đẩy | Có (mới, 2026-11-05, mục 6.39) |
 | Đánh giá chủ trọ: người tìm trọ đã được chủ trọ trả lời trong chat viết, sửa, xóa một đánh giá (số sao 1 đến 5, nhận xét tùy chọn); danh sách đánh giá công khai; điểm trung bình và số đánh giá trên hồ sơ chủ trọ; admin tìm, ẩn và gỡ ẩn đánh giá kèm lý do (`GET /landlords/:id/reviews`, `GET`, `POST`, `PATCH`, `DELETE /landlords/:id/review`, `GET /moderation/reviews`, `POST /moderation/reviews/:id/hide` và `/unhide`) | Có (mới, 2026-11-07, mục 6.40) |
+| Đánh giá từng phòng: người tìm trọ đã được chủ trọ trả lời về chính tin đó viết, sửa, xóa một đánh giá phòng (số sao 1 đến 5, nhận xét tùy chọn); danh sách đánh giá của tin; điểm trung bình và số đánh giá của phòng trên chi tiết tin (`GET /listings/:id/reviews`, `GET`, `POST`, `PATCH`, `DELETE /listings/:id/review`, hai trường `reviewCount` và `ratingAverage` ở `GET /listings/:slugCode`). Admin tìm, ẩn và gỡ ẩn đánh giá phòng kèm lý do (`GET /moderation/listing-reviews`, `POST /moderation/listing-reviews/:id/hide` và `/unhide`) | Có (mới, 2026-11-09, mục 6.41) |
 
 ---
 
@@ -108,7 +109,7 @@ Mỗi tài khoản chỉ thuộc **một** loại, chọn lúc đăng ký và **
 | Truy vết | Mỗi response có header `X-Request-Id` (trùng `requestId` trong body lỗi). Gửi kèm khi báo lỗi cho backend. **Trình duyệt chỉ cho JS đọc header này khi FE và API cùng origin** (xem dòng "Header đọc được" ngay dưới); khác origin thì lấy `requestId` trong body lỗi. FE có thể tự gửi header `X-Request-Id` (1 đến 64 ký tự chữ, số, `_`, `-`) và backend dùng lại giá trị đó, tiện để nối log FE với log backend |
 | Header đọc được | Backend bật CORS với `credentials: true` nhưng **chưa khai báo `Access-Control-Expose-Headers`**. Hệ quả: khi FE ở origin khác API (cách chạy mặc định: FE `:5173`, API `:3000`), JS **không đọc được `Retry-After` và `X-Request-Id`** (trình duyệt trả `null`) dù response có chúng. Xem phần "Lỗi 429" ở mục 3 để biết cách xử lý. FE đặt API sau cùng origin (proxy `/api` của Next.js, mục 4.1) thì đọc được bình thường |
 | Phân trang | Query `page` (từ 1 đến 1.000.000, mặc định 1) và `pageSize` (1 đến 50, mặc định 20). Trả `{ "items": [...], "total": 37, "page": 1, "pageSize": 20 }`. `total` là tổng số dòng thỏa điều kiện, không phải số dòng của trang này. Trang quá cuối trả `items` rỗng (không phải lỗi). `pageSize` quá 50, `page` nhỏ hơn 1 hoặc không phải số nguyên là 400 `VALIDATION_FAILED`. Các API phân trang: `GET /properties`, `GET /listings`, `GET /me/listings`, `GET /plans`, `GET /plans/all`, `GET /orders`, `GET /orders/all`, `GET /users`, `GET /moderation/listings`, `GET /me/favorites` và `GET /landlords/:id/listings` |
-| Đọc đăng nhập tùy chọn | Bốn route công khai **nên gửi `Authorization: Bearer ...` nếu người dùng đã đăng nhập**: `GET /listings` (`isFavorite`), `GET /listings/:slugCode` (`phone` của chủ trọ và `isFavorite`), `GET /landlords/:id` (`isFollowing`) và `GET /landlords/:id/listings` (`isFavorite`). Có token hợp lệ thì các trường đó có giá trị thật; không có, sai hoặc **hết hạn** thì coi như khách (các trường là `null`) và vẫn 200, **không bao giờ 401**. Vì không có 401 nên FE **không thể dựa vào "gặp 401 rồi refresh"** cho bốn route này: phải tự refresh trước khi gọi nếu token sắp hết hạn (mục 4.1). Cả bốn có `Cache-Control: private, no-store` |
+| Đọc đăng nhập tùy chọn | Sáu route công khai **nên gửi `Authorization: Bearer ...` nếu người dùng đã đăng nhập**: `GET /listings` (`isFavorite`), `GET /listings/:slugCode` (`phone` của chủ trọ và `isFavorite`), `GET /landlords/:id` (`isFollowing`) `GET /landlords/:id/listings` (`isFavorite`), `GET /landlords/:id/reviews` (`isMine`, để ghim đánh giá của chính mình) và `GET /listings/:id/reviews` (`isMine`, đánh giá phòng, mục 6.41). Có token hợp lệ thì các trường đó có giá trị thật; không có, sai hoặc **hết hạn** thì coi như khách (các trường là `null`) và vẫn 200, **không bao giờ 401**. Vì không có 401 nên FE **không thể dựa vào "gặp 401 rồi refresh"** cho sáu route này: phải tự refresh trước khi gọi nếu token sắp hết hạn (mục 4.1), và **không gọi khi phiên còn đang tải** (mục 4.1, bước 2). Cả sáu có `Cache-Control: private, no-store` |
 
 Email được chuẩn hóa: cắt khoảng trắng đầu cuối và đổi thành chữ thường. `An@Example.com` và `an@example.com` là cùng một tài khoản.
 
@@ -126,7 +127,7 @@ Sau `seed`, database mới chỉ có admin và danh mục. Để có người, n
 
 **Đăng nhập**: mọi tài khoản dưới đây dùng chung một mật khẩu, là giá trị `DEMO_SEED_PASSWORD` trong `.env` của backend (hỏi người chạy backend). Email có đuôi `@demo.example.com`. Admin là tài khoản của `seed` (`ADMIN_SEED_EMAIL`), không nằm trong bảng.
 
-**Có gì**: 9 chủ trọ, 10 người tìm trọ, 12 nhà trọ ở TP. Hồ Chí Minh (cả khu Bình Dương và Vũng Tàu cũ), 53 tin kèm hơn 200 ảnh minh họa (37 tin đang hiện công khai), 20 đơn (16 đã trả, tổng 3.084.000 đ trải khoảng sáu tháng), 16 kỳ gói, 16 lượt theo dõi, 42 tin đã lưu, **30 đánh giá chủ trọ** (một bị admin ẩn) và 35 cuộc trò chuyện (30 là bằng chứng chat cho các đánh giá, 5 là cảnh riêng ở các bảng bên dưới). Đánh giá chỉ tồn tại khi chủ trọ đã trả lời trong chat, nên mỗi đánh giá có sẵn cuộc trò chuyện của nó.
+**Có gì**: 9 chủ trọ, 10 người tìm trọ, 12 nhà trọ ở TP. Hồ Chí Minh (cả khu Bình Dương và Vũng Tàu cũ), 53 tin kèm hơn 200 ảnh minh họa (37 tin đang hiện công khai), 20 đơn (16 đã trả, tổng 3.084.000 đ trải khoảng sáu tháng), 16 kỳ gói, 16 lượt theo dõi, 42 tin đã lưu, **30 đánh giá chủ trọ** (một bị admin ẩn), **16 đánh giá phòng** trên 6 tin (một bị admin ẩn) và 51 cuộc trò chuyện (30 là bằng chứng chat cho các đánh giá chủ trọ, 16 là bằng chứng chat cho các đánh giá phòng, mở trên đúng tin được đánh giá, 5 là cảnh riêng ở các bảng bên dưới). Đánh giá chỉ tồn tại khi chủ trọ đã trả lời trong chat, nên mỗi đánh giá có sẵn cuộc trò chuyện của nó.
 
 #### Chủ trọ (mỗi người dựng một trạng thái FE phải xử lý)
 
@@ -147,10 +148,10 @@ Sau `seed`, database mới chỉ có admin và danh mục. Để có người, n
 | Email | Tên | Trạng thái và nên dùng để thử |
 |---|---|---|
 | `lananh.nguyen@demo.example.com` | Nguyễn Thị Lan Anh | **Tài khoản nên dùng nhiều nhất.** Đã lưu 12 tin, trong đó có tin của chủ trọ hết dùng thử, hết gói và bị khóa, nên `GET /me/favorites` chỉ trả phần còn công khai (6.33): số tin trả về ít hơn số tin đã lưu. Theo dõi Khoa, Nhung, Bảo. **Đã viết 5 đánh giá** (Khoa, Nhung, Bảo, Huy và Lan đang bị khóa). **Phát đã trả lời Lan Anh mà chưa được đánh giá**: `GET /landlords/<id của Phát>/review` ra `canReview: true`, dùng để thử `POST` viết đánh giá |
-| `viet.tran@demo.example.com`, `yen.le@demo.example.com`, `thinh.pham@demo.example.com`, `diep.vo@demo.example.com`, `quan.dang@demo.example.com`, `tuan.bui@demo.example.com` | Trần Quốc Việt, Lê Hoàng Yến, Phạm Đức Thịnh, Võ Ngọc Diệp, Đặng Minh Quân, Bùi Anh Tuấn | Mỗi người lưu 2 đến 7 tin và theo dõi 1 đến 2 chủ trọ; để có số liệu thật cho `followerCount`; họ cũng là người viết các đánh giá mẫu. **Quân** có đánh giá về Nhung đang bị admin ẩn (thấy `status` `hidden_by_admin` kèm `hiddenReason`, sửa bị 409 `REVIEW_HIDDEN`); **Tuấn** đã nhắn Bảo nhưng chưa được trả lời (`canReview` `false`, viết bị 403 `REVIEW_NOT_ELIGIBLE`) |
+| `viet.tran@demo.example.com`, `yen.le@demo.example.com`, `thinh.pham@demo.example.com`, `diep.vo@demo.example.com`, `quan.dang@demo.example.com`, `tuan.bui@demo.example.com` | Trần Quốc Việt, Lê Hoàng Yến, Phạm Đức Thịnh, Võ Ngọc Diệp, Đặng Minh Quân, Bùi Anh Tuấn | Mỗi người lưu 2 đến 7 tin và theo dõi 1 đến 2 chủ trọ; để có số liệu thật cho `followerCount`; họ cũng là người viết các đánh giá mẫu. **Quân** có đánh giá về Nhung đang bị admin ẩn (thấy `status` `hidden_by_admin` kèm `hiddenReason`, sửa bị 409 `REVIEW_HIDDEN`) và một đánh giá phòng về phòng 18m² của Khoa cũng đang bị ẩn (sửa bị 409 `LISTING_REVIEW_HIDDEN`); **Tuấn** đã nhắn Bảo nhưng chưa được trả lời (`canReview` `false`, viết bị 403 `REVIEW_NOT_ELIGIBLE`) |
 | `truc.huynh@demo.example.com` | Huỳnh Thanh Trúc | Lưu 5 tin, theo dõi 3 chủ trọ, trong đó có Lan đang bị khóa |
 | `linh.ngo@demo.example.com` | Ngô Khánh Linh | **Mới đăng ký 3 ngày**, chưa lưu tin nào, chưa theo dõi ai: màn hình trống. Đã nhắn Nhung và được trả lời nhưng chưa đọc (`unreadCount` 1), chưa đánh giá |
-| `son.duong@demo.example.com` | Dương Văn Sơn | **Bị admin khóa** 8 ngày trước: đăng nhập 403. Có 1 đánh giá về Khoa, không hiện công khai khi đang bị khóa |
+| `son.duong@demo.example.com` | Dương Văn Sơn | **Bị admin khóa** 8 ngày trước: đăng nhập 403. Có 1 đánh giá về Khoa và 1 đánh giá phòng về phòng 18m² của Khoa, không hiện công khai khi đang bị khóa |
 
 #### Số liệu để đối chiếu khi dựng màn hình
 
@@ -163,6 +164,9 @@ Sau `seed`, database mới chỉ có admin và danh mục. Để có người, n
 | Admin: đơn và doanh thu | `GET /orders/all` có 20 đơn (16 `paid`, 2 `pending`, 2 `cancelled`); `GET /orders/revenue` tổng 3.084.000 đ, đủ ba gói trong `byPlan`, nhiều tháng trong `series` |
 | Admin: kiểm duyệt | `GET /moderation/listings` có 53 tin, trong đó đúng 1 tin `hidden_by_admin` |
 | Admin: kiểm duyệt đánh giá | `GET /moderation/reviews` có 30 đánh giá, trong đó đúng 1 `hidden_by_admin` kèm `hiddenReason`; lọc `landlordId` của Khoa ra 9 dòng (8 hiện công khai, 1 của người viết bị khóa) |
+| Chi tiết tin: điểm phòng | 16 đánh giá phòng trên 6 tin. Phòng 18m² của Khoa (tiêu đề `Phòng trọ 18m² mới xây, wifi tốc độ cao`) có **6 dòng nhưng `reviewCount` 4 và `ratingAverage` 4,3** (năm sao 5, 4, 4, 4 là 4,25 làm tròn nửa lên; một dòng bị admin ẩn, một của Sơn đang bị khóa); studio Võ Văn Ngân của Khoa 3 đánh giá (4,7); studio Pasteur của Nhung **đúng 1 đánh giá** (5); phòng gần sân bay của Nhung 3 đánh giá (đúng 3, JSON là `3`); phòng gần Aeon Mall của Bảo 2 đánh giá (4,5); `Phòng tầng 2 đã cho thuê, tạm ẩn tin` (tin đang bị chủ trọ ẩn) còn 1 đánh giá nhưng chi tiết tin 404; mọi tin khác **chưa có đánh giá** (`reviewCount` 0, `ratingAverage` `null`). Có đánh giá chỉ có sao, nhận xét nhiều dòng và đánh giá đã sửa (`updatedAt` khác `createdAt`) |
+| Đánh giá phòng: ai viết được | Lan Anh và Việt đã được Phát trả lời ở tin cũ nhất của Phát (`Phòng trọ Quận 7 gần ĐH Tôn Đức Thắng, có máy lạnh`): `GET /listings/:id/review` ra `canReview: true` ở tin đó và `false` ở các tin khác của Phát. Linh được Nhung trả lời ở tin cũ nhất của Nhung nên chỉ đánh giá được tin đó. Tuấn nhắn Bảo chưa được trả lời nên viết bị 403 `LISTING_REVIEW_NOT_ELIGIBLE`. Lưu ý: mỗi người đã đánh giá một chủ trọ ở đánh giá chủ trọ (6.40) cũng có sẵn một cuộc trò chuyện đã được trả lời trên **tin cũ nhất** của chủ trọ đó, nên đánh giá phòng cho đúng tin đó được (nếu chưa viết) mà các tin khác của chủ trọ thì chưa |
+| Admin: kiểm duyệt đánh giá phòng | `GET /moderation/listing-reviews` có 16 dòng, trong đó đúng 1 `hidden_by_admin` kèm `hiddenReason` (đánh giá của Quân về phòng 18m² của Khoa); lọc `listingId` của phòng 18m² ra 6 dòng; admin thấy cả đánh giá của tin đang bị chủ trọ ẩn |
 
 #### Cần biết khi dùng
 
@@ -219,7 +223,7 @@ Lưu ý: **một trường có thể xuất hiện nhiều lần** trong `errors
 | `SESSION_REVOKED` | 401 | Phiên đã bị hủy (đăng xuất, đổi hoặc đặt lại mật khẩu, bị khóa, bị thu hồi, hoặc phát hiện dùng lại token) | Chuyển trang đăng nhập |
 | `SESSION_EXPIRED` | 401 | Phiên hết hạn (30 ngày sau lần đăng nhập) | Chuyển trang đăng nhập |
 | `UNAUTHORIZED` | 401 | Lỗi 401 chung do thư viện sinh, không thuộc các mã token ở trên (hiếm gặp) | Coi như chưa đăng nhập, chuyển trang đăng nhập |
-| `ACCOUNT_LOCKED` | 403 | Tài khoản bị admin khóa (ở hai API gửi của chat, 6.39, và ba API ghi của đánh giá, 6.40, là chính người gọi vừa bị khóa dù token còn hạn) | Hiện `message`, không cho dùng tiếp |
+| `ACCOUNT_LOCKED` | 403 | Tài khoản bị admin khóa (ở hai API gửi của chat, 6.39, và ba API ghi của đánh giá chủ trọ (6.40) và của đánh giá phòng (6.41), là chính người gọi vừa bị khóa dù token còn hạn) | Hiện `message`, không cho dùng tiếp |
 | `ORIGIN_NOT_ALLOWED` | 403 | `Origin` của request không nằm trong danh sách cho phép (chỉ ở refresh và logout) | Báo backend thêm origin của FE |
 | `PERMISSION_DENIED` | 403 | Đã đăng nhập nhưng không có quyền làm việc này | Hiện thông báo không đủ quyền |
 | `NOT_RESOURCE_OWNER` | 403 | Thao tác trên dữ liệu của người khác (nhà trọ, tin, đơn của người khác) | Hiện `message`, quay về danh sách của mình |
@@ -242,7 +246,7 @@ Lưu ý: **một trường có thể xuất hiện nhiều lần** trong `errors
 | `CATALOG_IN_USE` | 409 | Admin xóa phường hoặc tiện ích còn nhà trọ đang dùng, kể cả nhà trọ đã xóa mềm (mục 6.30) | Báo "đang có nhà trọ dùng, không xóa được", gợi ý đổi tên |
 | `PROPERTY_NOT_FOUND` | 404 | Nhà trọ không có, hoặc đã xóa mềm | Quay về danh sách nhà trọ |
 | `PROPERTY_HAS_LISTINGS` | 409 | Xóa nhà trọ còn tin chưa xóa | Báo "xóa các tin của nhà trọ này trước" |
-| `LISTING_NOT_FOUND` | 404 | Tin không có hoặc đã xóa; ở route công khai còn gồm tin không hiển thị công khai vì bất kỳ lý do nào (đang ẩn, chủ trọ bị khóa...), kể cả với chính chủ, và đường dẫn không lấy được mã tin; ở API kiểm duyệt của admin (6.29) là tin không có hoặc đã xóa mềm; ở `POST /listings/:id/favorite` (6.33) là tin không hiện công khai vì bất kỳ lý do nào (bỏ lưu thì không bao giờ trả mã này); ở `POST /listings/:id/conversations` (6.39) cũng là tin không hiện công khai vì bất kỳ lý do nào | Hiện "tin không còn", quay về danh sách |
+| `LISTING_NOT_FOUND` | 404 | Tin không có hoặc đã xóa; ở route công khai còn gồm tin không hiển thị công khai vì bất kỳ lý do nào (đang ẩn, chủ trọ bị khóa...), kể cả với chính chủ, và đường dẫn không lấy được mã tin; ở API kiểm duyệt của admin (6.29) là tin không có hoặc đã xóa mềm; ở `POST /listings/:id/favorite` (6.33) là tin không hiện công khai vì bất kỳ lý do nào (bỏ lưu thì không bao giờ trả mã này); ở `POST /listings/:id/conversations` (6.39) cũng là tin không hiện công khai vì bất kỳ lý do nào; ở năm API đánh giá phòng (6.41) là tin không hiện công khai (kể cả `DELETE` của chính người viết) | Hiện "tin không còn", quay về danh sách |
 | `LISTING_STATE_INVALID` | 409 | Chuyển trạng thái tin không hợp lệ (ẩn tin không đang hiện, hiện tin đã hiện, ẩn tin đang bị admin ẩn); ở API kiểm duyệt của admin (6.29) là ẩn tin đã bị admin ẩn hoặc gỡ ẩn tin không bị admin ẩn | Tải lại tin (`GET /me/listings/:id`) rồi cập nhật nút |
 | `LISTING_HIDDEN_BY_ADMIN` | 403 | Chủ trọ cố hiện lại tin đang bị admin ẩn | Hiện nhãn "bị quản trị viên ẩn" kèm `moderationReason`, ẩn nút "Hiện" |
 | `LISTING_IMAGE_LIMIT` | 409 | Tải ảnh lên tin đã đủ 5 ảnh | Tắt nút tải khi `images` đã đủ 5 ảnh; báo "hãy xóa bớt một ảnh trước" |
@@ -264,9 +268,14 @@ Lưu ý: **một trường có thể xuất hiện nhiều lần** trong `errors
 | `REVIEW_NOT_FOUND` | 404 | Đánh giá (6.40): sửa hoặc xóa khi người gọi chưa có đánh giá về chủ trọ đó; hoặc admin ẩn, gỡ ẩn một id không có (kể cả khi người viết vừa xóa nó) | Hiện "không tìm thấy đánh giá", tải lại trạng thái bằng `GET /landlords/:id/review` |
 | `REVIEW_NOT_ELIGIBLE` | 403 | Viết đánh giá khi chủ trọ chưa trả lời người gọi trong chat: chưa nhắn, hoặc nhắn rồi mà chưa được trả lời, hoặc chỉ nhắn với chủ trọ khác (6.40) | Hiện `message` ("Bạn chỉ đánh giá được chủ trọ đã trả lời tin nhắn của bạn.") và mời nhắn tin trước. Ẩn nút viết khi `canReview` là `false` |
 | `REVIEW_ALREADY_EXISTS` | 409 | Viết đánh giá khi đã có đánh giá về chủ trọ này, kể cả đang bị ẩn (6.40) | Chuyển sang sửa đánh giá hiện có (`PATCH`) |
-| `CANNOT_REVIEW_SELF` | 409 | Đánh giá chính tài khoản của mình (6.40; chỉ gặp khi admin cấp `review:create` cho chủ trọ) | Ẩn nút viết đánh giá trên hồ sơ của chính mình |
+| `CANNOT_REVIEW_SELF` | 409 | Đánh giá chính tài khoản của mình (6.40; chỉ gặp khi admin cấp `review:create` cho chủ trọ), hoặc chủ trọ của tin đánh giá phòng của mình (6.41) | Ẩn nút viết đánh giá trên hồ sơ của chính mình |
 | `REVIEW_HIDDEN` | 409 | Sửa đánh giá đang bị admin ẩn (6.40): chỉ xóa được | Hiện nhãn "bị quản trị viên ẩn" kèm `hiddenReason`, ẩn nút sửa, giữ nút xóa |
 | `REVIEW_STATE_INVALID` | 409 | Admin ẩn đánh giá đã ẩn, hoặc gỡ ẩn đánh giá đang hiện (6.40) | Tải lại dòng rồi cập nhật nút |
+| `LISTING_REVIEW_NOT_FOUND` | 404 | Đánh giá phòng (6.41): sửa hoặc xóa khi người gọi chưa có đánh giá về tin đó | Hiện "không tìm thấy đánh giá", tải lại trạng thái bằng `GET /listings/:id/review` |
+| `LISTING_REVIEW_NOT_ELIGIBLE` | 403 | Viết đánh giá phòng khi chủ trọ chưa trả lời người gọi về CHÍNH tin này: chưa nhắn về tin này, hoặc nhắn rồi mà chưa được trả lời, hoặc chỉ nhắn về tin khác (kể cả tin khác của cùng chủ trọ) (6.41) | Hiện `message` và mời nhắn tin về tin này trước. Ẩn nút viết khi `canReview` là `false` |
+| `LISTING_REVIEW_ALREADY_EXISTS` | 409 | Viết đánh giá phòng khi đã có đánh giá về tin này, kể cả đang bị ẩn (6.41) | Chuyển sang sửa đánh giá hiện có (`PATCH`) |
+| `LISTING_REVIEW_HIDDEN` | 409 | Sửa đánh giá phòng đang bị admin ẩn (6.41): chỉ xóa được | Hiện nhãn "bị quản trị viên ẩn" kèm `hiddenReason`, ẩn nút sửa, giữ nút xóa |
+| `LISTING_REVIEW_STATE_INVALID` | 409 | Admin ẩn đánh giá phòng đã ẩn, hoặc gỡ ẩn đánh giá phòng đang hiện (6.41; API của admin) | Tải lại dòng rồi cập nhật nút |
 | `CANNOT_LOCK_SELF` | 409 | Admin tự khóa chính mình | Hiện `message` |
 | `ACCOUNT_ALREADY_LOCKED` | 409 | Khóa tài khoản đang bị khóa | Làm mới trạng thái trên giao diện |
 | `ACCOUNT_NOT_LOCKED` | 409 | Mở khóa tài khoản không bị khóa | Làm mới trạng thái trên giao diện |
@@ -314,7 +323,7 @@ FE nên:
 - **Đọc `Retry-After` nếu đọc được**, hiện "Thử lại sau N giây" (đổi sang phút nếu lớn) và khóa nút gửi đến hết thời gian.
 - **Cẩn thận: trình duyệt thường không cho JS đọc `Retry-After`.** Backend hiện chưa khai báo `Access-Control-Expose-Headers`, nên khi FE khác origin với API (ví dụ FE `:5173`, API `:3000`) thì `response.headers.get('Retry-After')` là `null` dù header có thật (xem Network trong DevTools sẽ thấy). Khi đó FE dùng **cột "Bị chặn trong" của bảng trên** làm thời gian khóa nút (ví dụ đăng nhập sai quá số lần thì khóa 15 phút) và hiện `message` của lỗi. FE chạy cùng origin với API (proxy `/api` của Next.js, mục 4.1) thì đọc được bình thường. Cách sửa gọn ở backend là khai báo `exposedHeaders: ['Retry-After', 'X-Request-Id']` trong cấu hình CORS; tới lúc đó mục này sẽ được cập nhật.
 - **Không tự động thử lại** khi gặp 429: thử lại chỉ kéo dài thời gian bị chặn.
-- Với `refresh`: gọi khi gặp 401 `TOKEN_EXPIRED`, **hoặc** chủ động ngay trước khi gọi một trong bốn API đọc đăng nhập tùy chọn mà token sắp hết hạn (mục 2 và 4.1, vì các API đó không bao giờ trả 401). Nếu nhiều request cùng cần token mới thì gom về **một** lần refresh rồi thử lại tất cả. Đừng refresh theo bộ đếm giờ cố định hay mỗi lần chuyển trang. Giới hạn là 60 lần mỗi phút theo IP, nhiều người dùng chung một IP (ký túc xá) cộng dồn vào đó.
+- Với `refresh`: gọi khi gặp 401 `TOKEN_EXPIRED`, **hoặc** chủ động ngay trước khi gọi một trong sáu API đọc đăng nhập tùy chọn mà token sắp hết hạn (mục 2 và 4.1, vì các API đó không bao giờ trả 401). Nếu nhiều request cùng cần token mới thì gom về **một** lần refresh rồi thử lại tất cả. Đừng refresh theo bộ đếm giờ cố định hay mỗi lần chuyển trang. Giới hạn là 60 lần mỗi phút theo IP, nhiều người dùng chung một IP (ký túc xá) cộng dồn vào đó.
 - Bộ đếm nằm **trong bộ nhớ** của backend: khởi động lại backend là về 0. Khi thử tay mà bị chặn, nhờ restart backend thay vì đợi.
 - Khi chạy thử trên máy cá nhân (không qua proxy), mọi client cùng một IP nên giới hạn theo IP dùng chung cho cả máy.
 
@@ -341,7 +350,7 @@ Các con số ở bảng trên là **mặc định**; backend đổi được b�
 
 1. **Sau đăng ký hoặc đăng nhập**: lưu `accessToken` vào bộ nhớ, rồi gọi `GET /auth/me` để biết người dùng là ai, loại tài khoản gì và có quyền gì. Đừng tự giải mã JWT.
 2. **Khi tải lại trang** (bộ nhớ mất token): gọi `POST /auth/refresh` ngay lúc khởi động app. Thành công thì có access token mới (rồi gọi `/auth/me`); lỗi 401 thì coi như chưa đăng nhập.
-3. **Khi một request trả 401 `TOKEN_EXPIRED`**: gọi `POST /auth/refresh` **đúng một lần**, lấy `accessToken` mới rồi gửi lại request vừa lỗi. Nếu refresh cũng lỗi (`SESSION_REVOKED`, `SESSION_EXPIRED`, `REFRESH_TOKEN_MISSING`) thì xóa trạng thái đăng nhập và chuyển trang đăng nhập. **Ngoại lệ:** bốn API đọc đăng nhập tùy chọn (mục 2) không bao giờ trả 401, token hết hạn chỉ làm chúng trả bản khách; với chúng, FE phải refresh **trước khi gọi** nếu token sắp hết hạn (lưu `expiresAt = thời điểm nhận + expiresIn`, refresh khi còn dưới khoảng 30 giây). Chi tiết ở mục 4.1.
+3. **Khi một request trả 401 `TOKEN_EXPIRED`**: gọi `POST /auth/refresh` **đúng một lần**, lấy `accessToken` mới rồi gửi lại request vừa lỗi. Nếu refresh cũng lỗi (`SESSION_REVOKED`, `SESSION_EXPIRED`, `REFRESH_TOKEN_MISSING`) thì xóa trạng thái đăng nhập và chuyển trang đăng nhập. **Ngoại lệ:** sáu API đọc đăng nhập tùy chọn (mục 2) không bao giờ trả 401, token hết hạn chỉ làm chúng trả bản khách; với chúng, FE phải refresh **trước khi gọi** nếu token sắp hết hạn (lưu `expiresAt = thời điểm nhận + expiresIn`, refresh khi còn dưới khoảng 30 giây). Chi tiết ở mục 4.1.
 4. **Nhiều request cùng hết hạn một lúc**: chỉ phát **một** lời gọi refresh, các request còn lại đợi kết quả đó. (Hai tab cùng refresh trong vòng 10 giây vẫn an toàn nhờ khoảng ân hạn, nhưng dùng lại cookie cũ sau 10 giây sẽ bị coi là bị đánh cắp và **hủy cả phiên**.)
 5. **Đăng xuất**: gọi `POST /auth/logout`, xóa token trong bộ nhớ.
 
@@ -366,7 +375,7 @@ Mỗi tài khoản giữ tối đa 10 phiên (10 thiết bị). Đăng nhập th
 **Vấn đề.** Trang công khai (danh sách tin, chi tiết tin, hồ sơ chủ trọ) cần server render đầy đủ để công cụ tìm kiếm đọc được. Nhưng số điện thoại chủ trọ, nút tim và nút theo dõi phụ thuộc người đang xem, mà access token chỉ nằm trong bộ nhớ trình duyệt (không `localStorage`, không cookie đọc được bằng JS). Backend đã được thiết kế để hai yêu cầu này không mâu thuẫn. Đây là **hướng dẫn cách dùng**, không phải điều backend ép buộc.
 
 **Backend bảo đảm gì (đã đối chiếu code):**
-- Bốn route đọc đăng nhập tùy chọn (mục 2) gọi **không có** `Authorization` thì luôn trả đúng bản dành cho khách: `phone`, `isFavorite`, `isFollowing` là `null`, vẫn 200. Bản này **giống nhau cho mọi khách**, nên server FE render và cache được.
+- Sáu route đọc đăng nhập tùy chọn (mục 2) gọi **không có** `Authorization` thì luôn trả đúng bản dành cho khách: `phone`, `isFavorite`, `isFollowing`, `isMine` là `null`, vẫn 200. Bản này **giống nhau cho mọi khách**, nên server FE render và cache được.
 - Số điện thoại **không nằm trong bản dành cho khách**, nên không lọt vào HTML, không vào bộ nhớ đệm, không vào kết quả công cụ tìm kiếm.
 - Cookie `rt` là `HttpOnly`, `SameSite=Strict`, `Path=/api/v1/auth` và do API đặt, nên **server FE không bao giờ nhận được nó**. Server FE vì thế không thể và không cần biết ai đang xem. Đừng cố chuyển cookie này sang server FE.
 
@@ -379,10 +388,10 @@ Mỗi tài khoản giữ tối đa 10 phiên (10 thiết bị). Đăng nhập th
 
 **Các bước và lưu ý:**
 
-1. **Server FE không gắn token và đặt thời gian cache tường minh.** Backend trả `Cache-Control: private, no-store` cho bốn route này, đúng với người dùng thật. Cache dữ liệu của Next.js thì điều khiển bằng tùy chọn của `fetch` (`next.revalidate`), nên hãy đặt rõ (ví dụ 60 giây) cho bản khách; kiểm lại cách hoạt động theo phiên bản Next đang dùng. **Tuyệt đối không** gắn token của một người dùng vào request server có cache dùng chung: số điện thoại sẽ nằm trong HTML của người khác.
-2. **Khôi phục phiên khi trang mở.** Một `AuthProvider` ở client gọi `POST /auth/refresh` một lần (`credentials: 'include'`). 200: giữ `accessToken` trong biến module và ghi `expiresAt = Date.now() + expiresIn * 1000`, rồi gọi `GET /auth/me`. 401 (`REFRESH_TOKEN_MISSING`, `SESSION_REVOKED`, `SESSION_EXPIRED`): trạng thái `guest`, **không hiện lỗi**. Trạng thái đăng nhập có **ba** giá trị: `loading`, `guest`, `user`. Ở `loading`, nút số điện thoại, tim và theo dõi hiện khung chờ, để nút "Đăng nhập" không nhấp nháy với người đã có phiên.
+1. **Server FE không gắn token và đặt thời gian cache tường minh.** Backend trả `Cache-Control: private, no-store` cho sáu route này, đúng với người dùng thật. Cache dữ liệu của Next.js thì điều khiển bằng tùy chọn của `fetch` (`next.revalidate`), nên hãy đặt rõ (ví dụ 60 giây) cho bản khách; kiểm lại cách hoạt động theo phiên bản Next đang dùng. **Tuyệt đối không** gắn token của một người dùng vào request server có cache dùng chung: số điện thoại sẽ nằm trong HTML của người khác.
+2. **Khôi phục phiên khi trang mở.** Một `AuthProvider` ở client gọi `POST /auth/refresh` một lần (`credentials: 'include'`). 200: giữ `accessToken` trong biến module và ghi `expiresAt = Date.now() + expiresIn * 1000`, rồi gọi `GET /auth/me`. 401 (`REFRESH_TOKEN_MISSING`, `SESSION_REVOKED`, `SESSION_EXPIRED`): trạng thái `guest`, **không hiện lỗi**. Trạng thái đăng nhập có **ba** giá trị: `loading`, `guest`, `user`. Ở `loading`, nút số điện thoại, tim và theo dõi hiện khung chờ, để nút "Đăng nhập" không nhấp nháy với người đã có phiên. **Ở trình duyệt, đừng gọi các API đọc đăng nhập tùy chọn khi còn `loading`**: gọi sớm nhận bản khách (`isMine`, `isFavorite`, `isFollowing` đều `null`), và nếu bản đó được cache thì nó ở lại sau khi phiên khôi phục xong. Đưa **id người dùng (khách thì `guest`) vào khóa cache hay khóa truy vấn** của các lượt gọi này, để đăng nhập, đăng xuất hay đổi tài khoản tự gọi lại.
 3. **Gộp mọi lần refresh thành một Promise dùng chung.** React StrictMode ở môi trường dev chạy effect hai lần, và nhiều component có thể cùng cần token. Backend chịu được hai lần gọi trùng trong khoảng ân hạn (mục 4) nhưng đừng dựa vào đó.
-4. **Refresh chủ động cho bốn API đọc tùy chọn.** Hàm "lấy token" của FE nên làm: nếu `expiresAt - bây giờ` còn dưới khoảng 30 giây thì refresh trước rồi mới gọi. Lý do: token hết hạn thì bốn API này **không báo 401** mà lặng lẽ trả bản khách (`phone: null`), nên cơ chế "gặp 401 thì refresh" không bao giờ chạy và người đã đăng nhập thấy mất số điện thoại. Với các API cần đăng nhập (lưu tin, theo dõi, quản lý...) vẫn dùng cơ chế 401 `TOKEN_EXPIRED` ở mục "FE làm gì".
+4. **Refresh chủ động cho sáu API đọc tùy chọn.** Hàm "lấy token" của FE nên làm: nếu `expiresAt - bây giờ` còn dưới khoảng 30 giây thì refresh trước rồi mới gọi. Lý do: token hết hạn thì sáu API này **không báo 401** mà lặng lẽ trả bản khách (`phone: null`), nên cơ chế "gặp 401 thì refresh" không bao giờ chạy và người đã đăng nhập thấy mất số điện thoại. Với các API cần đăng nhập (lưu tin, theo dõi, quản lý...) vẫn dùng cơ chế 401 `TOKEN_EXPIRED` ở mục "FE làm gì".
 5. **Đừng gọi refresh vô ích cho khách.** Mỗi lượt khách mở trang mà gọi `POST /auth/refresh` đều nhận 401 và **tính vào giới hạn 60 lần mỗi phút theo IP** (mục 3). Nhiều khách chung một IP (ký túc xá, quán cà phê) dễ chạm giới hạn. Khuyến nghị: khi đăng nhập thành công, FE đặt một cookie gợi ý trên domain của FE (ví dụ `has_session=1`, không `HttpOnly`, không chứa bí mật, sống tối đa 30 ngày) và chỉ gọi refresh khi cookie này còn; xóa nó khi đăng xuất hoặc khi refresh trả 401. Cookie này chỉ là gợi ý, không phải bằng chứng đăng nhập.
 6. **IP mà backend thấy khi server FE gọi API.** Server FE gọi API thì backend thấy IP của server FE, không phải IP người xem. Hai hệ quả: (a) giới hạn `GET /listings` và `GET /listings/:slugCode` (300 lần mỗi phút theo IP, mục 3) tính chung cho mọi trang do server render, nên dùng ISR hoặc `revalidate` để mỗi trang chỉ gọi API khoảng một lần mỗi chu kỳ thay vì mỗi lượt xem; (b) lượt xem (`viewCount`, 6.20) tính một lần mỗi người xem mỗi 30 phút theo IP hoặc tài khoản, nên các lần gọi từ server FE gần như không làm số tăng, còn lượt xem thật chỉ tăng khi **trình duyệt** gọi chi tiết (lớp 2, nơi backend thấy tài khoản hoặc IP thật). Với khách, lớp 2 chỉ chạy nếu FE chủ động gọi lại; nếu bỏ qua thì lượt xem của khách bị đếm thiếu. FE tự quyết: gọi lại cho cả khách để đếm đúng nhưng tốn thêm một lần gọi mỗi lượt xem, hoặc chấp nhận đếm thiếu ở bản demo.
 7. **Triển khai.** Xem đoạn `SameSite=Strict` ở đầu mục 4: FE và API chung domain gốc là cách gọn nhất (không đổi code). Cách thứ hai là cho trình duyệt gọi API qua cùng origin với FE (proxy `/api` bằng cấu hình rewrite của Next.js): khi đó không cần CORS, đọc được `Retry-After` và `X-Request-Id` (mục 2), cookie là cookie của chính origin FE; đổi lại backend phải được cấu hình chuyển tiếp IP người dùng (`X-Forwarded-For` kèm `TRUST_PROXY_HOPS` cho khớp), nếu không mọi người dùng bị tính chung một IP. Dù cách nào, origin của FE phải nằm trong `ALLOWED_ORIGINS` của backend (nếu không `refresh` và `logout` trả 403 `ORIGIN_NOT_ALLOWED`), và backend chạy HTTPS thật phải đặt `COOKIE_SECURE=true`.
@@ -426,6 +435,7 @@ Bảng này gom **quyền mặc định** với **luật cố định trong code
 | Theo dõi, bỏ theo dõi chủ trọ | Không (401) | Có (không theo dõi chính mình: 409 `CANNOT_FOLLOW_SELF`) | Mặc định 403 (admin cấp quyền `follow:*` thì được) | **Luôn 403**, kể cả có quyền |
 | Chat (mục 6.39): mở cuộc trò chuyện từ một tin, gửi tin, đọc tin, hộp thư, đếm và đánh dấu chưa đọc | Không (401) | Có: mở cuộc trò chuyện, nhắn, đọc, đánh dấu đã đọc | Trả lời, đọc và đánh dấu đã đọc cuộc trò chuyện của mình. **Mở** cuộc trò chuyện: mặc định 403 (admin cấp `conversation:create` thì được, nhưng với tin của chính mình là 409 `CANNOT_CHAT_WITH_SELF`) | **Luôn 403**, kể cả có quyền |
 | Đánh giá chủ trọ (mục 6.40): viết, sửa, xóa, xem đánh giá của mình | Không (401). Khách **đọc** được danh sách đánh giá | Có, **sau khi chủ trọ đã trả lời trong chat**; mỗi chủ trọ một đánh giá | Mặc định 403 (admin cấp `review:*` thì được, nhưng không tự đánh giá mình: 409 `CANNOT_REVIEW_SELF`) | **Luôn 403**, kể cả có quyền |
+| Đánh giá phòng (mục 6.41): viết, sửa, xóa, xem đánh giá của mình về một tin | Không (401). Khách **đọc** được danh sách đánh giá của tin | Có, **sau khi chủ trọ đã trả lời về chính tin đó trong chat**; mỗi tin một đánh giá | Mặc định 403 (admin cấp `review:*` thì được, nhưng không tự đánh giá phòng của mình: 409 `CANNOT_REVIEW_SELF`) | **Luôn 403**, kể cả có quyền |
 | Nhà trọ (`/properties`) | Không (401) | Mặc định 403 | Có, **chỉ nhà trọ của mình** | Có quyền nhưng cũng chỉ nhà trọ của chính mình (thực tế không dùng) |
 | Tin của mình: đăng, sửa, ẩn, hiện, xóa, tải ảnh, `/me/listings` | Không (401) | Mặc định 403 | Có, **chỉ tin của mình**. Đăng và hiện lại còn phải trong hạn mức (`MEMBERSHIP_REQUIRED`, `LISTING_QUOTA_REACHED`) | Đăng tin: 403 `MEMBERSHIP_REQUIRED` (không có kỳ dùng thử). Sửa, xóa tin người khác: 403 `NOT_RESOURCE_OWNER` |
 | Kỳ dùng thử và hạn mức (`GET /me/membership`) | Không (401) | 403 | Có | Gọi được nhưng luôn `state = expired`, `listingLimit = 0` |
@@ -440,6 +450,7 @@ Năm luật cố định đáng nhớ:
 - **Admin không lưu tin và không theo dõi chủ trọ**, dù `permissions` của admin liệt kê đủ `favorite:*` và `follow:*` (admin có mọi quyền trong danh mục). FE ẩn nút theo loại tài khoản **và** theo `permissions`.
 - **Admin không dùng chat**: cả bảy API chat (6.39) trả 403 `PERMISSION_DENIED` cho admin dù `permissions` có `conversation:*` và `message:create`. Chỉ hai bên của một cuộc trò chuyện đọc được nó; người ngoài nhận 404.
 - **Admin không viết, sửa, xóa hay xem đánh giá "của tôi"**: bốn API `/landlords/:id/review` (6.40) trả 403 `PERMISSION_DENIED` cho admin dù `permissions` có `review:*`. Admin chỉ đọc danh sách công khai và ẩn, gỡ ẩn bằng `review:moderate`.
+- **Đánh giá phòng dùng chung bốn khóa `review:*` với đánh giá chủ trọ** (6.41): ai được viết đánh giá chủ trọ thì cũng được viết đánh giá phòng về mặt quyền; điều kiện chat khác nhau (chính tin này, hay bất kỳ tin nào của chủ trọ). Admin cũng bị 403 ở bốn API `/listings/:id/review`.
 
 ### Danh mục quyền hiện có
 
@@ -461,7 +472,7 @@ Năm luật cố định đáng nhớ:
 | `subscription` | read | có | | có (mục 6.25, `GET /me/membership`) |
 | `conversation` | read, create, update | có | | cả ba có API (mục 6.39): `read` cho các API đọc và đếm chưa đọc, `create` cho mở cuộc trò chuyện, `update` cho đánh dấu đã đọc. Admin giữ cả ba nhưng vẫn bị 403 |
 | `message` | create | có | | có (mục 6.39). Admin giữ nhưng vẫn bị 403 |
-| `review` | read, create, update, delete, moderate | có | `moderate` | có (mục 6.40): `read`, `create`, `update`, `delete` cho bốn API của người viết, `moderate` cho ba API kiểm duyệt. Admin giữ cả năm nhưng bốn API của người viết vẫn 403 |
+| `review` | read, create, update, delete, moderate | có | `moderate` | có (mục 6.40): `read`, `create`, `update`, `delete` cho bốn API của người viết, `moderate` cho ba API kiểm duyệt. Admin giữ cả năm nhưng bốn API của người viết vẫn 403. Bốn khóa của người viết cũng canh bốn API đánh giá phòng (6.41), và `moderate` cũng canh ba API kiểm duyệt đánh giá phòng (`/moderation/listing-reviews`, 6.41) |
 
 Danh mục chỉ có **15 module** của bản MVP (thêm `conversation` và `message` ngày 2026-11-05, `review` ngày 2026-11-07). Các module `contact`, `report`, `verification`, `boost`, `product`, `inspection`, `ad`, `expense`, `finance`, `dashboard`, `stats` và hai hành động `order:refund`, `order:gift` đã bị gỡ (xem nhật ký 2026-10-12). Khóa của chúng không còn hợp lệ: gửi lên `PATCH /account-types/:key` sẽ nhận 400 `PERMISSION_UNKNOWN`.
 
@@ -999,6 +1010,9 @@ Cần nhớ:
 - `images`: `[ { "id", "position", "url" } ]` theo `position` tăng dần (ảnh bìa là `position` nhỏ nhất). Tin cũ đăng trước 2026-11-02 có thể chưa có ảnh thì là `[]` (thêm ảnh ở 6.28); tin đăng từ 2026-11-02 luôn có ít nhất một ảnh.
 - `property`: `{ id, name, addressText, fullAddress, ward { code, name, provinceCode, provinceName }, latitude, longitude, fees[], amenities[] }` (như 6.17: `fees` theo thứ tự cố định, `amenities` theo tên tiếng Việt).
 - `isFavorite`: `null` với khách, token sai hoặc token hết hạn; `true` hoặc `false` với người đã đăng nhập (chủ trọ và admin nhận `false`). Cùng luật với danh sách (6.19), đọc bằng một truy vấn theo khóa chính. Chi tiết tin trong `/me/listings/:id` (6.21) **không có** trường này.
+- `reviewCount`: số đánh giá phòng đang hiện của **tin này** (số nguyên từ 0), từ 2026-11-09. Cùng giá trị cho khách và người đăng nhập. Đúng bằng `total` của `GET /listings/:id/reviews` (6.41).
+- `ratingAverage`: số sao trung bình của phòng, làm tròn một chữ số thập phân (nửa lên); `null` khi `reviewCount` là 0 (đừng hiện 0 sao). Đây là điểm của **phòng**, khác `reviewCount` và `ratingAverage` của chủ trọ ở hồ sơ (6.31). Bốn danh sách thẻ tin và `/me/listings/:id` **không có** hai trường này.
+- `id` của chi tiết là UUID dùng ở đường dẫn của các API đánh giá phòng (`/listings/:id/review`, `/listings/:id/reviews`); đường dẫn đó **không** nhận `slug-mã`.
 
 **Cách tính lượt xem**: mỗi người xem được cộng **một lượt cho mỗi tin trong 30 phút**. Người xem là tài khoản nếu có token hợp lệ, không thì là địa chỉ IP. **Chủ tin mở không được tính.** Tải lại trong 30 phút không làm số tăng. Tin không hiển thị công khai (404) thì không được cộng. Nhiều người dùng chung một IP (ký túc xá, quán cà phê) mà không đăng nhập thì tính chung một lượt mỗi 30 phút.
 
@@ -2239,6 +2253,14 @@ Một đánh giá duy nhất làm điểm trung bình thành chính nó, nên **
 
 Ba API kiểm duyệt **không có giới hạn tần suất thêm**. Admin ẩn đua với người viết: nếu người viết sửa đúng lúc, sửa bị chặn khi đánh giá đã ẩn (409 `REVIEW_HIDDEN`) và không mất cập nhật nào; nếu người viết xóa đúng lúc thì xóa thắng và lệnh ẩn nhận 404.
 
+#### Dựng khối đánh giá trên hồ sơ chủ trọ: năm điều dễ sai
+
+1. **Điều kiện hiện khối viết, sửa, xóa là `accountType === 'tenant'`, không chỉ có `review:read` trong `permissions`.** Admin giữ mọi quyền nên `permissions` của admin có `review:*`, nhưng bốn API `/landlords/:id/review` trả 403 `PERMISSION_DENIED` cho admin. Chủ trọ mặc định không có khóa `review:*`; kể cả khi admin cấp, chủ trọ không đánh giá chính mình (`canReview` là `false`, `POST` là 409 `CANNOT_REVIEW_SELF`). Vậy: chỉ khi `GET /auth/me` cho `user.accountType` là `tenant` **và** `permissions` có `review:read` thì mới gọi `GET /landlords/:id/review`; trong khối đó nút viết cần `review:create`, nút sửa cần `review:update`, nút xóa cần `review:delete`. Admin, chủ trọ (kể cả đang xem hồ sơ của chính mình) và khách thì **không gọi** API này và chỉ thấy danh sách công khai (khách thêm lời mời đăng nhập).
+2. **Danh sách đánh giá chờ phiên khôi phục xong, và id người dùng nằm trong khóa truy vấn.** `GET /landlords/:id/reviews` đọc đăng nhập tùy chọn: gọi lúc phiên còn đang tải thì nhận `isMine: null` ở mọi dòng, nên không ghim và không nhận ra được đánh giá của mình, và nếu cache dưới khóa của khách thì bản đó ở lại. Chỉ gọi khi trạng thái phiên đã là `guest` hoặc `user` (không gọi ở `loading`), gửi `Bearer` nếu là `user` (làm mới token trước nếu sắp hết hạn, mục 4.1), và để id người dùng (khách thì `guest`) trong khóa truy vấn. Đổi tài khoản hay đăng xuất thì danh sách tự gọi lại.
+3. **Đánh giá của mình có hai nguồn: ghim nó ở một nơi duy nhất.** Đánh giá `visible` của người viết xuất hiện ở danh sách công khai (`isMine: true`) **và** ở `GET /landlords/:id/review`. Cách gọn: thẻ ghim (từ `GET /review`) là nơi **duy nhất** có nút sửa và xóa, còn danh sách bỏ các phần tử `isMine === true` ở mọi trang. Lưu ý số đếm: `total` và `reviewCount` vẫn **tính cả** đánh giá của mình (khi nó đang hiện), nên đừng tính lại số trang từ độ dài mảng đã lọc (một trang có thể ít hơn `pageSize` một dòng) và đừng trừ một ở tiêu đề "N đánh giá". Sau `POST`, `PATCH`, `DELETE` thì gán kết quả vào thẻ ghim (`DELETE` thì xóa thẻ), rồi tải lại danh sách và hồ sơ (`reviewCount`, `ratingAverage` đã đổi).
+4. **Hai bộ phân trang trên một trang dùng hai tham số URL khác nhau.** Trang hồ sơ có cả tin (6.36) và đánh giá (6.40), mỗi bên một trang. Hai API của backend luôn nhận đúng `page` và `pageSize` (không đổi tên được, tham số lạ là 400), nên FE đặt tham số trên thanh địa chỉ khác nhau, ví dụ `page` cho tin và `reviewPage` cho đánh giá, rồi ánh xạ về `page` khi gọi từng API. Đổi trang bên này không làm đổi trang bên kia.
+5. **Đánh giá bị admin ẩn không có trong danh sách công khai, nên chỉ `GET /landlords/:id/review` cho người viết biết.** Dòng bị ẩn không xuất hiện ở danh sách và không tính vào `reviewCount`; người viết chỉ thấy nó ở thẻ ghim với `status` `hidden_by_admin` kèm `hiddenReason` (chỉ còn nút xóa, sửa là 409 `REVIEW_HIDDEN`). Vì danh sách không có dòng nào của mình trong trường hợp này, đừng suy "mình chưa đánh giá" từ việc không thấy `isMine: true`: luôn dựa vào `review` và `canReview` của `GET /review`.
+
 Cần nhớ:
 - **Hiện tên người viết cạnh nhận xét** là công khai (không có lựa chọn ẩn danh). FE hiện `author.name`, `null` thì ghi "Người dùng".
 - **Escape `comment`**: là chữ người dùng gõ, lưu thô, backend không lọc HTML hay liên kết.
@@ -2246,6 +2268,153 @@ Cần nhớ:
 - **Không có** báo cáo đánh giá, chủ trọ trả lời đánh giá, phân bố số sao, lọc hay sắp theo sao, ảnh trong đánh giá, bình chọn "hữu ích" (đã hoãn, mục 9). Người dùng muốn báo đánh giá xấu thì liên hệ admin ngoài hệ thống.
 
 ---
+
+### 6.41 Đánh giá từng phòng
+
+`GET /listings/:id/reviews` · công khai, **đọc đăng nhập tùy chọn**
+`GET /listings/:id/review` · cần quyền `review:read`
+`POST /listings/:id/review` · cần quyền `review:create`
+`PATCH /listings/:id/review` · cần quyền `review:update`
+`DELETE /listings/:id/review` · cần quyền `review:delete`
+`GET /moderation/listing-reviews` · cần quyền `review:moderate` (chỉ admin)
+`POST /moderation/listing-reviews/:id/hide` · cần quyền `review:moderate`
+`POST /moderation/listing-reviews/:id/unhide` · cần quyền `review:moderate`
+
+Người tìm trọ đã nhắn về **một tin cụ thể và được chủ trọ trả lời về chính tin đó** (chat, mục 6.39) thì đánh giá được phòng trong tin ấy: **số sao từ 1 đến 5** và **nhận xét tùy chọn** (1 đến 1000 ký tự). Cách làm giống đánh giá chủ trọ (6.40), nhưng đánh giá này **gắn với tin đăng** và nằm ở một bảng riêng, nên điểm của phòng và điểm của chủ trọ không bao giờ lẫn nhau. **Mỗi người chỉ có một đánh giá cho mỗi tin** (sửa hoặc xóa rồi viết lại thì được). Chi tiết công khai của tin (6.20) có hai trường mới, `reviewCount` và `ratingAverage`; danh sách đánh giá là API riêng, có phân trang.
+
+**`:id` là UUID của tin**, lấy từ trường `id` của `GET /listings/:slugCode` (6.20). Không phải `slug-mã` và không phải `code`: gửi `slug-mã` hay `code` vào đường dẫn nhận 400 `INVALID_ID`. Ngược lại, chi tiết công khai vẫn mở bằng `slug-mã` như cũ; FE giữ cả hai giá trị.
+
+Quyền dùng chung bốn khóa của đánh giá chủ trọ: mặc định chỉ `tenant` giữ `review:read`, `review:create`, `review:update`, `review:delete`; **chủ trọ không giữ khóa `review:*` nào**. Vì dùng chung khóa nên admin không bật tắt riêng đánh giá phòng được. **Admin giữ mọi quyền nhưng bốn API của người viết (`GET`, `POST`, `PATCH`, `DELETE /listings/:id/review`) đều trả 403 `PERMISSION_DENIED`**: admin chỉ đọc danh sách công khai và dùng ba API kiểm duyệt (bên dưới). Không API nào nhận id của một đánh giá ở phía người viết (người viết luôn là người trong token, tin luôn là `:id`), nên không ai đọc hay đổi được đánh giá của người khác.
+
+Cache: năm API đầu (bốn API của người viết và danh sách công khai) trả `Cache-Control: private, no-store` (nội dung đổi theo người xem), đừng cho proxy hay CDN cache.
+
+Admin ẩn và gỡ ẩn đánh giá phòng bằng ba API kiểm duyệt ở mục "Kiểm duyệt của admin" bên dưới. Đánh giá bị ẩn rời danh sách công khai và hai con số **ngay**; người viết thấy `status: "hidden_by_admin"` kèm `hiddenReason` ở `GET /listings/:id/review`, nên FE xử lý trạng thái đó ở thẻ ghim của người viết.
+
+#### Tin phải đang hiện công khai
+
+Cả năm API chỉ chạy khi tin **đang hiện công khai**, đúng điều kiện của `GET /listings/:slugCode`. Tin không hiện (chủ trọ ẩn, admin ẩn, tin hay nhà trọ bị xóa, chủ trọ bị khóa hay xóa, hết dùng thử và hết gói, hoặc bị ẩn bớt vì vượt hạn mức): **cả năm API trả 404 `LISTING_NOT_FOUND`, kể cả `DELETE` của chính người viết**, và không ai dò được tin đang ẩn. Các dòng đánh giá còn nguyên và hiện lại đúng lúc tin hiện lại. Quy tắc gọn cho FE: một tin mở được ở chi tiết công khai khi và chỉ khi năm API này không trả 404.
+
+Người viết bị khóa hoặc xóa: đánh giá của họ rời danh sách và hai con số ngay (dòng không bị xóa), mở khóa thì trở lại. Người viết bị khóa mà token còn hạn gọi `POST`, `PATCH`, `DELETE` nhận 403 `ACCOUNT_LOCKED` ngay.
+
+#### Ai được viết: điều kiện "chủ trọ đã trả lời về chính tin này"
+
+Chỉ kiểm **lúc viết**: người gọi có một cuộc trò chuyện **về chính tin này** (mục 6.39, cuộc trò chuyện mở từ tin đó) trong đó **chủ trọ đã gửi ít nhất một tin**. Khác với đánh giá chủ trọ (tính mọi tin của chủ trọ), ở đây các trường hợp sau đều bị 403 `LISTING_REVIEW_NOT_ELIGIBLE`: chưa nhắn về tin này; nhắn rồi mà chủ trọ chưa trả lời; chỉ nhắn về một tin khác, **kể cả tin khác của cùng chủ trọ** (chủ trọ trả lời ở tin B không mở quyền đánh giá tin A); tin nhắn do chính người viết gửi không tính là chủ trọ đã trả lời. Sửa và xóa **không** kiểm lại điều kiện. FE không phải đoán: `canReview` của `GET /listings/:id/review` cho biết trước, và `POST` vẫn là nơi quyết định cuối.
+
+Điều kiện này chỉ là bằng chứng đã liên hệ, không phải đã ở trọ (mục 9).
+
+#### Danh sách công khai
+
+`GET /listings/:id/reviews?page=1&pageSize=20` · công khai
+
+Khách xem được. **Gửi kèm `Authorization: Bearer <accessToken>` nếu đã đăng nhập** để có `isMine`; khách, token sai hay hết hạn vẫn nhận 200 với `isMine: null`, **không bao giờ 401** (làm mới token trước khi gọi, mục 2 và 4.1). Chỉ nhận `page` (từ 1) và `pageSize` (từ 1 đến 50, mặc định 20); tham số khác là 400 `VALIDATION_FAILED`.
+
+**200 OK**: `{ "items": [...], "total": 12, "page": 1, "pageSize": 20 }`, **mới viết trước** (cùng lúc thì theo `id` giảm dần). Mỗi phần tử có đúng **bảy trường, cùng hình dạng với danh sách đánh giá chủ trọ** (6.40): `id`, `stars`, `comment` (`null` nếu không viết; **chữ thô, FE phải escape**, giữ xuống dòng), `author { name }` (`name` có thể `null`: hiện "Người dùng"; không email, số điện thoại hay id người viết), `isMine` (`null` với khách; `true` ở đánh giá của chính người xem), `createdAt`, `updatedAt` (chỉ đổi khi chính người viết sửa nội dung).
+
+Danh sách **chỉ có đánh giá đang hiện của người viết đang hoạt động**: đánh giá bị admin ẩn, hay của người viết đang bị khóa hoặc đã xóa, **không có** ở đây và không tính vào hai con số của chi tiết tin. `total` luôn bằng `reviewCount` của chi tiết tin.
+
+**Lỗi**: 404 `LISTING_NOT_FOUND` (tin không hiện công khai, mục trên) · 400 `INVALID_ID` (`:id` không phải UUID, ví dụ `slug-mã`) · 400 `VALIDATION_FAILED` (tham số lạ, `page` hay `pageSize` ngoài biên) · 429 `RATE_LIMITED` (quá 300 lần mỗi phút theo IP, bộ đếm riêng của API này).
+
+#### Đánh giá của tôi và `canReview`
+
+`GET /listings/:id/review` · cần quyền `review:read`
+
+**200 OK**: `{ "review": <đánh giá của tôi hoặc null>, "canReview": true }`. Khi chưa viết: `{ "review": null, "canReview": true }`. Đánh giá của tôi có đúng bảy trường **giống 6.40** (`id`, `stars`, `comment`, `status`, `hiddenReason`, `createdAt`, `updatedAt`); hình dạng này cũng là kết quả của `POST` và `PATCH`. `status` là `visible` hoặc `hidden_by_admin`; `hiddenReason` là lý do admin ẩn gần nhất khi đang bị ẩn, còn lại `null`.
+
+`canReview` là `true` đúng khi **chưa có đánh giá**, người gọi giữ `review:create` trong token, **không phải chủ trọ của tin** và **đã đủ điều kiện** (chủ trọ đã trả lời về chính tin này). `false` khi đã có đánh giá (kể cả đang bị ẩn). Quyền lấy từ token nên `canReview` có thể trễ một lần refresh sau khi admin đổi quyền.
+
+**Lỗi**: 401 · 403 `PERMISSION_DENIED` (chủ trọ mặc định, hoặc admin) · 404 `LISTING_NOT_FOUND` · 400 `INVALID_ID` · 429 (quá 300 lần mỗi phút theo IP, bộ đếm riêng).
+
+#### Viết đánh giá
+
+`POST /listings/:id/review` · body `{ "stars": 5, "comment": "Phòng đúng như ảnh" }`
+
+Luật giá trị **giống hệt 6.40**: `stars` bắt buộc, số nguyên từ 1 đến 5 (chuỗi `"5"` và `4.5` bị từ chối); `comment` tùy chọn, vắng hoặc `null` là không có nhận xét, đã là chuỗi thì bỏ khoảng trắng hai đầu, dài 1 đến 1000 ký tự Unicode sau khi bỏ, không chứa ký tự NUL (chuỗi rỗng hay toàn khoảng trắng bị từ chối). Không gửi `authorId`, `listingId`, `status` hay trường lạ nào: bị 400. Route này đọc lại tài khoản từ database mỗi lần gọi.
+
+**201 Created**: đánh giá của tôi (bảy trường, `status` là `visible`, `hiddenReason` là `null`). FE gán thẳng vào trang; hai con số của chi tiết tin đã đổi (gọi lại `GET /listings/:slugCode` nếu cần số mới).
+
+| Lỗi | Khi nào |
+|---|---|
+| 401, 403 `PERMISSION_DENIED` | Chưa đăng nhập; không có `review:create` (chủ trọ mặc định); là admin |
+| 403 `ACCOUNT_LOCKED` | Tài khoản của chính người gọi vừa bị khóa |
+| 429 `RATE_LIMITED` | Quá 20 lần mỗi giờ theo người dùng (ba API ghi đếm riêng) |
+| 400 `INVALID_ID`, 400 `VALIDATION_FAILED` | `:id` không phải UUID; `stars` hay `comment` sai luật (`errors[].field` là `stars` hoặc `comment`); trường lạ |
+| 404 `LISTING_NOT_FOUND` | Tin không hiện công khai |
+| 409 `CANNOT_REVIEW_SELF` | Người gọi là **chủ trọ của tin** (chỉ gặp khi admin cấp `review:create` cho chủ trọ). Kiểm sau khi tin hợp lệ, trước điều kiện chat |
+| 403 `LISTING_REVIEW_NOT_ELIGIBLE` | Chủ trọ chưa trả lời người gọi về chính tin này (điều kiện ở trên) |
+| 409 `LISTING_REVIEW_ALREADY_EXISTS` | Người gọi đã có đánh giá về tin này (kể cả đang bị ẩn). Muốn đổi thì `PATCH`, hoặc `DELETE` rồi viết lại. Bấm đúp hay hai tab cùng lúc: đúng một lần thành công, các lần còn lại 409 |
+
+Không trường hợp lỗi nào ghi dòng. Thứ tự kiểm lỗi: đăng nhập, quyền, đọc lại tài khoản, giới hạn tần suất, rồi `INVALID_ID` và `VALIDATION_FAILED`, rồi (admin: 403), tin hiện công khai (404), tự đánh giá (409), đủ điều kiện (403), trùng (409).
+
+#### Sửa đánh giá
+
+`PATCH /listings/:id/review` · body `{ "stars": 3 }` hoặc `{ "comment": "Đã sửa" }` hoặc cả hai
+
+Cùng luật như 6.40: phải có **ít nhất một** trong hai trường (body rỗng là 400); trường vắng thì giữ nguyên; **`comment: null` xóa nhận xét**; `stars: null` không hợp lệ. **200 OK**: đánh giá mới (bảy trường), `updatedAt` đổi, `createdAt` không đổi; gửi lại đúng giá trị cũ vẫn đổi `updatedAt`. Không kiểm lại điều kiện chat.
+
+| Lỗi | Khi nào |
+|---|---|
+| 401, 403, 429, 400 `INVALID_ID`, 400 `VALIDATION_FAILED` | Như `POST` (body rỗng cũng là 400) |
+| 404 `LISTING_NOT_FOUND` | Tin không hiện công khai |
+| 404 `LISTING_REVIEW_NOT_FOUND` | Người gọi chưa có đánh giá về tin này |
+| 409 `LISTING_REVIEW_HIDDEN` | Đánh giá đang bị admin ẩn: **chỉ xóa được, không sửa được**. Muốn sửa lỗi thì xóa rồi viết lại |
+
+Không trường hợp lỗi nào đổi dòng.
+
+#### Xóa đánh giá
+
+`DELETE /listings/:id/review` · không body
+
+**204 No Content**, không body. Xóa **hẳn** đánh giá của chính người gọi, **kể cả đang bị ẩn**. Hai con số của chi tiết tin đổi ngay; người viết viết lại được nếu còn đủ điều kiện (chat không mất đi). Lỗi: 404 `LISTING_REVIEW_NOT_FOUND` (chưa có đánh giá), 404 `LISTING_NOT_FOUND` (tin không hiện công khai: **người viết cũng chưa xóa được** cho tới khi tin hiện lại), 400 `INVALID_ID`, 401, 403 (kể cả `ACCOUNT_LOCKED`), 429.
+
+#### Hai con số trên chi tiết tin
+
+`GET /listings/:slugCode` (6.20) có thêm hai trường: `reviewCount` (số nguyên từ 0) và `ratingAverage` (số sao trung bình **làm tròn một chữ số thập phân**, làm tròn nửa lên, `null` khi `reviewCount` là 0; FE tự định dạng một chữ số thập phân vì JSON không phân biệt `4` và `4.0`). Cả hai chỉ tính đánh giá đang hiện của người viết đang hoạt động, đúng tập mà danh sách công khai trả, nên `reviewCount` luôn bằng `total` của `GET /listings/:id/reviews`. Khách và người đăng nhập nhận cùng giá trị. Tính lúc đọc, không lưu sẵn: ẩn, xóa hay khóa người viết đổi số ngay.
+
+**Chỉ chi tiết công khai có hai trường này.** Bốn danh sách thẻ tin (`GET /listings`, `GET /me/favorites`, `GET /landlords/:id/listings`, `GET /me/listings`) và chi tiết riêng của chủ trọ (`GET /me/listings/:id`) **không có**: FE chưa hiện được sao trên thẻ tin. Hồ sơ chủ trọ (6.31) vẫn có `reviewCount` và `ratingAverage` của **chủ trọ**, tính chỉ từ đánh giá chủ trọ (6.40); điểm phòng không bao giờ cộng vào đó.
+
+Một đánh giá duy nhất làm điểm trung bình thành chính nó, nên **luôn hiện kèm `reviewCount`** ("4,3 (12 đánh giá)"). `reviewCount` là 0 thì ghi "Chưa có đánh giá", đừng hiện 0 sao. Muốn SEO có sao: dựng JSON-LD `aggregateRating` từ `ratingAverage` và `reviewCount` (chỉ khi `reviewCount` lớn hơn 0).
+
+#### Kiểm duyệt của admin
+
+`GET /moderation/listing-reviews?page=&pageSize=&status=&listingId=&authorId=` · cần quyền `review:moderate`
+
+**200 OK**: `{ items, total, page, pageSize }` gồm **mọi** đánh giá phòng, mọi trạng thái, của mọi người viết (kể cả người đang bị khóa), **kể cả của tin đang ẩn hay đã xóa** (admin không bị luật "tin phải hiện công khai"), mới viết trước. Lọc tùy chọn: `status` (`visible` hoặc `hidden_by_admin`), `listingId`, `authorId` (UUID). Giá trị sai hoặc tham số lạ là 400 `VALIDATION_FAILED`; riêng `landlordId` là bộ lọc của đánh giá chủ trọ (6.40) nên ở đây cũng là tham số lạ. Mỗi phần tử đúng chín trường, có id và tên người viết cùng `{ id, code, title }` của tin, **không có email hay số điện thoại**:
+
+```json
+{
+  "id": "0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8e11",
+  "status": "hidden_by_admin",
+  "stars": 1,
+  "comment": "…",
+  "hiddenReason": "Nội dung xúc phạm cá nhân.",
+  "author": { "id": "0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8d02", "name": "Bạn Lan" },
+  "listing": { "id": "0192f1c2-7a4b-7c3e-9d1a-3b5f6a7c8d09", "code": "k7m2xq9a", "title": "Phòng 20m² gần ĐH Bách Khoa" },
+  "createdAt": "2026-11-09T03:10:00.000Z",
+  "updatedAt": "2026-11-09T03:10:00.000Z"
+}
+```
+
+`POST /moderation/listing-reviews/:id/hide` và `POST /moderation/listing-reviews/:id/unhide` · body `{ "reason": "Nội dung xúc phạm cá nhân." }`
+
+**`:id` ở đây là id của ĐÁNH GIÁ** (trường `id` của danh sách admin), khác `:id` là UUID của **tin** ở bốn API của người viết. `reason` **bắt buộc**, 1 đến 500 ký tự sau khi bỏ khoảng trắng hai đầu (cùng luật lý do với kiểm duyệt tin và đánh giá chủ trọ). `hide` chuyển `visible` thành `hidden_by_admin`, `unhide` chuyển ngược lại **thẳng về `visible`** (người viết không có bước tự hiện lại). **200 OK**: phần tử admin ở trên với trạng thái mới; `updatedAt` không đổi (đó là lần cuối người viết sửa nội dung). Mỗi lệnh ghi đúng một dòng nhật ký kiểm duyệt (loại đích `listing_review`) kèm lý do trong cùng giao dịch. Đánh giá bị ẩn rời danh sách công khai và hai con số của chi tiết tin **ngay**; gỡ ẩn thì trở lại. Hai API ghi đọc lại tài khoản admin từ database mỗi lần gọi (403 `ACCOUNT_LOCKED` hay 401 thì đưa về trang đăng nhập). Ẩn và gỡ ẩn không kiểm tin có đang hiện công khai hay không, nên admin gỡ ẩn được cả khi tin đang ẩn.
+
+| Lỗi | Khi nào |
+|---|---|
+| 401, 403 `PERMISSION_DENIED` | Chưa đăng nhập; không phải admin |
+| 400 `INVALID_ID`, 400 `VALIDATION_FAILED` | `:id` không phải UUID; thiếu hoặc sai `reason`; trường lạ |
+| 404 `LISTING_REVIEW_NOT_FOUND` | Không có đánh giá (kể cả người viết vừa xóa nó, hoặc `:id` là id của một đánh giá chủ trọ) |
+| 409 `LISTING_REVIEW_STATE_INVALID` | Ẩn đánh giá đã ẩn, hoặc gỡ ẩn đánh giá đang hiện |
+
+Ba API kiểm duyệt **không có giới hạn tần suất thêm**. Admin ẩn đua với người viết: nếu người viết sửa đúng lúc, sửa bị chặn khi đánh giá đã ẩn (409 `LISTING_REVIEW_HIDDEN`) và không mất cập nhật nào; nếu người viết xóa đúng lúc thì xóa thắng và lệnh ẩn nhận 404. Đánh giá phòng và đánh giá chủ trọ có **hai danh sách kiểm duyệt riêng** (`/moderation/listing-reviews` và `/moderation/reviews`), id của loại này không dùng được ở route của loại kia (404).
+
+#### Dựng khối đánh giá phòng: các điều dễ sai
+
+1. **`:id` là `id` của chi tiết, không phải `slug` hay `code`.** Giữ `id` từ lần gọi `GET /listings/:slugCode` để gọi các API đánh giá. Gọi bằng `slug-mã` là 400 `INVALID_ID`.
+2. **Chỉ hiện khối viết, sửa, xóa khi `user.accountType === 'tenant'` và `permissions` có `review:read`**, giống 6.40: admin giữ mọi quyền nhưng bốn API của người viết trả 403; chủ trọ (kể cả chủ của tin) không giữ khóa. Admin, chủ trọ và khách chỉ thấy danh sách công khai.
+3. **Danh sách chờ phiên khôi phục xong, và khóa truy vấn gồm cả id người dùng lẫn id tin.** `GET /listings/:id/reviews` đọc đăng nhập tùy chọn: gọi lúc phiên còn `loading` thì nhận `isMine: null` ở mọi dòng, và nếu bản đó được cache thì ở lại. Gọi khi trạng thái là `guest` hoặc `user`, gửi `Bearer` nếu là `user` (làm mới token trước nếu sắp hết hạn, mục 4.1), để id người dùng (khách thì `guest`) trong khóa truy vấn.
+4. **Tin 404 thì cả khối đánh giá biến mất.** Nếu chi tiết tin trả 404 thì năm API đánh giá cũng 404; đừng hiện lỗi riêng cho khối đánh giá. Gặp 404 `LISTING_NOT_FOUND` ở một API đánh giá khi chi tiết vừa mở được nghĩa là tin vừa bị ẩn: tải lại chi tiết.
+5. **Đánh giá của mình có hai nguồn: ghim ở một nơi duy nhất**, như 6.40: thẻ ghim (từ `GET /listings/:id/review`) có nút sửa và xóa, danh sách bỏ các phần tử `isMine === true`; `total` và `reviewCount` vẫn tính cả đánh giá của mình. Đánh giá bị admin ẩn không có trong danh sách, chỉ người viết thấy nó ở thẻ ghim (`status` `hidden_by_admin` kèm `hiddenReason`, chỉ còn nút xóa); đừng suy "mình chưa đánh giá" từ việc không thấy `isMine: true`, luôn dựa vào `review` và `canReview`.
+6. **Trang tin và trang hồ sơ chủ trọ có hai khối đánh giá khác nhau.** Khối trên chi tiết tin là điểm của **phòng** (6.41); khối trên hồ sơ chủ trọ là điểm của **chủ trọ** (6.40). Hai điểm có thể khác nhau, hai danh sách khác nhau, hai điều kiện viết khác nhau (cùng tin hay bất kỳ tin nào của chủ trọ). Đừng dùng chung khóa truy vấn.
 
 ## 7. Luồng màn hình gợi ý
 
@@ -2306,7 +2475,15 @@ Hai ô: mật khẩu hiện tại, mật khẩu mới. Gọi `POST /auth/change-
 2. Hiện `name` (`null` thì ghi "Chủ trọ"), `joinedAt`, `followerCount`, `totalViewCount`, `publicListingCount`, và điểm sao: `ratingAverage` kèm `reviewCount` ("4,3 (12 đánh giá)"); `reviewCount` là 0 thì ghi "Chưa có đánh giá", đừng hiện 0 sao.
 3. **Nút theo dõi**: người tìm trọ bấm thì `POST /landlords/:id/follow`, bấm lại thì `DELETE`. Mỗi lần gán thẳng hồ sơ trả về vào trang (có `isFollowing` và `followerCount` mới). Khách thì dẫn tới đăng nhập; chủ trọ, admin và hồ sơ của chính mình thì ẩn nút (mục 6.32).
 4. **Danh sách tin dưới hồ sơ**: gọi `GET /landlords/:id/listings` (phân trang, **gửi kèm access token nếu đã đăng nhập** để có `isFavorite`), vẽ bằng đúng thẻ tin của trang tìm trọ, kể cả nút tim (mục 6.19 và 6.33). Đây là API riêng nên có thể gọi song song với hồ sơ; hai lệnh cùng nhận 404 `LANDLORD_NOT_FOUND` thì báo "không tìm thấy chủ trọ". `total` bằng `publicListingCount`, nên dùng làm tiêu đề "N tin đang hiện". Danh sách rỗng thì hiện "Chủ trọ chưa có tin nào đang hiện". Không có bộ lọc hay sắp xếp ở trang này.
-5. **Đánh giá dưới hồ sơ** (mục 6.40): gọi `GET /landlords/:id/reviews` (phân trang, **gửi kèm access token nếu đã đăng nhập** để có `isMine`), vẽ sao, `author.name` (`null` thì ghi "Người dùng"), nhận xét (**escape**, giữ xuống dòng) và ngày. Người đã đăng nhập gọi thêm `GET /landlords/:id/review` (cần `review:read`): `review` khác `null` thì ghim đánh giá của mình lên đầu kèm nút sửa, xóa (`PATCH`, `DELETE`) và, nếu `status` là `hidden_by_admin`, nhãn "bị quản trị viên ẩn" kèm `hiddenReason` (khi đó chỉ còn nút xóa); `canReview` là `true` thì hiện biểu mẫu chọn 1 đến 5 sao và ô nhận xét (tối đa 1000 ký tự) gửi `POST`; cả hai không thì ẩn biểu mẫu hoặc ghi "Nhắn tin với chủ trọ và đợi họ trả lời để đánh giá". Gặp 403 `REVIEW_NOT_ELIGIBLE` hay 409 `REVIEW_ALREADY_EXISTS` thì tải lại `GET /landlords/:id/review` rồi vẽ lại. Chủ trọ và admin không có biểu mẫu.
+5. **Đánh giá dưới hồ sơ** (mục 6.40, nhất là "năm điều dễ sai"): chờ phiên xong lượt khôi phục đầu tiên (không gọi khi còn `loading`), rồi gọi `GET /landlords/:id/reviews` (phân trang bằng tham số URL riêng, ví dụ `reviewPage`; **gửi kèm access token nếu là `user`** để có `isMine`; id người dùng nằm trong khóa truy vấn), bỏ các phần tử `isMine === true` vì đánh giá của mình nằm ở thẻ ghim, vẽ sao, `author.name` (`null` thì ghi "Người dùng"), nhận xét (**escape**, giữ xuống dòng) và ngày. Chỉ tài khoản `tenant` có `review:read` gọi thêm `GET /landlords/:id/review`: `review` khác `null` thì ghim đánh giá của mình lên đầu kèm nút sửa, xóa (`PATCH`, `DELETE`) và, nếu `status` là `hidden_by_admin`, nhãn "bị quản trị viên ẩn" kèm `hiddenReason` (khi đó chỉ còn nút xóa); `canReview` là `true` thì hiện biểu mẫu chọn 1 đến 5 sao và ô nhận xét (tối đa 1000 ký tự) gửi `POST`; cả hai không thì ẩn biểu mẫu hoặc ghi "Nhắn tin với chủ trọ và đợi họ trả lời để đánh giá". Gặp 403 `REVIEW_NOT_ELIGIBLE` hay 409 `REVIEW_ALREADY_EXISTS` thì tải lại `GET /landlords/:id/review` rồi vẽ lại. Chủ trọ (kể cả hồ sơ của chính mình), admin và khách không có khối này và không gọi API đó.
+
+### Đánh giá phòng trên chi tiết tin (khách và người tìm trọ)
+
+1. **Trên trang chi tiết tin** (6.20), dưới phần mô tả: hiện điểm của phòng bằng `ratingAverage` kèm `reviewCount` ("4,3 (12 đánh giá)"); `reviewCount` là 0 thì ghi "Chưa có đánh giá", đừng hiện 0 sao. Dựng JSON-LD `aggregateRating` từ hai số này khi `reviewCount` lớn hơn 0. Giữ `id` của chi tiết: các API đánh giá phòng dùng `id` (UUID), không dùng `slug-mã`.
+2. **Danh sách đánh giá** (mục 6.41, nhất là "các điều dễ sai"): chờ phiên xong lượt khôi phục đầu tiên (không gọi khi còn `loading`), rồi gọi `GET /listings/:id/reviews` (phân trang bằng tham số URL riêng; **gửi kèm access token nếu là `user`** để có `isMine`; id người dùng và id tin nằm trong khóa truy vấn). Bỏ các phần tử `isMine === true` vì đánh giá của mình nằm ở thẻ ghim. Vẽ sao, `author.name` (`null` thì ghi "Người dùng"), nhận xét (**escape**, giữ xuống dòng) và ngày.
+3. **Khối viết đánh giá chỉ cho tài khoản `tenant` có `review:read`**: gọi `GET /listings/:id/review`. `review` khác `null` thì ghim đánh giá của mình lên đầu kèm nút sửa, xóa (`PATCH`, `DELETE`) và, nếu `status` là `hidden_by_admin`, nhãn "bị quản trị viên ẩn" kèm `hiddenReason` (khi đó chỉ còn nút xóa). `canReview` là `true` thì hiện biểu mẫu chọn 1 đến 5 sao và ô nhận xét (tối đa 1000 ký tự) gửi `POST`. Cả hai không thì ghi "Nhắn tin cho chủ trọ về tin này và đợi họ trả lời để đánh giá phòng" kèm nút nhắn tin (6.39). Gặp 403 `LISTING_REVIEW_NOT_ELIGIBLE` hay 409 `LISTING_REVIEW_ALREADY_EXISTS` thì tải lại `GET /listings/:id/review` rồi vẽ lại. Chủ trọ (kể cả chủ của tin), admin và khách không có khối này và không gọi API đó.
+4. **Sau `POST`, `PATCH`, `DELETE`**: gán kết quả vào thẻ ghim (`DELETE` thì xóa thẻ), rồi tải lại danh sách và chi tiết tin (`reviewCount`, `ratingAverage` đã đổi).
+5. **Tin vừa biến khỏi công khai** (ẩn, hết hạn mức...): chi tiết 404 thì cả khối đánh giá biến mất cùng trang; một API đánh giá 404 `LISTING_NOT_FOUND` khi trang đang mở thì tải lại chi tiết.
 
 ### Lưu tin yêu thích (người tìm trọ)
 
@@ -2344,6 +2521,7 @@ Hai ô: mật khẩu hiện tại, mật khẩu mới. Gọi `POST /auth/change-
 - **Đơn mua gói của mọi chủ trọ**: bảng lấy từ `GET /orders/all` (phân trang, mục 6.37) với bộ lọc trạng thái (`status`), chủ trọ (`landlordId`, chọn từ danh sách người dùng ở 6.34), gói (`planId`, chọn từ `GET /plans/all`) và hai ô ngày `from`, `to` (ngày tạo đơn, giờ Việt Nam). Mỗi dòng hiện mã đơn (`code`), tên gói, giá đã chốt, trạng thái, ngày tạo, ngày trả, kỳ gói, cùng tên và email chủ trọ (`name` có thể `null`: hiện email). Đặt hai ô lấy từ `summary` phía trên bảng: "Số đơn đã trả" và "Tổng tiền đã trả" của **đúng bộ lọc đang chọn** (không phải của riêng trang đang xem), kèm nhãn "thanh toán thử". Đổi bộ lọc thì về trang 1. Gặp 403 `ACCOUNT_LOCKED` hay 401 thì đưa về trang đăng nhập.
 - **Doanh thu**: một trang nhỏ lấy từ `GET /orders/revenue` (mục 6.38) với hai ô ngày `from`, `to` (ngày **trả**, giờ Việt Nam) và công tắc "Theo ngày" hay "Theo tháng" (`groupBy`). Đặt ba phần: ô tổng (`paidAmount`, `paidCount`) kèm nhãn "thanh toán thử"; bảng hoặc biểu đồ cột "theo gói" từ `byPlan`; biểu đồ "theo thời gian" từ `series`. `series` thưa, nên điền ngày hay tháng không có đơn bằng 0 trước khi vẽ. Số ở đây có thể khác ô tổng của màn hình đơn (6.37) vì hai API lọc theo hai loại ngày khác nhau (ngày trả và ngày tạo); ghi chú ngay trên màn hình. Đổi khoảng ngày hay cách gom thì gọi lại API.
 - **Kiểm duyệt đánh giá**: bảng lấy từ `GET /moderation/reviews` (phân trang) với bộ lọc `status`, `landlordId`, `authorId` (mục 6.40). Mỗi dòng hiện số sao, nhận xét, tên người viết và chủ trọ (bấm vào dẫn tới người dùng ở 6.34 theo `author.id` và `landlord.id`), ngày viết và nhãn trạng thái. Dòng `visible` có nút "Ẩn"; dòng `hidden_by_admin` có nút "Gỡ ẩn" và hiện `hiddenReason`. Cả hai nút mở hộp nhập **lý do bắt buộc** (1 đến 500 ký tự) trước khi gửi. Sau khi gọi, thay dòng bằng phần tử trả về; gặp 409 `REVIEW_STATE_INVALID` thì tải lại dòng; gặp 404 `REVIEW_NOT_FOUND` thì bỏ dòng (người viết vừa xóa). Nhắc admin: gỡ ẩn đưa đánh giá thẳng về `visible`, không có bước nào của người viết. Chưa có tìm theo chữ trong nhận xét và chưa có màn hình lịch sử kiểm duyệt (mục 9).
+- **Kiểm duyệt đánh giá phòng**: cùng khuôn với màn hình ngay trên nhưng là **một bảng riêng** (hoặc một tab riêng) lấy từ `GET /moderation/listing-reviews` (phân trang) với bộ lọc `status`, `listingId`, `authorId` (mục 6.41); **không có bộ lọc `landlordId`** (tham số lạ là 400). Mỗi dòng hiện số sao, nhận xét, tên người viết (bấm vào dẫn tới người dùng ở 6.34 theo `author.id`), **tiêu đề tin** (`listing.title`, bấm vào mở chi tiết công khai bằng `listing.code`: tin đang ẩn thì chi tiết 404, nên báo "tin không còn hiện công khai"), ngày viết và nhãn trạng thái. Dòng `visible` có nút "Ẩn"; dòng `hidden_by_admin` có nút "Gỡ ẩn" và hiện `hiddenReason`. Cả hai nút mở hộp nhập **lý do bắt buộc** (1 đến 500 ký tự) trước khi gửi. Sau khi gọi, thay dòng bằng phần tử trả về; gặp 409 `LISTING_REVIEW_STATE_INVALID` thì tải lại dòng; gặp 404 `LISTING_REVIEW_NOT_FOUND` thì bỏ dòng (người viết vừa xóa). Đừng dùng chung khóa truy vấn hay chung bảng với đánh giá chủ trọ: `id` của hai loại khác bảng, gọi nhầm route là 404.
 
 ### Kịch bản demo (đi qua mọi tính năng)
 
@@ -2432,6 +2610,16 @@ Mẹo khi demo:
 
 `POST` (viết) tạo dòng `visible` khi người gọi đã đủ điều kiện chat và chưa có đánh giá về chủ trọ đó (đã có thì 409 `REVIEW_ALREADY_EXISTS`).
 
+**Đánh giá phòng (`status`)** (spec 0015, mục 6.41): cùng hai trạng thái và cùng máy trạng thái với đánh giá chủ trọ, chỉ khác mã lỗi; mỗi (người viết, tin) một dòng.
+
+| Đang ở \ Hành động | Người viết `PATCH` | Người viết `DELETE` | Admin `hide` | Admin `unhide` |
+|---|---|---|---|---|
+| (chưa có) | 404 `LISTING_REVIEW_NOT_FOUND` | 404 `LISTING_REVIEW_NOT_FOUND` | 404 `LISTING_REVIEW_NOT_FOUND` | 404 `LISTING_REVIEW_NOT_FOUND` |
+| `visible` | vẫn `visible`, `updatedAt` đổi | xóa hẳn dòng | thành `hidden_by_admin` | 409 `LISTING_REVIEW_STATE_INVALID` |
+| `hidden_by_admin` | 409 `LISTING_REVIEW_HIDDEN` | xóa hẳn dòng | 409 `LISTING_REVIEW_STATE_INVALID` | thành `visible` (không qua trạng thái trung gian) |
+
+`POST` (viết) tạo dòng `visible` khi người gọi đã đủ điều kiện chat **về chính tin đó** và chưa có đánh giá về tin đó (đã có thì 409 `LISTING_REVIEW_ALREADY_EXISTS`). Ba hành động của người viết còn cần **tin đang hiện công khai** (không thì 404 `LISTING_NOT_FOUND`, kể cả `DELETE`); hành động của admin thì không cần.
+
 **Phiên đăng nhập**: tạo khi đăng ký hoặc đăng nhập (tối đa 10 phiên mỗi tài khoản, vượt thì phiên cũ nhất bị hủy), xoay mỗi lần refresh, sống 30 ngày kể từ lúc đăng nhập; bị hủy bởi đăng xuất, đăng xuất mọi thiết bị, đổi hoặc đặt lại mật khẩu, khóa tài khoản, admin thu hồi, hoặc phát hiện dùng lại refresh token cũ ngoài khoảng ân hạn.
 
 ### 8.3 Ví dụ có số liệu
@@ -2476,6 +2664,7 @@ Mẹo khi demo:
 - **Lưu tin yêu thích** (6.33): chỉ người tìm trọ, mỗi cặp (người dùng, tin) một lần, gọi lại an toàn, không giới hạn số tin, chỉ lưu được tin đang hiện công khai, bỏ lưu không kiểm tin. Danh sách đã lưu dùng đúng luật hiển thị công khai của 6.19 nên luôn khớp với những gì khách mở được; dòng lưu không bị xóa khi tin biến, nên tin hiện lại là quay về. Admin và chủ trọ mặc định không lưu được.
 - **Chat** (từ 2026-11-05, 6.39). Mỗi cặp (tin, người nhắn) một cuộc trò chuyện; chủ trọ của cuộc trò chuyện chép từ tin lúc mở. Chỉ người có `conversation:create` (mặc định người tìm trọ) mở được, và chỉ với tin đang hiện công khai; sau đó cuộc trò chuyện sống tiếp dù tin ẩn hay hết hạn mức, miễn tài khoản hai bên còn hoạt động. Hai bên đọc và gửi được, người ngoài (kể cả admin) thì không. Tin nhắn chỉ có chữ, 1 đến 1000 ký tự, không sửa, không xóa, đánh số `seq` liên tiếp theo từng cuộc trò chuyện; thứ tự hiển thị theo `seq`. Số tin chưa đọc là phép trừ theo mốc đã đọc của từng bên: gửi tin dời mốc của chính người gửi, `POST /conversations/:id/read` dời mốc của người gọi (không bao giờ lùi, không vượt tin cuối), mọi `GET` không đổi mốc. Không có kênh đẩy, FE hỏi lại; không có email thông báo.
 - **Đánh giá chủ trọ** (từ 2026-11-07, 6.40). Mỗi cặp (người viết, chủ trọ) tối đa một đánh giá: số sao nguyên từ 1 đến 5, nhận xét tùy chọn 1 đến 1000 ký tự. Chỉ người có `review:create` (mặc định người tìm trọ) viết được, và chỉ khi chủ trọ **đã gửi ít nhất một tin** trong một cuộc trò chuyện với họ (kiểm lúc viết, không kiểm lại khi sửa hay xóa). Người viết sửa và xóa của mình; admin ẩn và gỡ ẩn kèm lý do, mỗi lần một dòng nhật ký. Đánh giá bị ẩn không sửa được, chỉ xóa được. `reviewCount` và `ratingAverage` của hồ sơ tính lúc đọc từ đúng tập mà danh sách công khai trả (đánh giá đang hiện của người viết đang hoạt động), nên khóa người viết, ẩn hay xóa đánh giá đổi số ngay. Admin và chủ trọ mặc định không viết đánh giá.
+- **Đánh giá từng phòng** (từ 2026-11-09, 6.41). Mỗi cặp (người viết, tin) tối đa một đánh giá, cùng luật giá trị với đánh giá chủ trọ (số sao nguyên từ 1 đến 5, nhận xét tùy chọn 1 đến 1000 ký tự). Viết được khi chủ trọ **đã gửi ít nhất một tin trong cuộc trò chuyện về chính tin đó** (không tính tin khác của cùng chủ trọ; kiểm lúc viết, không kiểm lại khi sửa hay xóa). Mọi API đánh giá phòng chỉ chạy khi tin đang hiện công khai (không thì 404 `LISTING_NOT_FOUND`, kể cả với người viết), các dòng đánh giá còn nguyên và hiện lại cùng tin. `reviewCount` và `ratingAverage` của chi tiết tin tính lúc đọc từ đúng tập mà danh sách công khai trả. Điểm phòng và điểm chủ trọ ở hai bảng riêng, không bao giờ lẫn nhau. Admin ẩn và gỡ ẩn đánh giá phòng kèm lý do bắt buộc ở `/moderation/listing-reviews`, cùng luật với đánh giá chủ trọ: ẩn có hiệu lực ngay trên danh sách và hai con số, gỡ ẩn đưa thẳng về `visible`, mỗi lần đổi đúng một dòng nhật ký kiểm duyệt.
 - **Đơn của mọi chủ trọ (admin)** (từ 2026-10-21, 6.37). Chỉ admin xem được (`order:report`); chủ trọ chỉ thấy đơn của mình (6.27). `summary.paidAmount` là tổng giá đã chốt của các đơn `paid` trong đúng tập lọc, tính lúc đọc nên luôn bằng phép cộng tay các dòng. Đó là tiền của thanh toán thử, chưa phải tiền thật.
 - **Thống kê doanh thu (admin)** (từ 2026-10-21, 6.38). Chỉ tính đơn `paid`, theo giá đã chốt trên đơn và theo **ngày trả**. Một ngày hay một tháng ở mọi nơi trong API là ngày hay tháng theo giờ Việt Nam. Ba tổng của phản hồi (ngoài cùng, `byPlan`, `series`) luôn bằng nhau. Là tiền của thanh toán thử.
 - **Khóa tài khoản**: tài khoản bị khóa không đăng nhập, không refresh được và mọi phiên bị hủy lúc khóa. Đăng nhập sai mật khẩu vẫn báo `INVALID_CREDENTIALS` (không lộ tài khoản có bị khóa hay không); chỉ khi đúng mật khẩu mới báo `ACCOUNT_LOCKED`. Admin không tự khóa mình được.
@@ -2505,6 +2694,7 @@ Mẹo khi demo:
 - **Chủ trọ đăng ký trước 2026-10-16** nhận hạn dùng thử bằng thời điểm chạy migration cộng 30 ngày (không phải thời điểm họ đăng ký).
 - **Chat** (6.39) **không có kênh đẩy**: FE hỏi lại vài giây một lần, mỗi người đang mở trang tốn vài request mỗi phút, và bộ đếm giới hạn (120 lần mỗi phút cho mỗi API đọc) nằm trong bộ nhớ nên mất khi backend khởi động lại. **Không có email hay thông báo**: chủ trọ chỉ biết có tin khi mở trang. Đếm chưa đọc chỉ là phép trừ theo mốc: gửi tin dời mốc đã đọc của chính người gửi tới tin cuối, nên một tin của bên kia chưa kịp xem sẽ được tính là đã đọc nếu mình gửi tin từ một tab khác; chưa có "đã xem" cho bên kia. **Không sửa, không xóa, không báo cáo, không chặn người**; một tin xấu ở lại mãi, admin không xem được cuộc trò chuyện để điều tra, chỉ khóa được tài khoản. Cuộc trò chuyện sống tiếp dù tin bị admin ẩn vì vi phạm, cho tới khi tài khoản chủ trọ bị khóa. Nội dung là chữ thô: FE phải escape. Tin nhắn lưu mãi, chưa có chính sách giữ hay xóa. Một người hỏi ba tin của cùng một chủ trọ ra ba cuộc trò chuyện riêng. Không chống gửi trùng khi bấm đúp (mỗi lần gửi là một tin): FE khóa nút trong lúc gửi.
 - **Đánh giá chủ trọ** (6.40): chat chỉ là bằng chứng đã liên hệ, **không phải đã ở trọ**. Một chủ trọ có thể tự lập tài khoản người tìm trọ, nhắn cho chính mình, tự trả lời rồi chấm 5 sao (số điện thoại chỉ bắt buộc duy nhất với tài khoản chủ trọ); chưa có biện pháp chống, nên điểm trung bình chưa phải số tin cậy tuyệt đối. Chưa có số đánh giá tối thiểu trước khi hiện điểm, nên một đánh giá duy nhất là cả điểm trung bình (FE hiện kèm `reviewCount`). **Tên người viết hiện công khai** cạnh nhận xét (không có lựa chọn ẩn danh), có thể bị trả đũa. Xóa là xóa hẳn dòng: người viết xóa một đánh giá đang bị ẩn thì admin mất luôn nội dung (nhật ký chỉ còn lý do). Đánh giá đang bị ẩn không sửa được nên muốn sửa lỗi chỉ có cách xóa rồi viết lại. Chủ trọ bị khóa thì người viết cũng chưa xóa được đánh giá của mình cho tới khi mở khóa. Nhận xét là chữ thô: FE phải escape. **Chưa có**: chủ trọ trả lời đánh giá, nút báo cáo đánh giá, phân bố số sao, lọc hay sắp theo sao, ảnh trong đánh giá, bình chọn "hữu ích", đánh giá riêng cho từng nhà trọ, tìm theo chữ trong nhận xét cho admin, thông báo khi có đánh giá mới (cần việc nền). Đo thật trên 50 nghìn đánh giá giả lập, một chủ trọ có 5 nghìn: trang đầu của danh sách 0,06 mili giây, trang cuối 3,6 mili giây, đếm 2,3 mili giây, hai con số của hồ sơ 2,1 mili giây (trung vị); không chỉnh vì là bản demo.
+- **Đánh giá từng phòng** (6.41): cũng chỉ dựa vào chat nên chỉ là bằng chứng đã liên hệ về tin đó, không phải đã ở phòng đó; một chủ trọ có thể tự lập tài khoản người tìm trọ, nhắn về chính tin của mình, tự trả lời rồi chấm 5 sao, chưa có biện pháp chống. Chưa có số đánh giá tối thiểu trước khi hiện điểm. **Tin là đơn vị được đánh giá**: chủ trọ đăng lại cùng một căn phòng thành tin mới thì đánh giá cũ ở lại với tin cũ và tin mới bắt đầu từ 0. **Điểm phòng chỉ có ở chi tiết tin**: bốn danh sách thẻ tin chưa có sao. Tin không hiện công khai thì người viết cũng không đọc, sửa hay xóa được đánh giá của mình cho tới khi tin hiện lại. Dùng chung khóa quyền `review:*` với đánh giá chủ trọ nên không bật tắt riêng được. Tên người viết hiện công khai, nội dung là chữ thô (FE escape).
 - **Chưa có kháng nghị** khi bị ẩn tin: chủ trọ sửa tin xong vẫn phải liên hệ admin ngoài hệ thống.
 - **Lịch sử kiểm duyệt chưa có API đọc.** Mỗi lần ẩn hoặc gỡ ẩn tin ghi một dòng vào bảng `moderation_logs`, nhưng ra ngoài chỉ có `moderationReason` (lý do ẩn gần nhất) trong API tin. Lý do gỡ ẩn và các lần ẩn cũ chỉ xem được trong cơ sở dữ liệu.
 - **Đổi tên phường dựng lại từ khóa từng tin một** trong một giao dịch, nên phường có hàng chục nghìn tin sẽ đổi tên chậm. Một tin đang được đăng đúng lúc phường đổi tên có thể mang tên phường cũ trong từ khóa tìm kiếm cho tới lần sửa tin kế tiếp (hiển thị `fullAddress` vẫn đúng vì ghép lúc đọc). Chấp nhận ở bản demo.
@@ -2541,6 +2731,31 @@ Tính đến 2026-10-22 **không còn tính năng nào đã lên kế hoạch m�
 ## 11. Nhật ký thay đổi
 
 Mới nhất ở trên cùng. Mục nào **phá vỡ** cách FE đang gọi sẽ ghi rõ "ĐỔI KHÁC VỚI TRƯỚC".
+
+### 2026-11-09 · Admin ẩn và gỡ ẩn đánh giá phòng, kèm dữ liệu demo (mốc 2 của đánh giá phòng; phần đánh giá phòng xong)
+
+- **Ba API mới** (mục 6.41), cần quyền `review:moderate` (chỉ admin giữ, không thêm quyền): `GET /moderation/listing-reviews` (mọi đánh giá phòng, mọi trạng thái, kể cả của tin đang ẩn hay đã xóa, phân trang, lọc `status`, `listingId`, `authorId`; mỗi phần tử có id và tên người viết, `{ id, code, title }` của tin, `hiddenReason`), `POST /moderation/listing-reviews/:id/hide` và `POST /moderation/listing-reviews/:id/unhide` (body `{ "reason": "..." }` bắt buộc, 1 đến 500 ký tự; trả **200** phần tử admin). **`:id` của hai API ghi là id của đánh giá**, không phải UUID của tin. Mỗi lệnh ghi đúng một dòng nhật ký kiểm duyệt (loại đích `listing_review`) kèm lý do trong cùng giao dịch. Không có giới hạn tần suất thêm.
+- **Ẩn có hiệu lực ngay**: đánh giá bị ẩn rời danh sách công khai và hai con số `reviewCount`, `ratingAverage` của chi tiết tin; gỡ ẩn thì trở lại và đưa thẳng về `visible`. Người viết thấy `status` `hidden_by_admin` và `hiddenReason` ở `GET /listings/:id/review`; sửa bị 409 `LISTING_REVIEW_HIDDEN`, xóa vẫn được. Mã `LISTING_REVIEW_STATE_INVALID` (409) được dùng từ mốc này.
+- **Không đổi API đang chạy**: chỉ thêm đường dẫn mới. Đánh giá chủ trọ (6.40) và `/moderation/reviews` giữ nguyên; hai loại có hai danh sách kiểm duyệt riêng, id của loại này không dùng được ở route của loại kia (404).
+- **Dữ liệu demo**: `npm run seed:demo` nay dựng thêm **16 đánh giá phòng** trên 6 tin (và 16 cuộc trò chuyện làm bằng chứng chat, mở trên đúng tin được đánh giá), nên tổng là 51 cuộc trò chuyện. Cảnh dựng sẵn: tin nhiều đánh giá với điểm lẻ làm tròn nửa lên (phòng 18m² của Khoa: 4 đánh giá tính, 4,25 hiện 4,3), tin chỉ một đánh giá, tin chưa có đánh giá, đánh giá chỉ có sao, nhận xét nhiều dòng, đánh giá đã sửa, một đánh giá bị admin ẩn kèm lý do (Quân), đánh giá của người viết bị khóa (Sơn) và đánh giá của tin đang bị chủ trọ ẩn. Chạy `npm run seed:demo -- --reset` để nhận phần mới; `--reset` xóa thêm mọi đánh giá phòng có người viết hoặc tin là dữ liệu demo (kể cả của người thật về tin demo) cùng nhật ký ẩn của chúng. Xem bảng "Số liệu để đối chiếu" ở mục 2.
+- **FE cần làm**: màn hình kiểm duyệt đánh giá phòng (mục 7, "Kiểm duyệt đánh giá phòng"); thẻ ghim của người viết xử lý trạng thái `hidden_by_admin` (đã dặn từ mốc 1).
+- **Cần làm từ phía backend dev**: chạy `npm run migration:deploy` (bảng `listing_reviews` từ mốc 1, nếu chưa chạy) rồi `npm run seed:demo -- --reset` để thấy đánh giá phòng mẫu.
+
+### 2026-11-09 · Đánh giá từng phòng: viết, sửa, xóa, đọc và điểm phòng trên chi tiết tin (mốc 1 của đánh giá phòng)
+
+- **Năm API mới** (mục 6.41): `GET /listings/:id/reviews` (công khai, đọc đăng nhập tùy chọn, phân trang, mới viết trước), `GET /listings/:id/review` (đánh giá của tôi và `canReview`), `POST`, `PATCH`, `DELETE /listings/:id/review`. **`:id` là UUID của tin** (trường `id` của chi tiết), không nhận `slug-mã`. Bốn API của người viết dùng chung bốn quyền `review:*` với đánh giá chủ trọ (không thêm quyền, không đổi quyền mặc định); admin gọi bốn API này luôn nhận 403 `PERMISSION_DENIED`.
+- **Chi tiết công khai `GET /listings/:slugCode` có thêm hai trường** (6.20): `reviewCount` (số nguyên từ 0) và `ratingAverage` (trung bình làm tròn một chữ số thập phân, `null` khi chưa có đánh giá). Chỉ chi tiết công khai có; bốn danh sách thẻ tin và chi tiết riêng của chủ trọ không đổi. **Không phá vỡ cách gọi cũ**: chỉ thêm trường.
+- **Điều kiện viết khác đánh giá chủ trọ**: chủ trọ phải đã trả lời trong cuộc trò chuyện về **chính tin này** (không tính tin khác của cùng chủ trọ). Chưa đủ: 403 `LISTING_REVIEW_NOT_ELIGIBLE`.
+- **Hiển thị đi theo tin**: tin không hiện công khai thì cả năm API 404 `LISTING_NOT_FOUND` (kể cả `DELETE` của người viết); dòng còn nguyên và hiện lại cùng tin. Người viết bị khóa hay xóa thì đánh giá rời danh sách và hai con số ngay.
+- **Mã lỗi mới** (đã thêm vào bảng mục 3 và kiểu `ErrorCode` ở Phụ lục B): `LISTING_REVIEW_NOT_FOUND` (404), `LISTING_REVIEW_NOT_ELIGIBLE` (403), `LISTING_REVIEW_ALREADY_EXISTS` (409), `LISTING_REVIEW_HIDDEN` (409), `LISTING_REVIEW_STATE_INVALID` (409, dùng ở mốc 2, mục ngay trên). Dùng lại `LISTING_NOT_FOUND` và `CANNOT_REVIEW_SELF`.
+- **Giới hạn tần suất**: không thêm nhóm. Ba API ghi dùng nhóm `reviewWrite` (20 lần mỗi giờ theo người dùng, mỗi route đếm riêng); hai API đọc dùng `publicRead` (300 lần mỗi phút theo IP, mỗi route đếm riêng). **Route đọc đăng nhập tùy chọn thành sáu** (mục 2, 4.1): thêm `GET /listings/:id/reviews`.
+- **Cần làm từ phía backend dev**: chạy `npm run migration:deploy` (bảng `listing_reviews`, không có phần dữ liệu). Đánh giá phòng mẫu trong `seed:demo` có ở mốc 2 (mục ngay trên).
+- **Mốc 2 (cùng ngày)**: admin ẩn và gỡ ẩn đánh giá phòng (ba API `/moderation/listing-reviews`) và dữ liệu demo, xem mục ngay trên.
+
+### 2026-11-07 · Làm rõ cách dựng khối đánh giá trên hồ sơ chủ trọ (không đổi API)
+
+- **Chỉ sửa tài liệu**, backend và hợp đồng API giữ nguyên. Mục 6.40 có thêm phần "Dựng khối đánh giá trên hồ sơ chủ trọ: năm điều dễ sai": điều kiện hiện khối là `accountType === 'tenant'` (admin có `review:*` nhưng bị 403), danh sách chờ phiên xong và có id người dùng trong khóa truy vấn, đánh giá của mình ghim ở một nơi duy nhất, hai bộ phân trang cần hai tham số URL khác nhau, đánh giá bị ẩn chỉ người viết thấy qua `GET /review`.
+- **Sửa một chỗ sót**: mục 2 và 4.1 còn ghi "bốn route đọc đăng nhập tùy chọn"; từ khi có `GET /landlords/:id/reviews` là **năm**. Route này cũng cần chờ phiên và refresh chủ động trước khi gọi (nếu không `isMine` là `null` và không ghim được đánh giá của mình).
 
 ### 2026-11-07 · Dữ liệu demo có thêm đánh giá chủ trọ (không đổi API)
 
@@ -2998,6 +3213,7 @@ Ba API ghi nhà trọ đếm riêng nhau (mỗi API 30 lần mỗi giờ); năm 
 | `GET /landlords/:id` | công khai + token tùy chọn | 300 mỗi phút theo IP | 200 | 6.31 |
 | `GET /landlords/:id/listings` | công khai + token tùy chọn | 300 mỗi phút theo IP (bộ đếm riêng) | 200 | 6.36 |
 | `GET /landlords/:id/reviews` | công khai + token tùy chọn | 300 mỗi phút theo IP (bộ đếm riêng) | 200 | 6.40 |
+| `GET /listings/:id/reviews` | công khai + token tùy chọn | 300 mỗi phút theo IP (bộ đếm riêng) | 200 | 6.41 |
 | `GET /plans` | công khai | 300 mỗi phút theo IP | 200 | 6.26 |
 
 ### A.6 Người tìm trọ: theo dõi, lưu tin
@@ -3041,6 +3257,9 @@ Admin không bị giới hạn tần suất ở nhóm này.
 | `GET /moderation/reviews` | `review:moderate` | 200 | 6.40 |
 | `POST /moderation/reviews/:id/hide` | `review:moderate`, đọc lại DB | 200 | 6.40 |
 | `POST /moderation/reviews/:id/unhide` | `review:moderate`, đọc lại DB | 200 | 6.40 |
+| `GET /moderation/listing-reviews` | `review:moderate` | 200 | 6.41 |
+| `POST /moderation/listing-reviews/:id/hide` | `review:moderate`, đọc lại DB | 200 | 6.41 |
+| `POST /moderation/listing-reviews/:id/unhide` | `review:moderate`, đọc lại DB | 200 | 6.41 |
 | `GET /orders/all` | `order:report`, đọc lại DB | 200 | 6.37 |
 | `GET /orders/revenue` | `order:report`, đọc lại DB | 200 | 6.38 |
 
@@ -3068,6 +3287,17 @@ Admin gọi cả bốn API này luôn nhận 403 `PERMISSION_DENIED` dù có quy
 | `POST /landlords/:id/review` | `review:create`, đọc lại DB | 20 mỗi giờ | 201 | 6.40 |
 | `PATCH /landlords/:id/review` | `review:update`, đọc lại DB | 20 mỗi giờ | 200 | 6.40 |
 | `DELETE /landlords/:id/review` | `review:delete`, đọc lại DB | 20 mỗi giờ | 204 | 6.40 |
+
+### A.11 Đánh giá từng phòng (người viết)
+
+Admin gọi cả bốn API này luôn nhận 403 `PERMISSION_DENIED` dù có quyền. Danh sách công khai nằm ở A.5, ba API kiểm duyệt của admin ở A.8. `:id` là **UUID của tin**, không phải `slug-mã` (riêng ba API kiểm duyệt, `:id` là id của đánh giá). Giới hạn tính theo người dùng và **mỗi route đếm riêng**.
+
+| API | Cần | Giới hạn | OK | Mục |
+|---|---|---|---|---|
+| `GET /listings/:id/review` | `review:read` | 300 mỗi phút theo IP | 200 | 6.41 |
+| `POST /listings/:id/review` | `review:create`, đọc lại DB | 20 mỗi giờ | 201 | 6.41 |
+| `PATCH /listings/:id/review` | `review:update`, đọc lại DB | 20 mỗi giờ | 200 | 6.41 |
+| `DELETE /listings/:id/review` | `review:delete`, đọc lại DB | 20 mỗi giờ | 204 | 6.41 |
 
 ---
 
@@ -3125,6 +3355,7 @@ type ErrorCode =
   | 'LANDLORD_NOT_FOUND' | 'CANNOT_FOLLOW_SELF'
   | 'CONVERSATION_NOT_FOUND' | 'CANNOT_CHAT_WITH_SELF' | 'CHAT_PEER_UNAVAILABLE'
   | 'REVIEW_NOT_FOUND' | 'REVIEW_NOT_ELIGIBLE' | 'REVIEW_ALREADY_EXISTS' | 'CANNOT_REVIEW_SELF' | 'REVIEW_HIDDEN' | 'REVIEW_STATE_INVALID'
+  | 'LISTING_REVIEW_NOT_FOUND' | 'LISTING_REVIEW_NOT_ELIGIBLE' | 'LISTING_REVIEW_ALREADY_EXISTS' | 'LISTING_REVIEW_HIDDEN' | 'LISTING_REVIEW_STATE_INVALID'
   | 'DB_UNAVAILABLE' | 'INTERNAL_ERROR' | 'HTTP_ERROR';
 
 // ---------- Đăng nhập, tài khoản ----------
@@ -3179,6 +3410,8 @@ type PropertyInListing = Pick<Property, 'id' | 'name' | 'addressText' | 'fullAdd
 interface ListingDetail extends Omit<ListingSummary, 'landlord'> {
   description: string; viewCount: number; images: ListingImage[]; property: PropertyInListing;
   isFavorite: boolean | null;
+  reviewCount: number; // đánh giá phòng đang hiện của tin này (từ 0); chỉ chi tiết công khai có
+  ratingAverage: number | null; // trung bình một chữ số thập phân; null khi reviewCount là 0
   landlord: { id: Uuid; name: string | null; phone: string | null }; // phone là null với khách
 }
 // GET /me/listings
@@ -3231,6 +3464,16 @@ interface MyReviewState { review: MyReview | null; canReview: boolean } // GET /
 interface AdminReview { // GET /moderation/reviews, kết quả của hide và unhide
   id: Uuid; status: ReviewStatus; stars: number; comment: string | null; hiddenReason: string | null;
   author: { id: Uuid; name: string | null }; landlord: { id: Uuid; name: string | null };
+  createdAt: IsoDateTime; updatedAt: IsoDateTime;
+}
+// Đánh giá từng phòng (6.41) dùng lại PublicReview, MyReview và MyReviewState ở trên, chỉ khác đường dẫn:
+//   GET /listings/:id/reviews -> Page<PublicReview>   (:id là UUID của tin)
+//   GET /listings/:id/review  -> MyReviewState
+//   POST, PATCH /listings/:id/review -> MyReview     DELETE -> 204
+interface AdminListingReview { // GET /moderation/listing-reviews, kết quả của hide và unhide (:id là id của đánh giá)
+  id: Uuid; status: ReviewStatus; stars: number; comment: string | null; hiddenReason: string | null;
+  author: { id: Uuid; name: string | null };
+  listing: { id: Uuid; code: string; title: string }; // id là UUID của tin; code dùng mở chi tiết công khai
   createdAt: IsoDateTime; updatedAt: IsoDateTime;
 }
 
@@ -3379,6 +3622,17 @@ Dùng để dựng kiểm tra ở FE cho khớp backend, **nhằm báo lỗi s�
 | `GET /landlords/:id/reviews` | Chỉ nhận `page`, `pageSize` |
 | `GET /moderation/reviews` | `page`, `pageSize` như mục chung; `status` (`visible` hoặc `hidden_by_admin`), `landlordId` (UUID), `authorId` (UUID), tùy chọn; không nhận tham số khác |
 | `reason` (ẩn, gỡ ẩn đánh giá) | Như `reason` ở bảng Tài khoản: 1 đến 500 ký tự sau khi cắt, bắt buộc |
+
+**Đánh giá từng phòng**
+
+| Trường | Luật |
+|---|---|
+| `stars`, `comment` (viết, sửa) | Giống hệt bảng Đánh giá chủ trọ ở trên (cùng DTO) |
+| `:id` của `/listings/:id/review` và `/listings/:id/reviews` | UUID của tin (trường `id` của chi tiết công khai); `slug-mã` hay `code` là 400 `INVALID_ID` |
+| `PATCH /listings/:id/review` | Phải có ít nhất một trong `stars` và `comment` (body rỗng là 400) |
+| `GET /listings/:id/reviews` | Chỉ nhận `page`, `pageSize` |
+| `GET /moderation/listing-reviews` | `page`, `pageSize` như mục chung; `status` (`visible` hoặc `hidden_by_admin`), `listingId` (UUID), `authorId` (UUID), tùy chọn; không nhận tham số khác (kể cả `landlordId`) |
+| `reason` (ẩn, gỡ ẩn đánh giá phòng) | Như `reason` của đánh giá chủ trọ: 1 đến 500 ký tự sau khi cắt, bắt buộc. `:id` của hai API này là id của đánh giá, 400 `INVALID_ID` nếu không phải UUID |
 
 **Gói, đơn, tham số, danh mục (admin)**
 

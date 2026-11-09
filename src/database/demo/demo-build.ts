@@ -25,6 +25,7 @@ import {
 	DEMO_CHATS,
 	DEMO_REVIEWS,
 } from './demo-reviews';
+import { DEMO_ROOM_REVIEWS } from './demo-room-reviews';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const MINUTE_MS = 60 * 1000;
@@ -83,10 +84,15 @@ export interface DemoRows {
 	readonly moderationLogs: Prisma.ModerationLogCreateManyInput[];
 	readonly follows: Prisma.FollowCreateManyInput[];
 	readonly favorites: Prisma.FavoriteCreateManyInput[];
-	/** Cuộc trò chuyện mẫu: bằng chứng chat của từng đánh giá (spec 0014 AC-4) và các cảnh `DEMO_CHATS`. */
+	/**
+	 * Cuộc trò chuyện mẫu: bằng chứng chat của từng đánh giá chủ trọ (spec 0014 AC-4), của từng đánh giá phòng (spec 0015
+	 * AC-4, trên đúng tin được đánh giá) và các cảnh `DEMO_CHATS`.
+	 */
 	readonly conversations: Prisma.ConversationCreateManyInput[];
 	readonly messages: Prisma.MessageCreateManyInput[];
 	readonly reviews: Prisma.ReviewCreateManyInput[];
+	/** Đánh giá từng phòng (spec 0015), bảng `listing_reviews`. */
+	readonly listingReviews: Prisma.ListingReviewCreateManyInput[];
 }
 
 export function demoEmail(emailName: string): string {
@@ -200,6 +206,7 @@ export function buildDemoRows(
 		conversations: [],
 		messages: [],
 		reviews: [],
+		listingReviews: [],
 	};
 
 	const usedCodes = new Set<string>();
@@ -595,9 +602,14 @@ export function buildDemoRows(
 	const pick = (list: readonly string[]): string =>
 		list[Math.floor(rng() * list.length)];
 
+	/** Cặp (người tìm trọ, tin) đã có cuộc trò chuyện: mỗi cặp chỉ một dòng (`conversations_listing_id_tenant_id_unique`). */
+	const chatOf = new Map<string, { replied: boolean; lastAt: Date }>();
+
 	/**
 	 * Mở một cuộc trò chuyện giữa người tìm trọ và chủ trọ: tin của người tìm trọ, và tin trả lời của chủ trọ nếu
-	 * `replied`. Giờ nhắn không sớm hơn lúc các bên và tin đã tồn tại. Trả giờ của tin cuối.
+	 * `replied`. Mặc định mở trên tin đăng sớm nhất của chủ trọ; `onListing` chọn một tin khác của chính chủ trọ đó
+	 * (đánh giá phòng cần chat trên đúng tin được đánh giá). Giờ nhắn không sớm hơn lúc các bên và tin đã tồn tại.
+	 * Trả giờ của tin cuối.
 	 */
 	const startChat = (
 		tenantKey: string,
@@ -605,10 +617,11 @@ export function buildDemoRows(
 		wantedAt: Date,
 		replied: boolean,
 		tenantRead: boolean,
+		onListing?: number,
 	): Date => {
 		const tenantId = tenantIds.get(tenantKey);
 		const landlordId = landlordIds.get(landlordKey);
-		const listingIndex = oldestListing.get(landlordKey);
+		const listingIndex = onListing ?? oldestListing.get(landlordKey);
 		if (
 			tenantId === undefined ||
 			landlordId === undefined ||
@@ -616,6 +629,20 @@ export function buildDemoRows(
 		) {
 			throw new Error(
 				`Cuộc trò chuyện ${tenantKey} và ${landlordKey}: thiếu tài khoản hoặc chủ trọ chưa có tin nào.`,
+			);
+		}
+		if (
+			landlordOfProperty.get(listingProperty[listingIndex]) !==
+			landlordKey
+		) {
+			throw new Error(
+				`Cuộc trò chuyện ${tenantKey} và ${landlordKey}: tin số ${listingIndex} không thuộc chủ trọ này.`,
+			);
+		}
+		const pairKey = `${tenantKey}|${listingIndex}`;
+		if (chatOf.has(pairKey)) {
+			throw new Error(
+				`Cuộc trò chuyện ${tenantKey} trên tin số ${listingIndex} bị tạo hai lần.`,
 			);
 		}
 		const floor = latest(
@@ -636,6 +663,7 @@ export function buildDemoRows(
 				`Cuộc trò chuyện ${tenantKey} và ${landlordKey}: tài khoản hoặc tin quá mới so với thời điểm chạy.`,
 			);
 		}
+		chatOf.set(pairKey, { replied, lastAt });
 		const id = randomUUID();
 		rows.conversations.push({
 			id,
@@ -732,6 +760,88 @@ export function buildDemoRows(
 			chat.replied,
 			chat.tenantUnread !== true,
 		);
+	}
+
+	// ----- đánh giá từng phòng (spec 0015) -----
+	// Dựng CUỐI CÙNG, sau mọi phần dùng bộ số ngẫu nhiên, để không đổi số nào của lượt xem, lưu tin, theo dõi, chat và
+	// đánh giá chủ trọ đã có. Điều kiện viết (AC-4) là chủ trọ đã trả lời trong cuộc trò chuyện về CHÍNH tin được đánh
+	// giá, nên mỗi đánh giá có một cuộc trò chuyện hai tin trên tin đó; cặp (người tìm trọ, tin) đã có chat sẵn (do các
+	// cảnh trước) thì dùng lại cuộc đó thay vì mở cuộc thứ hai, vì mỗi cặp chỉ một dòng.
+	const listingIndexOfTitle = new Map(
+		DEMO_LISTINGS.map((listing, index) => [listing.title, index]),
+	);
+	for (const review of DEMO_ROOM_REVIEWS) {
+		const listingIndex = listingIndexOfTitle.get(review.listing);
+		if (listingIndex === undefined) {
+			throw new Error(
+				`Đánh giá phòng của ${review.tenant}: không có tin "${review.listing}".`,
+			);
+		}
+		const landlordKey = landlordOfProperty.get(
+			listingProperty[listingIndex],
+		) as string;
+		const authorId = tenantIds.get(review.tenant) as string;
+		const wanted = at(review.daysAgo);
+		const existingChat = chatOf.get(`${review.tenant}|${listingIndex}`);
+		let repliedAt: Date;
+		if (existingChat === undefined) {
+			// Bằng chứng chat: chủ trọ đã trả lời một đến ba ngày trước lúc viết.
+			const chatAt = new Date(
+				wanted.getTime() - Math.floor((1 + rng() * 2) * DAY_MS),
+			);
+			repliedAt = startChat(
+				review.tenant,
+				landlordKey,
+				chatAt,
+				true,
+				true,
+				listingIndex,
+			);
+		} else if (existingChat.replied) {
+			repliedAt = existingChat.lastAt;
+		} else {
+			throw new Error(
+				`Đánh giá phòng của ${review.tenant} về "${review.listing}": chủ trọ chưa trả lời cuộc trò chuyện sẵn có.`,
+			);
+		}
+		const hour = 60 * MINUTE_MS;
+		const createdAt = latest(wanted, new Date(repliedAt.getTime() + hour));
+		if (createdAt.getTime() >= now.getTime()) {
+			throw new Error(
+				`Đánh giá phòng của ${review.tenant} về "${review.listing}": tài khoản hoặc tin quá mới so với thời điểm chạy.`,
+			);
+		}
+		const id = randomUUID();
+		const updatedAt =
+			review.editedDaysAgo === undefined
+				? createdAt
+				: latest(
+						at(review.editedDaysAgo),
+						new Date(createdAt.getTime() + hour),
+					);
+		rows.listingReviews.push({
+			id,
+			listingId: listingIds[listingIndex],
+			authorId,
+			stars: review.stars,
+			comment: review.comment,
+			status: review.hidden === undefined ? 'visible' : 'hidden_by_admin',
+			createdAt,
+			updatedAt,
+		});
+		if (review.hidden !== undefined) {
+			rows.moderationLogs.push({
+				actorId: input.adminId,
+				targetType: 'listing_review',
+				targetId: id,
+				action: 'hide_listing_review',
+				reason: review.hidden.reason,
+				createdAt: latest(
+					at(review.hidden.daysAgo),
+					new Date(createdAt.getTime() + hour),
+				),
+			});
+		}
 	}
 
 	return rows;

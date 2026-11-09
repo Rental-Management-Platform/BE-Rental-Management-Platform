@@ -60,6 +60,8 @@ model User {
   reviewsWritten          Review[] @relation("ReviewAuthor")
   /// Đánh giá về người này với tư cách chủ trọ; chỉ đọc để tính điểm, không bao giờ trả id người viết ra ngoài.
   reviewsReceived         Review[] @relation("ReviewLandlord")
+  /// Đánh giá phòng người này đã viết về các tin đăng (spec 0015 đánh giá phòng).
+  listingReviewsWritten   ListingReview[] @relation("ListingReviewAuthor")
 
   @@index([accountType], map: "users_account_type_idx")
   @@map("users")
@@ -266,6 +268,8 @@ model Listing {
   favorites Favorite[]
   /// Các cuộc trò chuyện về tin này (spec 0013 chat).
   conversations Conversation[]
+  /// Đánh giá của người tìm trọ về phòng trong tin này (spec 0015); hiện và biến cùng lúc với tin.
+  reviews       ListingReview[]
 
   // Hai chỉ mục một phần (created_at DESC, id DESC) và (price, id) cho điều kiện hiển thị viết SQL ở migration.
   @@index([propertyId], map: "listings_property_id_idx")
@@ -483,4 +487,32 @@ model Review {
   // Danh sách trên hồ sơ và hai con số: mới nhất trước.
   @@index([landlordId, createdAt(sort: Desc), id(sort: Desc)], map: "reviews_landlord_id_created_at_idx")
   @@map("reviews")
+}
+
+/// Đánh giá của một người tìm trọ về một phòng, tức một tin đăng (spec 0015). Mỗi cặp (người viết, tin) tối đa một dòng.
+/// Bảng riêng, không đụng `reviews` của chủ trọ (spec 0014): điểm của chủ trọ và điểm của phòng không bao giờ lẫn nhau.
+model ListingReview {
+  id        String   @id(map: "listing_reviews_pkey") @default(dbgenerated("uuidv7()")) @db.Uuid
+  /// Tin được đánh giá, lấy từ đường dẫn rồi qua kiểm tin đang hiện công khai. Không có cột chủ trọ: chủ trọ của tin
+  /// luôn lấy qua nhà trọ chứa tin.
+  listingId String   @map("listing_id") @db.Uuid
+  /// Người viết, luôn lấy từ access token. Khóa ngoại không ép được "đã được chủ trọ của tin trả lời trong chat": Service kiểm.
+  authorId  String   @map("author_id") @db.Uuid
+  /// Số sao từ 1 đến 5 (CHECK listing_reviews_stars_check ở migration).
+  stars     Int      @db.SmallInt
+  /// Nhận xét 1 đến 1000 ký tự, hoặc NULL khi không có (CHECK listing_reviews_comment_check ở migration).
+  comment   String?
+  /// `visible` hoặc `hidden_by_admin` (CHECK listing_reviews_status_check ở migration). Lý do ẩn nằm ở moderation_logs.
+  status    String   @default("visible")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Restrict, map: "listing_reviews_listing_id_fk")
+  author  User    @relation("ListingReviewAuthor", fields: [authorId], references: [id], onDelete: Restrict, map: "listing_reviews_author_id_fk")
+
+  // Một đánh giá cho mỗi cặp; cũng là chỉ mục tra đánh giá của một người.
+  @@unique([authorId, listingId], map: "listing_reviews_author_id_listing_id_unique")
+  // Danh sách trên chi tiết tin và hai con số: mới nhất trước.
+  @@index([listingId, createdAt(sort: Desc), id(sort: Desc)], map: "listing_reviews_listing_id_created_at_idx")
+  @@map("listing_reviews")
 }

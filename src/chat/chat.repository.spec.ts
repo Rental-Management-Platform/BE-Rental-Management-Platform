@@ -557,3 +557,62 @@ describe('ChatRepository.countUnread (spec 0013 AC-10)', () => {
 		});
 	});
 });
+
+describe('ChatRepository.hasLandlordRepliedOnListing (spec 0015 AC-4)', () => {
+	function build(rows: unknown[]) {
+		const queryRaw = jest.fn(() => Promise.resolve(rows));
+		const repository = new ChatRepository({
+			$queryRaw: queryRaw,
+		} as unknown as PrismaService);
+		return { repository, queryRaw };
+	}
+
+	it('một truy vấn tồn tại theo (tin, người nhắn), chủ trọ của chính cuộc trò chuyện đó đã gửi tin, LIMIT 1', async () => {
+		const { repository, queryRaw } = build([{ found: 1 }]);
+		await repository.hasLandlordRepliedOnListing(TENANT_ID, LISTING_ID);
+		expect(queryRaw).toHaveBeenCalledTimes(1);
+		const { text, values } = rawCall(queryRaw);
+		expect(text).toContain('FROM conversations c');
+		expect(text).toContain(
+			'JOIN messages m ON m.conversation_id = c.id AND m.sender_id = c.landlord_id',
+		);
+		expect(text).toContain('WHERE c.listing_id = ?::uuid');
+		expect(text).toContain('AND c.tenant_id = ?::uuid');
+		expect(text).toContain('LIMIT 1');
+		// tin trước, người nhắn sau: đúng thứ tự của WHERE
+		expect(values).toEqual([LISTING_ID, TENANT_ID]);
+	});
+
+	it('tra theo CHÍNH tin: không có điều kiện nào theo chủ trọ hay theo tin khác', async () => {
+		const { repository, queryRaw } = build([]);
+		await repository.hasLandlordRepliedOnListing(TENANT_ID, LISTING_ID);
+		const { text } = rawCall(queryRaw);
+		expect(text).not.toContain('c.landlord_id = ?');
+		expect(text).not.toContain('c.listing_id <>');
+	});
+
+	it.each([
+		[[{ found: 1 }], true],
+		[[], false],
+	])('dòng trả về %j thì kết quả %s', async (rows, expected) => {
+		const { repository } = build(rows);
+		await expect(
+			repository.hasLandlordRepliedOnListing(TENANT_ID, LISTING_ID),
+		).resolves.toBe(expected);
+	});
+
+	it('hàm hasLandlordReplied của spec 0014 vẫn tra theo chủ trọ, không theo tin', async () => {
+		const findFirst = jest.fn(() => Promise.resolve({ id: 'm1' }));
+		const repository = new ChatRepository({
+			message: { findFirst },
+		} as unknown as PrismaService);
+		await repository.hasLandlordReplied(TENANT_ID, LANDLORD_ID);
+		expect(findFirst).toHaveBeenCalledWith({
+			where: {
+				senderId: LANDLORD_ID,
+				conversation: { tenantId: TENANT_ID, landlordId: LANDLORD_ID },
+			},
+			select: { id: true },
+		});
+	});
+});

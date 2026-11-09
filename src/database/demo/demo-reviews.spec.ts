@@ -149,10 +149,12 @@ describe('demo-build: cuộc trò chuyện và đánh giá chủ trọ (spec 001
 	};
 	const time = (value: unknown): number => (value as Date).getTime();
 
-	it('số dòng: 30 đánh giá, 35 cuộc trò chuyện, 69 tin nhắn, mọi id duy nhất', () => {
+	it('số dòng: 30 đánh giá, 51 cuộc trò chuyện, 101 tin nhắn, mọi id duy nhất', () => {
 		expect(rows.reviews).toHaveLength(30);
-		expect(rows.conversations).toHaveLength(35);
-		expect(rows.messages).toHaveLength(69);
+		// 35 cuộc (30 bằng chứng chat của đánh giá chủ trọ cộng 5 cảnh chat) và 69 tin nhắn từ spec 0013 và 0014, cộng 16
+		// cuộc hai tin (32 tin nhắn) làm bằng chứng chat của 16 đánh giá phòng (spec 0015, `demo-room-reviews.spec.ts`).
+		expect(rows.conversations).toHaveLength(35 + 16);
+		expect(rows.messages).toHaveLength(69 + 2 * 16);
 		for (const table of [rows.reviews, rows.conversations, rows.messages]) {
 			const ids = (table as readonly { id?: string }[]).map(
 				(row) => row.id,

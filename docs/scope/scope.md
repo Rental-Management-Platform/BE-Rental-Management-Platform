@@ -39,6 +39,7 @@ _Đây là các khuyến nghị để việc làm gọn gàng, không phải yê
 | 20 | Chat giữa người tìm trọ và chủ trọ | Release 20 | done |
 | 21 | Dữ liệu demo cho FE | Release 21 | done |
 | 22 | Đánh giá trọ trên hồ sơ chủ trọ | Release 22 | done |
+| 24 | Đánh giá từng phòng trọ | Release 24 | done |
 | 23 | Đóng gói Docker và phát hành | Release 23 | planned |
 
 ## Foundations (đã có)
@@ -291,6 +292,17 @@ Hiện hồ sơ chủ trọ (`GET /landlords/:id`) chỉ có các con số: ngư
    - [x] Mốc 2: kiểm duyệt của admin: `GET /moderation/reviews` có bộ lọc, ẩn và gỡ ẩn kèm lý do và dòng `moderation_logs`, tài liệu và kiểm cuối (AC-11, AC-12)
 Spec [0014](../specs/0014-landlord-reviews/index.md) (14 AC, 2 mốc, đã được bạn Accept ngày 2026-11-07; trạng thái spec đi theo tính năng) · code in `src/reviews/`, `src/landlords/`, `src/chat/`, `src/moderation/`, `src/common/`, `src/database/`, `prisma/` · tài liệu in `docs/api/`
 
+## Release 24: đánh giá từng phòng trọ
+
+### 24. Đánh giá từng phòng trọ · done
+Hiện người xem chỉ đánh giá được chủ trọ (hàng 22); chưa có chỗ nào để nói về chính căn phòng trong một tin. Theo yêu cầu của bạn ngày 2026-11-09, thêm đánh giá cho từng phòng, làm theo đúng cách của đánh giá chủ trọ: 1 đến 5 sao kèm nhận xét tùy chọn, mỗi cặp (người viết, phòng) một đánh giá, chỉ người tìm trọ đã nhắn với chủ trọ và được họ trả lời mới viết được, người viết sửa và xóa của mình, admin ẩn và gỡ ẩn kèm lý do, mọi số tính lúc đọc. `/scope` hiểu "phòng trọ" là một tin đăng (hàng 8: tin phòng thuộc nhà trọ), không phải cả nhà trọ; spec 0014 đã cân nhắc đánh giá theo nhà trọ và bỏ (Option 3), còn theo tin thì điều kiện chat khớp sẵn vì mỗi cuộc trò chuyện là một cặp (tin, người nhắn). Đã thiết kế đầy đủ ở spec 0015 (16 AC, 2 mốc), bạn Accept ngày 2026-11-09: "phòng" là một tin đăng; một bảng riêng `listing_reviews` nên bảng `reviews` và điểm chủ trọ của hàng 22 không đổi; chỉ người đã nhắn về đúng tin đó và được chủ trọ trả lời mới viết được; đánh giá chỉ đọc và ghi được khi tin đang hiện công khai (tin ẩn, bị xóa hay hết hiển thị thì mọi route đánh giá phòng trả 404, dòng còn nguyên và trở lại khi tin hiện lại); điểm phòng không cộng vào điểm chủ trọ và chỉ lên chi tiết tin, chưa lên các danh sách thẻ tin; dùng lại quyền `review:*` và hai nhóm giới hạn `reviewWrite` và `publicRead`; admin ẩn và gỡ ẩn ở `/moderation/listing-reviews`; `seed:demo` có đánh giá phòng mẫu.
+**Done when:** người đủ điều kiện (người tìm trọ đã nhắn với chủ trọ của tin và được họ trả lời) viết được một đánh giá cho phòng trong tin; chi tiết tin hiện điểm trung bình và số đánh giá của phòng, và có route riêng liệt kê các đánh giá; mỗi người không đánh giá trùng một phòng và chủ trọ không tự đánh giá phòng của mình; người viết sửa và xóa được đánh giá của mình; admin ẩn và gỡ ẩn đánh giá kèm lý do; người chưa đủ điều kiện bị từ chối bằng lỗi rõ ràng; đánh giá chủ trọ ở hàng 22 chạy như cũ.
+- [x] Design it (spec): `/architect room reviews`
+- [x] Build it: `/develop room reviews`
+   - [x] Mốc 1: viết, sửa, xóa, đọc đánh giá phòng và hai con số trên chi tiết tin: bảng `listing_reviews` với ràng buộc (không phần dữ liệu), năm mã lỗi `LISTING_REVIEW_*`, điều kiện chat theo đúng tin (`ChatRepository.hasLandlordRepliedOnListing`), năm route `/listings/:id/review` và `/listings/:id/reviews` đi theo luật tin hiện công khai, `reviewCount` và `ratingAverage` ở chi tiết tin, bước xóa `listing_reviews` trong `seed:demo --reset`, Postman folder mới và tài liệu FE (AC-1 đến AC-10, AC-13 đến AC-15)
+   - [x] Mốc 2: kiểm duyệt của admin và dữ liệu demo: `GET /moderation/listing-reviews` có bộ lọc, ẩn và gỡ ẩn kèm lý do và dòng `moderation_logs`, đánh giá phòng mẫu trong `seed:demo`, tài liệu và kiểm cuối (AC-11, AC-12, AC-16)
+Spec [0015](../specs/0015-room-reviews/index.md) (16 AC, 2 mốc, đã được bạn Accept ngày 2026-11-09; trạng thái spec đi theo tính năng) · code in `src/listing-reviews/`, `src/listings/`, `src/chat/`, `src/moderation/`, `src/common/`, `src/database/`, `prisma/` · tài liệu in `docs/api/`
+
 ## Release 23: đóng gói Docker và phát hành
 
 ### 23. Đóng gói Docker và phát hành · needs a decision
@@ -320,6 +332,7 @@ Ngoài phạm vi bản này, giữ lại để kế hoạch trung thực.
 - **Hoãn từ spec 0012 (2026-11-03)**: kiểm tọa độ theo đường ranh phường chính xác (PostGIS), cho `POST /wards` và `PATCH /wards/:code` nhận hộp phường, dọn tọa độ cũ ngoài vùng, endpoint geocode phía backend · needs a decision
 - **Hoãn từ spec 0013 (2026-11-05)**: thông báo khi có tin mới (email hoặc đẩy trình duyệt, cần việc nền), kênh đẩy thời gian thực (SSE hoặc WebSocket), trạng thái đang gõ và trực tuyến, ảnh và tệp trong tin nhắn, sửa hoặc xóa tin nhắn của mình, báo cáo hoặc chặn một người, góc nhìn kiểm duyệt cho admin kèm nhật ký, chống gửi trùng (`clientMessageId`), ghim hoặc tắt tiếng hoặc lưu trữ cuộc trò chuyện, tìm trong tin nhắn, chính sách giữ và xóa tin nhắn, chủ trọ chủ động mở cuộc trò chuyện, mở cuộc trò chuyện từ hồ sơ chủ trọ khi chưa chọn tin, hạn mức mở cuộc trò chuyện theo ngày lưu trong DB · needs a decision
 - **Hoãn từ spec 0014 (2026-11-07)**: chủ trọ trả lời đánh giá, phân bố số sao, lọc hoặc sắp theo sao, nút báo cáo đánh giá, ảnh trong đánh giá, bình chọn "hữu ích", đánh giá riêng cho từng nhà trọ, chống đánh giá giả (tuổi tài khoản hay số tin nhắn tối thiểu), tìm theo chữ trong nhận xét cho admin, giữ lại nội dung đã xóa, thông báo khi có đánh giá mới hoặc khi bị ẩn (cần việc nền), số đánh giá tối thiểu trước khi hiện điểm, dòng đánh giá mẫu trong `seed:demo` · needs a decision
+- **Hoãn từ spec 0015 (2026-11-09)**: điểm phòng trên thẻ tin ở bốn danh sách (`GET /listings`, `GET /me/favorites`, `GET /landlords/:id/listings`, `GET /me/listings`) và trên chi tiết riêng của chủ trọ (`GET /me/listings/:id`), điểm các phòng cộng vào hồ sơ chủ trọ, lọc admin theo chủ trọ, đánh giá theo cả nhà trọ, đánh giá phòng mang sang khi đăng lại tin, quyền riêng để bật tắt đánh giá phòng, và các mục đã hoãn ở spec 0014 (chủ trọ trả lời, phân bố số sao, báo cáo, ảnh, chống đánh giá giả...) vẫn áp dụng cho đánh giá phòng · needs a decision
 
 ## Legend
 

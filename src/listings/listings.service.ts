@@ -9,6 +9,7 @@ import { TransactionRunner } from '../common/persistence/transaction-runner';
 import { toSearchKey } from '../common/text/to-search-key';
 import { FavoritesRepository } from '../favorites/favorites.repository';
 import type { Prisma } from '../generated/prisma/client';
+import { ListingReviewsRepository } from '../listing-reviews/listing-reviews.repository';
 import { MembershipsService } from '../memberships/memberships.service';
 import { ModerationLogsRepository } from '../moderation/moderation-logs.repository';
 import { PropertiesRepository } from '../properties/properties.repository';
@@ -105,6 +106,7 @@ export class ListingsService {
 		private readonly favorites: FavoritesRepository,
 		private readonly storage: StorageService,
 		private readonly imageRows: ListingImagesRepository,
+		private readonly listingReviews: ListingReviewsRepository,
 	) {}
 
 	// ----- đăng và sửa -----
@@ -577,13 +579,19 @@ export class ListingsService {
 			const counted = await this.repository.incrementViewCount(row.id);
 			if (counted !== null) viewCount = counted;
 		}
+		// Hai việc đọc độc lập, ngoài giao dịch, chạy song song (spec 0015 AC-1): cờ yêu thích của người xem và hai số
+		// gộp của đánh giá phòng. Có thể lệch vài mili giây so với các số khác của chi tiết (chấp nhận, như 0005 và 0014).
+		const [isFavorite, reviews] = await Promise.all([
+			viewer.userId === undefined
+				? Promise.resolve(null)
+				: this.favorites.isFavorite(viewer.userId, row.id),
+			this.listingReviews.summarize(row.id),
+		]);
 		return toListingDetail(row, {
 			viewCount,
 			includePhone: viewer.userId !== undefined,
-			isFavorite:
-				viewer.userId === undefined
-					? null
-					: await this.favorites.isFavorite(viewer.userId, row.id),
+			isFavorite,
+			reviews,
 		});
 	}
 

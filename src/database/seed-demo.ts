@@ -67,7 +67,7 @@ async function writeImages(
 /**
  * Xóa mọi thứ thuộc các tài khoản demo (nhận ra bằng đuôi email), theo thứ tự các khóa ngoại cho phép, và trả
  * khóa ảnh của chúng để xóa tệp sau khi giao dịch đã xong. Cũng xóa lượt lưu, theo dõi, cuộc trò chuyện (kèm tin
- * nhắn) và đánh giá của người thật trỏ vào tin hay chủ trọ demo, vì các dòng đó mất chỗ trỏ tới.
+ * nhắn), đánh giá chủ trọ và đánh giá phòng của người thật trỏ vào tin hay chủ trọ demo, vì các dòng đó mất chỗ trỏ tới.
  */
 async function deleteDemoData(tx: Prisma.TransactionClient): Promise<string[]> {
 	const users = await tx.user.findMany({
@@ -115,15 +115,39 @@ async function deleteDemoData(tx: Prisma.TransactionClient): Promise<string[]> {
 		select: { id: true },
 	});
 	const reviewIds = reviews.map((review) => review.id);
+	// Đánh giá phòng (spec 0015): mọi dòng có người viết là tài khoản demo hoặc tin là tin demo, kể cả đánh giá của người
+	// thật về tin demo. Khóa ngoại tới `users` và `listings` đều RESTRICT nên phải xóa trước tin và tài khoản, kèm nhật ký ẩn.
+	const listingReviews = await tx.listingReview.findMany({
+		where: {
+			OR: [
+				{ authorId: { in: userIds } },
+				{ listingId: { in: listingIds } },
+			],
+		},
+		select: { id: true },
+	});
+	const listingReviewIds = listingReviews.map((review) => review.id);
 	await tx.moderationLog.deleteMany({
 		where: {
 			OR: [
-				{ targetId: { in: [...userIds, ...listingIds, ...reviewIds] } },
+				{
+					targetId: {
+						in: [
+							...userIds,
+							...listingIds,
+							...reviewIds,
+							...listingReviewIds,
+						],
+					},
+				},
 				{ actorId: { in: userIds } },
 			],
 		},
 	});
 	await tx.review.deleteMany({ where: { id: { in: reviewIds } } });
+	await tx.listingReview.deleteMany({
+		where: { id: { in: listingReviewIds } },
+	});
 	// Chat (spec 0013): cuộc trò chuyện của người thật về tin demo, hoặc của tài khoản demo, cũng mất chỗ trỏ tới.
 	// Tin nhắn chỉ do hai bên của cuộc trò chuyện gửi nên xóa theo cuộc trò chuyện là đủ; tin trước, rồi cuộc trò chuyện.
 	const conversations = await tx.conversation.findMany({
@@ -315,6 +339,10 @@ async function main(): Promise<void> {
 					});
 					await tx.message.createMany({ data: rows.messages });
 					await tx.review.createMany({ data: rows.reviews });
+					// Đánh giá từng phòng (spec 0015): cuộc trò chuyện trên đúng tin được đánh giá đã nằm ở `conversations`.
+					await tx.listingReview.createMany({
+						data: rows.listingReviews,
+					});
 					return old;
 				},
 				{ timeout: 60_000, maxWait: 10_000 },
@@ -329,7 +357,7 @@ async function main(): Promise<void> {
 			(listing) => listing.status === 'visible',
 		).length;
 		console.log(
-			`Dữ liệu demo${existing > 0 ? ' (đã làm mới)' : ''}: ${rows.users.length} tài khoản (${DEMO_LANDLORDS.length} chủ trọ, ${DEMO_TENANTS.length} người tìm trọ), ${rows.properties.length} nhà trọ, ${rows.listings.length} tin (${publicNow} đang ở trạng thái hiện), ${rows.listingImages.length} ảnh, ${rows.orders.length} đơn, ${rows.subscriptions.length} kỳ gói, ${rows.follows.length} lượt theo dõi, ${rows.favorites.length} tin đã lưu, ${rows.reviews.length} đánh giá chủ trọ (${rows.reviews.filter((review) => review.status === 'hidden_by_admin').length} bị admin ẩn), ${rows.conversations.length} cuộc trò chuyện.`,
+			`Dữ liệu demo${existing > 0 ? ' (đã làm mới)' : ''}: ${rows.users.length} tài khoản (${DEMO_LANDLORDS.length} chủ trọ, ${DEMO_TENANTS.length} người tìm trọ), ${rows.properties.length} nhà trọ, ${rows.listings.length} tin (${publicNow} đang ở trạng thái hiện), ${rows.listingImages.length} ảnh, ${rows.orders.length} đơn, ${rows.subscriptions.length} kỳ gói, ${rows.follows.length} lượt theo dõi, ${rows.favorites.length} tin đã lưu, ${rows.reviews.length} đánh giá chủ trọ (${rows.reviews.filter((review) => review.status === 'hidden_by_admin').length} bị admin ẩn), ${rows.listingReviews.length} đánh giá phòng (${rows.listingReviews.filter((review) => review.status === 'hidden_by_admin').length} bị admin ẩn), ${rows.conversations.length} cuộc trò chuyện.`,
 		);
 		for (const warning of warnings) console.warn(`Cảnh báo: ${warning}`);
 		console.log(

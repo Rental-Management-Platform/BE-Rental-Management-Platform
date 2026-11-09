@@ -10,8 +10,11 @@ import type {
 	PublicReviewRow,
 } from './reviews.repository';
 
-/** Chuỗi rỗng hoặc chỉ khoảng trắng trả `null`: cùng ánh xạ tên của hồ sơ chủ trọ (spec 0014 AC-2). */
-function orNull(value: string | null): string | null {
+/**
+ * Chuỗi rỗng hoặc chỉ khoảng trắng trả `null`: cùng ánh xạ tên của hồ sơ chủ trọ (spec 0014 AC-2). Xuất ra để phần
+ * tử admin của đánh giá phòng (spec 0015 AC-11) dùng đúng một ánh xạ tên.
+ */
+export function orNull(value: string | null): string | null {
 	return value === null || value.trim() === '' ? null : value;
 }
 

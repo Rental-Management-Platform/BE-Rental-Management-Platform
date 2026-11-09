@@ -88,6 +88,13 @@ export enum ErrorCode {
 	CANNOT_REVIEW_SELF = 'CANNOT_REVIEW_SELF',
 	REVIEW_HIDDEN = 'REVIEW_HIDDEN',
 	REVIEW_STATE_INVALID = 'REVIEW_STATE_INVALID',
+
+	// Đánh giá từng phòng trên tin đăng (spec 0015). Dùng lại LISTING_NOT_FOUND và CANNOT_REVIEW_SELF.
+	LISTING_REVIEW_NOT_FOUND = 'LISTING_REVIEW_NOT_FOUND',
+	LISTING_REVIEW_NOT_ELIGIBLE = 'LISTING_REVIEW_NOT_ELIGIBLE',
+	LISTING_REVIEW_ALREADY_EXISTS = 'LISTING_REVIEW_ALREADY_EXISTS',
+	LISTING_REVIEW_HIDDEN = 'LISTING_REVIEW_HIDDEN',
+	LISTING_REVIEW_STATE_INVALID = 'LISTING_REVIEW_STATE_INVALID',
 }
 
 export interface ErrorDefinition {
@@ -388,6 +395,32 @@ export const ERRORS: Record<ErrorCode, ErrorDefinition> = {
 	[ErrorCode.REVIEW_STATE_INVALID]: {
 		status: HttpStatus.CONFLICT,
 		message: 'Đánh giá không ở trạng thái phù hợp cho thao tác này.',
+	},
+	// Chưa có đánh giá phòng của người gọi (sửa hoặc xóa), hoặc admin ẩn hay gỡ ẩn một id không có (spec 0015).
+	[ErrorCode.LISTING_REVIEW_NOT_FOUND]: {
+		status: HttpStatus.NOT_FOUND,
+		message: 'Không tìm thấy đánh giá phòng.',
+	},
+	// Người gọi chưa nhắn về chính tin này, hoặc nhắn rồi mà chủ trọ chưa trả lời (spec 0015 AC-4).
+	[ErrorCode.LISTING_REVIEW_NOT_ELIGIBLE]: {
+		status: HttpStatus.FORBIDDEN,
+		message:
+			'Bạn chỉ đánh giá được phòng mà chủ trọ đã trả lời tin nhắn của bạn về chính tin này.',
+	},
+	// Mỗi cặp (người viết, tin) chỉ có một đánh giá phòng (spec 0015 AC-5).
+	[ErrorCode.LISTING_REVIEW_ALREADY_EXISTS]: {
+		status: HttpStatus.CONFLICT,
+		message: 'Bạn đã đánh giá phòng này rồi.',
+	},
+	// Đánh giá phòng đang bị admin ẩn nên người viết chỉ xóa được, không sửa được (spec 0015 AC-6).
+	[ErrorCode.LISTING_REVIEW_HIDDEN]: {
+		status: HttpStatus.CONFLICT,
+		message: 'Đánh giá phòng đang bị ẩn nên không sửa được.',
+	},
+	// Admin ẩn đánh giá phòng đã ẩn, hoặc gỡ ẩn đánh giá phòng đang hiện (spec 0015 AC-12).
+	[ErrorCode.LISTING_REVIEW_STATE_INVALID]: {
+		status: HttpStatus.CONFLICT,
+		message: 'Đánh giá phòng không ở trạng thái phù hợp cho thao tác này.',
 	},
 };
 

@@ -20,6 +20,9 @@ import {
 const UUID_A = '11111111-1111-4111-8111-111111111111';
 const UUID_B = '22222222-2222-4222-8222-222222222222';
 
+/** Tin chưa có đánh giá phòng nào: hai số gộp của `ListingReviewsRepository.summarize` (spec 0015 AC-1). */
+const NO_REVIEWS = { count: 0, starSum: 0 };
+
 describe('toListingSummary (spec 0002, "Tin tóm tắt")', () => {
 	it('trả đúng các trường, không lộ số điện thoại, trạng thái hay lượt xem', () => {
 		const summary = toListingSummary(publicSummaryRow());
@@ -157,6 +160,7 @@ describe('toListingDetail (spec 0002 AC-11, AC-12)', () => {
 				viewCount: 7,
 				includePhone: false,
 				isFavorite: null,
+				reviews: NO_REVIEWS,
 			}).landlord.phone,
 		).toBeNull();
 		expect(
@@ -164,6 +168,7 @@ describe('toListingDetail (spec 0002 AC-11, AC-12)', () => {
 				viewCount: 7,
 				includePhone: true,
 				isFavorite: null,
+				reviews: NO_REVIEWS,
 			}).landlord.phone,
 		).toBe('0912345678');
 	});
@@ -178,7 +183,12 @@ describe('toListingDetail (spec 0002 AC-11, AC-12)', () => {
 					landlord: { ...base.property.landlord, phone: '' },
 				},
 			},
-			{ viewCount: 0, includePhone: true, isFavorite: null },
+			{
+				viewCount: 0,
+				includePhone: true,
+				isFavorite: null,
+				reviews: NO_REVIEWS,
+			},
 		);
 		expect(detail.landlord.phone).toBeNull();
 	});
@@ -189,6 +199,7 @@ describe('toListingDetail (spec 0002 AC-11, AC-12)', () => {
 				viewCount: 7,
 				includePhone: false,
 				isFavorite: null,
+				reviews: NO_REVIEWS,
 			}),
 		);
 		expect(text).not.toContain('0912345678');
@@ -200,6 +211,7 @@ describe('toListingDetail (spec 0002 AC-11, AC-12)', () => {
 				viewCount: 8,
 				includePhone: false,
 				isFavorite: null,
+				reviews: NO_REVIEWS,
 			}).viewCount,
 		).toBe(8);
 	});
@@ -212,6 +224,7 @@ describe('toListingDetail (spec 0002 AC-11, AC-12)', () => {
 			viewCount: 7,
 			includePhone: false,
 			isFavorite: null,
+			reviews: NO_REVIEWS,
 		});
 		expect(detail.description).toContain('Phòng sạch sẽ');
 		expect(detail.images).toEqual([
@@ -250,6 +263,7 @@ describe('toListingDetail (spec 0002 AC-11, AC-12)', () => {
 				viewCount: 7,
 				includePhone: true,
 				isFavorite: null,
+				reviews: NO_REVIEWS,
 			}),
 		);
 		for (const secret of [
@@ -339,6 +353,7 @@ describe('toOwnerSummary và toOwnerDetail (spec 0002 AC-14)', () => {
 				viewCount: 1,
 				includePhone: false,
 				isFavorite: null,
+				reviews: NO_REVIEWS,
 			}),
 		).not.toHaveProperty('isPublic');
 	});
@@ -391,6 +406,7 @@ describe('toPublicSummary và isFavorite của chi tiết (spec 0006 AC-6)', () 
 					viewCount: 7,
 					includePhone: false,
 					isFavorite,
+					reviews: NO_REVIEWS,
 				}).isFavorite,
 			).toBe(isFavorite);
 		},
@@ -409,5 +425,71 @@ describe('toPublicSummary và isFavorite của chi tiết (spec 0006 AC-6)', () 
 		expect(
 			Object.keys(toModerationItem(publicSummaryRow(), null)),
 		).not.toContain('isFavorite');
+	});
+});
+
+describe('reviewCount và ratingAverage của chi tiết công khai (spec 0015 AC-1)', () => {
+	const detailWith = (count: number, starSum: number) =>
+		toListingDetail(publicDetailRow(), {
+			viewCount: 7,
+			includePhone: false,
+			isFavorite: null,
+			reviews: { count, starSum },
+		});
+
+	it('chưa có đánh giá: reviewCount 0 và ratingAverage null, không phải 0', () => {
+		const detail = detailWith(0, 0);
+		expect(detail.reviewCount).toBe(0);
+		expect(detail.ratingAverage).toBeNull();
+	});
+
+	it.each([
+		[1, 5, 5],
+		[1, 1, 1],
+		[3, 13, 4.3],
+		[2, 9, 4.5],
+		[20, 87, 4.4],
+		[3, 14, 4.7],
+	])(
+		'%i đánh giá tổng %i sao ra trung bình %f (làm tròn nửa lên một chữ số)',
+		(count, starSum, expected) => {
+			const detail = detailWith(count, starSum);
+			expect(detail.reviewCount).toBe(count);
+			expect(detail.ratingAverage).toBe(expected);
+		},
+	);
+
+	it('hai trường nằm cạnh isFavorite và không đụng các trường khác của chi tiết', () => {
+		const base = toListingDetail(publicDetailRow(), {
+			viewCount: 7,
+			includePhone: false,
+			isFavorite: null,
+			reviews: NO_REVIEWS,
+		});
+		expect({
+			...detailWith(3, 13),
+			reviewCount: 0,
+			ratingAverage: null,
+		}).toEqual(base);
+	});
+
+	it('chi tiết riêng của chủ trọ và mọi thẻ tin không có hai trường này', () => {
+		for (const key of ['reviewCount', 'ratingAverage']) {
+			expect(
+				Object.keys(toOwnerDetail(ownerDetailRow(), null, true)),
+			).not.toContain(key);
+			expect(
+				Object.keys(toOwnerSummary(ownerSummaryRow(), null, true)),
+			).not.toContain(key);
+			expect(
+				Object.keys(toListingSummary(publicSummaryRow())),
+			).not.toContain(key);
+			expect(
+				Object.keys(toPublicSummary(publicSummaryRow(), null)),
+			).not.toContain(key);
+			expect(
+				Object.keys(toModerationItem(publicSummaryRow(), null)),
+			).not.toContain(key);
+		}
 	});
 });

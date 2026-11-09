@@ -5,6 +5,8 @@ import {
 	toAmenityResponses,
 	toFeeResponses,
 } from '../properties/properties.mapper';
+import { averageStars } from '../reviews/reviews.mapper';
+import type { ReviewSummary } from '../reviews/reviews.repository';
 import type {
 	ListingDetailResponse,
 	ListingImageResponse,
@@ -163,7 +165,9 @@ function toDetailFields(row: OwnerDetailRow, viewCount: number) {
 /**
  * Chi tiết công khai. `viewCount` là giá trị sau khi cộng (nếu vừa tính lượt) hoặc giá trị đã đọc. Số điện
  * thoại chỉ có khi `includePhone` (request có access token hợp lệ); khách thì luôn `null` (spec 0002 AC-12).
- * `isFavorite` là `null` với khách, còn lại theo dòng lưu của chính người xem (spec 0006 AC-6).
+ * `isFavorite` là `null` với khách, còn lại theo dòng lưu của chính người xem (spec 0006 AC-6). `reviewCount` và
+ * `ratingAverage` là điểm của phòng (spec 0015 AC-1): `reviews` là hai số gộp của các đánh giá phòng đang hiện công
+ * khai, trung bình bằng `averageStars` (số nguyên, làm tròn nửa lên, `null` khi chưa có đánh giá nào).
  */
 export function toListingDetail(
 	row: PublicDetailRow,
@@ -171,12 +175,18 @@ export function toListingDetail(
 		readonly viewCount: number;
 		readonly includePhone: boolean;
 		readonly isFavorite: boolean | null;
+		readonly reviews: ReviewSummary;
 	},
 ): ListingDetailResponse {
 	const { landlord } = row.property;
 	return {
 		...toDetailFields(row, options.viewCount),
 		isFavorite: options.isFavorite,
+		reviewCount: options.reviews.count,
+		ratingAverage: averageStars(
+			options.reviews.count,
+			options.reviews.starSum,
+		),
 		landlord: {
 			id: landlord.id,
 			name: orNull(landlord.name),

@@ -45,6 +45,10 @@ export interface ListingDetailResponse extends Omit<
 > {
 	/** `null` với khách, token sai hoặc hết hạn; `true` hoặc `false` theo dòng lưu của chính người đăng nhập (spec 0006 AC-6). */
 	readonly isFavorite: boolean | null;
+	/** Số đánh giá phòng đang hiện công khai của tin này, từ 0 (spec 0015 AC-1). Cùng giá trị cho khách và người đăng nhập. */
+	readonly reviewCount: number;
+	/** Số sao trung bình làm tròn một chữ số thập phân; `null` khi `reviewCount` là 0 (spec 0015 AC-1). */
+	readonly ratingAverage: number | null;
 	readonly description: string;
 	readonly viewCount: number;
 	readonly images: readonly ListingImageResponse[];
@@ -93,10 +97,13 @@ export interface ModerationListingResponse extends ListingSummaryResponse {
 	readonly viewCount: number;
 }
 
-/** Tin của chủ trọ (`/me/listings/:id` và kết quả mọi route ghi): chi tiết bỏ `landlord`, cộng `status`, `moderationReason` và `isPublic`. */
+/**
+ * Tin của chủ trọ (`/me/listings/:id` và kết quả mọi route ghi): chi tiết bỏ `landlord`, `isFavorite` và hai số đánh
+ * giá phòng (spec 0015 AC-1: chỉ chi tiết công khai có), cộng `status`, `moderationReason` và `isPublic`.
+ */
 export interface OwnerListingDetailResponse extends Omit<
 	ListingDetailResponse,
-	'landlord' | 'isFavorite'
+	'landlord' | 'isFavorite' | 'reviewCount' | 'ratingAverage'
 > {
 	readonly status: ListingStatus;
 	readonly moderationReason: string | null;

@@ -9,6 +9,7 @@ import { CatalogModule } from './catalog/catalog.module';
 import { AllExceptionsFilter } from './common/errors/all-exceptions.filter';
 import { FavoritesModule } from './favorites/favorites.module';
 import { LandlordsModule } from './landlords/landlords.module';
+import { ListingReviewsModule } from './listing-reviews/listing-reviews.module';
 import { ListingsModule } from './listings/listings.module';
 import { PersistenceModule } from './common/persistence/persistence.module';
 import { AppConfigModule } from './config/app-config.module';
@@ -42,6 +43,7 @@ import { UsersModule } from './users/users.module';
 		FavoritesModule,
 		ChatModule,
 		ReviewsModule,
+		ListingReviewsModule,
 	],
 	controllers: [AppController],
 	providers: [

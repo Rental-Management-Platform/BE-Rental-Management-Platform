@@ -5,6 +5,7 @@ import type { RequestUser } from '../common/http/authenticated-request';
 import type { TransactionRunner } from '../common/persistence/transaction-runner';
 import type { FavoritesRepository } from '../favorites/favorites.repository';
 import type { Prisma } from '../generated/prisma/client';
+import type { ListingReviewsRepository } from '../listing-reviews/listing-reviews.repository';
 import type {
 	Membership,
 	MembershipsService,
@@ -133,6 +134,7 @@ interface Harness {
 	favorites: Mocks<'findSavedIds' | 'isFavorite'>;
 	storage: Mocks<'put' | 'delete'>;
 	imageRows: Mocks<'createMany'>;
+	listingReviews: Mocks<'summarize'>;
 }
 
 function build(
@@ -149,6 +151,8 @@ function build(
 		savedIds?: ReadonlySet<string>;
 		/** Kết quả của `isFavorite` cho chi tiết tin. */
 		isFavorite?: boolean;
+		/** Hai số gộp của đánh giá phòng cho chi tiết tin (spec 0015); mặc định chưa có đánh giá nào. */
+		reviewSummary?: { count: number; starSum: number };
 	} = {},
 ): Harness {
 	const repository = {
@@ -233,6 +237,11 @@ function build(
 		delete: jest.fn(() => Promise.resolve()),
 	};
 	const imageRows = { createMany: jest.fn(() => Promise.resolve()) };
+	const listingReviews = {
+		summarize: jest.fn(() =>
+			Promise.resolve(options.reviewSummary ?? { count: 0, starSum: 0 }),
+		),
+	};
 	return {
 		service: new ListingsService(
 			repository as unknown as ListingsRepository,
@@ -246,6 +255,7 @@ function build(
 			favorites as unknown as FavoritesRepository,
 			storage as unknown as StorageService,
 			imageRows as unknown as ListingImagesRepository,
+			listingReviews as unknown as ListingReviewsRepository,
 		),
 		repository,
 		properties,
@@ -258,6 +268,7 @@ function build(
 		favorites,
 		storage,
 		imageRows,
+		listingReviews,
 	};
 }
 
@@ -646,6 +657,75 @@ describe('ListingsService.getPublicDetail (AC-11, AC-12, AC-13, spec 0003 AC-8, 
 		repository.incrementViewCount.mockResolvedValueOnce(null);
 		const detail = await service.getPublicDetail('abcd2345', guest, NOW);
 		expect(detail.viewCount).toBe(7);
+	});
+});
+
+describe('ListingsService.getPublicDetail: điểm phòng (spec 0015 AC-1)', () => {
+	const guest = { ip: '1.2.3.4' };
+	const viewer = { userId: stranger.userId, ip: '1.2.3.4' };
+
+	it('chưa có đánh giá: reviewCount 0, ratingAverage null', async () => {
+		const h = build();
+		const detail = await h.service.getPublicDetail('abcd2345', guest, NOW);
+		expect(detail.reviewCount).toBe(0);
+		expect(detail.ratingAverage).toBeNull();
+	});
+
+	it('hai số lấy từ tin vừa tìm thấy (id của dòng, không phải mã ngắn) và đổi theo dữ liệu', async () => {
+		const h = build({ reviewSummary: { count: 3, starSum: 13 } });
+		const detail = await h.service.getPublicDetail('abcd2345', guest, NOW);
+		expect(h.listingReviews.summarize).toHaveBeenCalledTimes(1);
+		expect(h.listingReviews.summarize).toHaveBeenCalledWith(LISTING_ID);
+		expect(detail.reviewCount).toBe(3);
+		expect(detail.ratingAverage).toBe(4.3);
+	});
+
+	it('khách và người đăng nhập nhận cùng hai số', async () => {
+		const summary = { count: 20, starSum: 87 };
+		const asGuest = await build({
+			reviewSummary: summary,
+		}).service.getPublicDetail('abcd2345', guest, NOW);
+		const asUser = await build({
+			reviewSummary: summary,
+			isFavorite: true,
+		}).service.getPublicDetail('abcd2345', viewer, NOW);
+		expect([asGuest.reviewCount, asGuest.ratingAverage]).toEqual([20, 4.4]);
+		expect([asUser.reviewCount, asUser.ratingAverage]).toEqual([20, 4.4]);
+	});
+
+	it('chủ tin xem tin của mình cũng thấy hai số (không có luật riêng)', async () => {
+		const h = build({ reviewSummary: { count: 1, starSum: 5 } });
+		const detail = await h.service.getPublicDetail(
+			'abcd2345',
+			{ userId: LANDLORD_ID, ip: '1.2.3.4' },
+			NOW,
+		);
+		expect([detail.reviewCount, detail.ratingAverage]).toEqual([1, 5]);
+	});
+
+	it('tin không hiện công khai: 404 và không đọc đánh giá phòng', async () => {
+		const h = build();
+		h.repository.findPublicByCode.mockResolvedValueOnce(null);
+		await expect(
+			h.service.getPublicDetail('abcd2345', guest, NOW),
+		).rejects.toMatchObject({ code: ErrorCode.LISTING_NOT_FOUND });
+		expect(h.listingReviews.summarize).not.toHaveBeenCalled();
+	});
+
+	it('chi tiết riêng của chủ trọ và danh sách thẻ tin không có hai trường này, và không đọc đánh giá phòng', async () => {
+		const h = build({ reviewSummary: { count: 9, starSum: 45 } });
+		const own = await h.service.getOwn(owner, LISTING_ID, NOW);
+		expect(Object.keys(own)).not.toContain('reviewCount');
+		expect(Object.keys(own)).not.toContain('ratingAverage');
+		const page = await h.service.listOwn(
+			owner,
+			{ page: 1, pageSize: 20 },
+			NOW,
+		);
+		expect(Object.keys(page.items[0] ?? {})).not.toContain('reviewCount');
+		const pub = await h.service.listPublic(listQuery(), undefined, NOW);
+		expect(Object.keys(pub.items[0] ?? {})).not.toContain('ratingAverage');
+		expect(h.listingReviews.summarize).not.toHaveBeenCalled();
 	});
 });
 

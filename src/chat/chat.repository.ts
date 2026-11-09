@@ -350,6 +350,28 @@ export class ChatRepository {
 	}
 
 	/**
+	 * Chủ trọ đã trả lời người tìm trọ này về CHÍNH tin này chưa (spec 0015 AC-4, điều kiện được đánh giá phòng): có
+	 * cuộc trò chuyện với `listing_id` là `listingId` và `tenant_id` là `tenantId`, trong đó chủ trọ của cuộc trò chuyện
+	 * (`landlord_id`) đã gửi ít nhất một tin. Cuộc trò chuyện về tin khác, kể cả tin khác của cùng chủ trọ, không tính.
+	 * Chat không bao giờ sửa hay xóa nên điều kiện không mất đi sau khi đạt. Một truy vấn `LIMIT 1`: cuộc trò chuyện
+	 * tra theo khóa duy nhất (`listing_id`, `tenant_id`), tin theo tiền tố `conversation_id` của khóa (`conversation_id`,
+	 * `seq`). Hàm `hasLandlordReplied` của spec 0014 (theo chủ trọ, mọi tin) giữ nguyên.
+	 */
+	async hasLandlordRepliedOnListing(
+		tenantId: string,
+		listingId: string,
+	): Promise<boolean> {
+		const rows = await this.prisma.$queryRaw<{ found: number }[]>`
+			SELECT 1 AS found
+			FROM conversations c
+			JOIN messages m ON m.conversation_id = c.id AND m.sender_id = c.landlord_id
+			WHERE c.listing_id = ${listingId}::uuid
+				AND c.tenant_id = ${tenantId}::uuid
+			LIMIT 1`;
+		return rows.length === 1;
+	}
+
+	/**
 	 * Tin cuối của từng cuộc trò chuyện (`seq` bằng `last_seq`), một truy vấn theo khóa (`conversation_id`, `seq`)
 	 * cho cả trang. Cuộc trò chuyện nào không có tin thì vắng mặt (không xảy ra: mở luôn ghi tin 1).
 	 */

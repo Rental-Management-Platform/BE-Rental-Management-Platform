@@ -87,3 +87,56 @@ describe('mã lỗi của chat (spec 0013)', () => {
 		expect(ErrorCode.CHAT_PEER_UNAVAILABLE).toBe('CHAT_PEER_UNAVAILABLE');
 	});
 });
+
+describe('mã lỗi đánh giá từng phòng (spec 0015)', () => {
+	it.each([
+		[
+			ErrorCode.LISTING_REVIEW_NOT_FOUND,
+			HttpStatus.NOT_FOUND,
+			'Không tìm thấy đánh giá phòng.',
+		],
+		[
+			ErrorCode.LISTING_REVIEW_NOT_ELIGIBLE,
+			HttpStatus.FORBIDDEN,
+			'Bạn chỉ đánh giá được phòng mà chủ trọ đã trả lời tin nhắn của bạn về chính tin này.',
+		],
+		[
+			ErrorCode.LISTING_REVIEW_ALREADY_EXISTS,
+			HttpStatus.CONFLICT,
+			'Bạn đã đánh giá phòng này rồi.',
+		],
+		[
+			ErrorCode.LISTING_REVIEW_HIDDEN,
+			HttpStatus.CONFLICT,
+			'Đánh giá phòng đang bị ẩn nên không sửa được.',
+		],
+		[
+			ErrorCode.LISTING_REVIEW_STATE_INVALID,
+			HttpStatus.CONFLICT,
+			'Đánh giá phòng không ở trạng thái phù hợp cho thao tác này.',
+		],
+	])('%s là %i kèm câu tiếng Việt', (code, status, message) => {
+		expect(ERRORS[code]).toEqual({ status, message });
+	});
+
+	it('giá trị của mỗi mã trùng tên mã: FE dựa vào chuỗi này', () => {
+		for (const name of [
+			'LISTING_REVIEW_NOT_FOUND',
+			'LISTING_REVIEW_NOT_ELIGIBLE',
+			'LISTING_REVIEW_ALREADY_EXISTS',
+			'LISTING_REVIEW_HIDDEN',
+			'LISTING_REVIEW_STATE_INVALID',
+		] as const) {
+			expect(ErrorCode[name]).toBe(name);
+		}
+	});
+
+	it('dùng lại mã có sẵn, không thêm mã trùng nghĩa: LISTING_NOT_FOUND và CANNOT_REVIEW_SELF', () => {
+		expect(ERRORS[ErrorCode.LISTING_NOT_FOUND].status).toBe(
+			HttpStatus.NOT_FOUND,
+		);
+		expect(ERRORS[ErrorCode.CANNOT_REVIEW_SELF].status).toBe(
+			HttpStatus.CONFLICT,
+		);
+	});
+});
