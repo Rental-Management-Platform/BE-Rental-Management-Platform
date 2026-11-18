@@ -15,7 +15,7 @@ Người tìm trọ theo dõi một chủ trọ bằng một lần bấm. Ai cũ
 - Là chủ trọ, tôi muốn thấy số người theo dõi và tổng lượt xem của mình tăng dần, để không bỏ tài khoản đi lập cái mới.
 
 **Acceptance criteria** (hợp đồng build, mỗi điều kiểm được riêng):
-- **AC-1**: `GET /landlords/:id` không cần đăng nhập, trả hồ sơ công khai của một chủ trọ đang hoạt động đúng 7 trường: `id`, `name` (rỗng thì `null`), `joinedAt`, `followerCount`, `totalViewCount`, `publicListingCount`, `isFollowing`. Hồ sơ không có email, số điện thoại hay danh sách người theo dõi. Phản hồi có `Cache-Control: private, no-store`. Khách, token sai hoặc hết hạn vẫn nhận 200 với `isFollowing` là `null` (không bị 401); người đã đăng nhập nhận `true` hoặc `false`.
+- **AC-1**: `GET /landlords/:id` không cần đăng nhập, trả hồ sơ công khai của một chủ trọ đang hoạt động đúng chín trường: `id`, `name` (rỗng thì `null`), `joinedAt`, `followerCount`, `totalViewCount`, `publicListingCount`, `reviewCount`, `ratingAverage`, `isFollowing`. Hai trường `reviewCount` và `ratingAverage` do spec 0014 thêm (lúc spec này build hồ sơ có bảy trường, chưa có hai trường đó); định nghĩa của chúng nằm ở 0014 AC-1. Hồ sơ không có email, số điện thoại hay danh sách người theo dõi. Phản hồi có `Cache-Control: private, no-store`. Khách, token sai hoặc hết hạn vẫn nhận 200 với `isFollowing` là `null` (không bị 401); người đã đăng nhập nhận `true` hoặc `false`.
 - **AC-2**: Id không phải chủ trọ (tài khoản `tenant` hay `admin`, không tồn tại), hoặc chủ trọ đang bị khóa hay đã xóa mềm, bị 404 `LANDLORD_NOT_FOUND`; id sai định dạng UUID bị 400 `INVALID_ID`. Khóa rồi mở khóa chủ trọ thì hồ sơ và các số trở lại như cũ (dòng theo dõi không bị xóa khi khóa).
 - **AC-3**: `followerCount` đếm mỗi người theo dõi đúng một lần và chỉ đếm tài khoản đang hoạt động (`status = active`, chưa xóa mềm). Khóa hoặc xóa mềm một người theo dõi làm số giảm ngay; mở khóa thì số quay lại; bỏ theo dõi làm số giảm một.
 - **AC-4**: `totalViewCount` là tổng `view_count` của mọi tin thuộc mọi nhà trọ của chủ trọ, kể cả tin đang ẩn và tin đã xóa mềm; là số nguyên không âm và không giảm khi ẩn tin, xóa tin hay khi hết dùng thử hoặc hết gói. Cách cộng lượt xem từng tin không đổi (spec 0002 AC-13).
@@ -67,11 +67,13 @@ Hình dạng trả về, **Hồ sơ công khai của chủ trọ** (cả ba API)
   "followerCount": 12,
   "totalViewCount": 1840,
   "publicListingCount": 2,
+  "reviewCount": 3,
+  "ratingAverage": 4.7,
   "isFollowing": false
 }
 ```
 
-`name` là `users.name`, rỗng hoặc chỉ khoảng trắng thì `null`. `isFollowing` là `null` với khách, `true` hoặc `false` với người đã đăng nhập. Số đếm là số nguyên không âm.
+`name` là `users.name`, rỗng hoặc chỉ khoảng trắng thì `null`. `isFollowing` là `null` với khách, `true` hoặc `false` với người đã đăng nhập. Số đếm là số nguyên không âm. `reviewCount` là số đánh giá hiện công khai và `ratingAverage` là số sao trung bình của chính các đánh giá đó, `null` khi chưa có đánh giá nào (spec 0014 AC-1).
 
 Mã lỗi mới (thêm vào `ErrorCode`, kèm câu tiếng Việt, theo 0004):
 
@@ -138,7 +140,7 @@ Mã lỗi mới (thêm vào `ErrorCode`, kèm câu tiếng Việt, theo 0004):
 - Failure case: id của một tenant, của admin, id không tồn tại: 404 `LANDLORD_NOT_FOUND`; id `abc`: 400 `INVALID_ID`; tự theo dõi (sau khi gán quyền cho chủ trọ): 409 `CANNOT_FOLLOW_SELF` và DB không có dòng nào, verifies **AC-2**, **AC-8**
 - Auth/permission: khách `GET` nhận 200 với `isFollowing = null`, token hết hạn cũng vậy; khách `POST` nhận 401; chủ trọ và admin `POST` nhận 403 và không có dòng nào được ghi, verifies **AC-1**, **AC-8**
 - Auth/permission: vượt 60 lần `POST` trong một giờ nhận 429 kèm `Retry-After` trong khi `DELETE` (đếm riêng) vẫn chạy; vượt 300 lần `GET` mỗi phút nhận 429, verifies **AC-9**
-- Phản hồi không lộ: hồ sơ không có khóa nào ngoài 7 trường, không email, không số điện thoại, và có `Cache-Control: private, no-store`, verifies **AC-1**
+- Phản hồi không lộ: hồ sơ không có khóa nào ngoài chín trường của AC-1 (bảy trường lúc spec này build), không email, không số điện thoại, và có `Cache-Control: private, no-store`, verifies **AC-1**
 - Kiểm bằng `EXPLAIN` (không phải test tự động): ba câu truy vấn gộp của hồ sơ ở khoảng 60 nghìn tin và vài chục nghìn dòng theo dõi giả lập; đo một lần, ghi số vào `verify.md`, không chỉnh nếu chậm vì đây là bản demo, verifies **AC-3**, **AC-4**, **AC-5**
 
 ## Build plan

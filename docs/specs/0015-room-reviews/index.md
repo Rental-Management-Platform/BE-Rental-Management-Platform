@@ -234,7 +234,7 @@ Hướng build theo Skateboard (bản mỏng nhất dùng được trước, r�
 - [ ] Hoãn, thêm lại bằng `/scope` khi cần: điểm phòng trên thẻ tin ở bốn danh sách (`GET /listings`, `GET /me/favorites`, `GET /landlords/:id/listings`, `GET /me/listings`) và trên chi tiết riêng của chủ trọ, điểm trung bình các phòng cộng vào hồ sơ chủ trọ, lọc admin theo chủ trọ, đánh giá riêng cho nhà trọ, đánh giá theo phòng mang sang khi đăng lại tin, tách quyền riêng cho đánh giá phòng, và mọi mục đã hoãn ở 0014 (chủ trọ trả lời, phân bố số sao, lọc hoặc sắp theo sao, nút báo cáo, ảnh trong đánh giá, bình chọn "hữu ích", chống đánh giá giả, tìm theo chữ cho admin, giữ lại nội dung đã xóa, thông báo, số đánh giá tối thiểu trước khi hiện điểm).
 - [ ] Sau khi build, `/sync` tạo `src/listing-reviews/AGENTS.md`, ghi bảng `listing_reviews` vào các spec nền móng nếu còn lệch (`0001/0005-postgres-data-conventions.md`), thêm bước `listing_reviews` vào ghi chú về `deleteDemoData` ở `src/chat/AGENTS.md` và `src/database/demo/AGENTS.md` nếu cần.
 - [ ] `AGENTS.md` gốc hiện rỗng (0 byte) nên danh sách kỹ năng cộng đồng ở mục Decision lấy từ spec 0014 và thư mục `.agents/skills/`; cần `/audit` hoặc `/sync` điền lại mục `## Agent skills`.
-- [ ] Mục "Follow-up" của 0014 về dòng AC-1 của spec 0005 (hồ sơ "đúng 7 trường") vẫn còn mở và không thuộc spec này.
+- [x] Đã đóng ngày 2026-11-18 (xem 0014). Mục "Follow-up" của 0014 về dòng AC-1 của spec 0005 (hồ sơ "đúng 7 trường") vẫn còn mở và không thuộc spec này.
 
 ## Rationale
 

@@ -21,14 +21,14 @@ Hồ sơ công khai của chủ trọ (spec 0005) mới chỉ cho biết chủ t
 - **AC-4**: Id không phải chủ trọ đang hoạt động (không tồn tại, là `tenant` hay `admin`, chủ trọ đang bị khóa hoặc đã xóa mềm) bị 404 `LANDLORD_NOT_FOUND`, cùng định nghĩa "chủ trọ hợp lệ" với hồ sơ (spec 0005). Id sai định dạng UUID bị 400 `INVALID_ID`. Khóa rồi mở khóa chủ trọ thì danh sách trở lại như cũ.
 - **AC-5**: `isFavorite` mỗi phần tử là `null` với khách, token sai hoặc hết hạn (không bao giờ 401); là `true` hoặc `false` với người đã đăng nhập, theo dòng lưu của chính họ (chủ trọ và admin đăng nhập nhận `false`). Đúng quy tắc của `GET /listings` (spec 0006 AC-6).
 - **AC-6**: `page` từ 1, `pageSize` từ 1 đến 50; giá trị ngoài biên, hoặc tham số ngoài `page` và `pageSize` (ví dụ `sort`, `q`, `wardCode`), bị 400 `VALIDATION_FAILED`. Trang vượt cuối vẫn 200 với `items` rỗng và `total` đúng.
-- **AC-7**: Phần tử không có số điện thoại, email, `viewCount`, trạng thái hay lý do ẩn. Liệt kê không ghi gì và không cộng lượt xem cho tin nào. Hợp đồng của `GET /landlords/:id` (đúng 7 trường) và của `GET /listings` không đổi.
+- **AC-7**: Phần tử không có số điện thoại, email, `viewCount`, trạng thái hay lý do ẩn. Liệt kê không ghi gì và không cộng lượt xem cho tin nào. Hợp đồng của `GET /landlords/:id` (bảy trường lúc spec này build, nay chín từ spec 0014) và của `GET /listings` không đổi.
 - **AC-8**: Route dùng nhóm giới hạn `publicRead` có sẵn (300 lần mỗi phút theo IP). Vượt thì 429 `RATE_LIMITED` kèm `Retry-After`. Không nhóm giới hạn mới.
 
 ## Decision
 
 **Chosen option**: Option 1: Route lồng dưới hồ sơ, `GET /landlords/:id/listings`, dùng lại truy vấn danh sách công khai với thêm một điều kiện theo chủ trọ
 
-Hồ sơ vẫn trả bảy trường như cũ; danh sách là một API đọc riêng cạnh nó, tra chủ trọ hợp lệ bằng đúng hàm của hồ sơ (404 giống hồ sơ), rồi đọc trang tin bằng `findPublicPage` đã có, thêm điều kiện `p.landlord_id`, nên hai mảnh SQL hiển thị công khai không đổi dòng nào.
+Hồ sơ vẫn trả các trường như cũ (bảy trường lúc spec này build, nay chín từ spec 0014); danh sách là một API đọc riêng cạnh nó, tra chủ trọ hợp lệ bằng đúng hàm của hồ sơ (404 giống hồ sơ), rồi đọc trang tin bằng `findPublicPage` đã có, thêm điều kiện `p.landlord_id`, nên hai mảnh SQL hiển thị công khai không đổi dòng nào.
 
 **Implementation skills**: `nestjs-best-practices` (`kadajett/agent-nestjs-skills`, `.agents/skills/nestjs-best-practices/`) · `supabase-postgres-best-practices` (`supabase/agent-skills`, `.agents/skills/supabase-postgres-best-practices/`) · `prisma-client-api` (`prisma/skills`, `.agents/skills/prisma-client-api/`)
 
@@ -110,7 +110,7 @@ Hình dạng trả về (mỗi phần tử đúng như phần tử của `GET /l
 - `total` dùng cùng điều kiện với `publicListingCount`.
 - `GET` không ghi gì: không cộng lượt xem tin, không đụng `follows` hay `favorites`.
 - `isFavorite` chỉ nói về chính người xem; không API nào lộ ai đã lưu tin nào.
-- Hợp đồng của hồ sơ (7 trường) và của `GET /listings` không đổi.
+- Hợp đồng của hồ sơ và của `GET /listings` không đổi (hồ sơ có bảy trường lúc spec này build, nay chín từ spec 0014).
 
 **Security model**:
 - Công khai, đọc đăng nhập tùy chọn: token sai hay hết hạn coi như khách, không bao giờ 401. Khách thấy đúng những gì `GET /listings` cho khách thấy: không số điện thoại, không email.
@@ -127,7 +127,7 @@ Hình dạng trả về (mỗi phần tử đúng như phần tử của `GET /l
 - Failure case: id của một tenant, của admin, id không tồn tại, chủ trọ bị khóa, chủ trọ xóa mềm: 404 `LANDLORD_NOT_FOUND`; id `abc`: 400 `INVALID_ID`; khóa rồi mở khóa thì danh sách trở lại như cũ, verifies **AC-4**
 - Happy path: khách, token sai, token hết hạn thật, người tìm trọ đã lưu một tin, chủ trọ, admin cùng mở một danh sách: `isFavorite` là `null` cho ba loại đầu, đúng `true` hoặc `false` cho người tìm trọ, `false` cho chủ trọ và admin, không 401, verifies **AC-5**
 - Failure case: `pageSize=51`, `page=0`, `sort=price_asc`, `q=abc`: 400 `VALIDATION_FAILED`; `page` vượt cuối: 200 `items` rỗng, `total` đúng; hai trang liên tiếp không trùng và không sót phần tử, verifies **AC-6**
-- Phản hồi không lộ: không khóa `phone`, `email`, `viewCount`, `status`, `moderationReason` trong phần tử; sau khi gọi danh sách, `view_count` của các tin không đổi; hồ sơ vẫn đúng 7 trường và `GET /listings` không đổi trường nào, verifies **AC-7**
+- Phản hồi không lộ: không khóa `phone`, `email`, `viewCount`, `status`, `moderationReason` trong phần tử; sau khi gọi danh sách, `view_count` của các tin không đổi; route này không đổi trường nào của hồ sơ (bảy trường lúc spec này build, nay chín từ spec 0014) và không đổi trường nào của `GET /listings`, verifies **AC-7**
 - Auth/permission: vượt 300 lần mỗi phút nhận 429 `RATE_LIMITED` kèm `Retry-After`, verifies **AC-8**
 - Điều khiển âm (phá cố ý rồi xem phép kiểm có bắt không): bỏ điều kiện `p.landlord_id` thì lộ tin của chủ trọ khác; bỏ bước tra chủ trọ thì chủ trọ bị khóa nhận 200 thay vì 404; cờ `isFavorite` luôn `false` thì người đã lưu không thấy tim, verifies **AC-2**, **AC-4**, **AC-5**
 - Kiểm bằng `EXPLAIN` (không phải test tự động): danh sách ở khoảng 60 nghìn tin với một chủ trọ nổi có vài trăm tin; đo một lần, ghi số vào `verify.md`, không chỉnh nếu chậm vì đây là bản demo, verifies **AC-2**
@@ -148,7 +148,7 @@ Hướng build theo Skateboard (bản mỏng nhất dùng được trước, r�
 - Một API đọc, không bảng, không migration, không mã lỗi, không biến môi trường, không nhóm giới hạn mới: gọn đúng tinh thần MVP.
 - Danh sách dùng đúng hai mảnh SQL hiển thị công khai nên tự đúng khi tin bị ẩn, chủ trọ bị khóa, hết dùng thử, hết gói hay hạ hạn mức; `total` luôn bằng `publicListingCount`.
 - Phần tử giống hệt thẻ tin của `GET /listings` nên FE dùng lại một component cho hai màn hình, kể cả tim yêu thích.
-- Hồ sơ giữ nguyên bảy trường nên FE đang chạy không bị ảnh hưởng.
+- Route này không đổi hồ sơ (bảy trường lúc spec này build, nay chín từ spec 0014) nên FE đang chạy không bị ảnh hưởng.
 
 **Negative / tradeoffs**:
 - FE phải gọi hai API để dựng trang hồ sơ (hồ sơ rồi danh sách), thay vì một lần.
