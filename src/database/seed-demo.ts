@@ -67,7 +67,7 @@ async function writeImages(
 /**
  * Xóa mọi thứ thuộc các tài khoản demo (nhận ra bằng đuôi email), theo thứ tự các khóa ngoại cho phép, và trả
  * khóa ảnh của chúng để xóa tệp sau khi giao dịch đã xong. Cũng xóa lượt lưu, theo dõi, cuộc trò chuyện (kèm tin
- * nhắn), đánh giá chủ trọ và đánh giá phòng của người thật trỏ vào tin hay chủ trọ demo, vì các dòng đó mất chỗ trỏ tới.
+ * nhắn), đánh giá chủ trọ, đánh giá phòng và lượt xem theo ngày của người thật trỏ vào tin hay chủ trọ demo, vì các dòng đó mất chỗ trỏ tới.
  */
 async function deleteDemoData(tx: Prisma.TransactionClient): Promise<string[]> {
 	const users = await tx.user.findMany({
@@ -173,6 +173,11 @@ async function deleteDemoData(tx: Prisma.TransactionClient): Promise<string[]> {
 	});
 	await tx.conversation.deleteMany({
 		where: { id: { in: conversationIds } },
+	});
+	// Lượt xem theo ngày (spec 0016): khóa ngoại tới `listings` là RESTRICT nên phải xóa trước tin. Xóa theo tin, không
+	// theo dòng do seed tạo, nên các dòng do lượt xem thật của API ghi vào tin demo cũng đi theo.
+	await tx.listingDailyView.deleteMany({
+		where: { listingId: { in: listingIds } },
 	});
 	await tx.listing.deleteMany({ where: { id: { in: listingIds } } });
 	await tx.property.deleteMany({ where: { id: { in: propertyIds } } });
@@ -343,6 +348,10 @@ async function main(): Promise<void> {
 					await tx.listingReview.createMany({
 						data: rows.listingReviews,
 					});
+					// Lượt xem theo ngày (spec 0016): tổng mỗi tin bằng `view_count` đã ghi ở `listings`.
+					await tx.listingDailyView.createMany({
+						data: rows.listingDailyViews,
+					});
 					return old;
 				},
 				{ timeout: 60_000, maxWait: 10_000 },
@@ -357,7 +366,7 @@ async function main(): Promise<void> {
 			(listing) => listing.status === 'visible',
 		).length;
 		console.log(
-			`Dữ liệu demo${existing > 0 ? ' (đã làm mới)' : ''}: ${rows.users.length} tài khoản (${DEMO_LANDLORDS.length} chủ trọ, ${DEMO_TENANTS.length} người tìm trọ), ${rows.properties.length} nhà trọ, ${rows.listings.length} tin (${publicNow} đang ở trạng thái hiện), ${rows.listingImages.length} ảnh, ${rows.orders.length} đơn, ${rows.subscriptions.length} kỳ gói, ${rows.follows.length} lượt theo dõi, ${rows.favorites.length} tin đã lưu, ${rows.reviews.length} đánh giá chủ trọ (${rows.reviews.filter((review) => review.status === 'hidden_by_admin').length} bị admin ẩn), ${rows.listingReviews.length} đánh giá phòng (${rows.listingReviews.filter((review) => review.status === 'hidden_by_admin').length} bị admin ẩn), ${rows.conversations.length} cuộc trò chuyện.`,
+			`Dữ liệu demo${existing > 0 ? ' (đã làm mới)' : ''}: ${rows.users.length} tài khoản (${DEMO_LANDLORDS.length} chủ trọ, ${DEMO_TENANTS.length} người tìm trọ), ${rows.properties.length} nhà trọ, ${rows.listings.length} tin (${publicNow} đang ở trạng thái hiện), ${rows.listingImages.length} ảnh, ${rows.orders.length} đơn, ${rows.subscriptions.length} kỳ gói, ${rows.follows.length} lượt theo dõi, ${rows.favorites.length} tin đã lưu, ${rows.reviews.length} đánh giá chủ trọ (${rows.reviews.filter((review) => review.status === 'hidden_by_admin').length} bị admin ẩn), ${rows.listingReviews.length} đánh giá phòng (${rows.listingReviews.filter((review) => review.status === 'hidden_by_admin').length} bị admin ẩn), ${rows.conversations.length} cuộc trò chuyện, ${rows.listingDailyViews.length} dòng lượt xem theo ngày.`,
 		);
 		for (const warning of warnings) console.warn(`Cảnh báo: ${warning}`);
 		console.log(

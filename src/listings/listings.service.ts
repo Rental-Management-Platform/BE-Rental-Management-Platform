@@ -576,7 +576,10 @@ export class ListingsService {
 				? `ip:${viewer.ip}`
 				: `user:${viewer.userId}`;
 		if (!isOwner && this.views.shouldCount(viewerKey, row.id)) {
-			const counted = await this.repository.incrementViewCount(row.id);
+			const counted = await this.repository.incrementViewCount(
+				row.id,
+				now,
+			);
 			if (counted !== null) viewCount = counted;
 		}
 		// Hai việc đọc độc lập, ngoài giao dịch, chạy song song (spec 0015 AC-1): cờ yêu thích của người xem và hai số

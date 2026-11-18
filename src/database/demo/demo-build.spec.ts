@@ -5,6 +5,7 @@ import { loadAmenitySeed, loadWardSeed } from '../seed-data';
 import { SEED_PLANS } from '../seed-plans';
 import { amenityNameMap, buildDemoRows, demoEmail } from './demo-build';
 import type { DemoPlan, DemoRows } from './demo-build';
+import { vietnamDayOf } from './demo-daily-views';
 import {
 	DEMO_LANDLORDS,
 	DEMO_LISTINGS,
@@ -484,6 +485,48 @@ describe('demo-build: dựng dòng bảng từ nội dung tĩnh', () => {
 		expect(again.favorites.map((row) => row.createdAt)).toEqual(
 			rows.favorites.map((row) => row.createdAt),
 		);
+	});
+
+	it('lượt xem theo ngày: tổng mỗi tin bằng view_count, ngày từ ngày tạo tin đến hôm nay giờ Việt Nam, không trùng cặp (spec 0016 AC-8)', () => {
+		const today = vietnamDayOf(NOW).getTime();
+		const listingIds = new Set(rows.listings.map((row) => row.id));
+		expect(rows.listingDailyViews.length).toBeGreaterThan(0);
+		for (const row of rows.listingDailyViews) {
+			expect(listingIds.has(row.listingId)).toBe(true);
+			expect(Number.isInteger(row.views)).toBe(true);
+			expect(row.views).toBeGreaterThan(0);
+		}
+		const pairs = rows.listingDailyViews.map(
+			(row) => `${row.listingId}|${(row.day as Date).toISOString()}`,
+		);
+		expect(new Set(pairs).size).toBe(pairs.length);
+		for (const listing of rows.listings) {
+			const own = rows.listingDailyViews.filter(
+				(row) => row.listingId === listing.id,
+			);
+			expect(own.reduce((total, row) => total + row.views, 0)).toBe(
+				listing.viewCount,
+			);
+			if (listing.viewCount === 0) expect(own).toHaveLength(0);
+			else expect(own.length).toBeGreaterThan(0);
+			const first = vietnamDayOf(listing.createdAt as Date).getTime();
+			for (const row of own) {
+				const day = (row.day as Date).getTime();
+				expect(day).toBeGreaterThanOrEqual(first);
+				expect(day).toBeLessThanOrEqual(today);
+				expect((day - first) % DAY_MS).toBe(0);
+			}
+		}
+	});
+
+	it('lượt xem theo ngày giống nhau giữa hai lần dựng cùng đầu vào', () => {
+		const again = build();
+		const shape = (table: DemoRows): [string, number][] =>
+			table.listingDailyViews.map((row) => [
+				(row.day as Date).toISOString(),
+				row.views,
+			]);
+		expect(shape(again)).toEqual(shape(rows));
 	});
 
 	it('báo lỗi rõ khi thiếu phường, gói mẫu hoặc admin không cần (không dựng nửa chừng)', () => {

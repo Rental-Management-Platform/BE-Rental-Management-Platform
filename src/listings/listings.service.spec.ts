@@ -607,9 +607,48 @@ describe('ListingsService.getPublicDetail (AC-11, AC-12, AC-13, spec 0003 AC-8, 
 	it('khách mở lần đầu: cộng một lượt và trả số sau khi cộng, phone là null', async () => {
 		const { service, repository } = build();
 		const detail = await service.getPublicDetail('abcd2345', guest, NOW);
-		expect(repository.incrementViewCount).toHaveBeenCalledWith(LISTING_ID);
+		expect(repository.incrementViewCount).toHaveBeenCalledWith(
+			LISTING_ID,
+			NOW,
+		);
 		expect(detail.viewCount).toBe(8);
 		expect(detail.landlord.phone).toBeNull();
+	});
+
+	it('ngày của lượt xem lấy từ `now` của request (không phải đồng hồ máy), cùng giá trị với luật hiển thị (spec 0016 AC-3)', async () => {
+		const { service, repository } = build();
+		const boundary = new Date('2026-10-19T16:59:59.999Z');
+		await service.getPublicDetail('abcd2345', guest, boundary);
+		expect(repository.incrementViewCount).toHaveBeenCalledWith(
+			LISTING_ID,
+			boundary,
+		);
+		expect(repository.findPublicByCode).toHaveBeenCalledWith(
+			'abcd2345',
+			expect.objectContaining({ now: boundary }),
+		);
+	});
+
+	it('lượt không được tính (chủ tin, trùng trong 30 phút) không chạm câu ghi nên không đổi bộ đếm ngày (spec 0016 AC-2)', async () => {
+		const { service, repository } = build();
+		await service.getPublicDetail(
+			'abcd2345',
+			{ userId: LANDLORD_ID, ip: '1.2.3.4' },
+			NOW,
+		);
+		await service.getPublicDetail('abcd2345', guest, NOW);
+		await service.getPublicDetail('abcd2345', guest, NOW);
+		expect(repository.incrementViewCount).toHaveBeenCalledTimes(1);
+	});
+
+	it('ghi lượt xem lỗi thì lỗi đi thẳng ra, không bị bắt hay nuốt (spec 0016 AC-4)', async () => {
+		const { service, repository } = build();
+		repository.incrementViewCount.mockRejectedValueOnce(
+			new Error('integer out of range'),
+		);
+		await expect(
+			service.getPublicDetail('abcd2345', guest, NOW),
+		).rejects.toThrow('integer out of range');
 	});
 
 	it('cùng IP tải lại trong 30 phút không cộng nữa, số lượt là số đã đọc', async () => {

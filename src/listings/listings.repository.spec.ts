@@ -665,3 +665,80 @@ describe('ListingsRepository.findModerationPage (spec 0002 AC-9)', () => {
 		expect(where).not.toHaveProperty('property');
 	});
 });
+
+describe('ListingsRepository.incrementViewCount (spec 0016 AC-1 đến AC-5)', () => {
+	function build(rows: { view_count: number }[]) {
+		const queryRaw = jest.fn(() => Promise.resolve(rows));
+		const repository = new ListingsRepository({
+			$queryRaw: queryRaw,
+		} as unknown as PrismaService);
+		return { repository, queryRaw };
+	}
+
+	it('một câu SQL duy nhất: UPDATE view_count và upsert bộ đếm ngày cùng câu, không giao dịch (AC-1, AC-4)', async () => {
+		const { repository, queryRaw } = build([{ view_count: 8 }]);
+		await repository.incrementViewCount('tin-1', NOW);
+		expect(queryRaw).toHaveBeenCalledTimes(1);
+		const { text } = rawCall(queryRaw);
+		expect(text).toContain('WITH bumped AS ( UPDATE listings');
+		expect(text).toContain('SET view_count = view_count + 1');
+		expect(text).toContain(
+			"AND status = 'visible' AND deleted_at IS NULL RETURNING id, view_count",
+		);
+		expect(text).toContain(
+			'INSERT INTO listing_daily_views (listing_id, day, views)',
+		);
+		expect(text).toContain('ON CONFLICT (listing_id, day)');
+		expect(text).toContain(
+			'DO UPDATE SET views = listing_daily_views.views + 1',
+		);
+		expect(text).toContain('SELECT view_count FROM bumped');
+	});
+
+	it('dòng ngày chỉ chèn từ `bumped`, nên tin không còn visible không để lại dấu vết (AC-2)', async () => {
+		const { repository, queryRaw } = build([]);
+		await repository.incrementViewCount('tin-1', NOW);
+		const { text } = rawCall(queryRaw);
+		expect(text).toContain('FROM bumped ON CONFLICT');
+		expect(text).not.toContain('FROM listings');
+	});
+
+	it('ngày đổi từ `now` bằng AT TIME ZONE với APP_TIME_ZONE; mọi tham số là chuỗi, `now` là ISO có Z (AC-3)', async () => {
+		const { repository, queryRaw } = build([{ view_count: 1 }]);
+		const boundary = new Date('2026-10-19T16:59:59.999Z');
+		await repository.incrementViewCount('tin-1', boundary);
+		const { text, values } = rawCall(queryRaw);
+		expect(text).toContain('(?::timestamptz AT TIME ZONE ?::text)::date');
+		expect(values).toEqual([
+			'tin-1',
+			'2026-10-19T16:59:59.999Z',
+			'Asia/Ho_Chi_Minh',
+		]);
+		expect(values.every((value) => typeof value === 'string')).toBe(true);
+		// Không dùng đồng clock của database cho ngày.
+		expect(text).not.toMatch(/now\(\)|current_date|current_timestamp/i);
+	});
+
+	it('trả view_count sau khi cộng, hoặc null khi không dòng nào đổi', async () => {
+		const counted = build([{ view_count: 42 }]);
+		await expect(
+			counted.repository.incrementViewCount('tin-1', NOW),
+		).resolves.toBe(42);
+		const skipped = build([]);
+		await expect(
+			skipped.repository.incrementViewCount('tin-1', NOW),
+		).resolves.toBeNull();
+	});
+
+	it('lỗi ghi đi thẳng ra, không bị bắt hay nuốt (AC-4)', async () => {
+		const queryRaw = jest.fn(() =>
+			Promise.reject(new Error('integer out of range')),
+		);
+		const repository = new ListingsRepository({
+			$queryRaw: queryRaw,
+		} as unknown as PrismaService);
+		await expect(
+			repository.incrementViewCount('tin-1', NOW),
+		).rejects.toThrow('integer out of range');
+	});
+});

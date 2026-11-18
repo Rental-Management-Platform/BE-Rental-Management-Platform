@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { Prisma } from '../generated/prisma/client';
 import { escapeLike } from '../common/text/escape-like';
+import { APP_TIME_ZONE, toSqlTimestamp } from '../common/time/app-time-zone';
 import { ListingCodeTakenError } from './listing-code';
 import type { ListingSort, ListingStatus } from './listing-status';
 
@@ -448,15 +449,32 @@ export class ListingsRepository {
 	}
 
 	/**
-	 * Cộng một lượt xem bằng một câu `UPDATE` nguyên tử (spec 0002 AC-13) và trả số lượt sau khi cộng, hoặc
-	 * `null` nếu tin không còn `visible` (đã bị ẩn hay xóa ngay giữa lúc đọc và lúc cộng: không cộng).
+	 * Cộng một lượt xem bằng một câu SQL duy nhất (spec 0002 AC-13, sửa bởi spec 0016 AC-1): khối `bumped` cộng
+	 * `view_count`, khối `daily` cộng bộ đếm của ngày giờ Việt Nam chứa `now` (tạo dòng ở lượt đầu của ngày). Một câu
+	 * nên hai số cùng đổi hoặc cùng không đổi, không cần giao dịch; ghi dòng ngày lỗi (ví dụ `views` tràn số) thì cả
+	 * câu lỗi và `view_count` đứng yên. Trả số lượt sau khi cộng, hoặc `null` nếu tin không còn `visible` (đã bị ẩn hay
+	 * xóa ngay giữa lúc đọc và lúc cộng: `bumped` rỗng nên `daily` không chèn gì).
+	 *
+	 * Ngày lấy từ `now` của request (không phải đồng hồ DB) qua `AT TIME ZONE` với `APP_TIME_ZONE`, nên không phụ
+	 * thuộc múi giờ phiên (AC-3). `now` vào dạng chuỗi ISO có `Z`, không truyền `Date` (xem `toSqlTimestamp`). Các lượt
+	 * cùng một tin xếp hàng ở khóa dòng `listings` của `UPDATE`, nên lượt sau thấy dòng ngày lượt trước vừa tạo và rơi
+	 * vào nhánh `DO UPDATE` (AC-5). Câu này là chỗ duy nhất đổi `view_count` ngoài `seed:demo`.
 	 */
-	async incrementViewCount(id: string): Promise<number | null> {
+	async incrementViewCount(id: string, now: Date): Promise<number | null> {
 		const rows = await this.prisma.$queryRaw<{ view_count: number }[]>`
-      UPDATE listings
-      SET view_count = view_count + 1
-      WHERE id = ${id}::uuid AND status = 'visible' AND deleted_at IS NULL
-      RETURNING view_count`;
+			WITH bumped AS (
+				UPDATE listings
+				SET view_count = view_count + 1
+				WHERE id = ${id}::uuid AND status = 'visible' AND deleted_at IS NULL
+				RETURNING id, view_count
+			), daily AS (
+				INSERT INTO listing_daily_views (listing_id, day, views)
+				SELECT id, (${toSqlTimestamp(now)}::timestamptz AT TIME ZONE ${APP_TIME_ZONE}::text)::date, 1
+				FROM bumped
+				ON CONFLICT (listing_id, day)
+				DO UPDATE SET views = listing_daily_views.views + 1
+			)
+			SELECT view_count FROM bumped`;
 		return rows[0]?.view_count ?? null;
 	}
 

@@ -11,6 +11,7 @@ import {
 	DEMO_TENANTS,
 	DEMO_TRIAL_DAYS,
 } from './demo-data';
+import { buildDailyViewRows } from './demo-daily-views';
 import type {
 	DemoFee,
 	DemoListing,
@@ -32,6 +33,12 @@ const MINUTE_MS = 60 * 1000;
 
 /** Hạt giống cố định: chạy lại cùng ngày cho cùng lượt xem, ngày lưu, tin được lưu và ảnh. */
 const DEMO_SEED = 20261023;
+
+/**
+ * Hạt giống riêng của bước chia lượt xem theo ngày (spec 0016 AC-8). Không dùng chung `DEMO_SEED`: bộ số của bước
+ * này không được lấy số nào của bộ dùng chung, để mọi hàng khác của demo giữ nguyên giá trị.
+ */
+const DAILY_VIEWS_SEED = 20261116;
 
 /** Lượt xem mỗi ngày (trung bình) của tin của từng chủ trọ, để số lượt xem trên hồ sơ có chênh lệch thật. */
 const POPULARITY: Readonly<Record<string, number>> = {
@@ -93,6 +100,8 @@ export interface DemoRows {
 	readonly reviews: Prisma.ReviewCreateManyInput[];
 	/** Đánh giá từng phòng (spec 0015), bảng `listing_reviews`. */
 	readonly listingReviews: Prisma.ListingReviewCreateManyInput[];
+	/** Lượt xem theo ngày giờ Việt Nam của từng tin (spec 0016), bảng `listing_daily_views`; tổng mỗi tin bằng `view_count`. */
+	readonly listingDailyViews: Prisma.ListingDailyViewCreateManyInput[];
 }
 
 export function demoEmail(emailName: string): string {
@@ -207,6 +216,7 @@ export function buildDemoRows(
 		messages: [],
 		reviews: [],
 		listingReviews: [],
+		listingDailyViews: [],
 	};
 
 	const usedCodes = new Set<string>();
@@ -843,6 +853,21 @@ export function buildDemoRows(
 			});
 		}
 	}
+
+	// ----- lượt xem theo ngày (spec 0016) -----
+	// Dựng SAU CÙNG và bằng bộ số riêng, để không đổi số ngẫu nhiên nào của mọi phần trên. `view_count` của mỗi tin đã
+	// được đặt ở vòng tin; ở đây chỉ chia nó ra các ngày giờ Việt Nam từ ngày tạo tin đến hôm nay.
+	rows.listingDailyViews.push(
+		...buildDailyViewRows(
+			rows.listings.map((listing, index) => ({
+				id: listingIds[index],
+				createdAt: listingCreated[index],
+				viewCount: listing.viewCount ?? 0,
+			})),
+			now,
+			createRng(DAILY_VIEWS_SEED),
+		),
+	);
 
 	return rows;
 }

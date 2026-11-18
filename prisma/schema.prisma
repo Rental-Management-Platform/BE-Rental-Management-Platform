@@ -254,7 +254,7 @@ model Listing {
   availableFrom DateTime? @map("available_from") @db.Date
   /// CHECK ở migration: visible, hidden_by_owner, hidden_by_admin.
   status        String    @default("visible")
-  /// Chỉ tăng, qua một câu UPDATE nguyên tử (spec 0002 AC-13).
+  /// Chỉ tăng, qua một câu SQL nguyên tử cộng cả bộ đếm ngày `listing_daily_views` (spec 0002 AC-13, sửa bởi spec 0016).
   viewCount     Int       @default(0) @map("view_count")
   /// Dẫn xuất: toSearchKey(tiêu đề, tên nhà trọ, địa chỉ, tên phường). Ba đường cập nhật duy nhất (spec 0002).
   searchKey     String    @map("search_key")
@@ -270,6 +270,8 @@ model Listing {
   conversations Conversation[]
   /// Đánh giá của người tìm trọ về phòng trong tin này (spec 0015); hiện và biến cùng lúc với tin.
   reviews       ListingReview[]
+  /// Số lượt xem đã tính theo ngày giờ Việt Nam (spec 0016). Chỉ ghi qua câu SQL thô ở Repository; hàng 26 sẽ đọc.
+  dailyViews    ListingDailyView[]
 
   // Hai chỉ mục một phần (created_at DESC, id DESC) và (price, id) cho điều kiện hiển thị viết SQL ở migration.
   @@index([propertyId], map: "listings_property_id_idx")
@@ -515,4 +517,22 @@ model ListingReview {
   // Danh sách trên chi tiết tin và hai con số: mới nhất trước.
   @@index([listingId, createdAt(sort: Desc), id(sort: Desc)], map: "listing_reviews_listing_id_created_at_idx")
   @@map("listing_reviews")
+}
+
+/// Số lượt xem đã tính của một tin trong một ngày lịch giờ Việt Nam (spec 0016). Mỗi cặp (tin, ngày) một dòng; dòng chỉ
+/// được tạo ở lượt đầu của ngày rồi chỉ tăng `views`, nên không có dòng cho ngày không có lượt nào. Không lưu người xem hay IP.
+/// Việc ghi là SQL thô (CTE ghi dữ liệu cùng câu cộng `view_count`); model này phục vụ migration và việc đọc ở hàng 26.
+model ListingDailyView {
+  /// Tin được xem. Khóa ngoại RESTRICT: tin chỉ xóa mềm nên lịch sử đi theo tin.
+  listingId String   @map("listing_id") @db.Uuid
+  /// Ngày lịch giờ Việt Nam của `now` trong request (APP_TIME_ZONE), chốt thành `date` lúc ghi.
+  day       DateTime @db.Date
+  /// Số lượt đã tính trong ngày đó (CHECK listing_daily_views_views_check ở migration: views > 0).
+  views     Int
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Restrict, map: "listing_daily_views_listing_id_fk")
+
+  // Khóa chính cũng là đích của ON CONFLICT và chỉ mục cho việc quét theo khoảng ngày của một tin.
+  @@id([listingId, day], map: "listing_daily_views_pkey")
+  @@map("listing_daily_views")
 }
