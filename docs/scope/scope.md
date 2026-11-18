@@ -41,7 +41,7 @@ _Đây là các khuyến nghị để việc làm gọn gàng, không phải yê
 | 22 | Đánh giá trọ trên hồ sơ chủ trọ | Release 22 | done |
 | 24 | Đánh giá từng phòng trọ | Release 24 | done |
 | 25 | Lượt xem theo ngày | Release 25 | done |
-| 26 | Thống kê cho chủ trọ | Release 26 | in-progress |
+| 26 | Thống kê cho chủ trọ | Release 26 | done |
 | 27 | Admin: thống kê tổng quan | Release 27 | planned |
 | 28 | Admin: doanh thu theo chủ trọ, đơn chờ và đơn hủy | Release 28 | planned |
 | 23 | Đóng gói Docker và phát hành | Release 23 | planned |
@@ -320,13 +320,13 @@ Spec [0016](../specs/0016-daily-listing-views/index.md) (8 AC, 2 mốc, đã đ�
 
 ## Release 26: thống kê cho chủ trọ
 
-### 26. Thống kê cho chủ trọ · in-progress
+### 26. Thống kê cho chủ trọ · done
 Chủ trọ mở một màn hình là thấy mọi con số của mình, do BE tính sẵn để FE chỉ hiển thị: tin theo trạng thái (đang hiện, tự ẩn, admin ẩn, bị ẩn bớt do hạn mức), tổng lượt xem và top tin xem nhiều, mức quan tâm (lượt lưu, người theo dõi mới, điểm đánh giá chủ trọ và phòng), chat (cuộc trò chuyện, tin chưa đọc, tỷ lệ cuộc trò chuyện đã được trả lời), cùng gói, hạn mức đã dùng và tiền đã chi. Bạn chọn bản đầy đủ ngày 2026-11-16, thay cho mục "thống kê cho chủ trọ" từng hoãn ngày 2026-10-11. Dùng khoảng ngày và giờ Việt Nam như hàng 17, mỗi con số kèm số của kỳ liền trước và phần trăm đổi, và có chuỗi theo ngày để vẽ biểu đồ (lượt xem theo ngày cần hàng 25). Đã thiết kế đầy đủ ở spec 0017 (15 AC, 2 mốc), bạn Accept ngày 2026-11-16: một route `GET /me/statistics` do BE tính sẵn lúc đọc từ các bảng có sẵn, không bảng hay cột mới; khóa quyền mới `statistic:read` (migration thêm cho chủ trọ) cộng kiểm loại tài khoản chủ trọ trong Service; khoảng ngày giờ Việt Nam mặc định 30 ngày và tối đa 366 ngày, kỳ trước cùng độ dài liền sát trước; số theo kỳ có `previous` và `changePercent` (`null` khi kỳ trước bằng 0), còn số trạng thái hiện tại (tin theo trạng thái, hạn mức, điểm đánh giá) không có kỳ trước vì lịch sử trạng thái không được lưu; chuỗi theo ngày điền đủ ngày; tỉ lệ chat được trả lời so bằng điểm phần trăm.
 **Done when:** chủ trọ đã đăng nhập xem được thống kê của chính mình theo một khoảng ngày giờ Việt Nam, đủ các nhóm trên; mỗi con số kèm số kỳ trước và phần trăm đổi do BE tính (kỳ trước bằng 0 thì không chia cho 0); mọi con số khớp với phép đếm tay từ dòng thô, kể cả khi có tin ẩn, tin xóa mềm và gói hết hạn; chủ trọ không bao giờ thấy số của người khác; tài khoản không phải chủ trọ bị từ chối.
 - [x] Design it (spec): `/architect landlord statistics`
-- [ ] Build it: `/develop landlord statistics`
+- [x] Build it: `/develop landlord statistics`
    - [x] Mốc 1: đường chạy thông và số liệu cốt lõi: quyền `statistic:read` kèm migration, khoảng ngày và phần trăm đổi, `GET /me/statistics` với tin theo trạng thái, hạn mức, lượt xem, top tin và cột `views` của chuỗi, kiểm thật và tài liệu FE (AC-1 đến AC-7, AC-12 phần cột `views`, AC-13 đến AC-15)
-   - [ ] Mốc 2: quan tâm, đánh giá, chat, chi tiêu và ba cột còn lại của chuỗi, kiểm thật và tài liệu FE (AC-8 đến AC-12, rà lại AC-1 đến AC-15)
+   - [x] Mốc 2: quan tâm, đánh giá, chat, chi tiêu và ba cột còn lại của chuỗi, kiểm thật và tài liệu FE (AC-8 đến AC-12, rà lại AC-1 đến AC-15)
 Spec [0017](../specs/0017-landlord-statistics/index.md) (15 AC, 2 mốc, đã được bạn Accept ngày 2026-11-16; trạng thái spec đi theo tính năng) · code in `src/statistics/`, `src/common/auth/`, `prisma/` · tài liệu in `docs/api/`
 
 ## Release 27: thống kê tổng quan cho admin

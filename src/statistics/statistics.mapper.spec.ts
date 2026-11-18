@@ -3,6 +3,7 @@ import {
 	splitByPeriod,
 	toListingBuckets,
 	toPeriodResponse,
+	toRatingBlock,
 	toSeries,
 } from './statistics.mapper';
 
@@ -128,9 +129,17 @@ describe('splitByPeriod (spec 0017 AC-3, AC-6, AC-12)', () => {
 	});
 });
 
+const NO_DAYS: ReadonlyMap<string, number> = new Map();
+const columns = (views: ReadonlyMap<string, number>) => ({
+	views,
+	newFavorites: NO_DAYS,
+	newFollowers: NO_DAYS,
+	newConversations: NO_DAYS,
+});
+
 describe('toSeries (spec 0017 AC-12)', () => {
 	it('đủ days phần tử, ngày tăng dần, ngày không có lượt thì 0', () => {
-		const series = toSeries(PERIOD, new Map([['2026-11-12', 5]]));
+		const series = toSeries(PERIOD, columns(new Map([['2026-11-12', 5]])));
 		expect(series).toHaveLength(7);
 		expect(series.map((point) => point.date)).toEqual([
 			'2026-11-10',
@@ -155,7 +164,7 @@ describe('toSeries (spec 0017 AC-12)', () => {
 			],
 			PERIOD,
 		);
-		const total = toSeries(PERIOD, split.byDate).reduce(
+		const total = toSeries(PERIOD, columns(split.byDate)).reduce(
 			(sum, point) => sum + point.views,
 			0,
 		);
@@ -163,14 +172,112 @@ describe('toSeries (spec 0017 AC-12)', () => {
 		expect(total).toBe(5);
 	});
 
-	it('khoảng 1 ngày ra 1 phần tử', () => {
+	it('khoảng 1 ngày ra 1 phần tử, đủ năm khóa và mọi số bằng 0', () => {
 		const one = resolveStatPeriod(
 			{ from: '2026-11-16', to: '2026-11-16' },
 			NOON,
 		);
-		expect(toSeries(one, new Map())).toEqual([
-			{ date: '2026-11-16', views: 0 },
+		expect(toSeries(one, columns(NO_DAYS))).toEqual([
+			{
+				date: '2026-11-16',
+				views: 0,
+				newFavorites: 0,
+				newFollowers: 0,
+				newConversations: 0,
+			},
 		]);
+	});
+
+	it('bốn cột độc lập: mỗi cột lấy đúng bản đồ ngày của nó, ngày thiếu ở cột nào thì cột đó là 0 (spec 0017 AC-12)', () => {
+		const series = toSeries(PERIOD, {
+			views: new Map([['2026-11-10', 4]]),
+			newFavorites: new Map([['2026-11-11', 2]]),
+			newFollowers: new Map([['2026-11-12', 7]]),
+			newConversations: new Map([['2026-11-10', 1]]),
+		});
+		expect(series[0]).toEqual({
+			date: '2026-11-10',
+			views: 4,
+			newFavorites: 0,
+			newFollowers: 0,
+			newConversations: 1,
+		});
+		expect(series[1]).toMatchObject({ newFavorites: 2, views: 0 });
+		expect(series[2]).toMatchObject({ newFollowers: 7, views: 0 });
+		expect(Object.keys(series[0] ?? {})).toEqual([
+			'date',
+			'views',
+			'newFavorites',
+			'newFollowers',
+			'newConversations',
+		]);
+	});
+
+	it('tổng của từng cột bằng value của lần tách kỳ cùng nguồn, kể cả khi kỳ trước có dòng (spec 0017 AC-12)', () => {
+		const rows = (counts: [string, number][]) =>
+			splitByPeriod(
+				counts.map(([day, count]) => ({ day, count })),
+				PERIOD,
+			);
+		const favorites = rows([
+			['2026-11-05', 9], // kỳ trước: không vào chuỗi
+			['2026-11-10', 1],
+			['2026-11-16', 2],
+		]);
+		const conversations = rows([
+			['2026-11-12', 3],
+			['2026-11-13', 4],
+		]);
+		const series = toSeries(PERIOD, {
+			views: NO_DAYS,
+			newFavorites: favorites.byDate,
+			newFollowers: NO_DAYS,
+			newConversations: conversations.byDate,
+		});
+		const sum = (key: 'newFavorites' | 'newConversations') =>
+			series.reduce((total, point) => total + point[key], 0);
+		expect(sum('newFavorites')).toBe(favorites.value);
+		expect(sum('newFavorites')).toBe(3);
+		expect(favorites.previous).toBe(9);
+		expect(sum('newConversations')).toBe(conversations.value);
+		expect(sum('newConversations')).toBe(7);
+	});
+});
+
+describe('toRatingBlock (spec 0017 AC-9)', () => {
+	const none = splitByPeriod([], PERIOD);
+
+	it('chưa có đánh giá nào: average là null, count 0, newInRange toàn 0 và changePercent null', () => {
+		expect(toRatingBlock({ count: 0, starSum: 0 }, none)).toEqual({
+			average: null,
+			count: 0,
+			newInRange: { value: 0, previous: 0, changePercent: null },
+		});
+	});
+
+	it('average dùng averageStars bằng số nguyên: 87 sao trên 20 đánh giá ra 4.4 (nửa làm tròn lên, không phải 4.3)', () => {
+		expect(toRatingBlock({ count: 20, starSum: 87 }, none).average).toBe(
+			4.4,
+		);
+		expect(toRatingBlock({ count: 12, starSum: 55 }, none).average).toBe(
+			4.6,
+		);
+		expect(toRatingBlock({ count: 1, starSum: 5 }, none).average).toBe(5);
+	});
+
+	it('newInRange là Metric của đánh giá mới trong kỳ so với kỳ trước, độc lập với count và average', () => {
+		const split = splitByPeriod(
+			[
+				{ day: '2026-11-04', count: 4 },
+				{ day: '2026-11-11', count: 5 },
+			],
+			PERIOD,
+		);
+		expect(toRatingBlock({ count: 20, starSum: 84 }, split)).toEqual({
+			average: 4.2,
+			count: 20,
+			newInRange: { value: 5, previous: 4, changePercent: 25 },
+		});
 	});
 });
 

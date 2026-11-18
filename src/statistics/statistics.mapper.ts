@@ -1,5 +1,7 @@
+import { averageStars } from '../reviews/reviews.mapper';
 import type {
 	ListingBucketsResponse,
+	RatingBlockResponse,
 	SeriesPointResponse,
 	StatisticsPeriodResponse,
 	TopListingResponse,
@@ -9,6 +11,7 @@ import type {
 	ListingCounts,
 	TopListingRow,
 } from './statistics.repository';
+import { toMetric } from './stat-metric';
 import type { ResolvedStatPeriod } from './stat-period';
 
 /** Phần `period` của phản hồi: bỏ danh sách `dates` chỉ dùng để dựng chuỗi. */
@@ -82,12 +85,45 @@ export function splitByPeriod(
 	return { value, previous, byDate };
 }
 
-/** Chuỗi theo ngày đủ `days` phần tử, mỗi ngày từ `from` đến `to`, ngày không có lượt thì 0 (spec 0017 AC-12). */
+/** Bốn cột của chuỗi, mỗi cột là các số theo ngày của kỳ này (`PeriodSplit.byDate`). */
+export interface SeriesColumns {
+	readonly views: ReadonlyMap<string, number>;
+	readonly newFavorites: ReadonlyMap<string, number>;
+	readonly newFollowers: ReadonlyMap<string, number>;
+	readonly newConversations: ReadonlyMap<string, number>;
+}
+
+/**
+ * Chuỗi theo ngày đủ `days` phần tử, mỗi ngày từ `from` đến `to`, ngày không có gì thì mọi số bằng 0 (spec 0017 AC-12).
+ * Mỗi cột lấy từ `byDate` của cùng lần tách kỳ đã cho `value` của Metric tương ứng, nên tổng cột luôn bằng `value`.
+ */
 export function toSeries(
 	period: ResolvedStatPeriod,
-	views: ReadonlyMap<string, number>,
+	columns: SeriesColumns,
 ): SeriesPointResponse[] {
-	return period.dates.map((date) => ({ date, views: views.get(date) ?? 0 }));
+	return period.dates.map((date) => ({
+		date,
+		views: columns.views.get(date) ?? 0,
+		newFavorites: columns.newFavorites.get(date) ?? 0,
+		newFollowers: columns.newFollowers.get(date) ?? 0,
+		newConversations: columns.newConversations.get(date) ?? 0,
+	}));
+}
+
+/**
+ * Khối điểm của một đối tượng được đánh giá (spec 0017 AC-9). `average` tính bằng số nguyên bằng `averageStars` (cùng hàm
+ * với hồ sơ chủ trọ và chi tiết tin, nên cùng cách làm tròn nửa lên), `null` khi chưa có đánh giá nào. `newInRange` đếm
+ * đánh giá mới trong khoảng, kèm kỳ trước.
+ */
+export function toRatingBlock(
+	total: { readonly count: number; readonly starSum: number },
+	inRange: PeriodSplit,
+): RatingBlockResponse {
+	return {
+		average: averageStars(total.count, total.starSum),
+		count: total.count,
+		newInRange: toMetric(inRange.value, inRange.previous),
+	};
 }
 
 export function toTopListing(row: TopListingRow): TopListingResponse {

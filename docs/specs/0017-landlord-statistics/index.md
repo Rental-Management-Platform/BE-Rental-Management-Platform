@@ -1,7 +1,7 @@
 # 0017. Thống kê cho chủ trọ
 
 **Date**: 2026-11-16
-**Status**: In Progress
+**Status**: Accepted
 
 ## Summary
 

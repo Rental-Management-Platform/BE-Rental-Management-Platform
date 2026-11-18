@@ -6,6 +6,7 @@ import {
 	localDateOf,
 	MAX_STAT_DAYS,
 	resolveStatPeriod,
+	toRangeBounds,
 } from './stat-period';
 
 /** Giữa trưa giờ Việt Nam ngày 16/11/2026 (05:00 UTC). */
@@ -227,5 +228,50 @@ describe('resolveStatPeriod: độ dài và kỳ trước (spec 0017 AC-2, AC-3)
 		expect(resolveStatPeriod({}, NOON)).toEqual(
 			resolveStatPeriod({}, NOON),
 		);
+	});
+});
+
+describe('toRangeBounds (spec 0017 AC-8 đến AC-13)', () => {
+	it('start là nửa đêm giờ Việt Nam của previousFrom, end là nửa đêm giờ Việt Nam của ngày sau to, chuỗi ISO có Z', () => {
+		const bounds = toRangeBounds(
+			resolveStatPeriod({ from: '2026-10-18', to: '2026-11-16' }, NOON),
+		);
+		// previousFrom là 2026-09-18, ngày sau to là 2026-11-17; nửa đêm giờ Việt Nam là 17:00 UTC ngày hôm trước.
+		expect(bounds).toEqual({
+			start: '2026-09-17T17:00:00.000Z',
+			end: '2026-11-16T17:00:00.000Z',
+		});
+	});
+
+	it('so chặt đúng ranh: 16:59:59.999Z của ngày to còn trong khoảng, 17:00:00.000Z thì ra ngoài', () => {
+		const { end } = toRangeBounds(
+			resolveStatPeriod({ from: '2026-11-16', to: '2026-11-16' }, NOON),
+		);
+		const lastMoment = Date.parse('2026-11-16T16:59:59.999Z');
+		const nextDay = Date.parse('2026-11-16T17:00:00.000Z');
+		expect(lastMoment < Date.parse(end)).toBe(true);
+		expect(nextDay < Date.parse(end)).toBe(false);
+	});
+
+	it('kỳ trước chạm tháng 2 năm nhuận: previousFrom 2024-02-20 đổi ra 2024-02-19T17:00:00.000Z', () => {
+		const bounds = toRangeBounds(
+			resolveStatPeriod({ from: '2024-03-01', to: '2024-03-10' }, NOON),
+		);
+		expect(bounds.start).toBe('2024-02-19T17:00:00.000Z');
+		expect(bounds.end).toBe('2024-03-10T17:00:00.000Z');
+	});
+
+	it('khoảng 1 ngày phủ đúng hai ngày: ngày đó và ngày liền trước', () => {
+		const { start, end } = toRangeBounds(
+			resolveStatPeriod({ from: '2026-11-16', to: '2026-11-16' }, NOON),
+		);
+		expect(Date.parse(end) - Date.parse(start)).toBe(2 * 86_400_000);
+	});
+
+	it('không phụ thuộc múi giờ của máy chạy test: kết quả chỉ là chuỗi ISO có Z', () => {
+		const { start, end } = toRangeBounds(resolveStatPeriod({}, NOON));
+		const iso = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
+		expect(start).toMatch(iso);
+		expect(end).toMatch(iso);
 	});
 });

@@ -49,3 +49,40 @@ export function ratePercent(part: number, whole: number): number | null {
 export function toMetric(value: number, previous: number): Metric {
 	return { value, previous, changePercent: percentChange(value, previous) };
 }
+
+/** Hai số của hai kỳ (kỳ này và kỳ liền trước) của một đại lượng đếm, đầu vào của tỉ lệ theo kỳ. */
+export type PeriodPair = Pick<Metric, 'value' | 'previous'>;
+
+/**
+ * Một tỉ lệ theo kỳ (spec 0017 AC-10): `value` và `previous` là phần trăm một chữ số thập phân của từng kỳ, `null` khi
+ * kỳ đó không có mẫu số; `changePoints` là hiệu theo điểm phần trăm (không phải phần trăm đổi), `null` khi một trong hai
+ * là `null`.
+ */
+export interface RateMetric {
+	readonly value: number | null;
+	readonly previous: number | null;
+	readonly changePoints: number | null;
+}
+
+/**
+ * Hiệu `value − previous` của hai tỉ lệ một chữ số thập phân, tính trên số nguyên phần mười (không trừ số thực nên
+ * không có 0,1 + 0,2): `null` khi một trong hai là `null`; hai số bằng nhau ra `0`, không bao giờ `-0`.
+ */
+export function pointsChange(
+	value: number | null,
+	previous: number | null,
+): number | null {
+	if (value === null || previous === null) return null;
+	const tenths = Math.round(value * 10) - Math.round(previous * 10);
+	return tenths === 0 ? 0 : tenths / 10;
+}
+
+/**
+ * Tỉ lệ `part ÷ whole × 100` của từng kỳ cùng điểm đổi giữa hai kỳ (spec 0017 AC-10). Kỳ không có mẫu số (không mở cuộc
+ * trò chuyện nào) thì tỉ lệ kỳ đó là `null`, không phải 0%.
+ */
+export function toRateMetric(part: PeriodPair, whole: PeriodPair): RateMetric {
+	const value = ratePercent(part.value, whole.value);
+	const previous = ratePercent(part.previous, whole.previous);
+	return { value, previous, changePoints: pointsChange(value, previous) };
+}

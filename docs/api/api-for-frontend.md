@@ -88,7 +88,7 @@ Mỗi tài khoản chỉ thuộc **một** loại, chọn lúc đăng ký và **
 | Chat giữa người tìm trọ và chủ trọ: mở cuộc trò chuyện từ một tin, gửi tin, đọc tin theo con trỏ `seq`, chi tiết, hộp thư, đếm tin chưa đọc và đánh dấu đã đọc (`POST /listings/:id/conversations`, `POST` và `GET /conversations/:id/messages`, `GET /conversations/:id`, `GET /me/conversations`, `GET /me/conversations/unread-count`, `POST /conversations/:id/read`). Hỏi lại bằng REST, chưa có kênh đẩy | Có (mới, 2026-11-05, mục 6.39) |
 | Đánh giá chủ trọ: người tìm trọ đã được chủ trọ trả lời trong chat viết, sửa, xóa một đánh giá (số sao 1 đến 5, nhận xét tùy chọn); danh sách đánh giá công khai; điểm trung bình và số đánh giá trên hồ sơ chủ trọ; admin tìm, ẩn và gỡ ẩn đánh giá kèm lý do (`GET /landlords/:id/reviews`, `GET`, `POST`, `PATCH`, `DELETE /landlords/:id/review`, `GET /moderation/reviews`, `POST /moderation/reviews/:id/hide` và `/unhide`) | Có (mới, 2026-11-07, mục 6.40) |
 | Đánh giá từng phòng: người tìm trọ đã được chủ trọ trả lời về chính tin đó viết, sửa, xóa một đánh giá phòng (số sao 1 đến 5, nhận xét tùy chọn); danh sách đánh giá của tin; điểm trung bình và số đánh giá của phòng trên chi tiết tin (`GET /listings/:id/reviews`, `GET`, `POST`, `PATCH`, `DELETE /listings/:id/review`, hai trường `reviewCount` và `ratingAverage` ở `GET /listings/:slugCode`). Admin tìm, ẩn và gỡ ẩn đánh giá phòng kèm lý do (`GET /moderation/listing-reviews`, `POST /moderation/listing-reviews/:id/hide` và `/unhide`) | Có (mới, 2026-11-09, mục 6.41) |
-| Thống kê cho chủ trọ, mốc 1: tin theo trạng thái và hạn mức, lượt xem kèm kỳ trước và phần trăm đổi, top tin xem nhiều, chuỗi lượt xem theo ngày giờ Việt Nam (`GET /me/statistics`) | Có (mới, 2026-11-16, mục 6.42; các khối lưu và theo dõi, đánh giá, chat, tiền đã chi thêm ở mốc 2) |
+| Thống kê cho chủ trọ: tin theo trạng thái và hạn mức, lượt xem và top tin, lượt lưu và người theo dõi, điểm đánh giá, chat, tiền đã chi, mỗi số theo kỳ kèm kỳ trước và phần trăm đổi, chuỗi theo ngày giờ Việt Nam (`GET /me/statistics`) | Có (mới, mục 6.42: mốc 1 ngày 2026-11-16, mốc 2 ngày 2026-11-18) |
 
 ---
 
@@ -2422,9 +2422,9 @@ Ba API kiểm duyệt **không có giới hạn tần suất thêm**. Admin ẩn
 
 `GET /me/statistics` · quyền `statistic:read` (chủ trọ có sẵn quyền này, người tìm trọ không có) và phải là tài khoản `landlord`
 
-Một lần gọi cho cả màn hình thống kê của chủ trọ: tin của mình đang ở trạng thái nào, được xem bao nhiêu, tin nào xem nhiều nhất, và chuỗi theo ngày để vẽ biểu đồ. **BE tính sẵn mọi con số, mọi phần trăm đổi và chuỗi đã điền đủ ngày; FE chỉ hiển thị, không tự tính.** Luôn trả số liệu của chính người gọi (lấy theo access token), không có tham số nào mang id chủ trọ. API chỉ đọc. Phản hồi có `Cache-Control: private, no-store`.
+Một lần gọi cho cả màn hình thống kê của chủ trọ: tin của mình đang ở trạng thái nào, được xem bao nhiêu, tin nào xem nhiều nhất, được lưu và theo dõi bao nhiêu, điểm đánh giá, chat ra sao, đã chi bao nhiêu, và chuỗi theo ngày để vẽ biểu đồ. **BE tính sẵn mọi con số, mọi phần trăm đổi và chuỗi đã điền đủ ngày; FE chỉ hiển thị, không tự tính.** Luôn trả số liệu của chính người gọi (lấy theo access token), không có tham số nào mang id chủ trọ. API chỉ đọc. Phản hồi có `Cache-Control: private, no-store`.
 
-> **Hiện mới có năm khối (mốc 1, 2026-11-16):** `period`, `listings`, `membership`, `views`, `series`. Các khối `interest` (lưu và theo dõi), `ratings` (đánh giá), `chat`, `spending` (tiền đã chi) và ba cột `newFavorites`, `newFollowers`, `newConversations` của `series` sẽ thêm ở mốc 2. **Chúng chưa có trong phản hồi**; FE đừng đọc chúng bây giờ và hãy để màn hình chịu được khóa mới xuất hiện sau này (đọc theo tên khóa, không đếm khóa).
+> **Phản hồi có đúng chín khối** (đủ từ mốc 2, 2026-11-18): `period`, `listings`, `membership`, `views`, `interest`, `ratings`, `chat`, `spending`, `series`. Ở mốc 1 (2026-11-16) mới có năm khối đầu và `series` chỉ có cột `views`; nay bốn khối còn lại và ba cột `newFavorites`, `newFollowers`, `newConversations` đã có.
 
 | Query | Kiểu | Mặc định | Luật |
 |---|---|---|---|
@@ -2458,9 +2458,32 @@ Một lần gọi cho cả màn hình thống kê của chủ trọ: tin của m
       }
     ]
   },
+  "interest": {
+    "newFavorites": { "value": 9, "previous": 6, "changePercent": 50 },
+    "newFollowers": { "value": 4, "previous": 4, "changePercent": 0 },
+    "totalFavorites": 31,
+    "totalFollowers": 17
+  },
+  "ratings": {
+    "landlord": { "average": 4.6, "count": 12, "newInRange": { "value": 3, "previous": 0, "changePercent": null } },
+    "rooms": { "average": 4.2, "count": 20, "newInRange": { "value": 5, "previous": 4, "changePercent": 25 } }
+  },
+  "chat": {
+    "conversationsOpened": { "value": 8, "previous": 5, "changePercent": 60 },
+    "repliedConversations": { "value": 6, "previous": 4, "changePercent": 50 },
+    "replyRate": { "value": 75, "previous": 80, "changePoints": -5 },
+    "totalConversations": 41,
+    "unreadConversations": 2,
+    "unreadMessages": 5
+  },
+  "spending": {
+    "spent": { "value": 199000, "previous": 0, "changePercent": null },
+    "paidOrders": { "value": 1, "previous": 0, "changePercent": null },
+    "spentAllTime": 398000
+  },
   "series": [
-    { "date": "2026-10-18", "views": 3 },
-    { "date": "2026-10-19", "views": 0 }
+    { "date": "2026-10-18", "views": 3, "newFavorites": 0, "newFollowers": 1, "newConversations": 0 },
+    { "date": "2026-10-19", "views": 0, "newFavorites": 0, "newFollowers": 0, "newConversations": 0 }
   ]
 }
 ```
@@ -2473,9 +2496,24 @@ Một lần gọi cho cả màn hình thống kê của chủ trọ: tin của m
 | `views.inRange` | Một **Metric** (xem dưới): tổng lượt xem của **mọi** tin của chủ trọ (kể cả tin đang ẩn và đã xóa mềm) trong khoảng, kèm số của kỳ trước |
 | `views.allTime` | Tổng lượt xem từ trước đến nay của mọi tin, kể cả ẩn và xóa mềm. Bằng `totalViewCount` của hồ sơ chủ trọ (6.31). **Số này không có kỳ trước** |
 | `views.top` | Tối đa 5 tin **chưa xóa mềm** có lượt xem trong khoảng lớn hơn 0, xếp lượt giảm dần (bằng nhau thì tin đăng muộn hơn trước). Không có tin nào có lượt thì là `[]`. `viewsInRange` là lượt trong khoảng, `viewsAllTime` là lượt từ trước đến nay. `status` là `visible`, `hidden_by_owner` hoặc `hidden_by_admin`. `isPublic` cùng nghĩa với `isPublic` của `GET /me/listings` (6.21) |
-| `series` | Đúng `days` phần tử, mỗi ngày từ `from` đến `to` một phần tử, **ngày tăng dần**; ngày không có lượt thì `views` bằng 0. FE **không phải điền ô trống**. Tổng cột `views` luôn bằng `views.inRange.value` |
+| `interest.newFavorites` | Một **Metric**: số lượt lưu mới trên **mọi** tin của chủ trọ (kể cả tin đang ẩn và đã xóa mềm) có thời điểm lưu trong khoảng, kèm kỳ trước |
+| `interest.newFollowers` | Một **Metric**: số người theo dõi mới trong khoảng, kèm kỳ trước. Chỉ người theo dõi là tài khoản đang hoạt động (không bị khóa hay xóa), cùng luật với `followerCount` của hồ sơ |
+| `interest.totalFavorites`, `interest.totalFollowers` | Số hiện tại, đếm cùng điều kiện nhưng không có khoảng ngày. `totalFollowers` bằng `followerCount` của hồ sơ chủ trọ (6.31). **Không có kỳ trước** |
+| `ratings.landlord` | Điểm của **chính chủ trọ** (đánh giá ở hồ sơ, 6.40): `count` và `average` tính trên các đánh giá đang hiện của người viết còn hoạt động, bằng `reviewCount` và `ratingAverage` của hồ sơ. `average` là số sao trung bình **một chữ số thập phân**, `null` khi chưa có đánh giá nào. `newInRange` là một **Metric** các đánh giá mới trong khoảng |
+| `ratings.rooms` | Điểm của **các phòng** (đánh giá ở chi tiết tin, 6.41), cùng ba trường. Gộp mọi đánh giá của mọi tin chưa xóa mềm của chủ trọ (kể cả tin đang ẩn), **mỗi đánh giá một phiếu** (không phải trung bình các trung bình của từng tin). **Không bao giờ cộng vào `ratings.landlord`**: hai điểm có thể khác nhau, đừng gộp |
+| `chat.conversationsOpened` | Một **Metric**: số cuộc trò chuyện **mới mở** trong khoảng (theo ngày mở cuộc), tính các cuộc mà mình là chủ trọ của tin |
+| `chat.repliedConversations` | Một **Metric**: trong các cuộc mở trong khoảng, số cuộc mà **chủ trọ đã gửi ít nhất một tin** (vào bất kỳ lúc nào cho đến lúc gọi) |
+| `chat.replyRate` | Tỉ lệ trả lời `repliedConversations ÷ conversationsOpened × 100`, **một chữ số thập phân**, của từng kỳ. Dạng `{ value, previous, changePoints }`. Kỳ không mở cuộc nào thì tỉ lệ của kỳ đó là **`null`** (không phải 0%). `changePoints` là hiệu `value − previous` **tính theo điểm phần trăm** (75 so với 80 là `-5`), `null` khi một trong hai là `null` |
+| `chat.totalConversations` | Số hiện tại: mọi cuộc trò chuyện mà mình là chủ trọ của tin. Không có kỳ trước |
+| `chat.unreadConversations`, `chat.unreadMessages` | Số cuộc còn tin chưa đọc và tổng số tin chưa đọc (số hiện tại). Bằng hai số của `GET /me/conversations/unread-count` (6.39) khi chủ trọ không đóng vai người nhắn ở cuộc nào |
+| `spending.spent` | Một **Metric**: tổng tiền (đồng, số nguyên) của các đơn **đã trả** có ngày trả trong khoảng, theo **giá đã chốt trên đơn**. Đơn chờ và đơn hủy không bao giờ tính; gói đã hết hạn vẫn tính phần tiền đã chi. **Là tiền của thanh toán thử** |
+| `spending.paidOrders` | Một **Metric**: số đơn đã trả có ngày trả trong khoảng |
+| `spending.spentAllTime` | Tổng tiền của mọi đơn đã trả từ trước đến nay. Không có kỳ trước. Có thể vượt 2,1 tỷ đồng, vẫn đúng |
+| `series` | Đúng `days` phần tử, mỗi ngày từ `from` đến `to` một phần tử, **ngày tăng dần**, mỗi phần tử có bốn cột `views`, `newFavorites`, `newFollowers`, `newConversations`; ngày không có gì thì mọi số bằng 0. FE **không phải điền ô trống**. Tổng từng cột luôn bằng `value` của Metric tương ứng: `views` với `views.inRange`, `newFavorites` với `interest.newFavorites`, `newFollowers` với `interest.newFollowers`, `newConversations` với `chat.conversationsOpened` |
 
-**Metric** là `{ "value": số kỳ này, "previous": số kỳ liền trước, "changePercent": số hoặc null }`. `changePercent` là `(value − previous) ÷ previous × 100`, làm tròn **một chữ số thập phân** (nửa làm tròn ra xa số 0): 5 so với 3 ra `66.7`, 3 so với 5 ra `-40`, hai số bằng nhau ra `0`. **`previous` bằng 0 thì `changePercent` là `null`** (dù `value` bằng 0 hay lớn hơn 0), không bao giờ `Infinity` hay `NaN`; FE hiện "mới" hoặc dấu gạch, đừng tự chia. Chỉ số **theo kỳ** mới có `previous`; số của trạng thái hiện tại (`listings`, `membership`, `views.allTime`) là số thường vì lịch sử trạng thái không được lưu.
+**Metric** là `{ "value": số kỳ này, "previous": số kỳ liền trước, "changePercent": số hoặc null }`. `changePercent` là `(value − previous) ÷ previous × 100`, làm tròn **một chữ số thập phân** (nửa làm tròn ra xa số 0): 5 so với 3 ra `66.7`, 3 so với 5 ra `-40`, hai số bằng nhau ra `0`. **`previous` bằng 0 thì `changePercent` là `null`** (dù `value` bằng 0 hay lớn hơn 0), không bao giờ `Infinity` hay `NaN`; FE hiện "mới" hoặc dấu gạch, đừng tự chia. Chỉ số **theo kỳ** mới có `previous`; số của trạng thái hiện tại (`listings`, `membership`, `views.allTime`, `interest.total*`, `ratings.*.count` và `average`, `chat.total*` và `unread*`, `spending.spentAllTime`) là số thường vì lịch sử trạng thái không được lưu.
+
+**`chat.replyRate` không phải Metric**: nó là một tỉ lệ, nên đổi giữa hai kỳ được tính **theo điểm phần trăm** (`changePoints`, 75 so với 80 là `-5`), không phải phần trăm đổi. Hiện nó là "75% (giảm 5 điểm)", đừng hiện "giảm 6,3%". Kỳ không mở cuộc nào có `value` hoặc `previous` là `null`: hiện dấu gạch, không hiện 0%.
 
 **Lỗi**:
 
@@ -2496,11 +2534,17 @@ Cần nhớ:
 - **Lượt của tin ẩn và tin đã xóa vẫn nằm trong `views.inRange` và `series`**, nhưng tin đã xóa không bao giờ có trong `top`. Nên tổng của `top` có thể nhỏ hơn `inRange.value`.
 - **`hiddenByQuota` dùng chung cho hai nguyên nhân**: tin vượt hạn mức và chủ trọ hết dùng thử, hết gói (hạn mức 0, mọi tin `visible` thành `hiddenByQuota`). Đọc `membership.state` (`plan`, `trial`, `expired`) để nói đúng lý do.
 - **Ngày hôm nay được tính khi mới qua một phần**, nên kỳ này nhìn có vẻ thấp hơn kỳ trước đã đủ ngày. Đó là bình thường vào giữa ngày.
-- **Số công khai khớp số công khai** (đối chiếu được): `listings.public` bằng `publicListingCount` của hồ sơ (6.31) và bằng `total` của `GET /landlords/:id/listings` (6.36); `views.allTime` bằng `totalViewCount`; `membership` giống `GET /me/membership`. Các route đó giữ nguyên hành vi.
-- **Không có tên, email hay số điện thoại của bất kỳ người dùng nào** trong phản hồi; chỉ có số đếm và thông tin tin của chính chủ trọ (`id`, `code`, `title`, `status`).
-- **Chủ trọ mới chưa có gì** nhận 200 với mọi số bằng 0, `changePercent` là `null`, `top` là `[]`, `series` đủ ngày toàn 0.
+- **Số công khai khớp số công khai** (đối chiếu được): `listings.public` bằng `publicListingCount` của hồ sơ (6.31) và bằng `total` của `GET /landlords/:id/listings` (6.36); `views.allTime` bằng `totalViewCount`; `interest.totalFollowers` bằng `followerCount`; `ratings.landlord.count` và `average` bằng `reviewCount` và `ratingAverage`; `chat.unreadConversations` và `unreadMessages` bằng hai số của `GET /me/conversations/unread-count` (khi không đóng vai người nhắn); `membership` giống `GET /me/membership`. Các route đó giữ nguyên hành vi.
+- **Không có tên, email hay số điện thoại của bất kỳ người dùng nào** trong phản hồi (không có tên người lưu, người theo dõi, người đánh giá hay người nhắn); chỉ có số đếm và thông tin tin của chính chủ trọ (`id`, `code`, `title`, `status`).
+- **Chủ trọ mới chưa có gì** nhận 200 với mọi số bằng 0, `changePercent` là `null`, `average` và `replyRate` là `null`, `top` là `[]`, `series` đủ ngày toàn 0.
+- **Số "mới trong kỳ" của lưu và theo dõi có thể giảm về sau.** Hệ thống chỉ đếm các dòng đang tồn tại: người dùng bỏ lưu hay bỏ theo dõi thì dòng bị xóa, nên số lưu mới của một kỳ cũ gọi lại hôm sau có thể nhỏ hơn. Đánh giá bị admin ẩn cũng biến khỏi các kỳ cũ. Không phải lỗi.
+- **Hai điểm đánh giá là hai thứ khác nhau.** `ratings.landlord` là điểm của chủ trọ (hồ sơ), `ratings.rooms` là điểm gộp của các phòng (tin). Hai khối có thể khác nhau; hiện tách bạch, đừng cộng hay lấy trung bình hai điểm.
+- **Mọi con số chat chỉ tính vai chủ trọ.** Cuộc mà chính chủ trọ mở với tư cách người nhắn (nếu admin có cấp quyền mở chat cho chủ trọ) không có ở đây, nên `unreadConversations` ở đây có thể nhỏ hơn số của `GET /me/conversations/unread-count`, vốn tính cả hai vai.
+- **`repliedConversations` tính theo ngày mở cuộc, không theo ngày trả lời.** Cuộc mở ở kỳ trước rồi hôm nay mới được trả lời vẫn nằm trong `previous`; gọi lại sau có thể thấy số trả lời của một kỳ cũ tăng lên. Do đó `replyRate` của kỳ gần nhất thường thấp hơn rồi tăng dần.
+- **Tin ẩn và tin đã xóa vẫn được tính, trừ một chỗ**: lượt lưu và cuộc trò chuyện của mọi tin (kể cả đang ẩn và đã xóa mềm) đều tính; đánh giá phòng của tin **đang ẩn** vẫn tính, còn đánh giá phòng của tin **đã xóa mềm** thì không (giống danh sách đánh giá công khai).
+- **Tiền ở `spending` là thanh toán thử**, chỉ gồm đơn đã trả, theo ngày trả. Hãy ghi rõ trên màn hình.
 - **Chuỗi dài tới 366 phần tử** nếu hỏi khoảng dài nhất; biểu đồ nên tự gom nếu cần.
-- Các nhóm số được tính từ vài truy vấn riêng, không trong một giao dịch: khi đang có ghi, hai nhóm có thể lệch nhau một dòng trong khoảnh khắc đó; trong một nhóm thì luôn khớp.
+- Các nhóm số được tính từ khoảng mười truy vấn riêng, không trong một giao dịch: khi đang có ghi, hai nhóm có thể lệch nhau một dòng trong khoảnh khắc đó; trong một nhóm thì luôn khớp (số theo ngày và số tổng của một nguồn đến từ cùng một câu truy vấn).
 
 ## 7. Luồng màn hình gợi ý
 
@@ -2552,9 +2596,10 @@ Hai ô: mật khẩu hiện tại, mật khẩu mới. Gọi `POST /auth/change-
 
 1. Chỉ hiện mục "Thống kê" khi `user.accountType === 'landlord'` và `permissions` có `statistic:manage` (hoặc `statistic:read`). Gọi `GET /me/statistics` (6.42) không tham số để lấy 30 ngày gần nhất.
 2. Bộ chọn khoảng ngày gửi `from` và `to` (`YYYY-MM-DD`, giờ Việt Nam), tối đa 366 ngày. Lỗi 400 ở trường `to` nghĩa là `from` sau `to` hoặc khoảng quá dài.
-3. Dựng thẻ tin theo trạng thái từ `listings`, thẻ lượt xem từ `views.inRange` (mũi tên theo dấu của `changePercent`; `null` thì hiện "mới" hoặc dấu gạch), danh sách `views.top`, và biểu đồ từ `series` (đã đủ ngày, vẽ thẳng, không tự điền).
+3. Dựng thẻ tin theo trạng thái từ `listings`, thẻ lượt xem từ `views.inRange` (mũi tên theo dấu của `changePercent`; `null` thì hiện "mới" hoặc dấu gạch), danh sách `views.top`, và biểu đồ từ `series` (đã đủ ngày, vẽ thẳng, không tự điền; bốn cột `views`, `newFavorites`, `newFollowers`, `newConversations` cho bốn đường hay bốn biểu đồ nhỏ).
 4. Chủ trọ đăng nhập từ trước khi có API này gặp 403: refresh token rồi gọi lại một lần.
-5. Mốc 1 chưa có khối lưu và theo dõi, đánh giá, chat, tiền đã chi: đừng dựng ô trống cho chúng, thêm khi mốc 2 xong.
+5. Thẻ **quan tâm** từ `interest` (lưu mới, theo dõi mới kèm phần trăm đổi, hai tổng bên cạnh); thẻ **đánh giá** từ `ratings` (hai điểm đặt cạnh nhau và gắn nhãn rõ "chủ trọ" và "các phòng", `average` là `null` thì hiện "chưa có đánh giá"); thẻ **chat** từ `chat` (số cuộc mới, tỉ lệ trả lời kèm điểm đổi, số chưa đọc; `replyRate` là `null` thì hiện dấu gạch); thẻ **chi tiêu** từ `spending` (ghi rõ "thanh toán thử").
+6. Thêm chú thích nhỏ cho hai điều dễ gây hiểu nhầm: số lưu và theo dõi mới của kỳ cũ có thể giảm về sau, và `repliedConversations` tính theo ngày mở cuộc nên tăng dần khi chủ trọ trả lời muộn.
 
 ### Tìm trọ (khách và người tìm trọ)
 
@@ -2761,7 +2806,7 @@ Mẹo khi demo:
 - **Đánh giá từng phòng** (từ 2026-11-09, 6.41). Mỗi cặp (người viết, tin) tối đa một đánh giá, cùng luật giá trị với đánh giá chủ trọ (số sao nguyên từ 1 đến 5, nhận xét tùy chọn 1 đến 1000 ký tự). Viết được khi chủ trọ **đã gửi ít nhất một tin trong cuộc trò chuyện về chính tin đó** (không tính tin khác của cùng chủ trọ; kiểm lúc viết, không kiểm lại khi sửa hay xóa). Mọi API đánh giá phòng chỉ chạy khi tin đang hiện công khai (không thì 404 `LISTING_NOT_FOUND`, kể cả với người viết), các dòng đánh giá còn nguyên và hiện lại cùng tin. `reviewCount` và `ratingAverage` của chi tiết tin tính lúc đọc từ đúng tập mà danh sách công khai trả. Điểm phòng và điểm chủ trọ ở hai bảng riêng, không bao giờ lẫn nhau. Admin ẩn và gỡ ẩn đánh giá phòng kèm lý do bắt buộc ở `/moderation/listing-reviews`, cùng luật với đánh giá chủ trọ: ẩn có hiệu lực ngay trên danh sách và hai con số, gỡ ẩn đưa thẳng về `visible`, mỗi lần đổi đúng một dòng nhật ký kiểm duyệt.
 - **Đơn của mọi chủ trọ (admin)** (từ 2026-10-21, 6.37). Chỉ admin xem được (`order:report`); chủ trọ chỉ thấy đơn của mình (6.27). `summary.paidAmount` là tổng giá đã chốt của các đơn `paid` trong đúng tập lọc, tính lúc đọc nên luôn bằng phép cộng tay các dòng. Đó là tiền của thanh toán thử, chưa phải tiền thật.
 - **Thống kê doanh thu (admin)** (từ 2026-10-21, 6.38). Chỉ tính đơn `paid`, theo giá đã chốt trên đơn và theo **ngày trả**. Một ngày hay một tháng ở mọi nơi trong API là ngày hay tháng theo giờ Việt Nam. Ba tổng của phản hồi (ngoài cùng, `byPlan`, `series`) luôn bằng nhau. Là tiền của thanh toán thử.
-- **Thống kê của chủ trọ** (từ 2026-11-16, 6.42). Một "ngày" là ngày lịch giờ Việt Nam. Số theo kỳ (lượt xem trong khoảng) có `previous` và `changePercent`, và `changePercent` là `null` khi kỳ trước bằng 0. Số của trạng thái hiện tại (tin theo trạng thái, hạn mức, tổng lượt xem) là số thường, không có kỳ trước. `hiddenByQuota` gộp hai nguyên nhân (vượt hạn mức, hết dùng thử và hết gói): đọc `membership.state` để nói đúng lý do. Chỉ chủ trọ xem được, admin cũng bị 403.
+- **Thống kê của chủ trọ** (từ 2026-11-16, 6.42; đủ chín khối từ 2026-11-18). Một "ngày" là ngày lịch giờ Việt Nam. Số theo kỳ (lượt xem, lưu mới, theo dõi mới, đánh giá mới, cuộc mới mở, cuộc đã trả lời, tiền và số đơn đã trả trong khoảng) có `previous` và `changePercent`, và `changePercent` là `null` khi kỳ trước bằng 0. Tỉ lệ trả lời (`chat.replyRate`) đổi theo **điểm** phần trăm (`changePoints`). Số của trạng thái hiện tại (tin theo trạng thái, hạn mức, tổng lượt xem, lưu và theo dõi hiện có, điểm đánh giá, chưa đọc, tiền mọi thời) là số thường, không có kỳ trước. `hiddenByQuota` gộp hai nguyên nhân (vượt hạn mức, hết dùng thử và hết gói): đọc `membership.state` để nói đúng lý do. Chỉ chủ trọ xem được, admin cũng bị 403.
 - **Khóa tài khoản**: tài khoản bị khóa không đăng nhập, không refresh được và mọi phiên bị hủy lúc khóa. Đăng nhập sai mật khẩu vẫn báo `INVALID_CREDENTIALS` (không lộ tài khoản có bị khóa hay không); chỉ khi đúng mật khẩu mới báo `ACCOUNT_LOCKED`. Admin không tự khóa mình được.
 - **Đổi hoặc đặt lại mật khẩu** hủy phiên: đặt lại hủy **tất cả**; đổi (khi đang đăng nhập) hủy tất cả **trừ phiên đang dùng**.
 - **Mật khẩu mới** có thể trùng mật khẩu cũ (backend không cấm).
@@ -2804,7 +2849,7 @@ Mẹo khi demo:
 - **Danh sách tin trên hồ sơ chủ trọ** (6.36) chỉ có phân trang, xếp mới đăng trước: chưa có sắp xếp theo giá, lọc theo phường hay theo nhà trọ, và chưa nhúng trang đầu vào chính hồ sơ (FE gọi hai API). Mỗi phần tử vẫn mang `landlord` giống nhau. Mỗi lần mở chạy hai câu đếm và lấy trang qua luật xếp hạng; đo thật ở 60 nghìn tin giả lập cho chủ trọ có 300 tin thì khoảng 12 mili giây (chủ trọ có 20 tin thì dưới 1 mili giây), nhanh hơn nhiều so với `GET /listings` toàn hệ thống nhờ thu hẹp theo chủ trọ. Chấp nhận ở bản demo.
 - **Tin biến khỏi danh sách đã lưu mà không báo gì**: không có số tin đang bị ẩn, không thông báo, và FE không thấy được tin bị ẩn trong danh sách đã lưu để bỏ lưu (chỉ bỏ lưu được nếu còn giữ id). Không giới hạn số tin được lưu, nên người lưu hàng nghìn tin sẽ thấy trang cuối và `total` chậm hơn. Đo thật trên 60 nghìn tin giả lập: người lưu 200 tin mất vài mili giây, người lưu 5 nghìn tin mất khoảng 50 mili giây ở trang cuối và ở phép đếm. Chấp nhận ở bản demo.
 - **`GET /listings` không cache chung được nữa** (từ 2026-10-21): vì có `isFavorite` theo người xem nên phản hồi là `Cache-Control: private, no-store`. Proxy hay CDN không cache chung danh sách công khai.
-- **Thống kê của chủ trọ (6.42) mới ở mốc 1**: có tin theo trạng thái, hạn mức, lượt xem và chuỗi lượt xem theo ngày; **lượt lưu, người theo dõi mới, đánh giá, chat và tiền đã chi thêm ở mốc 2**. Đến lúc đó, số "mới trong kỳ" của một kỳ cũ có thể giảm về sau vì bỏ lưu hay bỏ theo dõi xóa dòng.
+- **Thống kê của chủ trọ (6.42) tính lúc đọc, không lưu số nào**: mỗi lần gọi chạy khoảng mười truy vấn. Số "mới trong kỳ" của lưu và theo dõi của một kỳ cũ có thể giảm về sau vì bỏ lưu hay bỏ theo dõi xóa dòng; không có bảng chụp theo ngày nên các số của trạng thái hiện tại (tin theo trạng thái, hạn mức, điểm đánh giá, chưa đọc) không có kỳ trước. Đo thật trên database thử cỡ demo (60 nghìn tin, khoảng 420 nghìn lượt lưu, 400 nghìn dòng lượt xem theo ngày, 50 nghìn cuộc trò chuyện với 150 nghìn tin nhắn, 20 nghìn đơn), với một chủ trọ có khoảng 1.000 tin, 7 nghìn lượt lưu và 810 cuộc trò chuyện: cả route mất khoảng 84 mili giây (trung vị) cho 30 ngày và 94 mili giây cho 366 ngày. Phép đếm lưu chậm nhất (khoảng 67 mili giây) vì `favorites` không có chỉ mục theo tin; chấp nhận ở bản demo, không thêm chỉ mục.
 - **Lượt xem theo ngày chỉ có từ 2026-11-16**: lượt xem trước ngày đó chỉ nằm trong `views.allTime`, không có trong `views.inRange` hay `series`. Số của trạng thái hiện tại (tin theo trạng thái, hạn mức) không có kỳ trước vì lịch sử trạng thái không được lưu.
 - Ghi phí hoặc tiện ích khi sửa nhà trọ là **thay cả danh sách** (không có API thêm hay bỏ từng khoản), nên hai thiết bị cùng sửa một nhà trọ thì bản gửi sau thắng.
 
@@ -2827,6 +2872,15 @@ Tính đến 2026-10-22 **không còn tính năng nào đã lên kế hoạch m�
 ## 11. Nhật ký thay đổi
 
 Mới nhất ở trên cùng. Mục nào **phá vỡ** cách FE đang gọi sẽ ghi rõ "ĐỔI KHÁC VỚI TRƯỚC".
+
+### 2026-11-18 · Thống kê cho chủ trọ: lưu, theo dõi, đánh giá, chat và tiền đã chi (mốc 2 của thống kê chủ trọ; phần thống kê chủ trọ xong)
+
+- **`GET /me/statistics` (6.42) nay có đủ chín khối**: thêm `interest` (lưu mới và theo dõi mới theo kỳ kèm kỳ trước và `changePercent`, cộng hai tổng hiện tại), `ratings` (`landlord` là điểm của chủ trọ, `rooms` là điểm gộp của các phòng, mỗi khối có `average`, `count` và `newInRange`), `chat` (cuộc mới mở và đã trả lời theo kỳ, `replyRate` kèm `changePoints`, tổng cuộc, số chưa đọc) và `spending` (tiền và số đơn đã trả theo kỳ, cộng tổng mọi thời). Mỗi phần tử của `series` có thêm ba cột `newFavorites`, `newFollowers`, `newConversations`.
+- **ĐỔI KHÁC VỚI TRƯỚC (chỉ thêm, không bớt)**: phần tử của `series` từ `{ date, views }` thành `{ date, views, newFavorites, newFollowers, newConversations }`, và phản hồi từ năm khóa thành chín khóa. FE đọc theo tên khóa nên không vỡ; FE nào so sánh đúng bộ khóa hay đúng hình dạng của một điểm `series` thì cần sửa.
+- **Tỉ lệ trả lời đổi theo điểm phần trăm**: `chat.replyRate` là `{ value, previous, changePoints }`, không phải Metric; kỳ không mở cuộc nào thì tỉ lệ của kỳ đó là `null`, không phải 0%.
+- **Không đổi quyền, mã lỗi hay API khác**: vẫn `statistic:read`, vẫn chỉ tài khoản `landlord`, không mã lỗi mới, không bảng hay cột mới, không biến môi trường mới.
+- **Cần nhớ khi hiển thị**: số lưu và theo dõi mới của một kỳ cũ có thể giảm về sau (bỏ lưu, bỏ theo dõi xóa dòng); `repliedConversations` tính theo ngày mở cuộc nên tăng dần khi chủ trọ trả lời muộn; tiền ở `spending` là thanh toán thử; hai điểm đánh giá khác nhau, đừng gộp.
+- **Cần làm từ phía backend dev**: chạy `npm run migration:deploy` nếu chưa chạy (migration quyền và bảng `listing_daily_views` của mốc 1), rồi `npm run seed:demo -- --reset` để có số liệu xem thử.
 
 ### 2026-11-16 · Thống kê cho chủ trọ: tin, hạn mức, lượt xem và chuỗi theo ngày (mốc 1 của thống kê chủ trọ)
 
@@ -3592,12 +3646,21 @@ interface Membership {
 }
 interface Metric { value: number; previous: number; changePercent: number | null } // changePercent null khi previous = 0
 interface StatisticsTopListing { id: Uuid; code: string; title: string; status: ListingStatus; isPublic: boolean; viewsInRange: number; viewsAllTime: number }
-interface Statistics { // GET /me/statistics (mốc 1: năm khối; mốc 2 thêm interest, ratings, chat, spending và ba cột của series)
+interface RateMetric { value: number | null; previous: number | null; changePoints: number | null } // null khi kỳ không có mẫu số; changePoints là hiệu theo điểm phần trăm
+interface RatingBlock { average: number | null; count: number; newInRange: Metric } // average null khi count = 0
+interface Statistics { // GET /me/statistics (đủ chín khối từ mốc 2, 2026-11-18)
   period: { from: DateOnly; to: DateOnly; days: number; previousFrom: DateOnly; previousTo: DateOnly; timeZone: 'Asia/Ho_Chi_Minh' };
   listings: { total: number; public: number; hiddenByQuota: number; hiddenByOwner: number; hiddenByAdmin: number };
   membership: Membership;
   views: { inRange: Metric; allTime: number; top: StatisticsTopListing[] };
-  series: { date: DateOnly; views: number }[]; // đúng period.days phần tử, ngày tăng dần, ngày trống là 0
+  interest: { newFavorites: Metric; newFollowers: Metric; totalFavorites: number; totalFollowers: number };
+  ratings: { landlord: RatingBlock; rooms: RatingBlock }; // hai điểm khác nhau, không bao giờ cộng vào nhau
+  chat: {
+    conversationsOpened: Metric; repliedConversations: Metric; replyRate: RateMetric;
+    totalConversations: number; unreadConversations: number; unreadMessages: number;
+  };
+  spending: { spent: Metric; paidOrders: Metric; spentAllTime: number }; // đồng, chỉ đơn đã trả, thanh toán thử
+  series: { date: DateOnly; views: number; newFavorites: number; newFollowers: number; newConversations: number }[]; // đúng period.days phần tử, ngày tăng dần, ngày trống là 0
 }
 interface Plan { id: Uuid; name: string; price: number; maxListings: number; durationDays: number }
 interface AdminPlan extends Plan { isActive: boolean; createdAt: IsoDateTime; updatedAt: IsoDateTime }

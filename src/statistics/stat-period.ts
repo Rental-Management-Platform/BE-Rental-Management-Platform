@@ -4,6 +4,8 @@ import {
 	APP_TIME_ZONE,
 	APP_UTC_OFFSET_MS,
 	startOfDay,
+	startOfNextDay,
+	toSqlTimestamp,
 } from '../common/time/app-time-zone';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -40,6 +42,23 @@ export function localDateOf(instant: Date): string {
 	return new Date(instant.getTime() + APP_UTC_OFFSET_MS)
 		.toISOString()
 		.slice(0, 10);
+}
+
+/**
+ * Hai cận thời điểm của các truy vấn theo ngày giờ Việt Nam, phủ cả hai kỳ `[previousFrom, to]`: `start` là 00:00:00.000
+ * của `previousFrom` (gồm), `end` là 00:00:00.000 của ngày sau `to` (không gồm, so chặt `<`). Là chuỗi ISO có `Z` vì
+ * `Date` truyền thẳng vào SQL thô bị hiểu theo múi giờ phiên (xem `toSqlTimestamp`).
+ */
+export interface StatRangeBounds {
+	readonly start: string;
+	readonly end: string;
+}
+
+export function toRangeBounds(period: ResolvedStatPeriod): StatRangeBounds {
+	return {
+		start: toSqlTimestamp(startOfDay(period.previousFrom)),
+		end: toSqlTimestamp(startOfNextDay(period.to)),
+	};
 }
 
 /** Ngày cách `date` đúng `days` ngày lịch (âm là lùi), qua nửa đêm giờ Việt Nam; lịch tự xử lý tháng và năm nhuận. */

@@ -11,12 +11,13 @@ import {
 	splitByPeriod,
 	toListingBuckets,
 	toPeriodResponse,
+	toRatingBlock,
 	toSeries,
 	toTopListing,
 } from './statistics.mapper';
 import { StatisticsRepository } from './statistics.repository';
-import { toMetric } from './stat-metric';
-import { resolveStatPeriod } from './stat-period';
+import { toMetric, toRateMetric } from './stat-metric';
+import { resolveStatPeriod, toRangeBounds } from './stat-period';
 
 /** Số tin tối đa trong `views.top` (spec 0017 AC-7). */
 export const TOP_LISTING_COUNT = 5;
@@ -50,7 +51,19 @@ export class StatisticsService {
 		const userId = user.userId;
 
 		const membership = await this.memberships.resolve(userId, now);
-		const [counts, dailyViews, topRows, paidUntil] = await Promise.all([
+		const { start, end } = toRangeBounds(period);
+		const [
+			counts,
+			dailyViews,
+			topRows,
+			paidUntil,
+			favorites,
+			followers,
+			landlordReviews,
+			roomReviews,
+			chat,
+			orders,
+		] = await Promise.all([
 			this.repository.countListings(userId),
 			this.repository.findDailyViews(
 				userId,
@@ -67,9 +80,27 @@ export class StatisticsService {
 			membership.subscription === null
 				? Promise.resolve(null)
 				: this.subscriptions.findLatestEndsAt(userId),
+			this.repository.findFavorites(userId, start, end),
+			this.repository.findFollowers(userId, start, end),
+			this.repository.findLandlordReviews(userId, start, end),
+			this.repository.findRoomReviews(userId, start, end),
+			this.repository.findChat(userId, start, end),
+			this.repository.findPaidOrders(userId, start, end),
 		]);
 
+		// Mỗi nguồn tách MỘT lần: `value` của Metric và cột của chuỗi đến từ cùng các dòng, nên tổng cột luôn bằng `value`.
 		const views = splitByPeriod(dailyViews, period);
+		const newFavorites = splitByPeriod(favorites.counts, period);
+		const newFollowers = splitByPeriod(followers.counts, period);
+		const newLandlordReviews = splitByPeriod(
+			landlordReviews.counts,
+			period,
+		);
+		const newRoomReviews = splitByPeriod(roomReviews.counts, period);
+		const opened = splitByPeriod(chat.opened, period);
+		const replied = splitByPeriod(chat.replied, period);
+		const spent = splitByPeriod(orders.amounts, period);
+		const paidOrders = splitByPeriod(orders.counts, period);
 		const buckets = toListingBuckets(counts, membership.limit);
 		return {
 			period: toPeriodResponse(period),
@@ -86,7 +117,53 @@ export class StatisticsService {
 				allTime: counts.viewCountAllTime,
 				top: topRows.map(toTopListing),
 			},
-			series: toSeries(period, views.byDate),
+			interest: {
+				newFavorites: toMetric(
+					newFavorites.value,
+					newFavorites.previous,
+				),
+				newFollowers: toMetric(
+					newFollowers.value,
+					newFollowers.previous,
+				),
+				totalFavorites: favorites.total,
+				totalFollowers: followers.total,
+			},
+			ratings: {
+				landlord: toRatingBlock(
+					{
+						count: landlordReviews.total,
+						starSum: landlordReviews.amountTotal,
+					},
+					newLandlordReviews,
+				),
+				rooms: toRatingBlock(
+					{
+						count: roomReviews.total,
+						starSum: roomReviews.amountTotal,
+					},
+					newRoomReviews,
+				),
+			},
+			chat: {
+				conversationsOpened: toMetric(opened.value, opened.previous),
+				repliedConversations: toMetric(replied.value, replied.previous),
+				replyRate: toRateMetric(replied, opened),
+				totalConversations: chat.total,
+				unreadConversations: chat.unreadConversations,
+				unreadMessages: chat.unreadMessages,
+			},
+			spending: {
+				spent: toMetric(spent.value, spent.previous),
+				paidOrders: toMetric(paidOrders.value, paidOrders.previous),
+				spentAllTime: orders.amountTotal,
+			},
+			series: toSeries(period, {
+				views: views.byDate,
+				newFavorites: newFavorites.byDate,
+				newFollowers: newFollowers.byDate,
+				newConversations: opened.byDate,
+			}),
 		};
 	}
 

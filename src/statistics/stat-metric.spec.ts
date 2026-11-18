@@ -1,4 +1,10 @@
-import { percentChange, ratePercent, toMetric } from './stat-metric';
+import {
+	percentChange,
+	pointsChange,
+	ratePercent,
+	toMetric,
+	toRateMetric,
+} from './stat-metric';
 
 describe('percentChange (spec 0017 AC-3)', () => {
 	it.each([
@@ -77,6 +83,68 @@ describe('ratePercent (spec 0017 AC-10)', () => {
 	it('không có mẫu số thì null, không phải 0 và không chia cho 0', () => {
 		expect(ratePercent(0, 0)).toBeNull();
 		expect(ratePercent(5, 0)).toBeNull();
+	});
+});
+
+describe('pointsChange (spec 0017 AC-10)', () => {
+	it.each([
+		[75, 80, -5],
+		[80, 75, 5],
+		[33.3, 66.7, -33.4],
+		[66.7, 33.3, 33.4],
+		[100, 0, 100],
+		[12.5, 6.3, 6.2],
+	])('%p so với %p ra %p điểm', (value, previous, expected) => {
+		expect(pointsChange(value, previous)).toBe(expected);
+	});
+
+	it('tính trên số nguyên phần mười nên không có sai số của phép trừ số thực (0,3 trừ 0,1 ra đúng 0,2)', () => {
+		expect(0.3 - 0.1).not.toBe(0.2); // chứng minh phép trừ số thực sẽ sai
+		expect(pointsChange(0.3, 0.1)).toBe(0.2);
+		expect(pointsChange(0.1, 0.3)).toBe(-0.2);
+	});
+
+	it('hai số bằng nhau ra 0, không bao giờ -0', () => {
+		expect(Object.is(pointsChange(75, 75), 0)).toBe(true);
+		expect(Object.is(pointsChange(0, 0), 0)).toBe(true);
+	});
+
+	it('một trong hai là null thì null', () => {
+		expect(pointsChange(null, 80)).toBeNull();
+		expect(pointsChange(75, null)).toBeNull();
+		expect(pointsChange(null, null)).toBeNull();
+	});
+});
+
+describe('toRateMetric (spec 0017 AC-10)', () => {
+	it('tỉ lệ của từng kỳ và điểm đổi: 6 trên 8 so với 4 trên 5 là 75 so với 80, đổi -5 điểm', () => {
+		expect(
+			toRateMetric({ value: 6, previous: 4 }, { value: 8, previous: 5 }),
+		).toEqual({ value: 75, previous: 80, changePoints: -5 });
+	});
+
+	it('1 trên 3 so với 2 trên 3: 33.3 so với 66.7, đổi -33.4 điểm', () => {
+		expect(
+			toRateMetric({ value: 1, previous: 2 }, { value: 3, previous: 3 }),
+		).toEqual({ value: 33.3, previous: 66.7, changePoints: -33.4 });
+	});
+
+	it('kỳ không mở cuộc nào thì tỉ lệ kỳ đó là null (không phải 0), và điểm đổi cũng null', () => {
+		expect(
+			toRateMetric({ value: 0, previous: 2 }, { value: 0, previous: 4 }),
+		).toEqual({ value: null, previous: 50, changePoints: null });
+		expect(
+			toRateMetric({ value: 3, previous: 0 }, { value: 4, previous: 0 }),
+		).toEqual({ value: 75, previous: null, changePoints: null });
+		expect(
+			toRateMetric({ value: 0, previous: 0 }, { value: 0, previous: 0 }),
+		).toEqual({ value: null, previous: null, changePoints: null });
+	});
+
+	it('có mở cuộc nhưng chưa ai được trả lời là 0 (khác null), hai kỳ cùng tỉ lệ ra 0 điểm', () => {
+		expect(
+			toRateMetric({ value: 0, previous: 0 }, { value: 5, previous: 5 }),
+		).toEqual({ value: 0, previous: 0, changePoints: 0 });
 	});
 });
 
