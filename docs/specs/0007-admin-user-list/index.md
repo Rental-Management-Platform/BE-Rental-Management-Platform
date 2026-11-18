@@ -170,7 +170,7 @@ Hướng build theo Skateboard (bản mỏng nhất dùng được trước, r�
 ## Follow-up
 
 - [ ] Hoãn, thêm lại bằng `/scope` khi cần: chi tiết một tài khoản (`GET /users/:id`), tham số `sort`, thời điểm đăng nhập gần nhất, người khóa và lúc khóa (từ `moderation_logs`), thông tin chủ trọ (hạn dùng thử, số tin, gói), tìm tên không phân biệt dấu (`users.search_key`), giới hạn tần suất cho danh sách, nhật ký đọc, đếm theo loại và trạng thái, xuất danh sách.
-- [ ] Spec 0003 AC-8 liệt kê route bắt buộc `@FreshAuth()` chỉ gồm thao tác ghi; cần `/architect` sửa một dòng để thêm `GET /users`.
+- [x] Spec 0003 AC-8 liệt kê route bắt buộc `@FreshAuth()` chỉ gồm thao tác ghi; cần `/architect` sửa một dòng để thêm `GET /users`. Đã sửa ngày 2026-11-18.
 - [ ] Khi đóng gói (spec `0001/0006-docker-packaging-and-release.md`), tạo database với locale UTF-8 để tìm tên có dấu không phân biệt hoa thường đúng.
 - [ ] Sau khi build, `/sync` ghi route `GET /users` và việc dùng `user:read` vào spec 0003 (AC-7) nếu còn lệch.
 

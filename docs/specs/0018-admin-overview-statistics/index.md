@@ -226,8 +226,8 @@ Theo Skateboard (làm bản mỏng nhất dùng được trước, rồi mới m
 
 ## Follow-up
 
-- [ ] Spec 0017: AC-15 và bảng quyền nói module `statistic` chỉ có `read` và không có hành động chỉ admin; nay có thêm `report`. `/architect` sửa khi tiện (không chặn build).
-- [ ] Spec 0003: bảng quyền thêm dòng `statistic:report`; AC-8 liệt kê route bắt buộc `@FreshAuth()` cần thêm `GET /statistics/overview` (cùng việc còn treo của `GET /orders/all` và `GET /orders/revenue` ở 0010).
+- [x] Spec 0017: AC-15 và bảng quyền nói module `statistic` chỉ có `read` và không có hành động chỉ admin; nay có thêm `report`. Đã sửa ngày 2026-11-18 (AC-15, mục Quyền, bước 1 của Build plan, Neutral, Follow-up).
+- [x] Spec 0003: bảng quyền thêm dòng `statistic:report`; AC-8 liệt kê route bắt buộc `@FreshAuth()` cần thêm `GET /statistics/overview` (cùng việc còn treo của `GET /orders/all` và `GET /orders/revenue` ở 0010). Đã sửa ngày 2026-11-18 cùng các việc treo của 0007 và 0010 (bảng quyền, AC-8, AC-11, ghi chú phạm vi MVP).
 - [ ] Hoãn, thêm lại bằng `/scope` khi cần: xếp hạng chủ trọ hay tin nhiều lượt xem nhất cả nền tảng, số toàn thời gian cho từng số tương tác, tin theo phường ở trạng thái hiện có, kỳ trước cho từng phường, tách lý do của `visibleButNotPublic`, đếm tin bị chủ trọ ẩn thành việc cần xử lý, xuất CSV, bộ nhớ đệm, chỉ mục `created_at`, bảng chụp theo ngày để so sánh cả số trạng thái hiện tại.
 - [ ] Hàng 28 (doanh thu theo chủ trọ) dùng lại `stat-period.ts`, `stat-metric.ts` và có thể dùng lại `dailyCounts`. Hai file trợ giúp vẫn nằm ở `src/statistics/` nên ghi chú "chuyển sang `src/common/`" của spec 0017 chỉ còn đúng nếu hàng 28 đặt code ngoài thư mục này.
 - [ ] Sau khi build, `/sync`: thêm phần admin vào `src/statistics/AGENTS.md` (route, quy tắc đếm mọi dòng khác màn hình chủ trọ, `dailyCounts`, `@FreshAuth()` không được bỏ), và cập nhật ghi chú "hàng 27 và 28 dùng lại" trong đó.

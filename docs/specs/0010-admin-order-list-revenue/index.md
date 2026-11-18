@@ -212,7 +212,7 @@ Theo Skateboard (bản mỏng nhất dùng được trước, rồi mới mở r
 ## Follow-up
 
 - [ ] Hoãn, thêm lại bằng `/scope` khi cần: tìm đơn theo mã hay theo email chủ trọ, chuỗi doanh thu điền đủ ô trống, đếm đơn `pending` và `cancelled` trong thống kê, doanh thu theo từng chủ trọ, so sánh với kỳ trước, xuất CSV, tham số `sort`, chỉ mục cho `created_at` và `paid_at`, giới hạn tần suất và nhật ký đọc cho hai route, múi giờ chọn được, hoàn tiền (cần cổng thanh toán thật).
-- [ ] Spec 0003 AC-8 liệt kê route bắt buộc `@FreshAuth()` chỉ gồm thao tác ghi cộng `GET /users` của 0007; cần `/architect` thêm `GET /orders/all` và `GET /orders/revenue`. AC-11 của 0003 nói báo cáo doanh thu "khi làm lại thì cũng là module chỉ admin": nay là một hành động chỉ admin `order:report` trong module `order`, cần sửa câu cho khớp. Bảng quyền của 0003 thêm dòng `order:report`.
+- [x] Đã sửa ngày 2026-11-18. Spec 0003 AC-8 liệt kê route bắt buộc `@FreshAuth()` chỉ gồm thao tác ghi cộng `GET /users` của 0007; cần `/architect` thêm `GET /orders/all` và `GET /orders/revenue`. AC-11 của 0003 nói báo cáo doanh thu "khi làm lại thì cũng là module chỉ admin": nay là một hành động chỉ admin `order:report` trong module `order`, cần sửa câu cho khớp. Bảng quyền của 0003 thêm dòng `order:report`.
 - [ ] Sau khi build, `/sync` ghi vào spec 0004 rằng admin đã xem được đơn qua `GET /orders/all` (mục Negative và Follow-up của 0004 đang nói chưa có), và vào 0005 nếu mô tả quyền `order` cần cập nhật; scope hàng 17 chuyển sang `done` theo `/develop`.
 - [ ] Khi đóng gói (spec `0001/0006-docker-packaging-and-release.md`), xác nhận image Postgres có dữ liệu múi giờ để `AT TIME ZONE 'Asia/Ho_Chi_Minh'` chạy.
 
