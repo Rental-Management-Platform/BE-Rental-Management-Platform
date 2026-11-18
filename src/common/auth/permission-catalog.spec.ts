@@ -275,8 +275,39 @@ describe('permission catalog', () => {
 		});
 	});
 
+	describe('quyền thống kê của chủ trọ (spec 0017 AC-15)', () => {
+		it('statistic:read là khóa hợp lệ và không chỉ admin giữ', () => {
+			expect(isPermissionKey('statistic:read')).toBe(true);
+			expect(isAdminOnly('statistic:read')).toBe(false);
+		});
+
+		it('admin giữ khóa này vì manage mọi module: Service mới là nơi từ chối admin', () => {
+			expect(ADMIN_PERMISSIONS).toContain('statistic:read');
+		});
+
+		it('module chỉ có một hành động read, áp cho tài nguyên của chính người gọi, không có hành động chỉ admin', () => {
+			const statistic = describeCatalog().find(
+				(entry) => entry.module === 'statistic',
+			);
+			expect(statistic?.actions).toEqual(['read']);
+			expect(statistic?.ownerScoped).toBe(true);
+			expect(statistic?.adminActions).toEqual([]);
+			expect(isAdminOnly('statistic:manage')).toBe(false);
+		});
+
+		it('token chủ trọ mang statistic:manage vì module chỉ có một hành động; khóa này đủ cho statistic:read', () => {
+			expect(compressPermissions(['statistic:read'])).toEqual([
+				'statistic:manage',
+			]);
+			expect(
+				hasPermissions(['statistic:manage'], ['statistic:read']),
+			).toBe(true);
+			expect(hasPermissions([], ['statistic:read'])).toBe(false);
+		});
+	});
+
 	describe('phạm vi MVP', () => {
-		it('đúng 15 module của MVP', () => {
+		it('đúng 16 module của MVP', () => {
 			expect(
 				describeCatalog()
 					.map((entry) => entry.module)
@@ -298,6 +329,7 @@ describe('permission catalog', () => {
 					'conversation',
 					'message',
 					'review',
+					'statistic',
 				].sort(),
 			);
 		});

@@ -21,6 +21,7 @@ import { PlansModule } from './plans/plans.module';
 import { PropertiesModule } from './properties/properties.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { SettingsModule } from './settings/settings.module';
+import { StatisticsModule } from './statistics/statistics.module';
 import { UsersModule } from './users/users.module';
 
 @Module({
@@ -44,6 +45,7 @@ import { UsersModule } from './users/users.module';
 		ChatModule,
 		ReviewsModule,
 		ListingReviewsModule,
+		StatisticsModule,
 	],
 	controllers: [AppController],
 	providers: [

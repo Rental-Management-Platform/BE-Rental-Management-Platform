@@ -91,6 +91,13 @@ export const PERMISSION_CATALOG = {
 		ownerScoped: true,
 		adminActions: ['moderate'],
 	},
+	// Thống kê của chủ trọ (spec 0017). Một hành động `read` nên token chủ trọ gộp thành `statistic:manage`. Admin giữ
+	// `manage` mọi module nên qua được guard; Service từ chối mọi tài khoản không phải `landlord` (AC-15).
+	statistic: {
+		actions: ['read'],
+		ownerScoped: true,
+		adminActions: [],
+	},
 } as const satisfies Record<string, ModuleDefinition>;
 
 export type PermissionModule = keyof typeof PERMISSION_CATALOG;

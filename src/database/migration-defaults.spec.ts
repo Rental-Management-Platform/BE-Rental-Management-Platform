@@ -37,6 +37,12 @@ const REVIEWS = join(
 	'migration.sql',
 );
 
+const STATISTIC = join(
+	MIGRATIONS,
+	'20261116100000_landlord_statistic_permission',
+	'migration.sql',
+);
+
 function quoted(list: string | undefined): string[] {
 	return [...(list ?? '').matchAll(/'([^']+)'/g)].map((key) => key[1] ?? '');
 }
@@ -80,7 +86,11 @@ function readReviewsAdded(): Record<string, string[]> {
 	return readAdded(REVIEWS);
 }
 
-/** Quyền mặc định thực tế sau khi áp migration đầu và migration dọn (chưa tính chat và đánh giá). */
+function readStatisticAdded(): Record<string, string[]> {
+	return readAdded(STATISTIC);
+}
+
+/** Quyền mặc định thực tế sau khi áp migration đầu và migration dọn (chưa tính chat, đánh giá và thống kê). */
 function effectiveDefaults(inserted: string[]): string[] {
 	const { modules, keys } = readRemoved();
 	return inserted.filter(
@@ -89,12 +99,13 @@ function effectiveDefaults(inserted: string[]): string[] {
 	);
 }
 
-/** Quyền mặc định thực tế sau khi áp cả bốn migration. */
+/** Quyền mặc định thực tế sau khi áp cả năm migration. */
 function currentDefaults(role: string, inserted: string[]): string[] {
 	return [
 		...effectiveDefaults(inserted),
 		...(readChatAdded()[role] ?? []),
 		...(readReviewsAdded()[role] ?? []),
+		...(readStatisticAdded()[role] ?? []),
 	];
 }
 
@@ -147,7 +158,11 @@ describe('quyền mặc định trong các migration', () => {
 		for (const keys of [landlord, tenant]) {
 			expect(new Set(keys).size).toBe((keys ?? []).length);
 		}
-		for (const added of [readChatAdded(), readReviewsAdded()]) {
+		for (const added of [
+			readChatAdded(),
+			readReviewsAdded(),
+			readStatisticAdded(),
+		]) {
 			for (const [role, keys] of [
 				['landlord', landlord],
 				['tenant', tenant],
@@ -181,6 +196,7 @@ describe('quyền mặc định trong các migration', () => {
 				'conversation:read',
 				'conversation:update',
 				'message:create',
+				'statistic:read',
 			].sort(),
 		);
 		expect(currentDefaults('tenant', tenant ?? []).sort()).toEqual(
@@ -245,6 +261,44 @@ describe('quyền mặc định trong các migration', () => {
 			const { modules } = readRemoved();
 			expect(modules).not.toContain('conversation');
 			expect(modules).not.toContain('message');
+		});
+	});
+
+	describe('migration thống kê chủ trọ (spec 0017 AC-15)', () => {
+		it('chỉ đụng landlord, đúng một câu UPDATE: người tìm trọ không giữ khóa statistic nào', () => {
+			expect(Object.keys(readStatisticAdded())).toEqual(['landlord']);
+			const sql = readFileSync(STATISTIC, 'utf8');
+			expect(sql.match(/UPDATE "account_types"/g)).toHaveLength(1);
+			expect(currentDefaults('tenant', tenant ?? [])).not.toEqual(
+				expect.arrayContaining([expect.stringMatching(/^statistic:/)]),
+			);
+		});
+
+		it('chủ trọ được thêm đúng một khóa statistic:read', () => {
+			expect(readStatisticAdded()['landlord']).toEqual([
+				'statistic:read',
+			]);
+		});
+
+		it('chỉ thêm khóa còn thiếu nên chạy lại không thêm trùng', () => {
+			const sql = readFileSync(STATISTIC, 'utf8');
+			expect(sql.match(/WHERE k <> ALL \("permissions"\)/g)).toHaveLength(
+				1,
+			);
+		});
+
+		it('chạy sau migration dọn, chat và đánh giá, nếu không khóa mới bị dọn nhầm', () => {
+			expect(
+				'20261116100000_landlord_statistic_permission' >
+					'20261109090000_listing_reviews',
+			).toBe(true);
+			const { modules } = readRemoved();
+			expect(modules).not.toContain('statistic');
+		});
+
+		it('không đổi bảng nào: chỉ có câu UPDATE, không CREATE hay ALTER', () => {
+			const sql = readFileSync(STATISTIC, 'utf8');
+			expect(sql).not.toMatch(/\b(CREATE|ALTER|DROP)\b\s+(TABLE|INDEX)/i);
 		});
 	});
 
