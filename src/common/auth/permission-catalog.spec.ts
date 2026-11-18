@@ -275,7 +275,7 @@ describe('permission catalog', () => {
 		});
 	});
 
-	describe('quyền thống kê của chủ trọ (spec 0017 AC-15)', () => {
+	describe('quyền thống kê của chủ trọ (spec 0017 AC-15) và của admin (spec 0018 AC-15, AC-16)', () => {
 		it('statistic:read là khóa hợp lệ và không chỉ admin giữ', () => {
 			expect(isPermissionKey('statistic:read')).toBe(true);
 			expect(isAdminOnly('statistic:read')).toBe(false);
@@ -285,24 +285,45 @@ describe('permission catalog', () => {
 			expect(ADMIN_PERMISSIONS).toContain('statistic:read');
 		});
 
-		it('module chỉ có một hành động read, áp cho tài nguyên của chính người gọi, không có hành động chỉ admin', () => {
+		it('statistic:report là khóa hợp lệ, chỉ admin giữ và nằm trong quyền của admin', () => {
+			expect(isPermissionKey('statistic:report')).toBe(true);
+			expect(isAdminOnly('statistic:report')).toBe(true);
+			expect(ADMIN_PERMISSIONS).toContain('statistic:report');
+		});
+
+		it('module có hai hành động, áp cho tài nguyên của chính người gọi, hành động chỉ admin là report', () => {
 			const statistic = describeCatalog().find(
 				(entry) => entry.module === 'statistic',
 			);
-			expect(statistic?.actions).toEqual(['read']);
+			expect(statistic?.actions).toEqual(['read', 'report']);
 			expect(statistic?.ownerScoped).toBe(true);
-			expect(statistic?.adminActions).toEqual([]);
-			expect(isAdminOnly('statistic:manage')).toBe(false);
+			expect(statistic?.adminActions).toEqual(['report']);
+			expect(isAdminOnly('statistic:manage')).toBe(true);
 		});
 
-		it('token chủ trọ mang statistic:manage vì module chỉ có một hành động; khóa này đủ cho statistic:read', () => {
+		it('khóa lẻ statistic:read của chủ trọ không còn gộp thành statistic:manage, nên token mới không mang quyền report', () => {
 			expect(compressPermissions(['statistic:read'])).toEqual([
-				'statistic:manage',
+				'statistic:read',
 			]);
+			expect(
+				hasPermissions(['statistic:read'], ['statistic:report']),
+			).toBe(false);
+			expect(hasPermissions([], ['statistic:read'])).toBe(false);
+		});
+
+		it('admin gộp đủ hai hành động thành statistic:manage', () => {
+			expect(
+				compressPermissions(['statistic:read', 'statistic:report']),
+			).toEqual(['statistic:manage']);
+		});
+
+		it('token chủ trọ cũ mang statistic:manage vẫn đủ cho statistic:read, và manage bung ra cả report: chỉ @FreshAuth() ở route admin giữ nó ở 403', () => {
 			expect(
 				hasPermissions(['statistic:manage'], ['statistic:read']),
 			).toBe(true);
-			expect(hasPermissions([], ['statistic:read'])).toBe(false);
+			expect(
+				hasPermissions(['statistic:manage'], ['statistic:report']),
+			).toBe(true);
 		});
 	});
 

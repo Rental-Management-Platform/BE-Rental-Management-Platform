@@ -91,12 +91,14 @@ export const PERMISSION_CATALOG = {
 		ownerScoped: true,
 		adminActions: ['moderate'],
 	},
-	// Thống kê của chủ trọ (spec 0017). Một hành động `read` nên token chủ trọ gộp thành `statistic:manage`. Admin giữ
-	// `manage` mọi module nên qua được guard; Service từ chối mọi tài khoản không phải `landlord` (AC-15).
+	// Thống kê. `read` là của chủ trọ (spec 0017): Admin giữ `manage` mọi module nên qua được guard, Service từ chối mọi
+	// tài khoản không phải `landlord` (AC-15). `report` chỉ admin giữ (spec 0018, cùng mẫu `order:report`): chủ trọ chỉ có
+	// khóa lẻ `statistic:read` nên token mới của họ không còn gộp thành `statistic:manage`; token cũ vẫn mang
+	// `statistic:manage`, mà `manage` giờ bung ra cả `report`, nên route `GET /statistics/overview` bắt buộc `@FreshAuth()`.
 	statistic: {
-		actions: ['read'],
+		actions: ['read', 'report'],
 		ownerScoped: true,
-		adminActions: [],
+		adminActions: ['report'],
 	},
 } as const satisfies Record<string, ModuleDefinition>;
 

@@ -6,6 +6,7 @@ import {
 	localDateOf,
 	MAX_STAT_DAYS,
 	resolveStatPeriod,
+	toCurrentRangeBounds,
 	toRangeBounds,
 } from './stat-period';
 
@@ -227,6 +228,48 @@ describe('resolveStatPeriod: độ dài và kỳ trước (spec 0017 AC-2, AC-3)
 	it('là hàm thuần: gọi lại với cùng đầu vào ra cùng kết quả', () => {
 		expect(resolveStatPeriod({}, NOON)).toEqual(
 			resolveStatPeriod({}, NOON),
+		);
+	});
+});
+
+describe('toCurrentRangeBounds (spec 0018 AC-9, AC-13)', () => {
+	it('start là nửa đêm giờ Việt Nam của from (không phải previousFrom), end giống toRangeBounds', () => {
+		const period = resolveStatPeriod(
+			{ from: '2026-10-18', to: '2026-11-16' },
+			NOON,
+		);
+		expect(toCurrentRangeBounds(period)).toEqual({
+			start: '2026-10-17T17:00:00.000Z',
+			end: '2026-11-16T17:00:00.000Z',
+		});
+		expect(toCurrentRangeBounds(period).end).toBe(
+			toRangeBounds(period).end,
+		);
+	});
+
+	it('khoảng 1 ngày phủ đúng một ngày, và ISO có Z', () => {
+		const { start, end } = toCurrentRangeBounds(
+			resolveStatPeriod({ from: '2026-11-16', to: '2026-11-16' }, NOON),
+		);
+		expect(Date.parse(end) - Date.parse(start)).toBe(86_400_000);
+		expect(start).toBe('2026-11-15T17:00:00.000Z');
+	});
+
+	it('so chặt đúng ranh: 16:59:59.999Z của ngày to còn trong khoảng, 17:00:00.000Z thì ra ngoài; 16:59:59.999Z trước from ra ngoài', () => {
+		const { start, end } = toCurrentRangeBounds(
+			resolveStatPeriod({ from: '2026-11-16', to: '2026-11-16' }, NOON),
+		);
+		expect(
+			Date.parse('2026-11-15T16:59:59.999Z') >= Date.parse(start),
+		).toBe(false);
+		expect(
+			Date.parse('2026-11-15T17:00:00.000Z') >= Date.parse(start),
+		).toBe(true);
+		expect(Date.parse('2026-11-16T16:59:59.999Z') < Date.parse(end)).toBe(
+			true,
+		);
+		expect(Date.parse('2026-11-16T17:00:00.000Z') < Date.parse(end)).toBe(
+			false,
 		);
 	});
 });

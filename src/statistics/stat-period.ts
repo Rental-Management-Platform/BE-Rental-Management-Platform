@@ -61,6 +61,19 @@ export function toRangeBounds(period: ResolvedStatPeriod): StatRangeBounds {
 	};
 }
 
+/**
+ * Hai cận của RIÊNG kỳ này `[from, to]`, cho số không có kỳ trước (spec 0018 AC-9, tin mới theo phường): `start` là
+ * 00:00:00.000 của `from` (gồm), `end` là 00:00:00.000 của ngày sau `to` (không gồm). Cùng `end` với `toRangeBounds`.
+ */
+export function toCurrentRangeBounds(
+	period: ResolvedStatPeriod,
+): StatRangeBounds {
+	return {
+		start: toSqlTimestamp(startOfDay(period.from)),
+		end: toSqlTimestamp(startOfNextDay(period.to)),
+	};
+}
+
 /** Ngày cách `date` đúng `days` ngày lịch (âm là lùi), qua nửa đêm giờ Việt Nam; lịch tự xử lý tháng và năm nhuận. */
 export function addDays(date: string, days: number): string {
 	return localDateOf(new Date(startOfDay(date).getTime() + days * DAY_MS));
