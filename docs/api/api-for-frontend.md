@@ -97,7 +97,7 @@ Mỗi tài khoản chỉ thuộc **một** loại, chọn lúc đăng ký và **
 
 | Mục | Quy ước |
 |---|---|
-| Địa chỉ gốc | `http://localhost:3000/api/v1` (dev). Mọi đường dẫn trong file này nằm dưới `/api/v1` |
+| Địa chỉ gốc | `http://localhost:3000/api/v1` (dev). Trên máy chủ thật (nginx, một tên miền) API nằm dưới cùng tên miền với FE: `https://<tên-miền>/api/v1`, trình duyệt gọi bằng đường dẫn tương đối `/api/v1/...` và không cần CORS (xem `docs/deployment/huong-dan-docker-cho-fe.md`). Mọi đường dẫn trong file này nằm dưới `/api/v1` |
 | Định dạng | Gửi và nhận JSON, UTF-8. Header `Content-Type: application/json` khi có body. **Hai API nhận `multipart/form-data` thay vì JSON**: đăng tin (6.18, từ 2026-11-02) và tải ảnh lẻ (6.28). Với hai API đó **đừng tự đặt `Content-Type`**, trình duyệt tự thêm ranh giới (boundary) |
 | Xác thực | Header `Authorization: Bearer <accessToken>` cho API cần đăng nhập |
 | Cookie | Gọi từ trình duyệt phải bật gửi cookie: `fetch(..., { credentials: 'include' })` hoặc `withCredentials: true` |
@@ -494,6 +494,7 @@ Ký hiệu cột **Cần**: "công khai" = không cần đăng nhập; "đăng n
 | | |
 |---|---|
 | `GET /` | Công khai. Trả chữ thuần `Hello World!` (không phải JSON). Dùng để biết API đang chạy |
+| `GET /health` | Công khai. `200` với `{ "status": "ok" }` khi API chạy và database trả lời; `503` với body lỗi chuẩn (`code` = `DB_UNAVAILABLE`) khi database không trả lời trong 3 giây. Dành cho Docker `HEALTHCHECK` và dịch vụ giám sát, **FE không cần gọi**. Giới hạn tần suất theo IP như các API đọc công khai (300 lần mỗi phút) |
 
 ### 6.1 Đăng ký
 

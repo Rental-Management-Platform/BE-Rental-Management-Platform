@@ -8,6 +8,7 @@ import { ChatModule } from './chat/chat.module';
 import { CatalogModule } from './catalog/catalog.module';
 import { AllExceptionsFilter } from './common/errors/all-exceptions.filter';
 import { FavoritesModule } from './favorites/favorites.module';
+import { HealthModule } from './health/health.module';
 import { LandlordsModule } from './landlords/landlords.module';
 import { ListingReviewsModule } from './listing-reviews/listing-reviews.module';
 import { ListingsModule } from './listings/listings.module';
@@ -46,6 +47,7 @@ import { UsersModule } from './users/users.module';
 		ReviewsModule,
 		ListingReviewsModule,
 		StatisticsModule,
+		HealthModule,
 	],
 	controllers: [AppController],
 	providers: [
