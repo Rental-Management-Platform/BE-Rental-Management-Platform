@@ -1,0 +1,47 @@
+# Đặt ở /etc/fail2ban/jail.d/rental.local rồi `sudo systemctl restart fail2ban`.
+# fail2ban đọc nhật ký nginx và khóa IP ở tường lửa của máy chủ, nên bot lặp lại không còn chạm tới nginx nữa.
+# nginx chạy TRÊN MÁY CHỦ (không trong Docker) nên bộ lọc INPUT mặc định của fail2ban có hiệu lực.
+
+[DEFAULT]
+# QUAN TRỌNG: điền địa chỉ KHÔNG được khóa, cách nhau bằng dấu cách: máy bạn dùng để quản trị, dải mạng nội bộ, và
+# IP của thiết bị NAT/router nếu nginx thấy yêu cầu từ IP đó. Quên mục này thì một lần gõ sai có thể tự khóa mình.
+ignoreip = 127.0.0.1/8 ::1 192.168.0.0/16 10.0.0.0/8 172.16.0.0/12
+# Lần khóa lặp lại thì thời gian khóa tăng dần (gấp đôi mỗi lần, tối đa 4 tuần).
+bantime.increment = true
+bantime.factor = 2
+bantime.maxtime = 4w
+
+# Bot dò đường dẫn, phương thức lạ, công cụ quét, hoặc gõ vào IP trần: 3 lần trong 10 phút là khóa 1 ngày.
+[rental-scan]
+enabled  = true
+filter   = rental-scan
+logpath  = /var/log/nginx/rental.blocked.log
+port     = http,https
+maxretry = 3
+findtime = 10m
+bantime  = 1d
+
+# Quá nhiều yêu cầu lỗi (400, 404, 408, 414, 429, 431): 60 lần trong 5 phút là khóa 1 giờ. Ngưỡng cao để người dùng thật
+# (kể cả nhiều người chung một IP như ký túc xá) hiếm khi chạm; nếu thấy khóa nhầm, tăng maxretry.
+[rental-abuse]
+enabled  = true
+filter   = rental-abuse
+logpath  = /var/log/nginx/rental.access.log
+port     = http,https
+maxretry = 60
+findtime = 5m
+bantime  = 1h
+
+# Kẻ bị khóa nhiều lần trong ngày thì khóa một tuần (đọc nhật ký của chính fail2ban).
+[recidive]
+enabled  = true
+bantime  = 1w
+findtime = 1d
+maxretry = 3
+
+# SSH đang mở ra internet qua NAT: bật luôn (Ubuntu thường đã bật sẵn, khai báo lại cho chắc).
+[sshd]
+enabled  = true
+maxretry = 4
+findtime = 10m
+bantime  = 1h

@@ -47,6 +47,18 @@ Thiếu biến hoặc còn giá trị `CHANGE_ME` thì ứng dụng không khở
 
 **Nâng cấp từ bản rất cũ (có cột `users.roles`)**: migration `account_types_phone` không chuyển dữ liệu cũ và dừng nếu bảng `users` còn dòng. Làm lại database dev từ đầu bằng `npx prisma migrate reset`, rồi `npm run seed`. Nếu đã lỡ chạy `migration:deploy` trên database còn dữ liệu, Prisma đánh dấu migration lỗi (P3009): chạy `npx prisma migrate resolve --rolled-back 20261008090000_account_types_phone`, xử lý dữ liệu, rồi chạy lại.
 
+## Triển khai bằng Docker
+
+Máy dev vẫn chạy bằng `npm run start:dev` như trên. Để đưa lên máy chủ: `Dockerfile` dựng image API, `compose.yaml` chạy `db` (PostgreSQL 18), `migrate` (migration và seed, chạy một lần mỗi lần `up`) và `api`; cấu hình nằm trong `.env` (mẫu: `.env.production.example`, khác `.env.example` của máy dev). Mẫu cấu hình nginx và script sao lưu nằm ở `deploy/`. API có `GET /api/v1/health` (ping cả database) cho `HEALTHCHECK` và giám sát. Chống bot quét khi mở cổng 80 và 443 (nginx chặn đường dẫn dò, giới hạn tần suất theo tầng, fail2ban khóa IP lặp lại): mục 5a của hướng dẫn, cấu hình ở `deploy/nginx/` và `deploy/fail2ban/`. Tài liệu gửi đội FE (FE chạy chung máy chủ): [`docs/deployment/huong-dan-docker-cho-fe.md`](docs/deployment/huong-dan-docker-cho-fe.md).
+
+```bash
+cp .env.production.example .env && chmod 600 .env   # điền giá trị thật
+docker compose up -d --build
+docker compose --profile demo run --rm demo-seed   # (tùy chọn) nạp dữ liệu demo cho FE; thêm --reset để làm mới
+```
+
+Cách triển khai đầy đủ trên máy chủ có nginx và HTTPS, các biện pháp an toàn, sao lưu và khôi phục: [`docs/deployment/huong-dan-trien-khai.md`](docs/deployment/huong-dan-trien-khai.md). `compose.yaml` chỉ mở API ở `127.0.0.1:3000` (nginx là cổng ra internet duy nhất) và không mở cổng DB; đừng dùng nó để mở cổng ra ngoài.
+
 ## Biến môi trường
 
 Danh sách đầy đủ kèm ghi chú nằm trong [`.env.example`](.env.example). Cột "Bắt buộc" nghĩa là không có giá trị mặc định nên phải điền.

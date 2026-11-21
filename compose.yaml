@@ -1,0 +1,202 @@
+# Triển khai production cho API (spec 0001/0006). Hướng dẫn đầy đủ: docs/deployment/huong-dan-trien-khai.md
+#
+#   cp .env.production.example .env   # rồi điền giá trị thật, chmod 600 .env
+#   docker compose up -d --build
+#
+# Ba service:
+#   db      PostgreSQL 18. Không mở cổng nào ra ngoài, nằm trong mạng `backend` (internal, không ra internet).
+#   migrate chạy một lần mỗi lần `up`: áp migration rồi seed (seed chạy lại an toàn, không ghi đè dữ liệu admin đã sửa).
+#   api     NestJS. Chỉ mở 127.0.0.1:${API_PORT}; nginx trên máy chủ là cổng duy nhất ra internet.
+#   demo-seed  (tùy chọn, profile `demo`, KHÔNG chạy khi `up`) nạp dữ liệu demo cho FE:
+#           docker compose --profile demo run --rm demo-seed            # lần đầu
+#           docker compose --profile demo run --rm demo-seed --reset    # xóa dữ liệu demo cũ, tạo lại (làm mới mốc thời gian)
+#
+# Mỗi service chỉ nhận đúng các biến nó cần (không dùng env_file), nên API không bao giờ thấy mật khẩu
+# superuser của Postgres hay mật khẩu admin dùng cho seed.
+
+name: rental
+
+x-hardening: &hardening
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "5"
+
+x-database-env: &database-env
+  DATABASE_HOST: db
+  DATABASE_PORT: "5432"
+  DATABASE_NAME: ${APP_DB_NAME:?Điền APP_DB_NAME trong .env}
+  DATABASE_USER: ${APP_DB_USER:?Điền APP_DB_USER trong .env}
+  DATABASE_PASSWORD: ${APP_DB_PASSWORD:?Điền APP_DB_PASSWORD trong .env}
+
+services:
+  db:
+    <<: *hardening
+    # Ghim bản nhỏ; nâng bản là một việc làm có chủ đích (đọc ghi chú phát hành, sao lưu trước).
+    image: postgres:18.7
+    restart: unless-stopped
+    shm_size: 128mb
+    environment:
+      # Superuser chỉ dùng để khởi tạo lần đầu (deploy/postgres/init) và để quản trị bằng `docker compose exec db psql`.
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Điền POSTGRES_PASSWORD trong .env}
+      POSTGRES_DB: postgres
+      # Role và database của ứng dụng (role không phải superuser), do script init tạo.
+      APP_DB_NAME: ${APP_DB_NAME}
+      APP_DB_USER: ${APP_DB_USER}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD}
+    # Entrypoint của image khởi động bằng root rồi hạ xuống người dùng postgres: cần giữ lại các quyền này.
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETGID
+      - SETUID
+    volumes:
+      # Postgres 18 đặt dữ liệu ở /var/lib/postgresql/18/docker nên volume gắn vào /var/lib/postgresql.
+      - pgdata:/var/lib/postgresql
+      - ./deploy/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${APP_DB_USER} -d $${APP_DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - backend
+
+  migrate:
+    <<: *hardening
+    build: .
+    image: rental-api:${API_TAG:-local}
+    restart: "no"
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp
+    # Prisma ghi cache nhỏ vào thư mục home; trỏ vào tmpfs để root filesystem vẫn chỉ đọc.
+    working_dir: /app
+    command:
+      - sh
+      - -c
+      - ./node_modules/.bin/prisma migrate deploy && node dist/database/seed.js
+    environment:
+      HOME: /tmp
+      NODE_ENV: production
+      <<: *database-env
+      ADMIN_SEED_EMAIL: ${ADMIN_SEED_EMAIL:?Điền ADMIN_SEED_EMAIL trong .env}
+      ADMIN_SEED_PASSWORD: ${ADMIN_SEED_PASSWORD:?Điền ADMIN_SEED_PASSWORD trong .env}
+      ADMIN_SEED_NAME: ${ADMIN_SEED_NAME:-Quản trị viên}
+    healthcheck:
+      disable: true
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - backend
+
+  api:
+    <<: *hardening
+    build: .
+    image: rental-api:${API_TAG:-local}
+    restart: unless-stopped
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp
+    stop_grace_period: 20s
+    mem_limit: 768m
+    pids_limit: 256
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      <<: *database-env
+      DATABASE_POOL_MAX: ${DATABASE_POOL_MAX:-10}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?Điền JWT_ACCESS_SECRET trong .env}
+      ACCESS_TTL_SECONDS: ${ACCESS_TTL_SECONDS:-900}
+      REFRESH_TTL_DAYS: ${REFRESH_TTL_DAYS:-30}
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:?Điền ALLOWED_ORIGINS trong .env}
+      APP_BASE_URL: ${APP_BASE_URL:?Điền APP_BASE_URL trong .env}
+      TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-1}
+      PASSWORD_RESET_TTL_MINUTES: ${PASSWORD_RESET_TTL_MINUTES:-30}
+      MAIL_HOST: ${MAIL_HOST:?Điền MAIL_HOST trong .env}
+      MAIL_PORT: ${MAIL_PORT:?Điền MAIL_PORT trong .env}
+      MAIL_USER: ${MAIL_USER:?Điền MAIL_USER trong .env}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:?Điền MAIL_PASSWORD trong .env}
+      MAIL_FROM: ${MAIL_FROM:?Điền MAIL_FROM trong .env}
+      UPLOAD_DIR: /data/uploads
+      MAX_UPLOAD_BYTES: ${MAX_UPLOAD_BYTES:-5242880}
+    ports:
+      # Chỉ loopback: nginx trên cùng máy chủ proxy tới đây. Docker bỏ qua ufw khi mở cổng, nên KHÔNG bỏ 127.0.0.1.
+      - "127.0.0.1:${API_PORT:-3000}:3000"
+    volumes:
+      - uploads:/data/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      - backend
+      - edge
+
+  # Dữ liệu demo cho FE (`npm run seed:demo` trong image). Chỉ chạy khi gọi tên, không bao giờ tự chạy cùng `up`.
+  # Chỉ đụng các tài khoản email đuôi @demo.example.com; `--reset` chỉ xóa đúng dữ liệu đó. Cần `migrate` đã chạy xong.
+  # Mọi tài khoản demo dùng CHUNG mật khẩu DEMO_SEED_PASSWORD: trên máy chủ công khai hãy đặt chuỗi dài, không đoán được.
+  demo-seed:
+    <<: *hardening
+    build: .
+    image: rental-api:${API_TAG:-local}
+    profiles: ["demo"]
+    restart: "no"
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp
+    # Script từ chối chạy khi NODE_ENV=production (chống nạp nhầm vào hệ thống thật). Máy chủ này là bản demo và bạn
+    # chủ động gọi service này, nên chỉ riêng container một lần này đặt NODE_ENV khác; `api` vẫn là production.
+    environment:
+      NODE_ENV: development
+      <<: *database-env
+      # Không dùng `${...:?}`: Compose kiểm biến của cả service trong profile chưa bật, nên sẽ làm mọi lệnh khác hỏng.
+      DEMO_SEED_PASSWORD: ${DEMO_SEED_PASSWORD:-}
+      UPLOAD_DIR: /data/uploads
+    entrypoint:
+      - sh
+      - -c
+      - |
+        [ -n "$DEMO_SEED_PASSWORD" ] || { echo "Thiếu DEMO_SEED_PASSWORD trong .env (từ 8 ký tự, không để CHANGE_ME)." >&2; exit 1; }
+        exec node dist/database/seed-demo.js "$@"
+      - --
+    command: []
+    healthcheck:
+      disable: true
+    volumes:
+      # Ảnh demo được ghi vào cùng volume với ảnh thật của API.
+      - uploads:/data/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      - backend
+
+networks:
+  # Mạng nội bộ: db, migrate, api. `internal` nghĩa là container trong mạng này không ra được internet.
+  backend:
+    internal: true
+  # Mạng có đường ra ngoài (API cần gửi email qua SMTP) và là nơi container FE (compose riêng) gia nhập để gọi API
+  # từ phía server: `networks: { rental_edge: { external: true } }`, địa chỉ `http://api:3000`.
+  edge:
+    name: rental_edge
+
+volumes:
+  pgdata:
+  uploads:

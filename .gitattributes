@@ -1,0 +1,6 @@
+# Script chạy trong container Linux phải xuống dòng kiểu LF, kể cả khi clone trên Windows
+*.sh text eol=lf
+Dockerfile text eol=lf
+compose*.yaml text eol=lf
+*.conf text eol=lf
+*.local text eol=lf

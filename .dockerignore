@@ -1,0 +1,32 @@
+# Bí mật và dữ liệu cục bộ: tuyệt đối không vào image
+.env
+.env.*
+!.env.example
+!.env.production.example
+uploads
+coverage
+
+# Sẽ được dựng lại trong image
+node_modules
+dist
+src/generated
+
+# Không cần lúc chạy
+.git
+.gitignore
+.gitattributes
+.claude
+.agents
+docs
+test
+deploy
+*.md
+**/*.spec.ts
+**/*.fixtures.ts
+Dockerfile
+compose*.yaml
+.dockerignore
+eslint.config.mjs
+.prettierrc
+skills-lock.json
+npm-debug.log*
